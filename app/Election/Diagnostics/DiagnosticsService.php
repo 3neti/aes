@@ -34,6 +34,7 @@ final class DiagnosticsService
             'attestation_artifacts' => $this->attestationArtifacts(),
             'evidence_manifest' => $this->manifestSummary(),
             'removable_media_export' => $this->removableMediaExportSummary(),
+            'evidence_export_verification' => $this->evidenceExportVerificationSummary(),
             'printer' => config('election.devices.printer.adapter', 'simulated'),
             'scanner' => config('election.devices.scanner.adapter', 'simulated'),
             'device_certification' => $this->storage->readJson('certification/device-certification-report.json'),
@@ -154,6 +155,37 @@ final class DiagnosticsService
             'manifest_hash' => $report['manifest_hash'] ?? null,
             'export_hash' => $report['export_hash'] ?? null,
             'artifact_count' => $report['artifact_count'] ?? 0,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function evidenceExportVerificationSummary(): array
+    {
+        $path = $this->storage->path('diagnostics/evidence-export-verification.json');
+
+        if (! $this->files->exists($path)) {
+            return [
+                'exists' => false,
+                'verify_url' => route('election.diagnostics.removable-media.verify'),
+            ];
+        }
+
+        $report = $this->storage->readJson('diagnostics/evidence-export-verification.json');
+
+        return [
+            'exists' => true,
+            'verify_url' => route('election.diagnostics.removable-media.verify'),
+            'artifact' => basename($path),
+            'verified_at' => $report['verified_at'] ?? null,
+            'export_id' => $report['export_id'] ?? null,
+            'export_path' => $report['export_path'] ?? null,
+            'passed' => $report['passed'] ?? false,
+            'checked_files' => $report['checked_files'] ?? 0,
+            'verification_hash' => $report['verification_hash'] ?? null,
+            'mismatch_count' => count($report['mismatches'] ?? []),
+            'mismatches' => $report['mismatches'] ?? [],
         ];
     }
 

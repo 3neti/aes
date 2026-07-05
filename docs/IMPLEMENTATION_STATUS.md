@@ -35,6 +35,7 @@
 - Precinct evidence manifest export that summarizes ceremony artifact categories, file sizes, and SHA-256 hashes in one JSON file.
 - Optional removable-media export workflow that stages the evidence manifest, referenced artifacts, and an export report in a deterministic local media directory.
 - Evidence export verification command that re-hashes a staged removable-media bundle and reports missing, size-mismatched, and hash-mismatched artifacts.
+- Diagnostics UI support for running evidence export verification and inspecting the latest persisted verification report with mismatch details.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -79,6 +80,7 @@
   - Diagnostics attestation evidence bundle projection and artifact view/download routes
   - Diagnostics precinct evidence manifest generation, summary projection, and download route
   - Diagnostics removable-media export staging, copied artifact evidence, summary projection, and journal event
+  - Diagnostics evidence export verification action, persisted report projection, and journal event
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -99,8 +101,8 @@
 ## Verification Results
 
 - Focused Pest lifecycle suite: passed, 28 tests and 130 assertions.
-- Focused Pest ceremony page suite: passed, 20 tests and 274 assertions.
-- Pest: passed, 50 tests and 406 assertions.
+- Focused Pest ceremony page suite: passed, 21 tests and 301 assertions.
+- Pest: passed, 51 tests and 433 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -117,7 +119,6 @@
 - Browser camera capture requires operator browser permission and a secure origin as enforced by the browser.
 - Officer attestation uses a local deterministic PIN registry and PNG signature artifacts; no identity proofing workflow yet.
 - Removable-media export is currently simulated as a local staging directory; no physical mount detection or media write-protection checks yet.
-- Evidence export verification is currently CLI-first; Diagnostics does not yet display persisted verification reports.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Backup appliance support is limited to deterministic re-derivation behavior in services and scenarios.
@@ -126,4 +127,4 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Add Diagnostics UI support for running and inspecting evidence export verification reports.
+- Add a physical removable-media readiness check scaffold for configured export targets.

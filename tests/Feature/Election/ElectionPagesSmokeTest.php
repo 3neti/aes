@@ -233,6 +233,41 @@ test('diagnostics can stage removable media evidence export', function (): void 
     app(ElectionClock::class)->unfreeze();
 });
 
+test('diagnostics can run and inspect evidence export verification report', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-08 19:30:00');
+    app(ActivateSamplePackage::class)->handle();
+
+    $this->post(route('election.diagnostics.removable-media.export'))
+        ->assertRedirect(route('election.diagnostics'));
+
+    $this->post(route('election.diagnostics.removable-media.verify'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('evidence_export_verification_hash');
+
+    $report = app(ElectionStorage::class)->readJson('diagnostics/evidence-export-verification.json');
+
+    expect($report['schema_version'])->toBe('removable-media-export-verification-1')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['checked_files'])->toBeGreaterThan(0)
+        ->and($report['mismatches'])->toBe([])
+        ->and($report['verification_hash'])->toBeString();
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.evidence_export_verification.exists', true)
+            ->where('diagnostics.evidence_export_verification.passed', true)
+            ->where('diagnostics.evidence_export_verification.verification_hash', $report['verification_hash'])
+            ->where('diagnostics.evidence_export_verification.mismatch_count', 0)
+        );
+
+    expect(collect(app(ActivityJournal::class)->entries())->last()['event_type'])
+        ->toBe('evidence_bundle.verification_passed');
+
+    app(ElectionClock::class)->unfreeze();
+});
+
 test('counting route uses configured handheld scanner adapter', function (): void {
     config()->set('election.devices.scanner.driver', 'handheld');
     config()->set('election.devices.scanner.handheld.name', 'USB Scanner 1');

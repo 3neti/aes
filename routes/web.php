@@ -37,6 +37,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/diagnostics/evidence-manifest', [DiagnosticsController::class, 'generateEvidenceManifest'])->name('diagnostics.evidence-manifest.generate');
     Route::get('/diagnostics/evidence-manifest/download', [DiagnosticsController::class, 'downloadEvidenceManifest'])->name('diagnostics.evidence-manifest.download');
     Route::post('/diagnostics/removable-media/export', [DiagnosticsController::class, 'exportRemovableMedia'])->name('diagnostics.removable-media.export');
+    Route::post('/diagnostics/removable-media/verify', [DiagnosticsController::class, 'verifyRemovableMedia'])->name('diagnostics.removable-media.verify');
     Route::get('/diagnostics/attestations/{artifact}', [DiagnosticsController::class, 'attestation'])->name('diagnostics.attestations.show');
     Route::get('/diagnostics/attestations/{artifact}/download', [DiagnosticsController::class, 'downloadAttestation'])->name('diagnostics.attestations.download');
     Route::get('/diagnostics/signatures/{artifact}', [DiagnosticsController::class, 'signature'])->name('diagnostics.signatures.show');

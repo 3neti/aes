@@ -2,7 +2,9 @@
 
 namespace App\Election\Diagnostics;
 
+use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
+use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Filesystem\Filesystem;
 use JsonException;
@@ -13,6 +15,8 @@ final class RemovableMediaExportVerifier
         private readonly ElectionStorage $storage,
         private readonly Filesystem $files,
         private readonly CanonicalJson $json,
+        private readonly ElectionClock $clock,
+        private readonly ActivityJournal $journal,
     ) {}
 
     /**
@@ -59,6 +63,29 @@ final class RemovableMediaExportVerifier
             'checked_files' => count($report['copied_files'] ?? []),
             'mismatches' => $mismatches,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function writeReport(?string $exportPath = null): array
+    {
+        $report = [
+            ...$this->verify($exportPath),
+            'verified_at' => $this->clock->now()->toIso8601String(),
+        ];
+        $report['verification_hash'] = $this->json->hash($report);
+        $report['artifact_path'] = $this->storage->writeJson('diagnostics/evidence-export-verification.json', $report);
+
+        $this->journal->record($report['passed'] ? 'evidence_bundle.verification_passed' : 'evidence_bundle.verification_failed', [
+            'checked_files' => $report['checked_files'],
+            'export_id' => $report['export_id'],
+            'export_path' => $report['export_path'],
+            'mismatch_count' => count($report['mismatches']),
+            'verification_hash' => $report['verification_hash'],
+        ]);
+
+        return $report;
     }
 
     private function resolveExportPath(?string $exportPath): ?string

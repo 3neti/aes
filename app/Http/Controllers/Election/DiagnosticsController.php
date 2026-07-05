@@ -6,6 +6,7 @@ use App\Election\Core\ElectionSnapshot;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\DiagnosticsService;
 use App\Election\Diagnostics\RemovableMediaExporter;
+use App\Election\Diagnostics\RemovableMediaExportVerifier;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -57,6 +58,15 @@ final class DiagnosticsController extends Controller
         return redirect()
             ->route('election.diagnostics')
             ->with('removable_media_export_hash', $report['export_hash'] ?? null);
+    }
+
+    public function verifyRemovableMedia(RemovableMediaExportVerifier $verifier): RedirectResponse
+    {
+        $report = $verifier->writeReport();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('evidence_export_verification_hash', $report['verification_hash'] ?? null);
     }
 
     public function attestation(ElectionStorage $storage, string $artifact): BinaryFileResponse

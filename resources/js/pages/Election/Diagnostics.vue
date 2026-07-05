@@ -43,12 +43,35 @@ type RemovableMediaExport = {
     artifact_count?: number;
 };
 
+type VerificationMismatch = {
+    type: string;
+    message: string;
+    path: string;
+    expected?: unknown;
+    actual?: unknown;
+};
+
+type EvidenceExportVerification = {
+    exists: boolean;
+    verify_url: string;
+    artifact?: string;
+    verified_at?: string | null;
+    export_id?: string | null;
+    export_path?: string | null;
+    passed?: boolean;
+    checked_files?: number;
+    verification_hash?: string | null;
+    mismatch_count?: number;
+    mismatches?: VerificationMismatch[];
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
     diagnostics: {
         attestation_artifacts?: AttestationArtifact[];
         evidence_manifest?: EvidenceManifest;
         removable_media_export?: RemovableMediaExport;
+        evidence_export_verification?: EvidenceExportVerification;
         [key: string]: unknown;
     };
 }>();
@@ -70,7 +93,8 @@ defineProps<{
                     v-show="
                         key !== 'attestation_artifacts' &&
                         key !== 'evidence_manifest' &&
-                        key !== 'removable_media_export'
+                        key !== 'removable_media_export' &&
+                        key !== 'evidence_export_verification'
                     "
                     class="border border-stone-200 p-3"
                 >
@@ -236,6 +260,150 @@ defineProps<{
             <p v-else class="mt-4 text-sm text-stone-700">
                 No removable media export has been staged yet.
             </p>
+        </section>
+
+        <section
+            v-if="diagnostics.evidence_export_verification"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">
+                        Evidence Export Verification
+                    </h2>
+                    <p class="mt-1 text-sm text-stone-700">
+                        {{
+                            diagnostics.evidence_export_verification.exists
+                                ? diagnostics.evidence_export_verification
+                                      .passed
+                                    ? 'Latest verification passed.'
+                                    : 'Latest verification found mismatches.'
+                                : 'No verification report has been run yet.'
+                        }}
+                    </p>
+                </div>
+                <Form
+                    :action="
+                        diagnostics.evidence_export_verification.verify_url
+                    "
+                    method="post"
+                    #default="{ processing, wasSuccessful }"
+                >
+                    <div class="flex flex-col items-start gap-2">
+                        <button
+                            class="secondary-button"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{
+                                processing ? 'Verifying...' : 'Run Verification'
+                            }}
+                        </button>
+                        <p v-if="wasSuccessful" class="text-xs text-stone-600">
+                            Verification complete.
+                        </p>
+                    </div>
+                </Form>
+            </div>
+
+            <dl
+                v-if="diagnostics.evidence_export_verification.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Status</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_export_verification.passed
+                                ? 'Passed'
+                                : 'Failed'
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Verified At</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_export_verification.verified_at
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Export ID</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.evidence_export_verification.export_id }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Checked Files</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_export_verification
+                                .checked_files
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Mismatch Count</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_export_verification
+                                .mismatch_count
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Verification Hash
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_export_verification
+                                .verification_hash
+                        }}
+                    </dd>
+                </div>
+            </dl>
+
+            <div
+                v-if="
+                    diagnostics.evidence_export_verification.mismatches?.length
+                "
+                class="mt-4 space-y-3"
+            >
+                <article
+                    v-for="mismatch in diagnostics.evidence_export_verification
+                        .mismatches"
+                    :key="`${mismatch.type}-${mismatch.path}`"
+                    class="border border-stone-200 p-3 text-xs"
+                >
+                    <div class="font-semibold text-stone-800">
+                        {{ mismatch.type }}
+                    </div>
+                    <div class="mt-1 break-all text-stone-700">
+                        {{ mismatch.path }}
+                    </div>
+                    <div class="mt-1 text-stone-600">
+                        {{ mismatch.message }}
+                    </div>
+                    <dl class="mt-2 grid gap-2 sm:grid-cols-2">
+                        <div v-if="mismatch.expected !== null">
+                            <dt class="font-semibold text-stone-700">
+                                Expected
+                            </dt>
+                            <dd class="mt-1 break-all text-stone-600">
+                                {{ mismatch.expected }}
+                            </dd>
+                        </div>
+                        <div v-if="mismatch.actual !== null">
+                            <dt class="font-semibold text-stone-700">Actual</dt>
+                            <dd class="mt-1 break-all text-stone-600">
+                                {{ mismatch.actual }}
+                            </dd>
+                        </div>
+                    </dl>
+                </article>
+            </div>
         </section>
 
         <section class="border border-stone-300 bg-white p-5">
