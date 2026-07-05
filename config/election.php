@@ -6,6 +6,15 @@ return [
         'precinct_id' => '0421-A',
         'ballot_style_id' => 'BS-0421-A',
     ],
+    'devices' => [
+        'printer' => [
+            'adapter' => env('ELECTION_PRINTER_ADAPTER', 'simulated'),
+            'cups' => [
+                'name' => env('ELECTION_CUPS_PRINTER', ''),
+                'timeout' => (int) env('ELECTION_CUPS_TIMEOUT', 3),
+            ],
+        ],
+    ],
     'dictionary' => [
         'app_name' => 'Alternative Election System',
         'stage' => [

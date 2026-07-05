@@ -23,6 +23,7 @@
 - Deterministic PDF artifacts for printed ballots and Election Returns.
 - Ceremony page smoke coverage for every Inertia operator page.
 - Simulated printer/scanner adapter certification with a persisted device certification report.
+- Configurable printer health adapter selection with a CUPS `lpstat` certification scaffold.
 - Simulated officer attestation checkpoints with one JSON evidence artifact per attestation and journaled evidence handles.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
@@ -47,6 +48,7 @@
   - full scenario command success
   - Home Inertia component render
   - simulated device adapter certification report
+  - CUPS printer health adapter selection and not-configured behavior
   - simulated officer attestation artifact and journal event
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
@@ -72,9 +74,9 @@
 
 ## Verification Results
 
-- Focused Pest lifecycle suite: passed, 12 tests and 62 assertions.
+- Focused Pest lifecycle suite: passed, 14 tests and 70 assertions.
 - Focused Pest ceremony page suite: passed, 11 tests and 141 assertions.
-- Pest: passed, 25 tests and 205 assertions.
+- Pest: passed, 27 tests and 213 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -86,7 +88,8 @@
 
 - QR decoding currently uses the local `zbarimg` binary; a pure PHP or packaged decoder adapter may be preferable for deployment portability.
 - PDF ballot and Election Return artifacts are generated with a simple internal PDF renderer.
-- Scanner and printer hardware are simulated; no CUPS, ESC/POS, camera, or scanner integration yet.
+- Printer health certification can probe CUPS status when configured, but ballot printing still uses file artifacts by default and no ESC/POS output is implemented.
+- Scanner hardware is simulated; no camera or scanner integration yet.
 - Officer attestation is simulated; no PIN validation, identity proofing, or signature workflow yet.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
@@ -96,5 +99,5 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Replace simulated device checks with real CUPS/ESC-POS printer and scanner health adapters.
+- Add a CUPS ballot printer adapter that submits rendered ballot artifacts to the configured printer after certification.
 - Replace simulated officer attestation with officer PIN validation and signature artifact capture.

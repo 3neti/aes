@@ -4,6 +4,7 @@ use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Certification\CertificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
+use App\Election\Devices\CupsPrinterHealthCheck;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\DiagnosticsService;
 use App\Election\Lifecycle\Lifecycle;
@@ -17,6 +18,7 @@ use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\StandardQrCode;
+use Illuminate\Support\Facades\Process;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
@@ -65,6 +67,41 @@ test('device certification checks simulated printer and scanner adapters', funct
         ->and(app(ElectionStorage::class)->readJson('certification/device-certification-report.json')['report_hash'])->toBe($report['report_hash'])
         ->and($diagnostics['device_certification']['report_hash'])->toBe($report['report_hash'])
         ->and(collect($events)->pluck('event_type'))->toContain('devices.certification_passed');
+});
+
+test('cups printer health check is selectable through device certification config', function (): void {
+    config()->set('election.devices.printer.adapter', 'cups');
+    config()->set('election.devices.printer.cups.name', 'Precinct_Printer');
+    config()->set('election.devices.printer.cups.timeout', 2);
+    app()->forgetInstance(DeviceCertificationService::class);
+    Process::fake([
+        '*' => Process::result('printer Precinct_Printer is idle. enabled since today'),
+    ]);
+
+    try {
+        $report = app(DeviceCertificationService::class)->run();
+
+        expect($report['passed'])->toBeTrue()
+            ->and($report['devices']['printer']['adapter'])->toBe('cups-printer')
+            ->and($report['devices']['printer']['printer'])->toBe('Precinct_Printer')
+            ->and($report['devices']['scanner']['adapter'])->toBe('simulated-scanner');
+
+        Process::assertRan(fn ($process): bool => $process->command === ['lpstat', '-p', 'Precinct_Printer']);
+    } finally {
+        config()->set('election.devices.printer.adapter', 'simulated');
+        app()->forgetInstance(DeviceCertificationService::class);
+    }
+});
+
+test('cups printer health check reports not configured without probing process', function (): void {
+    Process::fake();
+
+    $result = (new CupsPrinterHealthCheck(''))->check();
+
+    expect($result['status'])->toBe('not-configured')
+        ->and($result['adapter'])->toBe('cups-printer');
+
+    Process::assertNothingRan();
 });
 
 test('officer attestation writes artifact and journal event', function (): void {
