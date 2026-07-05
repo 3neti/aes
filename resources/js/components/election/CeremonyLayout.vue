@@ -157,30 +157,39 @@ defineProps<{
                             />
                             <label class="block text-sm">
                                 <span class="font-semibold text-stone-700"
-                                    >Officer Name</span
-                                >
-                                <input
-                                    name="officer_name"
-                                    class="mt-1 w-full border border-stone-300 p-2"
-                                    autocomplete="off"
-                                    required
-                                />
-                                <span
-                                    v-if="errors.officer_name"
-                                    class="mt-1 block text-xs text-red-700"
-                                >
-                                    {{ errors.officer_name }}
-                                </span>
-                            </label>
-                            <label class="block text-sm">
-                                <span class="font-semibold text-stone-700"
-                                    >Officer Code</span
+                                    >Officer ID</span
                                 >
                                 <input
                                     name="officer_code"
                                     class="mt-1 w-full border border-stone-300 p-2"
                                     autocomplete="off"
+                                    required
                                 />
+                                <span
+                                    v-if="errors.officer_code"
+                                    class="mt-1 block text-xs text-red-700"
+                                >
+                                    {{ errors.officer_code }}
+                                </span>
+                            </label>
+                            <label class="block text-sm">
+                                <span class="font-semibold text-stone-700"
+                                    >Officer PIN</span
+                                >
+                                <input
+                                    name="officer_pin"
+                                    type="password"
+                                    inputmode="numeric"
+                                    class="mt-1 w-full border border-stone-300 p-2"
+                                    autocomplete="off"
+                                    required
+                                />
+                                <span
+                                    v-if="errors.officer_pin"
+                                    class="mt-1 block text-xs text-red-700"
+                                >
+                                    {{ errors.officer_pin }}
+                                </span>
                             </label>
                             <button
                                 type="submit"

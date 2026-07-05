@@ -144,7 +144,7 @@ final class ScenarioRunner
         return $this->attestations->attest([
             'ceremony' => $ceremony,
             'officer_code' => 'SIM-OFFICER-001',
-            'officer_name' => 'Simulation Officer',
+            'officer_pin' => '123456',
             'stage' => $stage,
             'statement' => $statement,
         ]);

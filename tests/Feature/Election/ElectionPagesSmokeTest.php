@@ -185,8 +185,8 @@ test('ceremony shell can record officer attestation', function (): void {
     $this->from(route('election.certification'))
         ->post(route('election.attestations.store'), [
             'ceremony' => 'Friday Certification',
-            'officer_code' => 'SIM-1234',
-            'officer_name' => 'Precinct Chair',
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_pin' => '123456',
             'stage' => 'certification',
             'statement' => 'Certification checkpoint reviewed.',
         ])
@@ -199,4 +199,19 @@ test('ceremony shell can record officer attestation', function (): void {
             ->where('snapshot.counts.attestations', 1)
             ->has('snapshot.journal')
         );
+});
+
+test('ceremony shell rejects invalid officer pin', function (): void {
+    $this->from(route('election.certification'))
+        ->post(route('election.attestations.store'), [
+            'ceremony' => 'Friday Certification',
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_pin' => '000000',
+            'stage' => 'certification',
+            'statement' => 'Certification checkpoint reviewed.',
+        ])
+        ->assertRedirect(route('election.certification'))
+        ->assertSessionHasErrors('officer_pin');
+
+    expect(app(ElectionStorage::class)->files('attestations'))->toHaveCount(0);
 });

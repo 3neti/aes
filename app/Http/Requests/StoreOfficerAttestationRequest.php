@@ -26,8 +26,8 @@ final class StoreOfficerAttestationRequest extends FormRequest
     {
         return [
             'ceremony' => ['required', 'string', 'max:160'],
-            'officer_code' => ['nullable', 'string', 'max:80'],
-            'officer_name' => ['required', 'string', 'max:120'],
+            'officer_code' => ['required', 'string', 'max:80'],
+            'officer_pin' => ['required', 'string', 'max:32'],
             'stage' => ['required', 'string', Rule::in(Lifecycle::stages())],
             'statement' => ['required', 'string', 'max:500'],
         ];

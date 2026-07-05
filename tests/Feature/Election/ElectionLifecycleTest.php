@@ -23,6 +23,7 @@ use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\StandardQrCode;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
@@ -159,8 +160,8 @@ test('camera scanner health check reports not configured', function (): void {
 test('officer attestation writes artifact and journal event', function (): void {
     $record = app(OfficerAttestationService::class)->attest([
         'ceremony' => 'Friday Certification',
-        'officer_code' => 'SIM-1234',
-        'officer_name' => 'Precinct Chair',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
         'stage' => Lifecycle::Certification,
         'statement' => 'Certification checkpoint reviewed.',
     ]);
@@ -168,10 +169,24 @@ test('officer attestation writes artifact and journal event', function (): void 
 
     expect($record['attestation_id'])->toBe('attestation-000001')
         ->and($record['attestation_hash'])->toBeString()
-        ->and($record['officer_code_hash'])->toBe(hash('sha256', 'SIM-1234'))
+        ->and($record['officer_code_hash'])->toBe(hash('sha256', 'SIM-OFFICER-001'))
+        ->and($record['officer_name'])->toBe('Simulation Officer')
+        ->and($record['officer_role'])->toBe('Precinct Chair')
         ->and(file_exists($record['artifact_path']))->toBeTrue()
         ->and(app(ElectionStorage::class)->files('attestations'))->toHaveCount(1)
         ->and(collect($events)->pluck('event_type'))->toContain('officer.attested');
+});
+
+test('officer attestation rejects invalid local registry pin', function (): void {
+    expect(fn () => app(OfficerAttestationService::class)->attest([
+        'ceremony' => 'Friday Certification',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '000000',
+        'stage' => Lifecycle::Certification,
+        'statement' => 'Certification checkpoint reviewed.',
+    ]))->toThrow(ValidationException::class);
+
+    expect(app(ElectionStorage::class)->files('attestations'))->toHaveCount(0);
 });
 
 test('ballot finalization creates deterministic qr payload and print artifact', function (): void {

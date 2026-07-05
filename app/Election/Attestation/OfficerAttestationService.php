@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use Illuminate\Validation\ValidationException;
 
 final class OfficerAttestationService
 {
@@ -14,14 +15,25 @@ final class OfficerAttestationService
         private readonly ElectionClock $clock,
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
+        private readonly OfficerRegistry $officers,
     ) {}
 
     /**
-     * @param  array{ceremony: string, stage: string, officer_name: string, officer_code?: string|null, statement: string}  $data
+     * @param  array{ceremony: string, stage: string, officer_code: string, officer_pin: string, statement: string}  $data
      * @return array<string, mixed>
+     *
+     * @throws ValidationException
      */
     public function attest(array $data): array
     {
+        $officer = $this->officers->verify($data['officer_code'], $data['officer_pin']);
+
+        if ($officer === null) {
+            throw ValidationException::withMessages([
+                'officer_pin' => 'The officer code or PIN is invalid.',
+            ]);
+        }
+
         $sequence = count($this->storage->files('attestations')) + 1;
         $attestationId = sprintf('attestation-%06d', $sequence);
 
@@ -29,10 +41,9 @@ final class OfficerAttestationService
             'attestation_id' => $attestationId,
             'attested_at' => $this->clock->now()->toIso8601String(),
             'ceremony' => $data['ceremony'],
-            'officer_code_hash' => filled($data['officer_code'] ?? null)
-                ? hash('sha256', trim((string) $data['officer_code']))
-                : null,
-            'officer_name' => trim($data['officer_name']),
+            'officer_code_hash' => hash('sha256', $officer['code']),
+            'officer_name' => $officer['name'],
+            'officer_role' => $officer['role'],
             'stage' => $data['stage'],
             'statement' => trim($data['statement']),
         ];
