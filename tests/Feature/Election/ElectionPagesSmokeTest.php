@@ -54,6 +54,30 @@ test('printing page exposes finalized ballot qr and artifact state', function ()
         );
 });
 
+test('printing ceremony reports certification gate for cups printer driver', function (): void {
+    config()->set('election.devices.printer.driver', 'cups');
+    config()->set('election.devices.printer.cups.name', 'Precinct_Printer');
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        app(BallotPayloadService::class)->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'smoke-ballot-cups-gated');
+
+        $this->from(route('election.printing', ['ballot' => 'smoke-ballot-cups-gated']))
+            ->post(route('election.printing.print', ['ballot' => 'smoke-ballot-cups-gated']))
+            ->assertRedirect(route('election.printing', ['ballot' => 'smoke-ballot-cups-gated']))
+            ->assertSessionHasErrors('printer');
+
+        expect(app(ElectionStorage::class)->files('print-jobs'))->toHaveCount(0);
+    } finally {
+        config()->set('election.devices.printer.driver', 'file');
+    }
+});
+
 test('diagnostics page can run device adapter certification', function (): void {
     $this->post(route('election.diagnostics.certify-devices'))
         ->assertRedirect(route('election.diagnostics'));

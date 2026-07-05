@@ -39,10 +39,19 @@ defineProps<{
                     />
                 </div>
                 <div class="flex flex-wrap gap-3">
-                    <Form v-bind="print.form(payload.ballot_id)">
+                    <Form
+                        v-bind="print.form(payload.ballot_id)"
+                        #default="{ errors }"
+                    >
                         <button class="primary-button" type="submit">
-                            Print File Ballot
+                            Print Ballot
                         </button>
+                        <p
+                            v-if="errors.printer"
+                            class="mt-2 max-w-xl text-sm font-semibold text-red-700"
+                        >
+                            {{ errors.printer }}
+                        </p>
                     </Form>
                     <Form v-bind="spoil.form(payload.ballot_id)">
                         <button class="secondary-button" type="submit">

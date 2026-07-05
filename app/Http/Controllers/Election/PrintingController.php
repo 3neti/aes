@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\PrinterCertificationRequired;
 use App\Election\Printing\SpoilBallot;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
@@ -28,7 +29,13 @@ final class PrintingController extends Controller
 
     public function print(string $ballot, ElectionStorage $storage, BallotPrinter $printer): RedirectResponse
     {
-        $printer->print($storage->readJson("ballots/{$ballot}.json"));
+        try {
+            $printer->print($storage->readJson("ballots/{$ballot}.json"));
+        } catch (PrinterCertificationRequired $exception) {
+            return redirect()
+                ->route('election.printing', ['ballot' => $ballot])
+                ->withErrors(['printer' => $exception->getMessage()]);
+        }
 
         return redirect()->route('election.printing', ['ballot' => $ballot]);
     }

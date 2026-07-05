@@ -13,6 +13,7 @@ use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Preparation\DeterministicMapper;
 use App\Election\Preparation\SampleElectionData;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\PrinterCertificationRequired;
 use App\Election\Printing\SpoilBallot;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionStorage;
@@ -148,6 +149,7 @@ test('cups ballot printer submits generated artifact when configured', function 
     config()->set('election.devices.printer.driver', 'cups');
     config()->set('election.devices.printer.cups.name', 'Precinct_Printer');
     config()->set('election.devices.printer.cups.timeout', 4);
+    writePassingCupsCertification('Precinct_Printer');
     Process::fake([
         '*' => Process::result('request id is Precinct_Printer-17 (1 file)'),
     ]);
@@ -188,6 +190,7 @@ test('cups ballot printer submits generated artifact when configured', function 
 test('cups ballot printer records failed submissions without losing artifacts', function (): void {
     config()->set('election.devices.printer.driver', 'cups');
     config()->set('election.devices.printer.cups.name', 'Precinct_Printer');
+    writePassingCupsCertification('Precinct_Printer');
     Process::fake([
         '*' => Process::result(errorOutput: 'printer is stopped', exitCode: 1),
     ]);
@@ -210,6 +213,30 @@ test('cups ballot printer records failed submissions without losing artifacts', 
             ->and(file_exists($job['artifact_path']))->toBeTrue()
             ->and(file_exists($job['pdf_artifact_path']))->toBeTrue()
             ->and(collect($events)->pluck('event_type'))->toContain('ballot.print_failed');
+    } finally {
+        config()->set('election.devices.printer.driver', 'file');
+    }
+});
+
+test('cups ballot printer requires passing device certification before submission', function (): void {
+    config()->set('election.devices.printer.driver', 'cups');
+    config()->set('election.devices.printer.cups.name', 'Precinct_Printer');
+    Process::fake();
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        $payload = app(BallotPayloadService::class)->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'test-ballot-cups-uncertified');
+
+        expect(fn () => app(BallotPrinter::class)->print($payload))
+            ->toThrow(PrinterCertificationRequired::class);
+
+        Process::assertNothingRan();
+        expect(app(ElectionStorage::class)->files('print-jobs'))->toHaveCount(0);
     } finally {
         config()->set('election.devices.printer.driver', 'file');
     }
@@ -311,3 +338,27 @@ test('home page renders the ceremony shell', function (): void {
             ->has('snapshot.stage')
         );
 });
+
+function writePassingCupsCertification(string $printerName): void
+{
+    app(ElectionStorage::class)->writeJson('certification/device-certification-report.json', [
+        'schema_version' => 'device-certification-report-1',
+        'passed' => true,
+        'devices' => [
+            'printer' => [
+                'adapter' => 'cups-printer',
+                'status' => 'ready',
+                'capabilities' => ['cups-status'],
+                'detail' => "printer {$printerName} is idle",
+                'exit_code' => 0,
+                'printer' => $printerName,
+            ],
+            'scanner' => [
+                'adapter' => 'simulated-scanner',
+                'status' => 'ready',
+                'capabilities' => ['qr-payload'],
+            ],
+        ],
+        'report_hash' => hash('sha256', $printerName),
+    ]);
+}

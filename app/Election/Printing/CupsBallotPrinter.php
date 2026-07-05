@@ -28,6 +28,8 @@ final class CupsBallotPrinter implements BallotPrinter
             throw new RuntimeException('CUPS printer name is not configured.');
         }
 
+        $this->ensureCertified();
+
         $job = $this->files->print($payload);
         $artifactPath = $job['pdf_artifact_path'] ?? $job['artifact_path'] ?? null;
 
@@ -55,6 +57,21 @@ final class CupsBallotPrinter implements BallotPrinter
         ]);
 
         return $job;
+    }
+
+    private function ensureCertified(): void
+    {
+        $report = $this->storage->readJson('certification/device-certification-report.json');
+        $printer = $report['devices']['printer'] ?? [];
+
+        if (
+            ($report['passed'] ?? false) !== true
+            || ($printer['adapter'] ?? null) !== 'cups-printer'
+            || ($printer['status'] ?? null) !== 'ready'
+            || ($printer['printer'] ?? null) !== $this->printerName
+        ) {
+            throw PrinterCertificationRequired::forCupsPrinter($this->printerName);
+        }
     }
 
     /**
