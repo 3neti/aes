@@ -19,6 +19,7 @@
 - Inertia Vue pages under `resources/js/pages/Election`.
 - Shared ceremony layout and typed snapshot props under `resources/js/components/election`.
 - Sample election data under `resources/election/sample`.
+- Deterministic simulation QR SVG artifacts for finalized ballots, with decode support for counting tests.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -31,6 +32,7 @@
   - deterministic mapping
   - Friday certification expected result
   - ballot finalization and QR payload
+  - rendered QR artifact decode
   - print job artifact
   - accepted counting append file
   - duplicate rejection
@@ -50,13 +52,14 @@
 - `php artisan test --compact`
 - `npm run types:check`
 - `npm run build`
+- `php artisan test --compact tests/Feature/Election/ElectionLifecycleTest.php`
 - `npm run lint:check`
 - `npm run format:check`
 - `npm run format`
 
 ## Verification Results
 
-- Pest: passed, 11 tests and 38 assertions.
+- Pest: passed, 12 tests and 44 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -66,7 +69,7 @@
 
 ## Known Gaps
 
-- QR payload is a deterministic base64 JSON string, not a rendered QR image.
+- QR artifact is a deterministic simulation SVG with embedded payload metadata, not a standards-compliant QR symbol yet.
 - Printable ballot and Election Return artifacts are text/JSON files, not PDFs.
 - Scanner and printer hardware are simulated; no CUPS, ESC/POS, camera, or scanner integration yet.
 - Officer authorization is simulated; no authentication or signature workflow yet.
@@ -76,7 +79,7 @@
 
 ## Next Recommended Steps
 
-- Add rendered QR images and QR decoding tests.
+- Replace the simulation QR SVG adapter with a standards-compliant QR encoder/decoder.
 - Add PDF ballot and Election Return rendering.
 - Add browser smoke tests for the ceremony pages.
 - Add hardware adapter certification flows for real printer/scanner devices.

@@ -20,6 +20,7 @@ final class FileBallotPrinter implements BallotPrinter
         $contents .= "Precinct: {$payload['precinct_id']}\n";
         $contents .= "Ballot: {$ballotId}\n";
         $contents .= "Payload Hash: {$payload['payload_hash']}\n\n";
+        $contents .= "QR Artifact: {$payload['qr_artifact_path']}\n\n";
 
         foreach ($payload['selections'] as $contest => $candidateIds) {
             $contents .= strtoupper((string) $contest).': '.implode(', ', $candidateIds)."\n";

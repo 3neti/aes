@@ -115,7 +115,11 @@ final class CountingService
             throw new \RuntimeException('Mapping hash mismatch.');
         }
 
-        if (($payload['payload_hash'] ?? null) !== $this->json->hash(array_diff_key($payload, ['qr_payload' => true, 'payload_hash' => true]))) {
+        if (($payload['payload_hash'] ?? null) !== $this->json->hash(array_diff_key($payload, [
+            'qr_payload' => true,
+            'qr_artifact_path' => true,
+            'payload_hash' => true,
+        ]))) {
             throw new \RuntimeException('Payload hash mismatch.');
         }
 

@@ -13,6 +13,7 @@ final class BallotPayloadService
         private readonly ElectionStorage $storage,
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
+        private readonly SimulationQrCode $qrCode,
     ) {}
 
     /**
@@ -36,6 +37,10 @@ final class BallotPayloadService
 
         $payload['payload_hash'] = $this->json->hash($payload);
         $payload['qr_payload'] = base64_encode($this->json->encode($payload));
+        $payload['qr_artifact_path'] = $this->storage->writeText(
+            "ballots/{$payload['ballot_id']}-qr.svg",
+            $this->qrCode->render($payload['qr_payload'], "Ballot {$payload['ballot_id']} QR Payload"),
+        );
         $this->storage->writeJson("ballots/{$payload['ballot_id']}.json", $payload);
 
         if ($journal) {
@@ -53,6 +58,10 @@ final class BallotPayloadService
      */
     public function decode(string $payload): array
     {
+        if (str_starts_with(ltrim($payload), '<svg')) {
+            $payload = $this->qrCode->decode($payload);
+        }
+
         $decoded = base64_decode($payload, true);
         $json = $decoded === false ? $payload : $decoded;
 

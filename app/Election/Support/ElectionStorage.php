@@ -87,6 +87,17 @@ final class ElectionStorage
         return $path;
     }
 
+    public function readText(string $relative, string $default = ''): string
+    {
+        $path = $this->path($relative);
+
+        if (! $this->files->exists($path)) {
+            return $default;
+        }
+
+        return $this->files->get($path);
+    }
+
     /**
      * @return array<int, string>
      */
