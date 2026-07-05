@@ -14,11 +14,12 @@ use Inertia\Response;
 
 final class CountingController extends Controller
 {
-    public function show(ElectionSnapshot $snapshot, CountingService $counting): Response
+    public function show(Request $request, ElectionSnapshot $snapshot, CountingService $counting): Response
     {
         return Inertia::render('Election/Counting', [
             'snapshot' => $snapshot->get(),
             'tally' => $counting->tally(),
+            'scanFeedback' => $request->session()->get('scan_feedback'),
         ]);
     }
 
@@ -26,9 +27,11 @@ final class CountingController extends Controller
     {
         $validated = $request->validate(['payload' => ['required', 'string']]);
         $scan = $scanner->scan($validated['payload']);
-        $counting->accept($scan['payload']);
+        $record = $counting->accept($scan['payload']);
 
-        return redirect()->route('election.counting');
+        return redirect()
+            ->route('election.counting')
+            ->with('scan_feedback', $this->scanFeedback($scan, $record));
     }
 
     public function complete(CeremonyActions $ceremonies): RedirectResponse
@@ -36,5 +39,23 @@ final class CountingController extends Controller
         $ceremonies->moveToReturns();
 
         return redirect()->route('election.returns');
+    }
+
+    /**
+     * @param  array{payload: string, adapter: string, raw_payload_hash: string}  $scan
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
+    private function scanFeedback(array $scan, array $record): array
+    {
+        return [
+            'status' => $record['status'],
+            'adapter' => $scan['adapter'],
+            'sequence' => $record['sequence'] ?? null,
+            'ballot_id' => $record['ballot_id'] ?? null,
+            'payload_hash' => $record['payload_hash'] ?? null,
+            'raw_payload_hash' => $record['raw_payload_hash'] ?? $scan['raw_payload_hash'],
+            'reason' => $record['reason'] ?? null,
+        ];
     }
 }

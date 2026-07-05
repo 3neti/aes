@@ -139,6 +139,48 @@ test('counting route can scan camera qr image data uri', function (): void {
     }
 });
 
+test('counting page shows operator feedback after accepted and rejected scans', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ], 'smoke-ballot-feedback');
+
+    $this->post(route('election.counting.scan'), [
+        'payload' => $payload['qr_payload'],
+    ])
+        ->assertRedirect(route('election.counting'))
+        ->assertSessionHas('scan_feedback', fn (array $feedback): bool => $feedback['status'] === 'accepted'
+            && $feedback['ballot_id'] === 'smoke-ballot-feedback'
+            && $feedback['adapter'] === 'manual-payload');
+
+    $this->get(route('election.counting'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Counting')
+            ->where('scanFeedback.status', 'accepted')
+            ->where('scanFeedback.ballot_id', 'smoke-ballot-feedback')
+            ->where('scanFeedback.adapter', 'manual-payload')
+        );
+
+    $this->post(route('election.counting.scan'), [
+        'payload' => $payload['qr_payload'],
+    ])
+        ->assertRedirect(route('election.counting'))
+        ->assertSessionHas('scan_feedback', fn (array $feedback): bool => $feedback['status'] === 'rejected'
+            && str_contains($feedback['reason'], 'Duplicate ballot payload.'));
+
+    $this->get(route('election.counting'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Counting')
+            ->where('scanFeedback.status', 'rejected')
+            ->where('scanFeedback.reason', 'Duplicate ballot payload.')
+        );
+});
+
 test('ceremony shell can record officer attestation', function (): void {
     $this->from(route('election.certification'))
         ->post(route('election.attestations.store'), [

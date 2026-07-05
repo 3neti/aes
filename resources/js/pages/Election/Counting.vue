@@ -5,6 +5,16 @@ import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { complete, scan } from '@/routes/election/counting';
 
+type ScanFeedback = {
+    status: 'accepted' | 'rejected';
+    adapter: string;
+    sequence: number | null;
+    ballot_id: string | null;
+    payload_hash: string | null;
+    raw_payload_hash: string;
+    reason: string | null;
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
     tally: {
@@ -12,6 +22,7 @@ defineProps<{
         rejected_ballots: number;
         tally: Record<string, Record<string, number>>;
     };
+    scanFeedback?: ScanFeedback | null;
 }>();
 
 const video = ref<HTMLVideoElement | null>(null);
@@ -188,6 +199,61 @@ onBeforeUnmount(() => stopCamera(false));
                         </p>
                     </div>
                 </div>
+            </div>
+
+            <div
+                v-if="scanFeedback"
+                class="mt-5 border p-4"
+                :class="
+                    scanFeedback.status === 'accepted'
+                        ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
+                        : 'border-red-700 bg-red-50 text-red-950'
+                "
+            >
+                <div
+                    class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                >
+                    <div>
+                        <p
+                            class="text-sm font-semibold tracking-wide uppercase"
+                        >
+                            {{
+                                scanFeedback.status === 'accepted'
+                                    ? 'Scan Accepted'
+                                    : 'Scan Rejected'
+                            }}
+                        </p>
+                        <p class="mt-1 text-lg font-semibold">
+                            {{
+                                scanFeedback.status === 'accepted'
+                                    ? scanFeedback.ballot_id
+                                    : scanFeedback.reason
+                            }}
+                        </p>
+                    </div>
+                    <div class="text-sm sm:text-right">
+                        <p class="font-semibold">
+                            {{ scanFeedback.adapter }}
+                        </p>
+                        <p v-if="scanFeedback.sequence">
+                            Sequence {{ scanFeedback.sequence }}
+                        </p>
+                    </div>
+                </div>
+                <dl class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                    <div v-if="scanFeedback.payload_hash">
+                        <dt class="font-semibold">Payload Hash</dt>
+                        <dd class="break-all">
+                            {{ scanFeedback.payload_hash }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold">Raw Input Hash</dt>
+                        <dd class="break-all">
+                            {{ scanFeedback.raw_payload_hash }}
+                        </dd>
+                    </div>
+                </dl>
             </div>
         </section>
 

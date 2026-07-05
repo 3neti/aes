@@ -29,6 +29,7 @@
 - Configurable scanner health and scan adapter boundaries for manual and handheld keyboard-wedge workflows.
 - Camera/image scanner scaffold that decodes PNG QR image data URIs into canonical ballot payloads.
 - Browser camera capture UI on the Counting ceremony page that submits captured QR image frames through the camera scanner route.
+- Immediate Counting ceremony operator feedback after scan attempts, including accepted/rejected status, adapter, sequence, reason, and evidence hashes.
 - Simulated officer attestation checkpoints with one JSON evidence artifact per attestation and journaled evidence handles.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
@@ -67,6 +68,7 @@
   - ceremony shell officer attestation action
   - Printing ceremony certification gate error path for CUPS driver
   - Counting route scan through configured handheld and camera scanner adapters
+  - Counting page operator feedback after accepted and rejected scan attempts
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
