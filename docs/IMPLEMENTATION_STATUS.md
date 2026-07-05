@@ -21,6 +21,7 @@
 - Sample election data under `resources/election/sample`.
 - Standards-compliant QR PNG artifacts for finalized ballots, with `zbarimg` decode support for counting tests.
 - Deterministic PDF artifacts for printed ballots and Election Returns.
+- Ceremony page smoke coverage for every Inertia operator page.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -43,6 +44,9 @@
   - Election Return PDF artifact
   - full scenario command success
   - Home Inertia component render
+- `tests/Feature/Election/ElectionPagesSmokeTest.php`
+  - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
+  - finalized ballot Printing page QR image data URI smoke coverage
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -52,6 +56,7 @@
 - `php artisan election:scenario friday-certification`
 - `php artisan election:scenario full-demo`
 - `php artisan test --compact tests/Feature/Election/ElectionLifecycleTest.php`
+- `php artisan test --compact tests/Feature/Election/ElectionPagesSmokeTest.php`
 - `vendor/bin/pint --dirty --format agent`
 - `php artisan test --compact`
 - `npm run types:check`
@@ -60,10 +65,11 @@
 - `npm run lint:check`
 - `npm run format:check`
 - `npm run format`
+- `php artisan test --compact tests/Feature/Election/ElectionPagesSmokeTest.php`
 
 ## Verification Results
 
-- Pest: passed, 12 tests and 44 assertions.
+- Pest: passed, 21 tests and 162 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -84,6 +90,6 @@
 ## Next Recommended Steps
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
-- Add browser smoke tests for the ceremony pages.
+- Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
 - Add hardware adapter certification flows for real printer/scanner devices.
 - Add officer attestation once the ceremony wording stabilizes.
