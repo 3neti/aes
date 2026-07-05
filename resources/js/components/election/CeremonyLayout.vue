@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Form, Head, Link } from '@inertiajs/vue3';
 import { home } from '@/routes';
 import { certification } from '@/routes/election';
 import { counting } from '@/routes/election';
@@ -7,6 +7,7 @@ import { diagnostics } from '@/routes/election';
 import { provision } from '@/routes/election';
 import { returns } from '@/routes/election';
 import { voting } from '@/routes/election';
+import { store as storeAttestation } from '@/routes/election/attestations';
 import type { ElectionSnapshot } from './types';
 
 defineProps<{
@@ -114,7 +115,87 @@ defineProps<{
                                     {{ snapshot.counts.rejected }}
                                 </dd>
                             </div>
+                            <div>
+                                <dt class="text-stone-600">Attestations</dt>
+                                <dd class="text-lg font-semibold">
+                                    {{ snapshot.counts.attestations }}
+                                </dd>
+                            </div>
                         </dl>
+                    </div>
+
+                    <div class="border border-stone-300 bg-white p-4">
+                        <h2
+                            class="text-sm font-semibold tracking-wide text-stone-600 uppercase"
+                        >
+                            Officer Attestation
+                        </h2>
+                        <Form
+                            v-bind="storeAttestation.form()"
+                            class="mt-3 space-y-3"
+                            reset-on-success
+                            #default="{
+                                errors,
+                                processing,
+                                recentlySuccessful,
+                            }"
+                        >
+                            <input
+                                type="hidden"
+                                name="ceremony"
+                                :value="snapshot.ceremony"
+                            />
+                            <input
+                                type="hidden"
+                                name="stage"
+                                :value="snapshot.stage"
+                            />
+                            <input
+                                type="hidden"
+                                name="statement"
+                                :value="`${snapshot.ceremony} checkpoint reviewed.`"
+                            />
+                            <label class="block text-sm">
+                                <span class="font-semibold text-stone-700"
+                                    >Officer Name</span
+                                >
+                                <input
+                                    name="officer_name"
+                                    class="mt-1 w-full border border-stone-300 p-2"
+                                    autocomplete="off"
+                                    required
+                                />
+                                <span
+                                    v-if="errors.officer_name"
+                                    class="mt-1 block text-xs text-red-700"
+                                >
+                                    {{ errors.officer_name }}
+                                </span>
+                            </label>
+                            <label class="block text-sm">
+                                <span class="font-semibold text-stone-700"
+                                    >Officer Code</span
+                                >
+                                <input
+                                    name="officer_code"
+                                    class="mt-1 w-full border border-stone-300 p-2"
+                                    autocomplete="off"
+                                />
+                            </label>
+                            <button
+                                type="submit"
+                                class="w-full bg-stone-950 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                :disabled="processing"
+                            >
+                                Record Attestation
+                            </button>
+                            <p
+                                v-if="recentlySuccessful"
+                                class="text-xs font-semibold text-emerald-700"
+                            >
+                                Attestation recorded.
+                            </p>
+                        </Form>
                     </div>
 
                     <div class="border border-stone-300 bg-white p-4">

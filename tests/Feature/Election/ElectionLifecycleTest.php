@@ -1,5 +1,6 @@
 <?php
 
+use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Certification\CertificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
@@ -64,6 +65,24 @@ test('device certification checks simulated printer and scanner adapters', funct
         ->and(app(ElectionStorage::class)->readJson('certification/device-certification-report.json')['report_hash'])->toBe($report['report_hash'])
         ->and($diagnostics['device_certification']['report_hash'])->toBe($report['report_hash'])
         ->and(collect($events)->pluck('event_type'))->toContain('devices.certification_passed');
+});
+
+test('officer attestation writes artifact and journal event', function (): void {
+    $record = app(OfficerAttestationService::class)->attest([
+        'ceremony' => 'Friday Certification',
+        'officer_code' => 'SIM-1234',
+        'officer_name' => 'Precinct Chair',
+        'stage' => Lifecycle::Certification,
+        'statement' => 'Certification checkpoint reviewed.',
+    ]);
+    $events = app(ActivityJournal::class)->entries();
+
+    expect($record['attestation_id'])->toBe('attestation-000001')
+        ->and($record['attestation_hash'])->toBeString()
+        ->and($record['officer_code_hash'])->toBe(hash('sha256', 'SIM-1234'))
+        ->and(file_exists($record['artifact_path']))->toBeTrue()
+        ->and(app(ElectionStorage::class)->files('attestations'))->toHaveCount(1)
+        ->and(collect($events)->pluck('event_type'))->toContain('officer.attested');
 });
 
 test('ballot finalization creates deterministic qr payload and print artifact', function (): void {
@@ -170,7 +189,8 @@ test('full demo scenario command succeeds', function (): void {
 
     expect($report['passed'])->toBeTrue()
         ->and($report['accepted_ballots'])->toBe(1)
-        ->and($report['rejected_ballots'])->toBe(1);
+        ->and($report['rejected_ballots'])->toBe(1)
+        ->and($report['attestation_hashes'])->toHaveCount(2);
 });
 
 test('home page renders the ceremony shell', function (): void {

@@ -24,6 +24,7 @@ final class DiagnosticsService
             'journal_entries' => count($this->journal->entries()),
             'accepted_ballots' => count($this->storage->files('counting/accepted')),
             'rejected_ballots' => count($this->storage->files('counting/rejected')),
+            'attestations' => count($this->storage->files('attestations')),
             'printer' => 'file',
             'scanner' => 'simulation',
             'device_certification' => $this->storage->readJson('certification/device-certification-report.json'),

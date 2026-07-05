@@ -39,5 +39,6 @@ export type ElectionSnapshot = {
         rejected: number;
         printJobs: number;
         ballots: number;
+        attestations: number;
     };
 };

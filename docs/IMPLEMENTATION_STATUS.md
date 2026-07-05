@@ -23,6 +23,7 @@
 - Deterministic PDF artifacts for printed ballots and Election Returns.
 - Ceremony page smoke coverage for every Inertia operator page.
 - Simulated printer/scanner adapter certification with a persisted device certification report.
+- Simulated officer attestation checkpoints with one JSON evidence artifact per attestation and journaled evidence handles.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -46,33 +47,34 @@
   - full scenario command success
   - Home Inertia component render
   - simulated device adapter certification report
+  - simulated officer attestation artifact and journal event
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
   - Diagnostics page device adapter certification action
+  - ceremony shell officer attestation action
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
 
 - `php artisan wayfinder:generate --with-form --no-interaction`
 - `composer require bacon/bacon-qr-code --no-interaction`
-- `php artisan election:scenario friday-certification`
-- `php artisan election:scenario full-demo`
 - `php artisan test --compact tests/Feature/Election/ElectionLifecycleTest.php`
 - `php artisan test --compact tests/Feature/Election/ElectionPagesSmokeTest.php`
 - `vendor/bin/pint --dirty --format agent`
 - `php artisan test --compact`
-- `npm run types:check`
-- `npm run build`
-- `php artisan test --compact tests/Feature/Election/ElectionLifecycleTest.php`
 - `npm run lint:check`
+- `npm run types:check`
 - `npm run format:check`
-- `npm run format`
-- `php artisan test --compact tests/Feature/Election/ElectionPagesSmokeTest.php`
+- `npm run build`
+- `php artisan election:scenario friday-certification`
+- `php artisan election:scenario full-demo`
 
 ## Verification Results
 
-- Pest: passed, 23 tests and 185 assertions.
+- Focused Pest lifecycle suite: passed, 12 tests and 62 assertions.
+- Focused Pest ceremony page suite: passed, 11 tests and 141 assertions.
+- Pest: passed, 25 tests and 205 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -85,7 +87,7 @@
 - QR decoding currently uses the local `zbarimg` binary; a pure PHP or packaged decoder adapter may be preferable for deployment portability.
 - PDF ballot and Election Return artifacts are generated with a simple internal PDF renderer.
 - Scanner and printer hardware are simulated; no CUPS, ESC/POS, camera, or scanner integration yet.
-- Officer authorization is simulated; no authentication or signature workflow yet.
+- Officer attestation is simulated; no PIN validation, identity proofing, or signature workflow yet.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Backup appliance support is limited to deterministic re-derivation behavior in services and scenarios.
@@ -95,4 +97,4 @@
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
 - Replace simulated device checks with real CUPS/ESC-POS printer and scanner health adapters.
-- Add officer attestation once the ceremony wording stabilizes.
+- Replace simulated officer attestation with officer PIN validation and signature artifact capture.

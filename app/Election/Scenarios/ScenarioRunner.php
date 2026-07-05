@@ -2,6 +2,7 @@
 
 namespace App\Election\Scenarios;
 
+use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Certification\CertificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
@@ -26,6 +27,7 @@ final class ScenarioRunner
         private readonly ActivateSamplePackage $activate,
         private readonly CertificationService $certification,
         private readonly DeviceCertificationService $devices,
+        private readonly OfficerAttestationService $attestations,
         private readonly CeremonyActions $ceremonies,
         private readonly BallotPayloadService $payloads,
         private readonly BallotPrinter $printer,
@@ -65,6 +67,7 @@ final class ScenarioRunner
         $this->clock->tick();
         $devices = $this->devices->run();
         $certification = $this->certification->run();
+        $attestation = $this->attest('Certification', Lifecycle::Certification, 'Certification officer review complete.');
 
         return [
             'scenario' => 'friday-certification',
@@ -72,6 +75,7 @@ final class ScenarioRunner
             'precinct_id' => $configuration['precinct_id'],
             'device_report_hash' => $devices['report_hash'],
             'report_hash' => $certification['report_hash'],
+            'attestation_hash' => $attestation['attestation_hash'],
             'journal_entries' => count($this->journal->entries()),
         ];
     }
@@ -85,6 +89,7 @@ final class ScenarioRunner
         $this->clock->tick();
         $devices = $this->devices->run();
         $certification = $this->certification->run();
+        $certificationAttestation = $this->attest('Certification', Lifecycle::Certification, 'Certification officer review complete.');
         $this->lifecycle->set(Lifecycle::OpenPrecinct);
         $this->ceremonies->openPolls();
 
@@ -110,6 +115,7 @@ final class ScenarioRunner
         $tally = $this->counting->tally();
         $this->ceremonies->moveToReturns();
         $return = $this->returns->generate($tally);
+        $returnAttestation = $this->attest('Election Return', Lifecycle::ElectionReturn, 'Return officer review complete.');
         $this->ceremonies->closePrecinct();
 
         return [
@@ -121,8 +127,26 @@ final class ScenarioRunner
             'accepted_ballots' => $tally['accepted_ballots'],
             'rejected_ballots' => $tally['rejected_ballots'],
             'return_hash' => $return['return_hash'],
+            'attestation_hashes' => [
+                $certificationAttestation['attestation_hash'],
+                $returnAttestation['attestation_hash'],
+            ],
             'stage' => $this->lifecycle->current(),
             'journal_entries' => count($this->journal->entries()),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function attest(string $ceremony, string $stage, string $statement): array
+    {
+        return $this->attestations->attest([
+            'ceremony' => $ceremony,
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_name' => 'Simulation Officer',
+            'stage' => $stage,
+            'statement' => $statement,
+        ]);
     }
 }

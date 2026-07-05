@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Election\AttestationController;
 use App\Http\Controllers\Election\CertificationController;
 use App\Http\Controllers\Election\CountingController;
 use App\Http\Controllers\Election\DiagnosticsController;
@@ -33,4 +34,5 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
     Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');
     Route::post('/diagnostics/certify-devices', [DiagnosticsController::class, 'certifyDevices'])->name('diagnostics.certify-devices');
+    Route::post('/attestations', [AttestationController::class, 'store'])->name('attestations.store');
 });

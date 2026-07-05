@@ -35,6 +35,7 @@ final class ElectionStorage
             'counting/rejected',
             'returns',
             'certification',
+            'attestations',
             'scenarios',
         ] as $directory) {
             $this->files->ensureDirectoryExists($this->path($directory));

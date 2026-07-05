@@ -37,6 +37,7 @@ final class ElectionSnapshot
                 'rejected' => count($this->storage->files('counting/rejected')),
                 'printJobs' => count($this->storage->files('print-jobs')),
                 'ballots' => count($this->storage->files('ballots')),
+                'attestations' => count($this->storage->files('attestations')),
             ],
         ];
     }

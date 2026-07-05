@@ -68,3 +68,23 @@ test('diagnostics page can run device adapter certification', function (): void 
             ->has('snapshot.journal')
         );
 });
+
+test('ceremony shell can record officer attestation', function (): void {
+    $this->from(route('election.certification'))
+        ->post(route('election.attestations.store'), [
+            'ceremony' => 'Friday Certification',
+            'officer_code' => 'SIM-1234',
+            'officer_name' => 'Precinct Chair',
+            'stage' => 'certification',
+            'statement' => 'Certification checkpoint reviewed.',
+        ])
+        ->assertRedirect(route('election.certification'));
+
+    $this->get(route('election.certification'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Certification')
+            ->where('snapshot.counts.attestations', 1)
+            ->has('snapshot.journal')
+        );
+});
