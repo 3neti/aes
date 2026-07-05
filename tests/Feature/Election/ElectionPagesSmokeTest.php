@@ -1,5 +1,6 @@
 <?php
 
+use App\Election\Core\ActivityJournal;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Support\ElectionClock;
@@ -9,6 +10,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
     app(ElectionStorage::class)->reset();
+    app(ElectionClock::class)->unfreeze();
     $this->withoutVite();
 });
 
@@ -177,6 +179,56 @@ test('diagnostics can generate and download precinct evidence manifest', functio
 
     $this->get(route('election.diagnostics.evidence-manifest.download'))
         ->assertDownload('evidence-manifest.json');
+
+    app(ElectionClock::class)->unfreeze();
+});
+
+test('diagnostics can stage removable media evidence export', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-08 19:00:00');
+    app(ActivateSamplePackage::class)->handle();
+
+    $this->post(route('election.attestations.store'), [
+        'ceremony' => 'Friday Certification',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'signature_data' => pagesTestSignatureDataUri(),
+        'stage' => 'certification',
+        'statement' => 'Certification checkpoint reviewed.',
+    ])->assertRedirect();
+
+    $this->post(route('election.diagnostics.removable-media.export'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('removable_media_export_hash');
+
+    $storage = app(ElectionStorage::class);
+    $attestationArtifact = basename($storage->files('attestations')[0]);
+    $signatureArtifact = basename($storage->files('attestation-signatures')[0]);
+    $exportRoot = $storage->path('removable-media/evidence-export-20260508-190000');
+    $report = json_decode(
+        file_get_contents($exportRoot.'/export-report.json'),
+        true,
+        flags: JSON_THROW_ON_ERROR,
+    );
+
+    expect($report['schema_version'])->toBe('removable-media-export-report-1')
+        ->and($report['export_id'])->toBe('evidence-export-20260508-190000')
+        ->and($report['artifact_count'])->toBeGreaterThan(2)
+        ->and(collect($report['copied_files'])->contains(fn (array $file): bool => $file['target'] === 'artifacts/attestations/'.$attestationArtifact))->toBeTrue()
+        ->and($exportRoot.'/evidence-manifest.json')->toBeReadableFile()
+        ->and($exportRoot.'/artifacts/attestations/'.$attestationArtifact)->toBeReadableFile()
+        ->and($exportRoot.'/artifacts/attestation-signatures/'.$signatureArtifact)->toBeReadableFile();
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.removable_media_export.exists', true)
+            ->where('diagnostics.removable_media_export.export_id', 'evidence-export-20260508-190000')
+            ->where('diagnostics.removable_media_export.export_hash', $report['export_hash'])
+        );
+
+    expect(collect(app(ActivityJournal::class)->entries())->last()['event_type'])
+        ->toBe('evidence_bundle.exported');
 
     app(ElectionClock::class)->unfreeze();
 });

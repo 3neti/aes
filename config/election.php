@@ -34,6 +34,9 @@ return [
             ],
         ],
     ],
+    'removable_media' => [
+        'path' => env('ELECTION_REMOVABLE_MEDIA_PATH', ''),
+    ],
     'dictionary' => [
         'app_name' => 'Alternative Election System',
         'stage' => [

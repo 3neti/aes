@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Election;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\DiagnosticsService;
+use App\Election\Diagnostics\RemovableMediaExporter;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -47,6 +48,15 @@ final class DiagnosticsController extends Controller
             'evidence-manifest.json',
             ['Content-Type' => 'application/json'],
         );
+    }
+
+    public function exportRemovableMedia(RemovableMediaExporter $exporter): RedirectResponse
+    {
+        $report = $exporter->export();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('removable_media_export_hash', $report['export_hash'] ?? null);
     }
 
     public function attestation(ElectionStorage $storage, string $artifact): BinaryFileResponse

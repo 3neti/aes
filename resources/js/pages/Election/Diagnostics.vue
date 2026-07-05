@@ -31,11 +31,24 @@ type EvidenceManifest = {
     download_url: string;
 };
 
+type RemovableMediaExport = {
+    exists: boolean;
+    target_root: string;
+    export_url: string;
+    export_id?: string;
+    exported_at?: string | null;
+    target_path?: string;
+    manifest_hash?: string | null;
+    export_hash?: string | null;
+    artifact_count?: number;
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
     diagnostics: {
         attestation_artifacts?: AttestationArtifact[];
         evidence_manifest?: EvidenceManifest;
+        removable_media_export?: RemovableMediaExport;
         [key: string]: unknown;
     };
 }>();
@@ -56,7 +69,8 @@ defineProps<{
                     :key="key"
                     v-show="
                         key !== 'attestation_artifacts' &&
-                        key !== 'evidence_manifest'
+                        key !== 'evidence_manifest' &&
+                        key !== 'removable_media_export'
                     "
                     class="border border-stone-200 p-3"
                 >
@@ -139,6 +153,89 @@ defineProps<{
                     <dd class="mt-1 text-stone-600">{{ count }} files</dd>
                 </div>
             </dl>
+        </section>
+
+        <section
+            v-if="diagnostics.removable_media_export"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">
+                        Removable Media Export
+                    </h2>
+                    <p class="mt-1 text-sm break-all text-stone-700">
+                        {{ diagnostics.removable_media_export.target_root }}
+                    </p>
+                </div>
+                <Form
+                    :action="diagnostics.removable_media_export.export_url"
+                    method="post"
+                    #default="{ processing, wasSuccessful }"
+                >
+                    <div class="flex flex-col items-start gap-2">
+                        <button
+                            class="secondary-button"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{
+                                processing
+                                    ? 'Exporting...'
+                                    : 'Stage Media Export'
+                            }}
+                        </button>
+                        <p v-if="wasSuccessful" class="text-xs text-stone-600">
+                            Export staged.
+                        </p>
+                    </div>
+                </Form>
+            </div>
+
+            <dl
+                v-if="diagnostics.removable_media_export.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Export ID</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.removable_media_export.export_id }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Exported At</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.removable_media_export.exported_at }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Target Path</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.removable_media_export.target_path }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Artifact Count</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.removable_media_export.artifact_count }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Manifest Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.removable_media_export.manifest_hash }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Export Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.removable_media_export.export_hash }}
+                    </dd>
+                </div>
+            </dl>
+            <p v-else class="mt-4 text-sm text-stone-700">
+                No removable media export has been staged yet.
+            </p>
         </section>
 
         <section class="border border-stone-300 bg-white p-5">

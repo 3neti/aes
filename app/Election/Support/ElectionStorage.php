@@ -38,6 +38,7 @@ final class ElectionStorage
             'attestations',
             'attestation-signatures',
             'diagnostics',
+            'removable-media',
             'scenarios',
         ] as $directory) {
             $this->files->ensureDirectoryExists($this->path($directory));

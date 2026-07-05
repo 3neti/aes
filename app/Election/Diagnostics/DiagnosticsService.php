@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use Illuminate\Filesystem\Filesystem;
 
 final class DiagnosticsService
 {
@@ -14,6 +15,7 @@ final class DiagnosticsService
         private readonly ActivityJournal $journal,
         private readonly CanonicalJson $json,
         private readonly ElectionClock $clock,
+        private readonly Filesystem $files,
     ) {}
 
     /**
@@ -31,6 +33,7 @@ final class DiagnosticsService
             'attestations' => count($this->storage->files('attestations')),
             'attestation_artifacts' => $this->attestationArtifacts(),
             'evidence_manifest' => $this->manifestSummary(),
+            'removable_media_export' => $this->removableMediaExportSummary(),
             'printer' => config('election.devices.printer.adapter', 'simulated'),
             'scanner' => config('election.devices.scanner.adapter', 'simulated'),
             'device_certification' => $this->storage->readJson('certification/device-certification-report.json'),
@@ -114,6 +117,55 @@ final class DiagnosticsService
             'generate_url' => route('election.diagnostics.evidence-manifest.generate'),
             'download_url' => route('election.diagnostics.evidence-manifest.download'),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function removableMediaExportSummary(): array
+    {
+        $root = $this->removableMediaRoot();
+        $this->files->ensureDirectoryExists($root);
+
+        $exportReports = collect($this->files->directories($root))
+            ->map(fn (string $directory): string => $directory.'/export-report.json')
+            ->filter(fn (string $path): bool => $this->files->exists($path))
+            ->sort()
+            ->values();
+
+        if ($exportReports->isEmpty()) {
+            return [
+                'exists' => false,
+                'target_root' => $root,
+                'export_url' => route('election.diagnostics.removable-media.export'),
+            ];
+        }
+
+        $latestPath = $exportReports->last();
+        $report = json_decode($this->files->get($latestPath), true, flags: JSON_THROW_ON_ERROR);
+
+        return [
+            'exists' => true,
+            'target_root' => $root,
+            'export_url' => route('election.diagnostics.removable-media.export'),
+            'export_id' => $report['export_id'] ?? basename(dirname($latestPath)),
+            'exported_at' => $report['exported_at'] ?? null,
+            'target_path' => $report['target_path'] ?? dirname($latestPath),
+            'manifest_hash' => $report['manifest_hash'] ?? null,
+            'export_hash' => $report['export_hash'] ?? null,
+            'artifact_count' => $report['artifact_count'] ?? 0,
+        ];
+    }
+
+    private function removableMediaRoot(): string
+    {
+        $configuredPath = trim((string) config('election.removable_media.path', ''));
+
+        if ($configuredPath !== '') {
+            return rtrim($configuredPath, '/');
+        }
+
+        return $this->storage->path('removable-media');
     }
 
     /**

@@ -18,6 +18,7 @@ use App\Election\Scanning\BallotScanner;
 use App\Election\Scanning\CameraImageScanner;
 use App\Election\Scanning\HandheldPayloadScanner;
 use App\Election\Scanning\ManualPayloadScanner;
+use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
 use App\Election\Voting\StandardQrCode;
@@ -35,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(ElectionClock::class);
+
         $this->app->bind(BallotPrinter::class, function (Application $app): BallotPrinter {
             if (config('election.devices.printer.driver') === 'cups') {
                 return new CupsBallotPrinter(

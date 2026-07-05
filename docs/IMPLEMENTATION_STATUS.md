@@ -33,6 +33,7 @@
 - Local officer PIN registry validation and browser signature capture for attestation checkpoints, with one JSON evidence artifact and one PNG signature artifact per attestation.
 - Diagnostics attestation evidence bundle with inline views and download links for attestation JSON and signature PNG artifacts.
 - Precinct evidence manifest export that summarizes ceremony artifact categories, file sizes, and SHA-256 hashes in one JSON file.
+- Optional removable-media export workflow that stages the evidence manifest, referenced artifacts, and an export report in a deterministic local media directory.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -75,6 +76,7 @@
   - ceremony shell officer signature required validation path
   - Diagnostics attestation evidence bundle projection and artifact view/download routes
   - Diagnostics precinct evidence manifest generation, summary projection, and download route
+  - Diagnostics removable-media export staging, copied artifact evidence, summary projection, and journal event
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -95,8 +97,8 @@
 ## Verification Results
 
 - Focused Pest lifecycle suite: passed, 26 tests and 117 assertions.
-- Focused Pest ceremony page suite: passed, 19 tests and 245 assertions.
-- Pest: passed, 47 tests and 364 assertions.
+- Focused Pest ceremony page suite: passed, 20 tests and 274 assertions.
+- Pest: passed, 48 tests and 393 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -112,6 +114,7 @@
 - Scanner certification and scanning are adapter-driven for manual, handheld keyboard-wedge, and camera/image QR workflows. Browser camera capture is scaffolded for the Counting ceremony.
 - Browser camera capture requires operator browser permission and a secure origin as enforced by the browser.
 - Officer attestation uses a local deterministic PIN registry and PNG signature artifacts; no identity proofing workflow yet.
+- Removable-media export is currently simulated as a local staging directory; no physical mount detection or media write-protection checks yet.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Backup appliance support is limited to deterministic re-derivation behavior in services and scenarios.
@@ -120,5 +123,4 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Add camera-based scanner capture scaffold and QR decode flow for image input.
-- Add optional removable-media export workflow for the evidence manifest and referenced artifacts.
+- Add an evidence export verification command that re-hashes a staged removable-media bundle and reports mismatches.
