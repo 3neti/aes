@@ -9,6 +9,7 @@ return [
     'devices' => [
         'printer' => [
             'adapter' => env('ELECTION_PRINTER_ADAPTER', 'simulated'),
+            'driver' => env('ELECTION_PRINTER_DRIVER', 'file'),
             'cups' => [
                 'name' => env('ELECTION_CUPS_PRINTER', ''),
                 'timeout' => (int) env('ELECTION_CUPS_TIMEOUT', 3),

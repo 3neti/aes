@@ -144,6 +144,77 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('pres-ada');
 });
 
+test('cups ballot printer submits generated artifact when configured', function (): void {
+    config()->set('election.devices.printer.driver', 'cups');
+    config()->set('election.devices.printer.cups.name', 'Precinct_Printer');
+    config()->set('election.devices.printer.cups.timeout', 4);
+    Process::fake([
+        '*' => Process::result('request id is Precinct_Printer-17 (1 file)'),
+    ]);
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        $payload = app(BallotPayloadService::class)->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'test-ballot-cups');
+        $job = app(BallotPrinter::class)->print($payload);
+        $record = app(ElectionStorage::class)->readJson('print-jobs/test-ballot-cups.json');
+        $events = app(ActivityJournal::class)->entries();
+
+        expect($job['printer'])->toBe('cups')
+            ->and($job['status'])->toBe('submitted')
+            ->and($job['printer_name'])->toBe('Precinct_Printer')
+            ->and($job['cups_output'])->toContain('Precinct_Printer-17')
+            ->and(file_exists($job['cups_artifact_path']))->toBeTrue()
+            ->and($record['status'])->toBe('submitted')
+            ->and(collect($events)->pluck('event_type'))->toContain('ballot.print_submitted');
+
+        Process::assertRan(fn ($process): bool => $process->command === [
+            'lp',
+            '-d',
+            'Precinct_Printer',
+            '-t',
+            'AES Ballot test-ballot-cups',
+            $job['cups_artifact_path'],
+        ]);
+    } finally {
+        config()->set('election.devices.printer.driver', 'file');
+    }
+});
+
+test('cups ballot printer records failed submissions without losing artifacts', function (): void {
+    config()->set('election.devices.printer.driver', 'cups');
+    config()->set('election.devices.printer.cups.name', 'Precinct_Printer');
+    Process::fake([
+        '*' => Process::result(errorOutput: 'printer is stopped', exitCode: 1),
+    ]);
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        $payload = app(BallotPayloadService::class)->finalize([
+            'president' => ['pres-grace'],
+            'mayor' => ['mayor-jose'],
+            'council' => ['council-ben'],
+        ], 'test-ballot-cups-failed');
+        $job = app(BallotPrinter::class)->print($payload);
+        $events = app(ActivityJournal::class)->entries();
+
+        expect($job['printer'])->toBe('cups')
+            ->and($job['status'])->toBe('failed')
+            ->and($job['cups_exit_code'])->toBe(1)
+            ->and($job['cups_output'])->toContain('printer is stopped')
+            ->and(file_exists($job['artifact_path']))->toBeTrue()
+            ->and(file_exists($job['pdf_artifact_path']))->toBeTrue()
+            ->and(collect($events)->pluck('event_type'))->toContain('ballot.print_failed');
+    } finally {
+        config()->set('election.devices.printer.driver', 'file');
+    }
+});
+
 test('rendered standards compliant qr artifact decodes to the finalized ballot payload', function (): void {
     app(ActivateSamplePackage::class)->handle();
 

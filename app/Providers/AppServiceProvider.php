@@ -10,8 +10,10 @@ use App\Election\Devices\DeviceHealthCheck;
 use App\Election\Devices\SimulatedPrinterHealthCheck;
 use App\Election\Devices\SimulatedScannerHealthCheck;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\CupsBallotPrinter;
 use App\Election\Printing\FileBallotPrinter;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\SimplePdf;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Date;
@@ -26,7 +28,23 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(BallotPrinter::class, FileBallotPrinter::class);
+        $this->app->bind(BallotPrinter::class, function (Application $app): BallotPrinter {
+            if (config('election.devices.printer.driver') === 'cups') {
+                return new CupsBallotPrinter(
+                    new FileBallotPrinter(
+                        $app->make(ElectionStorage::class),
+                        $app->make(ActivityJournal::class),
+                        $app->make(SimplePdf::class),
+                    ),
+                    $app->make(ElectionStorage::class),
+                    $app->make(ActivityJournal::class),
+                    (string) config('election.devices.printer.cups.name', ''),
+                    (int) config('election.devices.printer.cups.timeout', 10),
+                );
+            }
+
+            return $app->make(FileBallotPrinter::class);
+        });
         $this->app->bind(DeviceCertificationService::class, function (Application $app): DeviceCertificationService {
             return new DeviceCertificationService(
                 $app->make(ElectionStorage::class),
