@@ -12,7 +12,7 @@ use App\Election\Printing\SpoilBallot;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
-use App\Election\Voting\SimulationQrCode;
+use App\Election\Voting\StandardQrCode;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
@@ -68,7 +68,7 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
         ->and(file_exists($job['artifact_path']))->toBeTrue();
 });
 
-test('rendered qr artifact decodes to the finalized ballot payload', function (): void {
+test('rendered standards compliant qr artifact decodes to the finalized ballot payload', function (): void {
     app(ActivateSamplePackage::class)->handle();
 
     $payload = app(BallotPayloadService::class)->finalize([
@@ -76,12 +76,12 @@ test('rendered qr artifact decodes to the finalized ballot payload', function ()
         'mayor' => ['mayor-lina'],
         'council' => ['council-ana'],
     ], 'test-ballot-qr');
-    $svg = file_get_contents($payload['qr_artifact_path']);
+    $png = file_get_contents($payload['qr_artifact_path']);
 
-    expect($svg)->toContain('<svg')
-        ->and(app(SimulationQrCode::class)->decode($svg))->toBe($payload['qr_payload']);
+    expect($png)->toStartWith("\x89PNG")
+        ->and(app(StandardQrCode::class)->decodePngFile($payload['qr_artifact_path']))->toBe($payload['qr_payload']);
 
-    $accepted = app(CountingService::class)->accept($svg);
+    $accepted = app(CountingService::class)->accept($png);
 
     expect($accepted['status'])->toBe('accepted')
         ->and($accepted['payload_hash'])->toBe($payload['payload_hash']);

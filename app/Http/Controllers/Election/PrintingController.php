@@ -20,7 +20,9 @@ final class PrintingController extends Controller
         return Inertia::render('Election/Printing', [
             'snapshot' => $snapshot->get(),
             'payload' => $payload,
-            'qrSvg' => $ballot ? $storage->readText("ballots/{$ballot}-qr.svg") : '',
+            'qrImageDataUri' => $ballot
+                ? 'data:image/png;base64,'.base64_encode($storage->readText("ballots/{$ballot}-qr.png"))
+                : '',
         ]);
     }
 

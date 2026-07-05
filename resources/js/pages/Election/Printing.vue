@@ -7,7 +7,7 @@ import { print, spoil } from '@/routes/election/printing';
 defineProps<{
     snapshot: ElectionSnapshot;
     payload: Record<string, any>;
-    qrSvg: string;
+    qrImageDataUri: string;
 }>();
 </script>
 
@@ -25,10 +25,15 @@ defineProps<{
                     </dd>
                 </dl>
                 <div
-                    v-if="qrSvg"
+                    v-if="qrImageDataUri"
                     class="inline-block border border-stone-300 bg-white p-3"
-                    v-html="qrSvg"
-                />
+                >
+                    <img
+                        class="h-64 w-64"
+                        :src="qrImageDataUri"
+                        alt="Ballot QR code"
+                    />
+                </div>
                 <div class="flex flex-wrap gap-3">
                     <Form v-bind="print.form(payload.ballot_id)">
                         <button class="primary-button" type="submit">
