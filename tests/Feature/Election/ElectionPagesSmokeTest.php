@@ -116,6 +116,29 @@ test('counting route uses configured handheld scanner adapter', function (): voi
     }
 });
 
+test('counting route can scan camera qr image data uri', function (): void {
+    config()->set('election.devices.scanner.driver', 'camera');
+    config()->set('election.devices.scanner.camera.name', 'Precinct Camera 1');
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        $payload = app(BallotPayloadService::class)->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'smoke-ballot-camera');
+
+        $this->post(route('election.counting.scan'), [
+            'payload' => 'data:image/png;base64,'.base64_encode(file_get_contents($payload['qr_artifact_path'])),
+        ])->assertRedirect(route('election.counting'));
+
+        expect(app(ElectionStorage::class)->files('counting/accepted'))->toHaveCount(1);
+    } finally {
+        config()->set('election.devices.scanner.driver', 'manual');
+    }
+});
+
 test('ceremony shell can record officer attestation', function (): void {
     $this->from(route('election.certification'))
         ->post(route('election.attestations.store'), [

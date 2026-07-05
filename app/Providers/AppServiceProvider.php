@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
+use App\Election\Devices\CameraScannerHealthCheck;
 use App\Election\Devices\CupsPrinterHealthCheck;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Devices\DeviceHealthCheck;
@@ -14,10 +15,12 @@ use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\CupsBallotPrinter;
 use App\Election\Printing\FileBallotPrinter;
 use App\Election\Scanning\BallotScanner;
+use App\Election\Scanning\CameraImageScanner;
 use App\Election\Scanning\HandheldPayloadScanner;
 use App\Election\Scanning\ManualPayloadScanner;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
+use App\Election\Voting\StandardQrCode;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Date;
@@ -58,6 +61,14 @@ class AppServiceProvider extends ServiceProvider
             );
         });
         $this->app->bind(BallotScanner::class, function (Application $app): BallotScanner {
+            if (config('election.devices.scanner.driver') === 'camera') {
+                return new CameraImageScanner(
+                    $app->make(ActivityJournal::class),
+                    $app->make(StandardQrCode::class),
+                    (string) config('election.devices.scanner.camera.name', 'camera'),
+                );
+            }
+
             if (config('election.devices.scanner.driver') === 'handheld') {
                 return new HandheldPayloadScanner(
                     $app->make(ActivityJournal::class),
@@ -124,6 +135,12 @@ class AppServiceProvider extends ServiceProvider
 
     private function scannerHealthCheck(): DeviceHealthCheck
     {
+        if (config('election.devices.scanner.adapter') === 'camera') {
+            return new CameraScannerHealthCheck(
+                (string) config('election.devices.scanner.camera.name', ''),
+            );
+        }
+
         if (config('election.devices.scanner.adapter') === 'handheld') {
             return new HandheldScannerHealthCheck(
                 (string) config('election.devices.scanner.handheld.name', ''),

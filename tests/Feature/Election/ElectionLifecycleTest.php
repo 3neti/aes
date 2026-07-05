@@ -4,6 +4,7 @@ use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Certification\CertificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
+use App\Election\Devices\CameraScannerHealthCheck;
 use App\Election\Devices\CupsPrinterHealthCheck;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Devices\HandheldScannerHealthCheck;
@@ -129,6 +130,30 @@ test('handheld scanner health check reports not configured', function (): void {
 
     expect($result['status'])->toBe('not-configured')
         ->and($result['adapter'])->toBe('handheld-keyboard-wedge');
+});
+
+test('camera scanner health check is selectable through device certification config', function (): void {
+    config()->set('election.devices.scanner.adapter', 'camera');
+    config()->set('election.devices.scanner.camera.name', 'Precinct Camera 1');
+    app()->forgetInstance(DeviceCertificationService::class);
+
+    try {
+        $report = app(DeviceCertificationService::class)->run();
+
+        expect($report['passed'])->toBeTrue()
+            ->and($report['devices']['scanner']['adapter'])->toBe('camera-image')
+            ->and($report['devices']['scanner']['device'])->toBe('Precinct Camera 1');
+    } finally {
+        config()->set('election.devices.scanner.adapter', 'simulated');
+        app()->forgetInstance(DeviceCertificationService::class);
+    }
+});
+
+test('camera scanner health check reports not configured', function (): void {
+    $result = (new CameraScannerHealthCheck(''))->check();
+
+    expect($result['status'])->toBe('not-configured')
+        ->and($result['adapter'])->toBe('camera-image');
 });
 
 test('officer attestation writes artifact and journal event', function (): void {
@@ -342,6 +367,31 @@ test('handheld scanner normalizes keyboard wedge payload before counting', funct
         $accepted = app(CountingService::class)->accept($scan['payload']);
 
         expect($scan['adapter'])->toBe('handheld-keyboard-wedge')
+            ->and($scan['payload'])->toBe($payload['qr_payload'])
+            ->and($accepted['status'])->toBe('accepted');
+    } finally {
+        config()->set('election.devices.scanner.driver', 'manual');
+    }
+});
+
+test('camera scanner decodes qr png data uri before counting', function (): void {
+    config()->set('election.devices.scanner.driver', 'camera');
+    config()->set('election.devices.scanner.camera.name', 'Precinct Camera 1');
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        $payload = app(BallotPayloadService::class)->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'test-ballot-camera-scan');
+        $imagePayload = 'data:image/png;base64,'.base64_encode(file_get_contents($payload['qr_artifact_path']));
+
+        $scan = app(BallotScanner::class)->scan($imagePayload);
+        $accepted = app(CountingService::class)->accept($scan['payload']);
+
+        expect($scan['adapter'])->toBe('camera-image')
             ->and($scan['payload'])->toBe($payload['qr_payload'])
             ->and($accepted['status'])->toBe('accepted');
     } finally {

@@ -27,6 +27,7 @@
 - Opt-in CUPS ballot printer adapter that submits generated ballot artifacts while retaining file evidence.
 - CUPS ballot submission gate requiring a passing matching device certification before printer submission.
 - Configurable scanner health and scan adapter boundaries for manual and handheld keyboard-wedge workflows.
+- Camera/image scanner scaffold that decodes PNG QR image data URIs into canonical ballot payloads.
 - Simulated officer attestation checkpoints with one JSON evidence artifact per attestation and journaled evidence handles.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
@@ -56,6 +57,7 @@
   - CUPS ballot printer certification gate
   - handheld scanner health adapter selection and not-configured behavior
   - manual and handheld scan normalization before counting
+  - camera scanner health adapter selection, not-configured behavior, and QR PNG image data URI decode before counting
   - simulated officer attestation artifact and journal event
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
@@ -63,7 +65,7 @@
   - Diagnostics page device adapter certification action
   - ceremony shell officer attestation action
   - Printing ceremony certification gate error path for CUPS driver
-  - Counting route scan through configured handheld scanner adapter
+  - Counting route scan through configured handheld and camera scanner adapters
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -83,9 +85,9 @@
 
 ## Verification Results
 
-- Focused Pest lifecycle suite: passed, 21 tests and 99 assertions.
-- Focused Pest ceremony page suite: passed, 13 tests and 149 assertions.
-- Pest: passed, 36 tests and 250 assertions.
+- Focused Pest lifecycle suite: passed, 24 tests and 107 assertions.
+- Focused Pest ceremony page suite: passed, 14 tests and 152 assertions.
+- Pest: passed, 40 tests and 261 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -98,7 +100,7 @@
 - QR decoding currently uses the local `zbarimg` binary; a pure PHP or packaged decoder adapter may be preferable for deployment portability.
 - PDF ballot and Election Return artifacts are generated with a simple internal PDF renderer.
 - Printer health certification can probe CUPS status when configured, and CUPS ballot submission is available behind an opt-in driver only after matching certification. File artifact printing remains the default and no ESC/POS output is implemented.
-- Scanner certification and scanning are adapter-driven for manual and handheld keyboard-wedge workflows; no camera integration yet.
+- Scanner certification and scanning are adapter-driven for manual, handheld keyboard-wedge, and camera/image QR workflows. Browser camera capture is not implemented yet.
 - Officer attestation is simulated; no PIN validation, identity proofing, or signature workflow yet.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.

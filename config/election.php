@@ -21,6 +21,9 @@ return [
             'handheld' => [
                 'name' => env('ELECTION_HANDHELD_SCANNER', ''),
             ],
+            'camera' => [
+                'name' => env('ELECTION_CAMERA_SCANNER', ''),
+            ],
         ],
     ],
     'dictionary' => [
