@@ -31,6 +31,7 @@
 - Browser camera capture UI on the Counting ceremony page that submits captured QR image frames through the camera scanner route.
 - Immediate Counting ceremony operator feedback after scan attempts, including accepted/rejected status, adapter, sequence, reason, and evidence hashes.
 - Local officer PIN registry validation and browser signature capture for attestation checkpoints, with one JSON evidence artifact and one PNG signature artifact per attestation.
+- Diagnostics attestation evidence bundle with inline views and download links for attestation JSON and signature PNG artifacts.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -71,6 +72,7 @@
   - Counting page operator feedback after accepted and rejected scan attempts
   - ceremony shell officer PIN validation failure path
   - ceremony shell officer signature required validation path
+  - Diagnostics attestation evidence bundle projection and artifact view/download routes
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -91,8 +93,8 @@
 ## Verification Results
 
 - Focused Pest lifecycle suite: passed, 26 tests and 117 assertions.
-- Focused Pest ceremony page suite: passed, 17 tests and 195 assertions.
-- Pest: passed, 45 tests and 314 assertions.
+- Focused Pest ceremony page suite: passed, 18 tests and 221 assertions.
+- Pest: passed, 46 tests and 340 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -117,4 +119,4 @@
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
 - Add camera-based scanner capture scaffold and QR decode flow for image input.
-- Add richer diagnostics and export views for officer attestation signature artifacts.
+- Add a precinct evidence bundle manifest export that summarizes all ceremony artifacts in one file.

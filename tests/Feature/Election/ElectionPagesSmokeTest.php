@@ -93,6 +93,53 @@ test('diagnostics page can run device adapter certification', function (): void 
         );
 });
 
+test('diagnostics page exposes attestation signature evidence bundle', function (): void {
+    $this->post(route('election.attestations.store'), [
+        'ceremony' => 'Friday Certification',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'signature_data' => pagesTestSignatureDataUri(),
+        'stage' => 'certification',
+        'statement' => 'Certification checkpoint reviewed.',
+    ])->assertRedirect();
+
+    $attestationPath = app(ElectionStorage::class)->files('attestations')[0];
+    $attestation = json_decode(
+        file_get_contents($attestationPath),
+        true,
+        flags: JSON_THROW_ON_ERROR,
+    );
+    $attestationArtifact = basename($attestationPath);
+    $signatureArtifact = basename($attestation['signature_artifact_path']);
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.attestation_artifacts.0.attestation_id', 'attestation-000001')
+            ->where('diagnostics.attestation_artifacts.0.attestation_artifact', $attestationArtifact)
+            ->where('diagnostics.attestation_artifacts.0.signature_artifact', $signatureArtifact)
+            ->where('diagnostics.attestation_artifacts.0.signature_artifact_hash', $attestation['signature_artifact_hash'])
+        );
+
+    $this->get(route('election.diagnostics.attestations.show', $attestationArtifact))
+        ->assertSuccessful()
+        ->assertHeader('content-type', 'application/json');
+
+    $this->get(route('election.diagnostics.signatures.show', $signatureArtifact))
+        ->assertSuccessful()
+        ->assertHeader('content-type', 'image/png');
+
+    $this->get(route('election.diagnostics.attestations.download', $attestationArtifact))
+        ->assertDownload($attestationArtifact);
+
+    $this->get(route('election.diagnostics.signatures.download', $signatureArtifact))
+        ->assertDownload($signatureArtifact);
+
+    $this->get(route('election.diagnostics.signatures.show', '../'.$signatureArtifact))
+        ->assertNotFound();
+});
+
 test('counting route uses configured handheld scanner adapter', function (): void {
     config()->set('election.devices.scanner.driver', 'handheld');
     config()->set('election.devices.scanner.handheld.name', 'USB Scanner 1');
