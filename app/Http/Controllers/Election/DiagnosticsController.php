@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Election;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\DiagnosticsService;
+use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
 use App\Election\Diagnostics\RemovableMediaExporter;
 use App\Election\Diagnostics\RemovableMediaExportVerifier;
 use App\Election\Diagnostics\RemovableMediaReadinessChecker;
@@ -77,6 +78,32 @@ final class DiagnosticsController extends Controller
         return redirect()
             ->route('election.diagnostics')
             ->with('removable_media_readiness_hash', $report['readiness_hash'] ?? null);
+    }
+
+    public function buildEvidenceBundleArchive(EvidenceBundleArchiveBuilder $builder): RedirectResponse
+    {
+        $report = $builder->build();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('evidence_bundle_archive_hash', $report['archive_report_hash'] ?? null);
+    }
+
+    public function downloadEvidenceBundleArchive(ElectionStorage $storage): BinaryFileResponse
+    {
+        $report = $storage->readJson('diagnostics/evidence-bundle-archive.json');
+        $artifact = (string) ($report['archive_artifact'] ?? 'evidence-bundle.tar');
+        abort_if($artifact !== basename($artifact), 404);
+
+        $path = $storage->path('diagnostics/'.$artifact);
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download(
+            $path,
+            $artifact,
+            ['Content-Type' => 'application/x-tar'],
+        );
     }
 
     public function attestation(ElectionStorage $storage, string $artifact): BinaryFileResponse

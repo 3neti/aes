@@ -183,6 +183,53 @@ test('diagnostics can generate and download precinct evidence manifest', functio
     app(ElectionClock::class)->unfreeze();
 });
 
+test('diagnostics can build and download evidence bundle archive', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-08 18:30:00');
+    app(ActivateSamplePackage::class)->handle();
+
+    $this->post(route('election.attestations.store'), [
+        'ceremony' => 'Friday Certification',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'signature_data' => pagesTestSignatureDataUri(),
+        'stage' => 'certification',
+        'statement' => 'Certification checkpoint reviewed.',
+    ])->assertRedirect();
+
+    $this->post(route('election.diagnostics.evidence-bundle-archive.build'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('evidence_bundle_archive_hash');
+
+    $report = app(ElectionStorage::class)->readJson('diagnostics/evidence-bundle-archive.json');
+    $archive = file_get_contents($report['archive_path']);
+
+    expect($report['schema_version'])->toBe('evidence-bundle-archive-report-1')
+        ->and($report['archive_id'])->toBe('evidence-bundle-20260508-183000')
+        ->and($report['archive_artifact'])->toBe('evidence-bundle-20260508-183000.tar')
+        ->and($report['entry_count'])->toBeGreaterThan(3)
+        ->and($report['archive_sha256'])->toBe(hash_file('sha256', $report['archive_path']))
+        ->and($archive)->toContain('evidence-manifest.json')
+        ->and($archive)->toContain('archive-index.json')
+        ->and($archive)->toContain('artifacts/attestations/');
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.evidence_bundle_archive.exists', true)
+            ->where('diagnostics.evidence_bundle_archive.archive_id', 'evidence-bundle-20260508-183000')
+            ->where('diagnostics.evidence_bundle_archive.archive_sha256', $report['archive_sha256'])
+        );
+
+    $this->get(route('election.diagnostics.evidence-bundle-archive.download'))
+        ->assertDownload('evidence-bundle-20260508-183000.tar');
+
+    expect(collect(app(ActivityJournal::class)->entries())->last()['event_type'])
+        ->toBe('evidence_bundle.archive_built');
+
+    app(ElectionClock::class)->unfreeze();
+});
+
 test('diagnostics can stage removable media evidence export', function (): void {
     app(ElectionClock::class)->freeze('2026-05-08 19:00:00');
     app(ActivateSamplePackage::class)->handle();

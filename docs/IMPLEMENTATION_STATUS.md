@@ -37,6 +37,7 @@
 - Evidence export verification command that re-hashes a staged removable-media bundle and reports missing, size-mismatched, and hash-mismatched artifacts.
 - Diagnostics UI support for running evidence export verification and inspecting the latest persisted verification report with mismatch details.
 - Physical removable-media readiness check scaffold for configured export targets, including directory availability, process writability, and probe write/delete checks.
+- Operator-facing evidence bundle archive build and download workflow for environments without mounted removable media.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -83,6 +84,7 @@
   - Diagnostics removable-media export staging, copied artifact evidence, summary projection, and journal event
   - Diagnostics evidence export verification action, persisted report projection, and journal event
   - Diagnostics removable-media readiness action for simulated and missing configured targets
+  - Diagnostics evidence bundle archive build, TAR content smoke check, download route, and journal event
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -103,8 +105,8 @@
 ## Verification Results
 
 - Focused Pest lifecycle suite: passed, 28 tests and 130 assertions.
-- Focused Pest ceremony page suite: passed, 23 tests and 344 assertions.
-- Pest: passed, 53 tests and 476 assertions.
+- Focused Pest ceremony page suite: passed, 24 tests and 372 assertions.
+- Pest: passed, 54 tests and 504 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -121,6 +123,7 @@
 - Browser camera capture requires operator browser permission and a secure origin as enforced by the browser.
 - Officer attestation uses a local deterministic PIN registry and PNG signature artifacts; no identity proofing workflow yet.
 - Removable-media export is currently simulated as a local staging directory by default; configured physical targets are readiness-checked but not auto-mounted or write-protection-aware yet.
+- Evidence bundle archive downloads are currently uncompressed deterministic TAR files.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Backup appliance support is limited to deterministic re-derivation behavior in services and scenarios.
@@ -129,4 +132,4 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Add an operator-facing export bundle download/archive option for environments without mounted removable media.
+- Add a downloadable archive verification command or UI action for downloaded TAR bundles.

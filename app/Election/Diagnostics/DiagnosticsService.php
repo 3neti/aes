@@ -35,6 +35,7 @@ final class DiagnosticsService
             'evidence_manifest' => $this->manifestSummary(),
             'removable_media_export' => $this->removableMediaExportSummary(),
             'removable_media_readiness' => $this->removableMediaReadinessSummary(),
+            'evidence_bundle_archive' => $this->evidenceBundleArchiveSummary(),
             'evidence_export_verification' => $this->evidenceExportVerificationSummary(),
             'printer' => config('election.devices.printer.adapter', 'simulated'),
             'scanner' => config('election.devices.scanner.adapter', 'simulated'),
@@ -186,6 +187,38 @@ final class DiagnosticsService
             'target_path' => $report['target_path'] ?? $this->removableMediaRoot(),
             'readiness_hash' => $report['readiness_hash'] ?? null,
             'checks' => $report['checks'] ?? [],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function evidenceBundleArchiveSummary(): array
+    {
+        $path = $this->storage->path('diagnostics/evidence-bundle-archive.json');
+
+        if (! $this->files->exists($path)) {
+            return [
+                'exists' => false,
+                'build_url' => route('election.diagnostics.evidence-bundle-archive.build'),
+                'download_url' => route('election.diagnostics.evidence-bundle-archive.download'),
+            ];
+        }
+
+        $report = $this->storage->readJson('diagnostics/evidence-bundle-archive.json');
+
+        return [
+            'exists' => true,
+            'build_url' => route('election.diagnostics.evidence-bundle-archive.build'),
+            'download_url' => route('election.diagnostics.evidence-bundle-archive.download'),
+            'archive_id' => $report['archive_id'] ?? null,
+            'archive_artifact' => $report['archive_artifact'] ?? null,
+            'archive_bytes' => $report['archive_bytes'] ?? 0,
+            'archive_sha256' => $report['archive_sha256'] ?? null,
+            'built_at' => $report['built_at'] ?? null,
+            'entry_count' => $report['entry_count'] ?? 0,
+            'manifest_hash' => $report['manifest_hash'] ?? null,
+            'archive_report_hash' => $report['archive_report_hash'] ?? null,
         ];
     }
 

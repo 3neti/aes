@@ -31,6 +31,20 @@ type EvidenceManifest = {
     download_url: string;
 };
 
+type EvidenceBundleArchive = {
+    exists: boolean;
+    build_url: string;
+    download_url: string;
+    archive_id?: string | null;
+    archive_artifact?: string | null;
+    archive_bytes?: number;
+    archive_sha256?: string | null;
+    built_at?: string | null;
+    entry_count?: number;
+    manifest_hash?: string | null;
+    archive_report_hash?: string | null;
+};
+
 type RemovableMediaExport = {
     exists: boolean;
     target_root: string;
@@ -88,6 +102,7 @@ defineProps<{
     diagnostics: {
         attestation_artifacts?: AttestationArtifact[];
         evidence_manifest?: EvidenceManifest;
+        evidence_bundle_archive?: EvidenceBundleArchive;
         removable_media_export?: RemovableMediaExport;
         removable_media_readiness?: RemovableMediaReadiness;
         evidence_export_verification?: EvidenceExportVerification;
@@ -112,6 +127,7 @@ defineProps<{
                     v-show="
                         key !== 'attestation_artifacts' &&
                         key !== 'evidence_manifest' &&
+                        key !== 'evidence_bundle_archive' &&
                         key !== 'removable_media_export' &&
                         key !== 'removable_media_readiness' &&
                         key !== 'evidence_export_verification'
@@ -195,6 +211,98 @@ defineProps<{
                         {{ category }}
                     </dt>
                     <dd class="mt-1 text-stone-600">{{ count }} files</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section
+            v-if="diagnostics.evidence_bundle_archive"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">
+                        Evidence Bundle Archive
+                    </h2>
+                    <p class="mt-1 text-sm text-stone-700">
+                        {{
+                            diagnostics.evidence_bundle_archive.exists
+                                ? `Built ${diagnostics.evidence_bundle_archive.built_at}`
+                                : 'No downloadable archive has been built yet.'
+                        }}
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <Form
+                        :action="diagnostics.evidence_bundle_archive.build_url"
+                        method="post"
+                        #default="{ processing }"
+                    >
+                        <button
+                            class="secondary-button"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{
+                                processing
+                                    ? 'Building...'
+                                    : 'Build Download Archive'
+                            }}
+                        </button>
+                    </Form>
+                    <a
+                        class="artifact-link"
+                        :href="diagnostics.evidence_bundle_archive.download_url"
+                    >
+                        Download Archive
+                    </a>
+                </div>
+            </div>
+
+            <dl
+                v-if="diagnostics.evidence_bundle_archive.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Archive ID</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.evidence_bundle_archive.archive_id }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Artifact</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive.archive_artifact
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Entries</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.evidence_bundle_archive.entry_count }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Bytes</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.evidence_bundle_archive.archive_bytes }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Archive Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.evidence_bundle_archive.archive_sha256 }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Report Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive
+                                .archive_report_hash
+                        }}
+                    </dd>
                 </div>
             </dl>
         </section>
