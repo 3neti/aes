@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Form } from '@inertiajs/vue3';
+import { Form, useForm } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { complete, scan } from '@/routes/election/counting';
@@ -12,22 +13,182 @@ defineProps<{
         tally: Record<string, Record<string, number>>;
     };
 }>();
+
+const video = ref<HTMLVideoElement | null>(null);
+const stream = ref<MediaStream | null>(null);
+const cameraStatus = ref<'idle' | 'starting' | 'ready' | 'captured' | 'error'>(
+    'idle',
+);
+const cameraMessage = ref('');
+const cameraForm = useForm({
+    payload: '',
+});
+
+const canCapture = computed(
+    () => cameraStatus.value === 'ready' && !cameraForm.processing,
+);
+
+async function startCamera(): Promise<void> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+        cameraStatus.value = 'error';
+        cameraMessage.value =
+            'Camera capture is not available in this browser.';
+
+        return;
+    }
+
+    cameraStatus.value = 'starting';
+    cameraMessage.value = 'Starting camera.';
+
+    try {
+        stopCamera(false);
+
+        stream.value = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+                facingMode: { ideal: 'environment' },
+            },
+        });
+
+        if (video.value) {
+            video.value.srcObject = stream.value;
+            await video.value.play();
+        }
+
+        cameraStatus.value = 'ready';
+        cameraMessage.value = 'Camera ready.';
+    } catch {
+        cameraStatus.value = 'error';
+        cameraMessage.value = 'Camera permission was denied or unavailable.';
+    }
+}
+
+function stopCamera(resetStatus = true): void {
+    stream.value?.getTracks().forEach((track) => track.stop());
+    stream.value = null;
+
+    if (video.value) {
+        video.value.srcObject = null;
+    }
+
+    if (resetStatus) {
+        cameraStatus.value = 'idle';
+        cameraMessage.value = '';
+    }
+}
+
+function captureAndSubmit(): void {
+    if (!video.value || video.value.videoWidth === 0) {
+        cameraStatus.value = 'error';
+        cameraMessage.value = 'No camera frame is ready to capture.';
+
+        return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.value.videoWidth;
+    canvas.height = video.value.videoHeight;
+
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+        cameraStatus.value = 'error';
+        cameraMessage.value = 'Unable to capture a camera frame.';
+
+        return;
+    }
+
+    context.drawImage(video.value, 0, 0, canvas.width, canvas.height);
+    cameraForm.payload = canvas.toDataURL('image/png');
+    cameraForm.post(scan.url(), {
+        preserveScroll: true,
+        onSuccess: () => {
+            cameraStatus.value = 'captured';
+            cameraMessage.value = 'Camera frame submitted.';
+            cameraForm.reset();
+        },
+        onError: () => {
+            cameraStatus.value = 'error';
+            cameraMessage.value = 'Camera frame was not accepted.';
+        },
+    });
+}
+
+onBeforeUnmount(() => stopCamera(false));
 </script>
 
 <template>
     <CeremonyLayout :snapshot="snapshot" title="Counting">
         <section class="border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Scan Ballot Payload</h2>
-            <Form v-bind="scan.form()" class="mt-4 space-y-3">
-                <textarea
-                    name="payload"
-                    class="h-32 w-full border border-stone-300 p-3 text-sm"
-                    required
-                />
-                <button class="primary-button" type="submit">
-                    Accept Scan
-                </button>
-            </Form>
+            <div class="grid gap-5 lg:grid-cols-2">
+                <div>
+                    <h2 class="text-lg font-semibold">Scan Ballot Payload</h2>
+                    <Form v-bind="scan.form()" class="mt-4 space-y-3">
+                        <textarea
+                            name="payload"
+                            class="h-32 w-full border border-stone-300 p-3 text-sm"
+                            required
+                        />
+                        <button class="primary-button" type="submit">
+                            Accept Scan
+                        </button>
+                    </Form>
+                </div>
+
+                <div>
+                    <h2 class="text-lg font-semibold">Camera Capture</h2>
+                    <div class="mt-4 space-y-3">
+                        <div
+                            class="aspect-[4/3] overflow-hidden border border-stone-300 bg-stone-950"
+                        >
+                            <video
+                                ref="video"
+                                class="h-full w-full object-cover"
+                                autoplay
+                                muted
+                                playsinline
+                            />
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                class="secondary-button"
+                                type="button"
+                                :disabled="cameraStatus === 'starting'"
+                                @click="startCamera"
+                            >
+                                Start Camera
+                            </button>
+                            <button
+                                class="primary-button disabled:opacity-60"
+                                type="button"
+                                :disabled="!canCapture"
+                                @click="captureAndSubmit"
+                            >
+                                Capture Scan
+                            </button>
+                            <button
+                                class="secondary-button"
+                                type="button"
+                                :disabled="!stream"
+                                @click="stopCamera()"
+                            >
+                                Stop Camera
+                            </button>
+                        </div>
+                        <p
+                            v-if="cameraMessage"
+                            class="text-sm font-semibold"
+                            :class="
+                                cameraStatus === 'error'
+                                    ? 'text-red-700'
+                                    : 'text-emerald-700'
+                            "
+                        >
+                            {{ cameraMessage }}
+                        </p>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section class="border border-stone-300 bg-white p-5">

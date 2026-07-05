@@ -28,6 +28,7 @@
 - CUPS ballot submission gate requiring a passing matching device certification before printer submission.
 - Configurable scanner health and scan adapter boundaries for manual and handheld keyboard-wedge workflows.
 - Camera/image scanner scaffold that decodes PNG QR image data URIs into canonical ballot payloads.
+- Browser camera capture UI on the Counting ceremony page that submits captured QR image frames through the camera scanner route.
 - Simulated officer attestation checkpoints with one JSON evidence artifact per attestation and journaled evidence handles.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
@@ -100,7 +101,8 @@
 - QR decoding currently uses the local `zbarimg` binary; a pure PHP or packaged decoder adapter may be preferable for deployment portability.
 - PDF ballot and Election Return artifacts are generated with a simple internal PDF renderer.
 - Printer health certification can probe CUPS status when configured, and CUPS ballot submission is available behind an opt-in driver only after matching certification. File artifact printing remains the default and no ESC/POS output is implemented.
-- Scanner certification and scanning are adapter-driven for manual, handheld keyboard-wedge, and camera/image QR workflows. Browser camera capture is not implemented yet.
+- Scanner certification and scanning are adapter-driven for manual, handheld keyboard-wedge, and camera/image QR workflows. Browser camera capture is scaffolded for the Counting ceremony.
+- Browser camera capture requires operator browser permission and a secure origin as enforced by the browser.
 - Officer attestation is simulated; no PIN validation, identity proofing, or signature workflow yet.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
