@@ -2,6 +2,7 @@
 
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -138,6 +139,46 @@ test('diagnostics page exposes attestation signature evidence bundle', function 
 
     $this->get(route('election.diagnostics.signatures.show', '../'.$signatureArtifact))
         ->assertNotFound();
+});
+
+test('diagnostics can generate and download precinct evidence manifest', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-08 18:00:00');
+    app(ActivateSamplePackage::class)->handle();
+
+    $this->post(route('election.attestations.store'), [
+        'ceremony' => 'Friday Certification',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'signature_data' => pagesTestSignatureDataUri(),
+        'stage' => 'certification',
+        'statement' => 'Certification checkpoint reviewed.',
+    ])->assertRedirect();
+
+    $this->post(route('election.diagnostics.evidence-manifest.generate'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('evidence_manifest_hash');
+
+    $manifest = app(ElectionStorage::class)->readJson('diagnostics/evidence-manifest.json');
+
+    expect($manifest['schema_version'])->toBe('precinct-evidence-manifest-1')
+        ->and($manifest['configuration']['precinct_id'])->toBe('0421-A')
+        ->and($manifest['categories']['attestations']['files'])->toHaveCount(1)
+        ->and($manifest['categories']['attestation_signatures']['files'])->toHaveCount(1)
+        ->and($manifest['manifest_hash'])->toBeString();
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.evidence_manifest.exists', true)
+            ->where('diagnostics.evidence_manifest.manifest_hash', $manifest['manifest_hash'])
+            ->where('diagnostics.evidence_manifest.categories.attestations', 1)
+        );
+
+    $this->get(route('election.diagnostics.evidence-manifest.download'))
+        ->assertDownload('evidence-manifest.json');
+
+    app(ElectionClock::class)->unfreeze();
 });
 
 test('counting route uses configured handheld scanner adapter', function (): void {

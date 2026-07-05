@@ -34,6 +34,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
     Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');
     Route::post('/diagnostics/certify-devices', [DiagnosticsController::class, 'certifyDevices'])->name('diagnostics.certify-devices');
+    Route::post('/diagnostics/evidence-manifest', [DiagnosticsController::class, 'generateEvidenceManifest'])->name('diagnostics.evidence-manifest.generate');
+    Route::get('/diagnostics/evidence-manifest/download', [DiagnosticsController::class, 'downloadEvidenceManifest'])->name('diagnostics.evidence-manifest.download');
     Route::get('/diagnostics/attestations/{artifact}', [DiagnosticsController::class, 'attestation'])->name('diagnostics.attestations.show');
     Route::get('/diagnostics/attestations/{artifact}/download', [DiagnosticsController::class, 'downloadAttestation'])->name('diagnostics.attestations.download');
     Route::get('/diagnostics/signatures/{artifact}', [DiagnosticsController::class, 'signature'])->name('diagnostics.signatures.show');

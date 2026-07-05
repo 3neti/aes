@@ -21,10 +21,21 @@ type AttestationArtifact = {
     signature_download_url: string | null;
 };
 
+type EvidenceManifest = {
+    exists: boolean;
+    artifact?: string;
+    manifest_hash?: string | null;
+    generated_at?: string | null;
+    categories?: Record<string, number>;
+    generate_url: string;
+    download_url: string;
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
     diagnostics: {
         attestation_artifacts?: AttestationArtifact[];
+        evidence_manifest?: EvidenceManifest;
         [key: string]: unknown;
     };
 }>();
@@ -43,7 +54,10 @@ defineProps<{
                 <div
                     v-for="(value, key) in diagnostics"
                     :key="key"
-                    v-show="key !== 'attestation_artifacts'"
+                    v-show="
+                        key !== 'attestation_artifacts' &&
+                        key !== 'evidence_manifest'
+                    "
                     class="border border-stone-200 p-3"
                 >
                     <dt class="font-semibold">{{ key }}</dt>
@@ -54,6 +68,75 @@ defineProps<{
                                 : value
                         }}
                     </dd>
+                </div>
+            </dl>
+        </section>
+
+        <section
+            v-if="diagnostics.evidence_manifest"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">
+                        Precinct Evidence Manifest
+                    </h2>
+                    <p class="mt-1 text-sm text-stone-700">
+                        {{
+                            diagnostics.evidence_manifest.exists
+                                ? `Generated ${diagnostics.evidence_manifest.generated_at}`
+                                : 'No manifest generated yet.'
+                        }}
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <Form
+                        :action="diagnostics.evidence_manifest.generate_url"
+                        method="post"
+                    >
+                        <button class="secondary-button" type="submit">
+                            Generate Manifest
+                        </button>
+                    </Form>
+                    <a
+                        class="artifact-link"
+                        :href="diagnostics.evidence_manifest.download_url"
+                    >
+                        Download Manifest
+                    </a>
+                </div>
+            </div>
+            <dl
+                v-if="diagnostics.evidence_manifest.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Manifest Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.evidence_manifest.manifest_hash }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Artifact</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.evidence_manifest.artifact }}
+                    </dd>
+                </div>
+            </dl>
+            <dl
+                v-if="diagnostics.evidence_manifest.categories"
+                class="mt-4 grid gap-2 text-xs sm:grid-cols-3"
+            >
+                <div
+                    v-for="(count, category) in diagnostics.evidence_manifest
+                        .categories"
+                    :key="category"
+                    class="border border-stone-200 p-2"
+                >
+                    <dt class="font-semibold text-stone-700">
+                        {{ category }}
+                    </dt>
+                    <dd class="mt-1 text-stone-600">{{ count }} files</dd>
                 </div>
             </dl>
         </section>
@@ -181,6 +264,12 @@ defineProps<{
 }
 
 .artifact-link {
+    border: 1px solid rgb(120 113 108);
+    padding: 0.4rem 0.6rem;
+    font-weight: 700;
+}
+
+.secondary-button {
     border: 1px solid rgb(120 113 108);
     padding: 0.4rem 0.6rem;
     font-weight: 700;

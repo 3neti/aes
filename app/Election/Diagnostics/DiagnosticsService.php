@@ -3,6 +3,8 @@
 namespace App\Election\Diagnostics;
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Core\CanonicalJson;
+use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 
 final class DiagnosticsService
@@ -10,6 +12,8 @@ final class DiagnosticsService
     public function __construct(
         private readonly ElectionStorage $storage,
         private readonly ActivityJournal $journal,
+        private readonly CanonicalJson $json,
+        private readonly ElectionClock $clock,
     ) {}
 
     /**
@@ -26,10 +30,29 @@ final class DiagnosticsService
             'rejected_ballots' => count($this->storage->files('counting/rejected')),
             'attestations' => count($this->storage->files('attestations')),
             'attestation_artifacts' => $this->attestationArtifacts(),
+            'evidence_manifest' => $this->manifestSummary(),
             'printer' => config('election.devices.printer.adapter', 'simulated'),
             'scanner' => config('election.devices.scanner.adapter', 'simulated'),
             'device_certification' => $this->storage->readJson('certification/device-certification-report.json'),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function writeEvidenceManifest(): array
+    {
+        $manifest = [
+            'schema_version' => 'precinct-evidence-manifest-1',
+            'generated_at' => $this->clock->now()->toIso8601String(),
+            'configuration' => $this->storage->readJson('runtime/active-precinct.json'),
+            'package' => $this->storage->readJson('packages/active-package.json'),
+            'categories' => $this->manifestCategories(),
+        ];
+        $manifest['manifest_hash'] = $this->json->hash($manifest);
+        $manifest['artifact_path'] = $this->storage->writeJson('diagnostics/evidence-manifest.json', $manifest);
+
+        return $manifest;
     }
 
     /**
@@ -59,6 +82,83 @@ final class DiagnosticsService
                     'signature_download_url' => $signaturePath === '' ? null : route('election.diagnostics.signatures.download', basename($signaturePath)),
                 ];
             })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function manifestSummary(): array
+    {
+        $path = $this->storage->path('diagnostics/evidence-manifest.json');
+
+        if (! file_exists($path)) {
+            return [
+                'exists' => false,
+                'generate_url' => route('election.diagnostics.evidence-manifest.generate'),
+                'download_url' => route('election.diagnostics.evidence-manifest.download'),
+            ];
+        }
+
+        $manifest = $this->storage->readJson('diagnostics/evidence-manifest.json');
+
+        return [
+            'exists' => true,
+            'artifact' => basename($path),
+            'manifest_hash' => $manifest['manifest_hash'] ?? null,
+            'generated_at' => $manifest['generated_at'] ?? null,
+            'categories' => collect($manifest['categories'] ?? [])
+                ->map(fn (array $category): int => count($category['files'] ?? []))
+                ->all(),
+            'generate_url' => route('election.diagnostics.evidence-manifest.generate'),
+            'download_url' => route('election.diagnostics.evidence-manifest.download'),
+        ];
+    }
+
+    /**
+     * @return array<string, array{directory: string, files: array<int, array<string, mixed>>}>
+     */
+    private function manifestCategories(): array
+    {
+        $directories = [
+            'registries' => 'registries',
+            'packages' => 'packages',
+            'runtime' => 'runtime',
+            'journals' => 'journals',
+            'ballots' => 'ballots',
+            'print_jobs' => 'print-jobs',
+            'accepted_counting_records' => 'counting/accepted',
+            'rejected_counting_records' => 'counting/rejected',
+            'returns' => 'returns',
+            'certification' => 'certification',
+            'attestations' => 'attestations',
+            'attestation_signatures' => 'attestation-signatures',
+            'scenarios' => 'scenarios',
+        ];
+
+        return collect($directories)
+            ->mapWithKeys(fn (string $directory, string $key): array => [
+                $key => [
+                    'directory' => $directory,
+                    'files' => $this->manifestFiles($directory),
+                ],
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function manifestFiles(string $directory): array
+    {
+        return collect($this->storage->files($directory))
+            ->map(fn (string $path): array => [
+                'file' => basename($path),
+                'relative_path' => $directory.'/'.basename($path),
+                'bytes' => filesize($path),
+                'sha256' => hash_file('sha256', $path),
+            ])
             ->values()
             ->all();
     }

@@ -29,6 +29,26 @@ final class DiagnosticsController extends Controller
         return redirect()->route('election.diagnostics');
     }
 
+    public function generateEvidenceManifest(DiagnosticsService $diagnostics): RedirectResponse
+    {
+        $manifest = $diagnostics->writeEvidenceManifest();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('evidence_manifest_hash', $manifest['manifest_hash'] ?? null);
+    }
+
+    public function downloadEvidenceManifest(DiagnosticsService $diagnostics): BinaryFileResponse
+    {
+        $manifest = $diagnostics->writeEvidenceManifest();
+
+        return response()->download(
+            $manifest['artifact_path'],
+            'evidence-manifest.json',
+            ['Content-Type' => 'application/json'],
+        );
+    }
+
     public function attestation(ElectionStorage $storage, string $artifact): BinaryFileResponse
     {
         return response()->file($this->artifactPath($storage, 'attestations', $artifact), [
