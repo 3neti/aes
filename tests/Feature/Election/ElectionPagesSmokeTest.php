@@ -53,3 +53,18 @@ test('printing page exposes finalized ballot qr and artifact state', function ()
             ->has('snapshot.counts')
         );
 });
+
+test('diagnostics page can run device adapter certification', function (): void {
+    $this->post(route('election.diagnostics.certify-devices'))
+        ->assertRedirect(route('election.diagnostics'));
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.device_certification.passed', true)
+            ->where('diagnostics.device_certification.devices.printer.status', 'ready')
+            ->where('diagnostics.device_certification.devices.scanner.status', 'ready')
+            ->has('snapshot.journal')
+        );
+});

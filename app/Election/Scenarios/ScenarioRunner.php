@@ -5,6 +5,7 @@ namespace App\Election\Scenarios;
 use App\Election\Certification\CertificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
+use App\Election\Devices\DeviceCertificationService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
@@ -24,6 +25,7 @@ final class ScenarioRunner
         private readonly ElectionClock $clock,
         private readonly ActivateSamplePackage $activate,
         private readonly CertificationService $certification,
+        private readonly DeviceCertificationService $devices,
         private readonly CeremonyActions $ceremonies,
         private readonly BallotPayloadService $payloads,
         private readonly BallotPrinter $printer,
@@ -61,12 +63,14 @@ final class ScenarioRunner
     {
         $configuration = $this->activate->handle();
         $this->clock->tick();
+        $devices = $this->devices->run();
         $certification = $this->certification->run();
 
         return [
             'scenario' => 'friday-certification',
-            'passed' => $certification['passed'],
+            'passed' => $devices['passed'] && $certification['passed'],
             'precinct_id' => $configuration['precinct_id'],
+            'device_report_hash' => $devices['report_hash'],
             'report_hash' => $certification['report_hash'],
             'journal_entries' => count($this->journal->entries()),
         ];
@@ -79,6 +83,7 @@ final class ScenarioRunner
     {
         $configuration = $this->activate->handle();
         $this->clock->tick();
+        $devices = $this->devices->run();
         $certification = $this->certification->run();
         $this->lifecycle->set(Lifecycle::OpenPrecinct);
         $this->ceremonies->openPolls();
@@ -109,8 +114,9 @@ final class ScenarioRunner
 
         return [
             'scenario' => 'full-demo',
-            'passed' => $certification['passed'] && $accepted['status'] === 'accepted' && $rejected['status'] === 'rejected',
+            'passed' => $devices['passed'] && $certification['passed'] && $accepted['status'] === 'accepted' && $rejected['status'] === 'rejected',
             'precinct_id' => $configuration['precinct_id'],
+            'device_report_hash' => $devices['report_hash'],
             'print_job' => $printJob,
             'accepted_ballots' => $tally['accepted_ballots'],
             'rejected_ballots' => $tally['rejected_ballots'],

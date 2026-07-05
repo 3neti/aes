@@ -31,5 +31,6 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/returns', [ReturnsController::class, 'show'])->name('returns');
     Route::post('/returns/generate', [ReturnsController::class, 'generate'])->name('returns.generate');
     Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
-    Route::get('/diagnostics', DiagnosticsController::class)->name('diagnostics');
+    Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');
+    Route::post('/diagnostics/certify-devices', [DiagnosticsController::class, 'certifyDevices'])->name('diagnostics.certify-devices');
 });

@@ -1,7 +1,10 @@
 <?php
 
 use App\Election\Certification\CertificationService;
+use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
+use App\Election\Devices\DeviceCertificationService;
+use App\Election\Diagnostics\DiagnosticsService;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
@@ -48,6 +51,19 @@ test('friday certification matches expected result', function (): void {
     expect($report['passed'])->toBeTrue()
         ->and($report['actual_tally'])->toBe($report['expected_tally'])
         ->and(app(ElectionStorage::class)->readJson('certification/friday-certification-report.json')['report_hash'])->toBe($report['report_hash']);
+});
+
+test('device certification checks simulated printer and scanner adapters', function (): void {
+    $report = app(DeviceCertificationService::class)->run();
+    $diagnostics = app(DiagnosticsService::class)->get();
+    $events = app(ActivityJournal::class)->entries();
+
+    expect($report['passed'])->toBeTrue()
+        ->and($report['devices']['printer']['status'])->toBe('ready')
+        ->and($report['devices']['scanner']['status'])->toBe('ready')
+        ->and(app(ElectionStorage::class)->readJson('certification/device-certification-report.json')['report_hash'])->toBe($report['report_hash'])
+        ->and($diagnostics['device_certification']['report_hash'])->toBe($report['report_hash'])
+        ->and(collect($events)->pluck('event_type'))->toContain('devices.certification_passed');
 });
 
 test('ballot finalization creates deterministic qr payload and print artifact', function (): void {

@@ -22,6 +22,7 @@
 - Standards-compliant QR PNG artifacts for finalized ballots, with `zbarimg` decode support for counting tests.
 - Deterministic PDF artifacts for printed ballots and Election Returns.
 - Ceremony page smoke coverage for every Inertia operator page.
+- Simulated printer/scanner adapter certification with a persisted device certification report.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -44,9 +45,11 @@
   - Election Return PDF artifact
   - full scenario command success
   - Home Inertia component render
+  - simulated device adapter certification report
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
+  - Diagnostics page device adapter certification action
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -69,7 +72,7 @@
 
 ## Verification Results
 
-- Pest: passed, 21 tests and 162 assertions.
+- Pest: passed, 23 tests and 185 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -91,5 +94,5 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Add hardware adapter certification flows for real printer/scanner devices.
+- Replace simulated device checks with real CUPS/ESC-POS printer and scanner health adapters.
 - Add officer attestation once the ceremony wording stabilizes.
