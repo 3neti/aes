@@ -162,6 +162,7 @@ test('officer attestation writes artifact and journal event', function (): void 
         'ceremony' => 'Friday Certification',
         'officer_code' => 'SIM-OFFICER-001',
         'officer_pin' => '123456',
+        'signature_data' => lifecycleTestSignatureDataUri(),
         'stage' => Lifecycle::Certification,
         'statement' => 'Certification checkpoint reviewed.',
     ]);
@@ -172,8 +173,11 @@ test('officer attestation writes artifact and journal event', function (): void 
         ->and($record['officer_code_hash'])->toBe(hash('sha256', 'SIM-OFFICER-001'))
         ->and($record['officer_name'])->toBe('Simulation Officer')
         ->and($record['officer_role'])->toBe('Precinct Chair')
+        ->and($record['signature_artifact_hash'])->toBe(hash('sha256', lifecycleTestSignaturePng()))
         ->and(file_exists($record['artifact_path']))->toBeTrue()
+        ->and(file_exists($record['signature_artifact_path']))->toBeTrue()
         ->and(app(ElectionStorage::class)->files('attestations'))->toHaveCount(1)
+        ->and(app(ElectionStorage::class)->files('attestation-signatures'))->toHaveCount(1)
         ->and(collect($events)->pluck('event_type'))->toContain('officer.attested');
 });
 
@@ -182,11 +186,26 @@ test('officer attestation rejects invalid local registry pin', function (): void
         'ceremony' => 'Friday Certification',
         'officer_code' => 'SIM-OFFICER-001',
         'officer_pin' => '000000',
+        'signature_data' => lifecycleTestSignatureDataUri(),
         'stage' => Lifecycle::Certification,
         'statement' => 'Certification checkpoint reviewed.',
     ]))->toThrow(ValidationException::class);
 
     expect(app(ElectionStorage::class)->files('attestations'))->toHaveCount(0);
+});
+
+test('officer attestation rejects invalid signature artifact', function (): void {
+    expect(fn () => app(OfficerAttestationService::class)->attest([
+        'ceremony' => 'Friday Certification',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'signature_data' => 'data:image/png;base64,'.base64_encode('not a png'),
+        'stage' => Lifecycle::Certification,
+        'statement' => 'Certification checkpoint reviewed.',
+    ]))->toThrow(ValidationException::class);
+
+    expect(app(ElectionStorage::class)->files('attestations'))->toHaveCount(0)
+        ->and(app(ElectionStorage::class)->files('attestation-signatures'))->toHaveCount(0);
 });
 
 test('ballot finalization creates deterministic qr payload and print artifact', function (): void {
@@ -494,4 +513,14 @@ function writePassingCupsCertification(string $printerName): void
         ],
         'report_hash' => hash('sha256', $printerName),
     ]);
+}
+
+function lifecycleTestSignatureDataUri(): string
+{
+    return 'data:image/png;base64,'.base64_encode(lifecycleTestSignaturePng());
+}
+
+function lifecycleTestSignaturePng(): string
+{
+    return (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGOSHzRgAAAAABJRU5ErkJggg==', true);
 }

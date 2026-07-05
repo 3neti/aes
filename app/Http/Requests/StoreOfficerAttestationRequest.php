@@ -28,6 +28,7 @@ final class StoreOfficerAttestationRequest extends FormRequest
             'ceremony' => ['required', 'string', 'max:160'],
             'officer_code' => ['required', 'string', 'max:80'],
             'officer_pin' => ['required', 'string', 'max:32'],
+            'signature_data' => ['required', 'string', 'max:500000', 'regex:/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/'],
             'stage' => ['required', 'string', Rule::in(Lifecycle::stages())],
             'statement' => ['required', 'string', 'max:500'],
         ];

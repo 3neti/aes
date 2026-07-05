@@ -30,7 +30,7 @@
 - Camera/image scanner scaffold that decodes PNG QR image data URIs into canonical ballot payloads.
 - Browser camera capture UI on the Counting ceremony page that submits captured QR image frames through the camera scanner route.
 - Immediate Counting ceremony operator feedback after scan attempts, including accepted/rejected status, adapter, sequence, reason, and evidence hashes.
-- Local officer PIN registry validation for attestation checkpoints, with one JSON evidence artifact per attestation and journaled evidence handles.
+- Local officer PIN registry validation and browser signature capture for attestation checkpoints, with one JSON evidence artifact and one PNG signature artifact per attestation.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -60,7 +60,7 @@
   - handheld scanner health adapter selection and not-configured behavior
   - manual and handheld scan normalization before counting
   - camera scanner health adapter selection, not-configured behavior, and QR PNG image data URI decode before counting
-  - officer attestation artifact, journal event, local registry metadata, and invalid PIN rejection
+  - officer attestation artifact, signature artifact, journal event, local registry metadata, invalid PIN rejection, and invalid signature rejection
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -70,6 +70,7 @@
   - Counting route scan through configured handheld and camera scanner adapters
   - Counting page operator feedback after accepted and rejected scan attempts
   - ceremony shell officer PIN validation failure path
+  - ceremony shell officer signature required validation path
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -89,9 +90,9 @@
 
 ## Verification Results
 
-- Focused Pest lifecycle suite: passed, 25 tests and 111 assertions.
-- Focused Pest ceremony page suite: passed, 16 tests and 189 assertions.
-- Pest: passed, 43 tests and 302 assertions.
+- Focused Pest lifecycle suite: passed, 26 tests and 117 assertions.
+- Focused Pest ceremony page suite: passed, 17 tests and 195 assertions.
+- Pest: passed, 45 tests and 314 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -106,7 +107,7 @@
 - Printer health certification can probe CUPS status when configured, and CUPS ballot submission is available behind an opt-in driver only after matching certification. File artifact printing remains the default and no ESC/POS output is implemented.
 - Scanner certification and scanning are adapter-driven for manual, handheld keyboard-wedge, and camera/image QR workflows. Browser camera capture is scaffolded for the Counting ceremony.
 - Browser camera capture requires operator browser permission and a secure origin as enforced by the browser.
-- Officer attestation uses a local deterministic PIN registry; no identity proofing or signature workflow yet.
+- Officer attestation uses a local deterministic PIN registry and PNG signature artifacts; no identity proofing workflow yet.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Backup appliance support is limited to deterministic re-derivation behavior in services and scenarios.
@@ -116,4 +117,4 @@
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
 - Add camera-based scanner capture scaffold and QR decode flow for image input.
-- Add officer signature artifact capture after local PIN validation.
+- Add richer diagnostics and export views for officer attestation signature artifacts.

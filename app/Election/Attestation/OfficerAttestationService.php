@@ -19,7 +19,7 @@ final class OfficerAttestationService
     ) {}
 
     /**
-     * @param  array{ceremony: string, stage: string, officer_code: string, officer_pin: string, statement: string}  $data
+     * @param  array{ceremony: string, stage: string, officer_code: string, officer_pin: string, signature_data: string, statement: string}  $data
      * @return array<string, mixed>
      *
      * @throws ValidationException
@@ -36,6 +36,7 @@ final class OfficerAttestationService
 
         $sequence = count($this->storage->files('attestations')) + 1;
         $attestationId = sprintf('attestation-%06d', $sequence);
+        $signature = $this->storeSignature($attestationId, $data['signature_data']);
 
         $record = [
             'attestation_id' => $attestationId,
@@ -44,6 +45,8 @@ final class OfficerAttestationService
             'officer_code_hash' => hash('sha256', $officer['code']),
             'officer_name' => $officer['name'],
             'officer_role' => $officer['role'],
+            'signature_artifact_hash' => $signature['hash'],
+            'signature_artifact_path' => $signature['path'],
             'stage' => $data['stage'],
             'statement' => trim($data['statement']),
         ];
@@ -59,9 +62,38 @@ final class OfficerAttestationService
             'attestation_id' => $attestationId,
             'ceremony' => $record['ceremony'],
             'officer_name' => $record['officer_name'],
+            'signature_artifact_hash' => $record['signature_artifact_hash'],
             'stage' => $record['stage'],
         ]);
 
         return $record;
+    }
+
+    /**
+     * @return array{hash: string, path: string}
+     *
+     * @throws ValidationException
+     */
+    private function storeSignature(string $attestationId, string $signatureData): array
+    {
+        $encoded = substr($signatureData, strlen('data:image/png;base64,'));
+        $contents = base64_decode($encoded, true);
+
+        if ($contents === false || ! str_starts_with($contents, "\x89PNG")) {
+            throw ValidationException::withMessages([
+                'signature_data' => 'The officer signature must be a PNG image.',
+            ]);
+        }
+
+        $hash = hash('sha256', $contents);
+        $path = $this->storage->writeText(
+            'attestation-signatures/'.$attestationId.'-'.substr($hash, 0, 12).'.png',
+            $contents,
+        );
+
+        return [
+            'hash' => $hash,
+            'path' => $path,
+        ];
     }
 }

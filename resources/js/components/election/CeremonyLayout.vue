@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import { onBeforeUnmount, ref } from 'vue';
 import { home } from '@/routes';
 import { certification } from '@/routes/election';
 import { counting } from '@/routes/election';
@@ -14,6 +15,96 @@ defineProps<{
     snapshot: ElectionSnapshot;
     title: string;
 }>();
+
+const signatureCanvas = ref<HTMLCanvasElement | null>(null);
+const signatureData = ref('');
+const isSigning = ref(false);
+
+function signaturePoint(event: PointerEvent): { x: number; y: number } {
+    const canvas = signatureCanvas.value;
+
+    if (!canvas) {
+        return { x: 0, y: 0 };
+    }
+
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+        x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+        y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+    };
+}
+
+function signatureContext(): CanvasRenderingContext2D | null {
+    const context = signatureCanvas.value?.getContext('2d') ?? null;
+
+    if (!context) {
+        return null;
+    }
+
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.lineWidth = 3;
+    context.strokeStyle = '#1c1917';
+
+    return context;
+}
+
+function beginSignature(event: PointerEvent): void {
+    const context = signatureContext();
+
+    if (!context) {
+        return;
+    }
+
+    signatureCanvas.value?.setPointerCapture(event.pointerId);
+    const point = signaturePoint(event);
+    context.beginPath();
+    context.moveTo(point.x, point.y);
+    isSigning.value = true;
+}
+
+function drawSignature(event: PointerEvent): void {
+    if (!isSigning.value) {
+        return;
+    }
+
+    const context = signatureContext();
+
+    if (!context) {
+        return;
+    }
+
+    const point = signaturePoint(event);
+    context.lineTo(point.x, point.y);
+    context.stroke();
+    signatureData.value = signatureCanvas.value?.toDataURL('image/png') ?? '';
+}
+
+function endSignature(event?: PointerEvent): void {
+    if (event) {
+        signatureCanvas.value?.releasePointerCapture(event.pointerId);
+    }
+
+    isSigning.value = false;
+    signatureData.value = signatureCanvas.value?.toDataURL('image/png') ?? '';
+}
+
+function clearSignature(): void {
+    const canvas = signatureCanvas.value;
+    const context = canvas?.getContext('2d');
+
+    if (!canvas || !context) {
+        return;
+    }
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    signatureData.value = '';
+}
+
+onBeforeUnmount(() => {
+    isSigning.value = false;
+});
 </script>
 
 <template>
@@ -139,6 +230,7 @@ defineProps<{
                                 processing,
                                 recentlySuccessful,
                             }"
+                            @success="clearSignature"
                         >
                             <input
                                 type="hidden"
@@ -154,6 +246,11 @@ defineProps<{
                                 type="hidden"
                                 name="statement"
                                 :value="`${snapshot.ceremony} checkpoint reviewed.`"
+                            />
+                            <input
+                                type="hidden"
+                                name="signature_data"
+                                :value="signatureData"
                             />
                             <label class="block text-sm">
                                 <span class="font-semibold text-stone-700"
@@ -191,10 +288,43 @@ defineProps<{
                                     {{ errors.officer_pin }}
                                 </span>
                             </label>
+                            <div class="text-sm">
+                                <div
+                                    class="flex items-center justify-between gap-2"
+                                >
+                                    <span class="font-semibold text-stone-700"
+                                        >Officer Signature</span
+                                    >
+                                    <button
+                                        type="button"
+                                        class="text-xs font-semibold text-stone-700 underline"
+                                        @click="clearSignature"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                                <canvas
+                                    ref="signatureCanvas"
+                                    class="mt-1 h-28 w-full touch-none border border-stone-300 bg-white"
+                                    width="560"
+                                    height="220"
+                                    @pointerdown="beginSignature"
+                                    @pointermove="drawSignature"
+                                    @pointerup="endSignature"
+                                    @pointercancel="endSignature"
+                                    @pointerleave="endSignature"
+                                />
+                                <span
+                                    v-if="errors.signature_data"
+                                    class="mt-1 block text-xs text-red-700"
+                                >
+                                    {{ errors.signature_data }}
+                                </span>
+                            </div>
                             <button
                                 type="submit"
                                 class="w-full bg-stone-950 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                                :disabled="processing"
+                                :disabled="processing || signatureData === ''"
                             >
                                 Record Attestation
                             </button>

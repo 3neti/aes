@@ -145,8 +145,11 @@ final class ScenarioRunner
             'ceremony' => $ceremony,
             'officer_code' => 'SIM-OFFICER-001',
             'officer_pin' => '123456',
+            'signature_data' => self::SIGNATURE_DATA_URI,
             'stage' => $stage,
             'statement' => $statement,
         ]);
     }
+
+    private const SIGNATURE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGOSHzRgAAAAABJRU5ErkJggg==';
 }

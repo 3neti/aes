@@ -187,6 +187,7 @@ test('ceremony shell can record officer attestation', function (): void {
             'ceremony' => 'Friday Certification',
             'officer_code' => 'SIM-OFFICER-001',
             'officer_pin' => '123456',
+            'signature_data' => pagesTestSignatureDataUri(),
             'stage' => 'certification',
             'statement' => 'Certification checkpoint reviewed.',
         ])
@@ -207,6 +208,7 @@ test('ceremony shell rejects invalid officer pin', function (): void {
             'ceremony' => 'Friday Certification',
             'officer_code' => 'SIM-OFFICER-001',
             'officer_pin' => '000000',
+            'signature_data' => pagesTestSignatureDataUri(),
             'stage' => 'certification',
             'statement' => 'Certification checkpoint reviewed.',
         ])
@@ -215,3 +217,24 @@ test('ceremony shell rejects invalid officer pin', function (): void {
 
     expect(app(ElectionStorage::class)->files('attestations'))->toHaveCount(0);
 });
+
+test('ceremony shell requires officer signature artifact', function (): void {
+    $this->from(route('election.certification'))
+        ->post(route('election.attestations.store'), [
+            'ceremony' => 'Friday Certification',
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_pin' => '123456',
+            'stage' => 'certification',
+            'statement' => 'Certification checkpoint reviewed.',
+        ])
+        ->assertRedirect(route('election.certification'))
+        ->assertSessionHasErrors('signature_data');
+
+    expect(app(ElectionStorage::class)->files('attestations'))->toHaveCount(0)
+        ->and(app(ElectionStorage::class)->files('attestation-signatures'))->toHaveCount(0);
+});
+
+function pagesTestSignatureDataUri(): string
+{
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGOSHzRgAAAAABJRU5ErkJggg==';
+}
