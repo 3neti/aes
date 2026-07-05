@@ -65,7 +65,11 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
         ->and($payload['qr_artifact_path'])->toBeString()
         ->and(file_exists($payload['qr_artifact_path']))->toBeTrue()
         ->and($job['status'])->toBe('printed')
-        ->and(file_exists($job['artifact_path']))->toBeTrue();
+        ->and(file_exists($job['artifact_path']))->toBeTrue()
+        ->and(file_exists($job['pdf_artifact_path']))->toBeTrue()
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('%PDF-1.4')
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('Official Simulation Ballot')
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('pres-ada');
 });
 
 test('rendered standards compliant qr artifact decodes to the finalized ballot payload', function (): void {
@@ -135,7 +139,10 @@ test('election return artifact is generated from tally', function (): void {
     $return = app(ElectionReturnService::class)->generate(app(CountingService::class)->tally());
 
     expect($return['return_hash'])->toBeString()
-        ->and(app(ElectionStorage::class)->readJson('returns/0421-A-return.json')['return_hash'])->toBe($return['return_hash']);
+        ->and(app(ElectionStorage::class)->readJson('returns/0421-A-return.json')['return_hash'])->toBe($return['return_hash'])
+        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('%PDF-1.4')
+        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Election Return')
+        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('pres-ada: 1');
 });
 
 test('full demo scenario command succeeds', function (): void {

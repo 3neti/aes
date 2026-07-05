@@ -23,6 +23,10 @@ defineProps<{
                     <dd class="break-all text-stone-700">
                         {{ payload.payload_hash }}
                     </dd>
+                    <dt class="mt-3 font-semibold">PDF Artifact</dt>
+                    <dd class="break-all text-stone-700">
+                        ballots/{{ payload.ballot_id }}.pdf
+                    </dd>
                 </dl>
                 <div
                     v-if="qrImageDataUri"

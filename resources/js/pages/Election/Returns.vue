@@ -33,6 +33,10 @@ defineProps<{
                 </dd>
                 <dt class="mt-3 font-semibold">Accepted Ballots</dt>
                 <dd>{{ returnArtifact.accepted_ballots }}</dd>
+                <dt class="mt-3 font-semibold">PDF Artifact</dt>
+                <dd class="break-all text-stone-700">
+                    returns/{{ returnArtifact.precinct_id }}-return.pdf
+                </dd>
             </dl>
         </section>
     </CeremonyLayout>

@@ -4,12 +4,14 @@ namespace App\Election\Printing;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\SimplePdf;
 
 final class FileBallotPrinter implements BallotPrinter
 {
     public function __construct(
         private readonly ElectionStorage $storage,
         private readonly ActivityJournal $journal,
+        private readonly SimplePdf $pdf,
     ) {}
 
     public function print(array $payload): array
@@ -29,6 +31,18 @@ final class FileBallotPrinter implements BallotPrinter
         $contents .= "\nQR Payload:\n{$payload['qr_payload']}\n";
 
         $artifactPath = $this->storage->writeText("ballots/{$ballotId}.txt", $contents);
+        $pdfPath = $this->storage->writeText("ballots/{$ballotId}.pdf", $this->pdf->render('Official Simulation Ballot', [
+            "Election: {$payload['election_id']}",
+            "Precinct: {$payload['precinct_id']}",
+            "Ballot: {$ballotId}",
+            "Payload Hash: {$payload['payload_hash']}",
+            "QR Artifact: {$payload['qr_artifact_path']}",
+            'Selections:',
+            ...collect($payload['selections'])
+                ->map(fn (array $candidateIds, string $contest): string => strtoupper($contest).': '.implode(', ', $candidateIds))
+                ->values()
+                ->all(),
+        ]));
         $job = [
             'schema_version' => 'print-job-1',
             'ballot_id' => $ballotId,
@@ -36,6 +50,7 @@ final class FileBallotPrinter implements BallotPrinter
             'printer' => 'file',
             'status' => 'printed',
             'artifact_path' => $artifactPath,
+            'pdf_artifact_path' => $pdfPath,
         ];
 
         $this->storage->writeJson("print-jobs/{$ballotId}.json", $job);

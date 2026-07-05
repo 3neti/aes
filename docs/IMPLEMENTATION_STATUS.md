@@ -20,6 +20,7 @@
 - Shared ceremony layout and typed snapshot props under `resources/js/components/election`.
 - Sample election data under `resources/election/sample`.
 - Standards-compliant QR PNG artifacts for finalized ballots, with `zbarimg` decode support for counting tests.
+- Deterministic PDF artifacts for printed ballots and Election Returns.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -34,10 +35,12 @@
   - ballot finalization and QR payload
   - rendered QR artifact decode
   - print job artifact
+  - ballot PDF artifact
   - accepted counting append file
   - duplicate rejection
   - spoilage rejection
   - Election Return artifact
+  - Election Return PDF artifact
   - full scenario command success
   - Home Inertia component render
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
@@ -71,7 +74,7 @@
 ## Known Gaps
 
 - QR decoding currently uses the local `zbarimg` binary; a pure PHP or packaged decoder adapter may be preferable for deployment portability.
-- Printable ballot and Election Return artifacts are text/JSON files, not PDFs.
+- PDF ballot and Election Return artifacts are generated with a simple internal PDF renderer.
 - Scanner and printer hardware are simulated; no CUPS, ESC/POS, camera, or scanner integration yet.
 - Officer authorization is simulated; no authentication or signature workflow yet.
 - SQLite read models are not introduced.
@@ -80,7 +83,7 @@
 
 ## Next Recommended Steps
 
-- Add PDF ballot and Election Return rendering.
+- Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add browser smoke tests for the ceremony pages.
 - Add hardware adapter certification flows for real printer/scanner devices.
 - Add officer attestation once the ceremony wording stabilizes.
