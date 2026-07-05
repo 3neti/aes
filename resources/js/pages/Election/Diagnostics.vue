@@ -35,6 +35,7 @@ type EvidenceBundleArchive = {
     exists: boolean;
     build_url: string;
     download_url: string;
+    verify_url?: string;
     archive_id?: string | null;
     archive_artifact?: string | null;
     archive_bytes?: number;
@@ -97,12 +98,27 @@ type EvidenceExportVerification = {
     mismatches?: VerificationMismatch[];
 };
 
+type EvidenceBundleArchiveVerification = {
+    exists: boolean;
+    verify_url: string;
+    archive_id?: string | null;
+    archive_path?: string | null;
+    archive_sha256?: string | null;
+    checked_files?: number;
+    mismatch_count?: number;
+    mismatches?: VerificationMismatch[];
+    passed?: boolean;
+    verification_hash?: string | null;
+    verified_at?: string | null;
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
     diagnostics: {
         attestation_artifacts?: AttestationArtifact[];
         evidence_manifest?: EvidenceManifest;
         evidence_bundle_archive?: EvidenceBundleArchive;
+        evidence_bundle_archive_verification?: EvidenceBundleArchiveVerification;
         removable_media_export?: RemovableMediaExport;
         removable_media_readiness?: RemovableMediaReadiness;
         evidence_export_verification?: EvidenceExportVerification;
@@ -128,6 +144,7 @@ defineProps<{
                         key !== 'attestation_artifacts' &&
                         key !== 'evidence_manifest' &&
                         key !== 'evidence_bundle_archive' &&
+                        key !== 'evidence_bundle_archive_verification' &&
                         key !== 'removable_media_export' &&
                         key !== 'removable_media_readiness' &&
                         key !== 'evidence_export_verification'
@@ -305,6 +322,137 @@ defineProps<{
                     </dd>
                 </div>
             </dl>
+        </section>
+
+        <section
+            v-if="diagnostics.evidence_bundle_archive_verification"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Archive Verification</h2>
+                    <p class="mt-1 text-sm text-stone-700">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .exists
+                                ? diagnostics
+                                      .evidence_bundle_archive_verification
+                                      .passed
+                                    ? 'Latest archive verification passed.'
+                                    : 'Latest archive verification found mismatches.'
+                                : 'No archive verification has been run yet.'
+                        }}
+                    </p>
+                </div>
+                <Form
+                    :action="
+                        diagnostics.evidence_bundle_archive_verification
+                            .verify_url
+                    "
+                    method="post"
+                    #default="{ processing, wasSuccessful }"
+                >
+                    <div class="flex flex-col items-start gap-2">
+                        <button
+                            class="secondary-button"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{ processing ? 'Verifying...' : 'Verify Archive' }}
+                        </button>
+                        <p v-if="wasSuccessful" class="text-xs text-stone-600">
+                            Archive verification complete.
+                        </p>
+                    </div>
+                </Form>
+            </div>
+
+            <dl
+                v-if="diagnostics.evidence_bundle_archive_verification.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Status</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .passed
+                                ? 'Passed'
+                                : 'Failed'
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Verified At</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .verified_at
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Archive ID</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .archive_id
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Checked Files</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .checked_files
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Mismatch Count</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .mismatch_count
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Archive Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .archive_sha256
+                        }}
+                    </dd>
+                </div>
+            </dl>
+
+            <div
+                v-if="
+                    diagnostics.evidence_bundle_archive_verification.mismatches
+                        ?.length
+                "
+                class="mt-4 space-y-3"
+            >
+                <article
+                    v-for="mismatch in diagnostics
+                        .evidence_bundle_archive_verification.mismatches"
+                    :key="`${mismatch.type}-${mismatch.path}`"
+                    class="border border-stone-200 p-3 text-xs"
+                >
+                    <div class="font-semibold text-stone-800">
+                        {{ mismatch.type }}
+                    </div>
+                    <div class="mt-1 break-all text-stone-700">
+                        {{ mismatch.path }}
+                    </div>
+                    <div class="mt-1 text-stone-600">
+                        {{ mismatch.message }}
+                    </div>
+                </article>
+            </div>
         </section>
 
         <section

@@ -6,6 +6,7 @@ use App\Election\Core\ElectionSnapshot;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\DiagnosticsService;
 use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
+use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
 use App\Election\Diagnostics\RemovableMediaExporter;
 use App\Election\Diagnostics\RemovableMediaExportVerifier;
 use App\Election\Diagnostics\RemovableMediaReadinessChecker;
@@ -104,6 +105,15 @@ final class DiagnosticsController extends Controller
             $artifact,
             ['Content-Type' => 'application/x-tar'],
         );
+    }
+
+    public function verifyEvidenceBundleArchive(EvidenceBundleArchiveVerifier $verifier): RedirectResponse
+    {
+        $report = $verifier->writeReport();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('evidence_bundle_archive_verification_hash', $report['verification_hash'] ?? null);
     }
 
     public function attestation(ElectionStorage $storage, string $artifact): BinaryFileResponse

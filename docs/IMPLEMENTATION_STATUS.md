@@ -38,6 +38,7 @@
 - Diagnostics UI support for running evidence export verification and inspecting the latest persisted verification report with mismatch details.
 - Physical removable-media readiness check scaffold for configured export targets, including directory availability, process writability, and probe write/delete checks.
 - Operator-facing evidence bundle archive build and download workflow for environments without mounted removable media.
+- Downloadable TAR evidence bundle archive verification through an Artisan command and Diagnostics ceremony action, including persisted verification reports and mismatch inspection.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -69,6 +70,7 @@
   - camera scanner health adapter selection, not-configured behavior, and QR PNG image data URI decode before counting
   - officer attestation artifact, signature artifact, journal event, local registry metadata, invalid PIN rejection, and invalid signature rejection
   - removable-media evidence export verification success path and tampered artifact mismatch command failure
+  - downloadable TAR evidence bundle archive verification success path and tampered archive mismatch command failure
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -85,6 +87,7 @@
   - Diagnostics evidence export verification action, persisted report projection, and journal event
   - Diagnostics removable-media readiness action for simulated and missing configured targets
   - Diagnostics evidence bundle archive build, TAR content smoke check, download route, and journal event
+  - Diagnostics downloadable TAR evidence bundle archive verification action, persisted report projection, and journal event
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -94,6 +97,7 @@
 - `php artisan test --compact tests/Feature/Election/ElectionLifecycleTest.php`
 - `php artisan test --compact tests/Feature/Election/ElectionPagesSmokeTest.php`
 - `vendor/bin/pint --dirty --format agent`
+- `npm run format -- resources/js/pages/Election/Diagnostics.vue`
 - `php artisan test --compact`
 - `npm run lint:check`
 - `npm run types:check`
@@ -104,9 +108,9 @@
 
 ## Verification Results
 
-- Focused Pest lifecycle suite: passed, 28 tests and 130 assertions.
-- Focused Pest ceremony page suite: passed, 24 tests and 372 assertions.
-- Pest: passed, 54 tests and 504 assertions.
+- Focused Pest lifecycle suite: passed, 30 tests and 143 assertions.
+- Focused Pest ceremony page suite: passed, 25 tests and 402 assertions.
+- Pest: passed, 57 tests and 547 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -124,6 +128,7 @@
 - Officer attestation uses a local deterministic PIN registry and PNG signature artifacts; no identity proofing workflow yet.
 - Removable-media export is currently simulated as a local staging directory by default; configured physical targets are readiness-checked but not auto-mounted or write-protection-aware yet.
 - Evidence bundle archive downloads are currently uncompressed deterministic TAR files.
+- Downloaded archive verification currently supports the appliance-generated uncompressed TAR format only.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Backup appliance support is limited to deterministic re-derivation behavior in services and scenarios.
@@ -132,4 +137,4 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Add a downloadable archive verification command or UI action for downloaded TAR bundles.
+- Add an upload-and-verify workflow for externally returned TAR bundles copied back onto the appliance.

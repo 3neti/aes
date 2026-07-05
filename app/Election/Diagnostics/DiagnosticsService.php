@@ -36,6 +36,7 @@ final class DiagnosticsService
             'removable_media_export' => $this->removableMediaExportSummary(),
             'removable_media_readiness' => $this->removableMediaReadinessSummary(),
             'evidence_bundle_archive' => $this->evidenceBundleArchiveSummary(),
+            'evidence_bundle_archive_verification' => $this->evidenceBundleArchiveVerificationSummary(),
             'evidence_export_verification' => $this->evidenceExportVerificationSummary(),
             'printer' => config('election.devices.printer.adapter', 'simulated'),
             'scanner' => config('election.devices.scanner.adapter', 'simulated'),
@@ -219,6 +220,37 @@ final class DiagnosticsService
             'entry_count' => $report['entry_count'] ?? 0,
             'manifest_hash' => $report['manifest_hash'] ?? null,
             'archive_report_hash' => $report['archive_report_hash'] ?? null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function evidenceBundleArchiveVerificationSummary(): array
+    {
+        $path = $this->storage->path('diagnostics/evidence-bundle-archive-verification.json');
+
+        if (! $this->files->exists($path)) {
+            return [
+                'exists' => false,
+                'verify_url' => route('election.diagnostics.evidence-bundle-archive.verify'),
+            ];
+        }
+
+        $report = $this->storage->readJson('diagnostics/evidence-bundle-archive-verification.json');
+
+        return [
+            'exists' => true,
+            'verify_url' => route('election.diagnostics.evidence-bundle-archive.verify'),
+            'archive_id' => $report['archive_id'] ?? null,
+            'archive_path' => $report['archive_path'] ?? null,
+            'archive_sha256' => $report['archive_sha256'] ?? null,
+            'checked_files' => $report['checked_files'] ?? 0,
+            'mismatch_count' => count($report['mismatches'] ?? []),
+            'mismatches' => $report['mismatches'] ?? [],
+            'passed' => $report['passed'] ?? false,
+            'verification_hash' => $report['verification_hash'] ?? null,
+            'verified_at' => $report['verified_at'] ?? null,
         ];
     }
 

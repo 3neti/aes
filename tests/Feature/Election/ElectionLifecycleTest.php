@@ -9,6 +9,8 @@ use App\Election\Devices\CupsPrinterHealthCheck;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Devices\HandheldScannerHealthCheck;
 use App\Election\Diagnostics\DiagnosticsService;
+use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
+use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
 use App\Election\Diagnostics\RemovableMediaExporter;
 use App\Election\Diagnostics\RemovableMediaExportVerifier;
 use App\Election\Lifecycle\Lifecycle;
@@ -108,6 +110,45 @@ test('evidence export verifier reports tampered artifact mismatch', function ():
 
     $this->artisan('election:evidence-verify', ['path' => $export['target_path']])
         ->expectsOutputToContain('Evidence export verification failed.')
+        ->expectsOutputToContain('artifact_hash_mismatch')
+        ->assertFailed();
+});
+
+test('evidence bundle archive verifier accepts intact tar bundle', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $archive = app(EvidenceBundleArchiveBuilder::class)->build();
+    $verification = app(EvidenceBundleArchiveVerifier::class)->verify($archive['archive_path']);
+
+    expect($verification['passed'])->toBeTrue()
+        ->and($verification['archive_id'])->toBe($archive['archive_id'])
+        ->and($verification['archive_sha256'])->toBe($archive['archive_sha256'])
+        ->and($verification['checked_files'])->toBeGreaterThan(0)
+        ->and($verification['mismatches'])->toBe([]);
+
+    $this->artisan('election:archive-verify', ['path' => $archive['archive_path']])
+        ->expectsOutput("Evidence bundle archive {$archive['archive_id']} verified.")
+        ->expectsOutput("Checked files: {$verification['checked_files']}")
+        ->assertSuccessful();
+});
+
+test('evidence bundle archive verifier reports tampered tar artifact mismatch', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $archive = app(EvidenceBundleArchiveBuilder::class)->build();
+    $archiveContents = file_get_contents($archive['archive_path']);
+    file_put_contents(
+        $archive['archive_path'],
+        str_replace('AES-2026-SAMPLE', 'AES-2026-TAMPER', $archiveContents),
+    );
+
+    $verification = app(EvidenceBundleArchiveVerifier::class)->verify($archive['archive_path']);
+
+    expect($verification['passed'])->toBeFalse()
+        ->and(collect($verification['mismatches'])->pluck('type'))->toContain('artifact_hash_mismatch');
+
+    $this->artisan('election:archive-verify', ['path' => $archive['archive_path']])
+        ->expectsOutputToContain('Evidence bundle archive verification failed.')
         ->expectsOutputToContain('artifact_hash_mismatch')
         ->assertFailed();
 });

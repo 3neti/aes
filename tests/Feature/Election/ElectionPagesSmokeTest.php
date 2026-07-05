@@ -230,6 +230,43 @@ test('diagnostics can build and download evidence bundle archive', function (): 
     app(ElectionClock::class)->unfreeze();
 });
 
+test('diagnostics can verify downloadable evidence bundle archive', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-08 18:45:00');
+    app(ActivateSamplePackage::class)->handle();
+
+    $this->post(route('election.diagnostics.evidence-bundle-archive.build'))
+        ->assertRedirect(route('election.diagnostics'));
+
+    $this->post(route('election.diagnostics.evidence-bundle-archive.verify'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('evidence_bundle_archive_verification_hash');
+
+    $report = app(ElectionStorage::class)->readJson('diagnostics/evidence-bundle-archive-verification.json');
+
+    expect($report['schema_version'])->toBe('evidence-bundle-archive-verification-1')
+        ->and($report['archive_id'])->toBe('evidence-bundle-20260508-184500')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['checked_files'])->toBeGreaterThan(0)
+        ->and($report['mismatches'])->toBe([])
+        ->and($report['verification_hash'])->toBeString();
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.evidence_bundle_archive_verification.exists', true)
+            ->where('diagnostics.evidence_bundle_archive_verification.passed', true)
+            ->where('diagnostics.evidence_bundle_archive_verification.archive_id', 'evidence-bundle-20260508-184500')
+            ->where('diagnostics.evidence_bundle_archive_verification.verification_hash', $report['verification_hash'])
+            ->where('diagnostics.evidence_bundle_archive_verification.mismatch_count', 0)
+        );
+
+    expect(collect(app(ActivityJournal::class)->entries())->last()['event_type'])
+        ->toBe('evidence_bundle.archive_verification_passed');
+
+    app(ElectionClock::class)->unfreeze();
+});
+
 test('diagnostics can stage removable media evidence export', function (): void {
     app(ElectionClock::class)->freeze('2026-05-08 19:00:00');
     app(ActivateSamplePackage::class)->handle();
