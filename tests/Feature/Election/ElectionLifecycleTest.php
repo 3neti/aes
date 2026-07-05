@@ -9,6 +9,8 @@ use App\Election\Devices\CupsPrinterHealthCheck;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Devices\HandheldScannerHealthCheck;
 use App\Election\Diagnostics\DiagnosticsService;
+use App\Election\Diagnostics\RemovableMediaExporter;
+use App\Election\Diagnostics\RemovableMediaExportVerifier;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
@@ -72,6 +74,42 @@ test('device certification checks simulated printer and scanner adapters', funct
         ->and(app(ElectionStorage::class)->readJson('certification/device-certification-report.json')['report_hash'])->toBe($report['report_hash'])
         ->and($diagnostics['device_certification']['report_hash'])->toBe($report['report_hash'])
         ->and(collect($events)->pluck('event_type'))->toContain('devices.certification_passed');
+});
+
+test('evidence export verifier accepts intact removable media bundle', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $export = app(RemovableMediaExporter::class)->export();
+    $verification = app(RemovableMediaExportVerifier::class)->verify($export['target_path']);
+
+    expect($verification['passed'])->toBeTrue()
+        ->and($verification['export_id'])->toBe($export['export_id'])
+        ->and($verification['checked_files'])->toBe($export['artifact_count'])
+        ->and($verification['mismatches'])->toBe([]);
+
+    $this->artisan('election:evidence-verify', ['path' => $export['target_path']])
+        ->expectsOutput("Evidence export {$export['export_id']} verified.")
+        ->expectsOutput("Checked files: {$export['artifact_count']}")
+        ->assertSuccessful();
+});
+
+test('evidence export verifier reports tampered artifact mismatch', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $export = app(RemovableMediaExporter::class)->export();
+    $target = $export['target_path'].'/'.$export['copied_files'][0]['target'];
+    file_put_contents($target, 'tampered');
+
+    $verification = app(RemovableMediaExportVerifier::class)->verify($export['target_path']);
+
+    expect($verification['passed'])->toBeFalse()
+        ->and(collect($verification['mismatches'])->pluck('type'))->toContain('artifact_hash_mismatch')
+        ->and(collect($verification['mismatches'])->pluck('type'))->toContain('artifact_size_mismatch');
+
+    $this->artisan('election:evidence-verify', ['path' => $export['target_path']])
+        ->expectsOutputToContain('Evidence export verification failed.')
+        ->expectsOutputToContain('artifact_hash_mismatch')
+        ->assertFailed();
 });
 
 test('cups printer health check is selectable through device certification config', function (): void {
