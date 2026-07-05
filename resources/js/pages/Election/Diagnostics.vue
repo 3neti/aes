@@ -43,6 +43,24 @@ type RemovableMediaExport = {
     artifact_count?: number;
 };
 
+type ReadinessCheck = {
+    name: string;
+    passed: boolean;
+    message: string;
+};
+
+type RemovableMediaReadiness = {
+    exists: boolean;
+    check_url: string;
+    artifact?: string;
+    checked_at?: string | null;
+    configured?: boolean;
+    ready?: boolean;
+    target_path: string;
+    readiness_hash?: string | null;
+    checks?: ReadinessCheck[];
+};
+
 type VerificationMismatch = {
     type: string;
     message: string;
@@ -71,6 +89,7 @@ defineProps<{
         attestation_artifacts?: AttestationArtifact[];
         evidence_manifest?: EvidenceManifest;
         removable_media_export?: RemovableMediaExport;
+        removable_media_readiness?: RemovableMediaReadiness;
         evidence_export_verification?: EvidenceExportVerification;
         [key: string]: unknown;
     };
@@ -94,6 +113,7 @@ defineProps<{
                         key !== 'attestation_artifacts' &&
                         key !== 'evidence_manifest' &&
                         key !== 'removable_media_export' &&
+                        key !== 'removable_media_readiness' &&
                         key !== 'evidence_export_verification'
                     "
                     class="border border-stone-200 p-3"
@@ -177,6 +197,105 @@ defineProps<{
                     <dd class="mt-1 text-stone-600">{{ count }} files</dd>
                 </div>
             </dl>
+        </section>
+
+        <section
+            v-if="diagnostics.removable_media_readiness"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">
+                        Removable Media Readiness
+                    </h2>
+                    <p class="mt-1 text-sm break-all text-stone-700">
+                        {{ diagnostics.removable_media_readiness.target_path }}
+                    </p>
+                </div>
+                <Form
+                    :action="diagnostics.removable_media_readiness.check_url"
+                    method="post"
+                    #default="{ processing, wasSuccessful }"
+                >
+                    <div class="flex flex-col items-start gap-2">
+                        <button
+                            class="secondary-button"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{ processing ? 'Checking...' : 'Check Readiness' }}
+                        </button>
+                        <p v-if="wasSuccessful" class="text-xs text-stone-600">
+                            Readiness checked.
+                        </p>
+                    </div>
+                </Form>
+            </div>
+
+            <dl
+                v-if="diagnostics.removable_media_readiness.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Status</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.removable_media_readiness.ready
+                                ? 'Ready'
+                                : 'Not Ready'
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Checked At</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.removable_media_readiness.checked_at }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Mode</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.removable_media_readiness.configured
+                                ? 'Configured target'
+                                : 'Simulated local target'
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Readiness Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.removable_media_readiness.readiness_hash
+                        }}
+                    </dd>
+                </div>
+            </dl>
+
+            <div
+                v-if="diagnostics.removable_media_readiness.checks?.length"
+                class="mt-4 grid gap-2 text-xs sm:grid-cols-2"
+            >
+                <article
+                    v-for="check in diagnostics.removable_media_readiness
+                        .checks"
+                    :key="check.name"
+                    class="border border-stone-200 p-3"
+                >
+                    <div class="font-semibold text-stone-800">
+                        {{ check.name }}
+                    </div>
+                    <div class="mt-1 text-stone-700">
+                        {{ check.passed ? 'Passed' : 'Failed' }}
+                    </div>
+                    <div class="mt-1 text-stone-600">
+                        {{ check.message }}
+                    </div>
+                </article>
+            </div>
+            <p v-else class="mt-4 text-sm text-stone-700">
+                No readiness check has been run yet.
+            </p>
         </section>
 
         <section

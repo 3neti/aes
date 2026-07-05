@@ -233,6 +233,64 @@ test('diagnostics can stage removable media evidence export', function (): void 
     app(ElectionClock::class)->unfreeze();
 });
 
+test('diagnostics can check simulated removable media readiness', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-08 19:15:00');
+
+    $this->post(route('election.diagnostics.removable-media.readiness'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('removable_media_readiness_hash');
+
+    $report = app(ElectionStorage::class)->readJson('diagnostics/removable-media-readiness.json');
+
+    expect($report['schema_version'])->toBe('removable-media-readiness-report-1')
+        ->and($report['ready'])->toBeTrue()
+        ->and($report['configured'])->toBeFalse()
+        ->and($report['readiness_hash'])->toBeString()
+        ->and(collect($report['checks'])->pluck('passed')->every(fn (bool $passed): bool => $passed))->toBeTrue();
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.removable_media_readiness.exists', true)
+            ->where('diagnostics.removable_media_readiness.ready', true)
+            ->where('diagnostics.removable_media_readiness.readiness_hash', $report['readiness_hash'])
+        );
+
+    expect(collect(app(ActivityJournal::class)->entries())->last()['event_type'])
+        ->toBe('removable_media.readiness_passed');
+
+    app(ElectionClock::class)->unfreeze();
+});
+
+test('diagnostics reports missing configured removable media target as not ready', function (): void {
+    $target = sys_get_temp_dir().'/aes-missing-media-'.bin2hex(random_bytes(4));
+    config()->set('election.removable_media.path', $target);
+
+    try {
+        $this->post(route('election.diagnostics.removable-media.readiness'))
+            ->assertRedirect(route('election.diagnostics'));
+
+        $report = app(ElectionStorage::class)->readJson('diagnostics/removable-media-readiness.json');
+
+        expect($report['ready'])->toBeFalse()
+            ->and($report['configured'])->toBeTrue()
+            ->and($report['target_path'])->toBe($target)
+            ->and(collect($report['checks'])->firstWhere('name', 'directory_available')['passed'])->toBeFalse();
+
+        $this->get(route('election.diagnostics'))
+            ->assertSuccessful()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Election/Diagnostics')
+                ->where('diagnostics.removable_media_readiness.exists', true)
+                ->where('diagnostics.removable_media_readiness.ready', false)
+                ->where('diagnostics.removable_media_readiness.target_path', $target)
+            );
+    } finally {
+        config()->set('election.removable_media.path', '');
+    }
+});
+
 test('diagnostics can run and inspect evidence export verification report', function (): void {
     app(ElectionClock::class)->freeze('2026-05-08 19:30:00');
     app(ActivateSamplePackage::class)->handle();

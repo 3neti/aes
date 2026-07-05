@@ -34,6 +34,7 @@ final class DiagnosticsService
             'attestation_artifacts' => $this->attestationArtifacts(),
             'evidence_manifest' => $this->manifestSummary(),
             'removable_media_export' => $this->removableMediaExportSummary(),
+            'removable_media_readiness' => $this->removableMediaReadinessSummary(),
             'evidence_export_verification' => $this->evidenceExportVerificationSummary(),
             'printer' => config('election.devices.printer.adapter', 'simulated'),
             'scanner' => config('election.devices.scanner.adapter', 'simulated'),
@@ -155,6 +156,36 @@ final class DiagnosticsService
             'manifest_hash' => $report['manifest_hash'] ?? null,
             'export_hash' => $report['export_hash'] ?? null,
             'artifact_count' => $report['artifact_count'] ?? 0,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function removableMediaReadinessSummary(): array
+    {
+        $path = $this->storage->path('diagnostics/removable-media-readiness.json');
+
+        if (! $this->files->exists($path)) {
+            return [
+                'exists' => false,
+                'check_url' => route('election.diagnostics.removable-media.readiness'),
+                'target_path' => $this->removableMediaRoot(),
+            ];
+        }
+
+        $report = $this->storage->readJson('diagnostics/removable-media-readiness.json');
+
+        return [
+            'exists' => true,
+            'check_url' => route('election.diagnostics.removable-media.readiness'),
+            'artifact' => basename($path),
+            'checked_at' => $report['checked_at'] ?? null,
+            'configured' => $report['configured'] ?? false,
+            'ready' => $report['ready'] ?? false,
+            'target_path' => $report['target_path'] ?? $this->removableMediaRoot(),
+            'readiness_hash' => $report['readiness_hash'] ?? null,
+            'checks' => $report['checks'] ?? [],
         ];
     }
 
