@@ -93,6 +93,29 @@ test('diagnostics page can run device adapter certification', function (): void 
         );
 });
 
+test('counting route uses configured handheld scanner adapter', function (): void {
+    config()->set('election.devices.scanner.driver', 'handheld');
+    config()->set('election.devices.scanner.handheld.name', 'USB Scanner 1');
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        $payload = app(BallotPayloadService::class)->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'smoke-ballot-handheld');
+
+        $this->post(route('election.counting.scan'), [
+            'payload' => "AES-SCAN:\n{$payload['qr_payload']}\t",
+        ])->assertRedirect(route('election.counting'));
+
+        expect(app(ElectionStorage::class)->files('counting/accepted'))->toHaveCount(1);
+    } finally {
+        config()->set('election.devices.scanner.driver', 'manual');
+    }
+});
+
 test('ceremony shell can record officer attestation', function (): void {
     $this->from(route('election.certification'))
         ->post(route('election.attestations.store'), [

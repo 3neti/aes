@@ -15,6 +15,13 @@ return [
                 'timeout' => (int) env('ELECTION_CUPS_TIMEOUT', 3),
             ],
         ],
+        'scanner' => [
+            'adapter' => env('ELECTION_SCANNER_ADAPTER', 'simulated'),
+            'driver' => env('ELECTION_SCANNER_DRIVER', 'manual'),
+            'handheld' => [
+                'name' => env('ELECTION_HANDHELD_SCANNER', ''),
+            ],
+        ],
     ],
     'dictionary' => [
         'app_name' => 'Alternative Election System',

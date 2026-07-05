@@ -26,7 +26,7 @@ final class DiagnosticsService
             'rejected_ballots' => count($this->storage->files('counting/rejected')),
             'attestations' => count($this->storage->files('attestations')),
             'printer' => config('election.devices.printer.adapter', 'simulated'),
-            'scanner' => 'simulation',
+            'scanner' => config('election.devices.scanner.adapter', 'simulated'),
             'device_certification' => $this->storage->readJson('certification/device-certification-report.json'),
         ];
     }

@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
 use App\Election\Devices\CupsPrinterHealthCheck;
 use App\Election\Devices\DeviceCertificationService;
+use App\Election\Devices\HandheldScannerHealthCheck;
 use App\Election\Diagnostics\DiagnosticsService;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
@@ -16,6 +17,7 @@ use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\PrinterCertificationRequired;
 use App\Election\Printing\SpoilBallot;
 use App\Election\Returns\ElectionReturnService;
+use App\Election\Scanning\BallotScanner;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\StandardQrCode;
@@ -103,6 +105,30 @@ test('cups printer health check reports not configured without probing process',
         ->and($result['adapter'])->toBe('cups-printer');
 
     Process::assertNothingRan();
+});
+
+test('handheld scanner health check is selectable through device certification config', function (): void {
+    config()->set('election.devices.scanner.adapter', 'handheld');
+    config()->set('election.devices.scanner.handheld.name', 'USB Scanner 1');
+    app()->forgetInstance(DeviceCertificationService::class);
+
+    try {
+        $report = app(DeviceCertificationService::class)->run();
+
+        expect($report['passed'])->toBeTrue()
+            ->and($report['devices']['scanner']['adapter'])->toBe('handheld-keyboard-wedge')
+            ->and($report['devices']['scanner']['device'])->toBe('USB Scanner 1');
+    } finally {
+        config()->set('election.devices.scanner.adapter', 'simulated');
+        app()->forgetInstance(DeviceCertificationService::class);
+    }
+});
+
+test('handheld scanner health check reports not configured', function (): void {
+    $result = (new HandheldScannerHealthCheck(''))->check();
+
+    expect($result['status'])->toBe('not-configured')
+        ->and($result['adapter'])->toBe('handheld-keyboard-wedge');
 });
 
 test('officer attestation writes artifact and journal event', function (): void {
@@ -279,6 +305,48 @@ test('counting appends accepted files and tally is generated from accepted recor
         ->and($tally['accepted_ballots'])->toBe(1)
         ->and($tally['tally']['president']['pres-ada'])->toBe(1)
         ->and(app(ElectionStorage::class)->files('counting/accepted'))->toHaveCount(1);
+});
+
+test('manual scanner captures payload before counting', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ], 'test-ballot-manual-scan');
+
+    $scan = app(BallotScanner::class)->scan("  {$payload['qr_payload']}  ");
+    $accepted = app(CountingService::class)->accept($scan['payload']);
+    $events = app(ActivityJournal::class)->entries();
+
+    expect($scan['adapter'])->toBe('manual-payload')
+        ->and($accepted['status'])->toBe('accepted')
+        ->and(collect($events)->pluck('event_type'))->toContain('ballot.scan_captured');
+});
+
+test('handheld scanner normalizes keyboard wedge payload before counting', function (): void {
+    config()->set('election.devices.scanner.driver', 'handheld');
+    config()->set('election.devices.scanner.handheld.name', 'USB Scanner 1');
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        $payload = app(BallotPayloadService::class)->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'test-ballot-handheld-scan');
+
+        $scan = app(BallotScanner::class)->scan("AES-SCAN:\r\n{$payload['qr_payload']}\t");
+        $accepted = app(CountingService::class)->accept($scan['payload']);
+
+        expect($scan['adapter'])->toBe('handheld-keyboard-wedge')
+            ->and($scan['payload'])->toBe($payload['qr_payload'])
+            ->and($accepted['status'])->toBe('accepted');
+    } finally {
+        config()->set('election.devices.scanner.driver', 'manual');
+    }
 });
 
 test('spoiled ballot is rejected during counting', function (): void {

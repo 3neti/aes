@@ -7,11 +7,15 @@ use App\Election\Core\CanonicalJson;
 use App\Election\Devices\CupsPrinterHealthCheck;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Devices\DeviceHealthCheck;
+use App\Election\Devices\HandheldScannerHealthCheck;
 use App\Election\Devices\SimulatedPrinterHealthCheck;
 use App\Election\Devices\SimulatedScannerHealthCheck;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\CupsBallotPrinter;
 use App\Election\Printing\FileBallotPrinter;
+use App\Election\Scanning\BallotScanner;
+use App\Election\Scanning\HandheldPayloadScanner;
+use App\Election\Scanning\ManualPayloadScanner;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
 use Carbon\CarbonImmutable;
@@ -53,6 +57,16 @@ class AppServiceProvider extends ServiceProvider
                 $this->deviceHealthChecks(),
             );
         });
+        $this->app->bind(BallotScanner::class, function (Application $app): BallotScanner {
+            if (config('election.devices.scanner.driver') === 'handheld') {
+                return new HandheldPayloadScanner(
+                    $app->make(ActivityJournal::class),
+                    (string) config('election.devices.scanner.handheld.name', 'keyboard-wedge'),
+                );
+            }
+
+            return $app->make(ManualPayloadScanner::class);
+        });
     }
 
     /**
@@ -92,7 +106,7 @@ class AppServiceProvider extends ServiceProvider
     {
         return [
             $this->printerHealthCheck(),
-            new SimulatedScannerHealthCheck,
+            $this->scannerHealthCheck(),
         ];
     }
 
@@ -106,5 +120,16 @@ class AppServiceProvider extends ServiceProvider
         }
 
         return new SimulatedPrinterHealthCheck;
+    }
+
+    private function scannerHealthCheck(): DeviceHealthCheck
+    {
+        if (config('election.devices.scanner.adapter') === 'handheld') {
+            return new HandheldScannerHealthCheck(
+                (string) config('election.devices.scanner.handheld.name', ''),
+            );
+        }
+
+        return new SimulatedScannerHealthCheck;
     }
 }

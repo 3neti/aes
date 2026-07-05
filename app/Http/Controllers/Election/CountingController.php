@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Election;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Counting\CountingService;
 use App\Election\Lifecycle\CeremonyActions;
+use App\Election\Scanning\BallotScanner;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,10 +22,11 @@ final class CountingController extends Controller
         ]);
     }
 
-    public function scan(Request $request, CountingService $counting): RedirectResponse
+    public function scan(Request $request, CountingService $counting, BallotScanner $scanner): RedirectResponse
     {
         $validated = $request->validate(['payload' => ['required', 'string']]);
-        $counting->accept($validated['payload']);
+        $scan = $scanner->scan($validated['payload']);
+        $counting->accept($scan['payload']);
 
         return redirect()->route('election.counting');
     }
