@@ -1,0 +1,44 @@
+{
+    "schema_version": "certification-1",
+    "ballots": [
+        {
+            "id": "cert-001",
+            "selections": {
+                "president": ["pres-ada"],
+                "mayor": ["mayor-jose"],
+                "council": ["council-ana", "council-ben"]
+            }
+        },
+        {
+            "id": "cert-002",
+            "selections": {
+                "president": ["pres-grace"],
+                "mayor": ["mayor-lina"],
+                "council": ["council-ana", "council-cora"]
+            }
+        },
+        {
+            "id": "cert-003",
+            "selections": {
+                "president": ["pres-ada"],
+                "mayor": ["mayor-lina"],
+                "council": ["council-ben", "council-cora"]
+            }
+        }
+    ],
+    "expected_tally": {
+        "president": {
+            "pres-ada": 2,
+            "pres-grace": 1
+        },
+        "mayor": {
+            "mayor-jose": 1,
+            "mayor-lina": 2
+        },
+        "council": {
+            "council-ana": 2,
+            "council-ben": 2,
+            "council-cora": 2
+        }
+    }
+}

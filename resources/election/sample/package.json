@@ -1,0 +1,9 @@
+{
+    "schema_version": "sample-package-1",
+    "election_id": "AES-2026-SAMPLE",
+    "precinct_id": "0421-A",
+    "ballot_style_id": "BS-0421-A",
+    "registry_version": "sample-1",
+    "transport": "embedded-sample",
+    "signature": "SIMULATED-SIGNATURE"
+}

@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Election\Printing;
+
+use App\Election\Core\ActivityJournal;
+use App\Election\Support\ElectionStorage;
+
+final class FileBallotPrinter implements BallotPrinter
+{
+    public function __construct(
+        private readonly ElectionStorage $storage,
+        private readonly ActivityJournal $journal,
+    ) {}
+
+    public function print(array $payload): array
+    {
+        $ballotId = $payload['ballot_id'];
+        $contents = "OFFICIAL SIMULATION BALLOT\n";
+        $contents .= "Election: {$payload['election_id']}\n";
+        $contents .= "Precinct: {$payload['precinct_id']}\n";
+        $contents .= "Ballot: {$ballotId}\n";
+        $contents .= "Payload Hash: {$payload['payload_hash']}\n\n";
+
+        foreach ($payload['selections'] as $contest => $candidateIds) {
+            $contents .= strtoupper((string) $contest).': '.implode(', ', $candidateIds)."\n";
+        }
+
+        $contents .= "\nQR Payload:\n{$payload['qr_payload']}\n";
+
+        $artifactPath = $this->storage->writeText("ballots/{$ballotId}.txt", $contents);
+        $job = [
+            'schema_version' => 'print-job-1',
+            'ballot_id' => $ballotId,
+            'payload_hash' => $payload['payload_hash'],
+            'printer' => 'file',
+            'status' => 'printed',
+            'artifact_path' => $artifactPath,
+        ];
+
+        $this->storage->writeJson("print-jobs/{$ballotId}.json", $job);
+        $this->journal->record('ballot.printed', $job);
+
+        return $job;
+    }
+}

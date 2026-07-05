@@ -1,5 +1,35 @@
 <?php
 
+use App\Http\Controllers\Election\CertificationController;
+use App\Http\Controllers\Election\CountingController;
+use App\Http\Controllers\Election\DiagnosticsController;
+use App\Http\Controllers\Election\HomeController;
+use App\Http\Controllers\Election\PrintingController;
+use App\Http\Controllers\Election\ProvisionController;
+use App\Http\Controllers\Election\ReturnsController;
+use App\Http\Controllers\Election\VotingController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'Welcome')->name('home');
+Route::get('/', HomeController::class)->name('home');
+
+Route::prefix('election')->name('election.')->group(function (): void {
+    Route::get('/', HomeController::class)->name('home');
+    Route::get('/provision', [ProvisionController::class, 'show'])->name('provision');
+    Route::post('/provision/activate', [ProvisionController::class, 'activate'])->name('provision.activate');
+    Route::get('/certification', [CertificationController::class, 'show'])->name('certification');
+    Route::post('/certification/run', [CertificationController::class, 'run'])->name('certification.run');
+    Route::get('/voting', [VotingController::class, 'show'])->name('voting');
+    Route::post('/voting/open-polls', [VotingController::class, 'openPolls'])->name('voting.open-polls');
+    Route::post('/voting/finalize', [VotingController::class, 'finalize'])->name('voting.finalize');
+    Route::post('/voting/close-polls', [VotingController::class, 'closePolls'])->name('voting.close-polls');
+    Route::get('/printing/{ballot?}', [PrintingController::class, 'show'])->name('printing');
+    Route::post('/printing/{ballot}/print', [PrintingController::class, 'print'])->name('printing.print');
+    Route::post('/printing/{ballot}/spoil', [PrintingController::class, 'spoil'])->name('printing.spoil');
+    Route::get('/counting', [CountingController::class, 'show'])->name('counting');
+    Route::post('/counting/scan', [CountingController::class, 'scan'])->name('counting.scan');
+    Route::post('/counting/complete', [CountingController::class, 'complete'])->name('counting.complete');
+    Route::get('/returns', [ReturnsController::class, 'show'])->name('returns');
+    Route::post('/returns/generate', [ReturnsController::class, 'generate'])->name('returns.generate');
+    Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
+    Route::get('/diagnostics', DiagnosticsController::class)->name('diagnostics');
+});

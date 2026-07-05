@@ -1,0 +1,46 @@
+{
+    "schema_version": "sample-1",
+    "election_id": "AES-2026-SAMPLE",
+    "precincts": [
+        {
+            "id": "0421-A",
+            "name": "Sample Precinct 0421-A",
+            "ballot_style_id": "BS-0421-A"
+        }
+    ],
+    "ballot_styles": [
+        {
+            "id": "BS-0421-A",
+            "contest_ids": ["president", "mayor", "council"]
+        }
+    ],
+    "contests": [
+        {
+            "id": "president",
+            "title": "President",
+            "max_selections": 1,
+            "candidate_ids": ["pres-ada", "pres-grace"]
+        },
+        {
+            "id": "mayor",
+            "title": "Mayor",
+            "max_selections": 1,
+            "candidate_ids": ["mayor-jose", "mayor-lina"]
+        },
+        {
+            "id": "council",
+            "title": "Council",
+            "max_selections": 2,
+            "candidate_ids": ["council-ana", "council-ben", "council-cora"]
+        }
+    ],
+    "candidates": [
+        { "id": "pres-ada", "name": "Ada Santos" },
+        { "id": "pres-grace", "name": "Grace Reyes" },
+        { "id": "mayor-jose", "name": "Jose Dela Cruz" },
+        { "id": "mayor-lina", "name": "Lina Mercado" },
+        { "id": "council-ana", "name": "Ana Lopez" },
+        { "id": "council-ben", "name": "Ben Garcia" },
+        { "id": "council-cora", "name": "Cora Ramos" }
+    ]
+}

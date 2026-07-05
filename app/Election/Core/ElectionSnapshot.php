@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Election\Core;
+
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
+use App\Election\Support\ElectionStorage;
+
+final class ElectionSnapshot
+{
+    public function __construct(
+        private readonly LifecycleState $lifecycle,
+        private readonly DomainDictionary $dictionary,
+        private readonly ActivityJournal $journal,
+        private readonly ElectionStorage $storage,
+    ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function get(): array
+    {
+        $stage = $this->lifecycle->current();
+        $configuration = $this->storage->readJson('runtime/active-precinct.json');
+
+        return [
+            'appName' => $this->dictionary->appName(),
+            'stage' => $stage,
+            'stageLabel' => $this->dictionary->stageLabel($stage),
+            'ceremony' => $this->dictionary->ceremonyLabel($stage),
+            'nextAction' => $this->dictionary->actionLabel($stage),
+            'nextStage' => Lifecycle::next($stage),
+            'configuration' => $configuration,
+            'journal' => $this->journal->latest(),
+            'counts' => [
+                'accepted' => count($this->storage->files('counting/accepted')),
+                'rejected' => count($this->storage->files('counting/rejected')),
+                'printJobs' => count($this->storage->files('print-jobs')),
+                'ballots' => count($this->storage->files('ballots')),
+            ],
+        ];
+    }
+}

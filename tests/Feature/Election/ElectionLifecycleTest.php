@@ -1,0 +1,140 @@
+<?php
+
+use App\Election\Certification\CertificationService;
+use App\Election\Counting\CountingService;
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
+use App\Election\Preparation\ActivateSamplePackage;
+use App\Election\Preparation\DeterministicMapper;
+use App\Election\Preparation\SampleElectionData;
+use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\SpoilBallot;
+use App\Election\Returns\ElectionReturnService;
+use App\Election\Support\ElectionStorage;
+use App\Election\Voting\BallotPayloadService;
+use Inertia\Testing\AssertableInertia as Assert;
+
+beforeEach(function (): void {
+    app(ElectionStorage::class)->reset();
+});
+
+test('lifecycle transitions reject invalid jumps', function (): void {
+    $lifecycle = app(LifecycleState::class);
+
+    expect($lifecycle->current())->toBe(Lifecycle::Provision);
+
+    $lifecycle->advanceTo(Lifecycle::Certification);
+
+    expect($lifecycle->current())->toBe(Lifecycle::Certification);
+    expect(fn () => $lifecycle->advanceTo(Lifecycle::Voting))->toThrow(RuntimeException::class);
+});
+
+test('sample package activation derives deterministic mapping', function (): void {
+    $configuration = app(ActivateSamplePackage::class)->handle();
+    $sample = app(SampleElectionData::class);
+    $derivedAgain = app(DeterministicMapper::class)->derive($sample->registries(), $sample->package());
+
+    expect($configuration['precinct_id'])->toBe('0421-A')
+        ->and($configuration['mapping_hash'])->toBe($derivedAgain['mapping_hash'])
+        ->and(app(ElectionStorage::class)->readJson('runtime/active-precinct.json')['mapping_hash'])->toBe($configuration['mapping_hash']);
+});
+
+test('friday certification matches expected result', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $report = app(CertificationService::class)->run();
+
+    expect($report['passed'])->toBeTrue()
+        ->and($report['actual_tally'])->toBe($report['expected_tally'])
+        ->and(app(ElectionStorage::class)->readJson('certification/friday-certification-report.json')['report_hash'])->toBe($report['report_hash']);
+});
+
+test('ballot finalization creates deterministic qr payload and print artifact', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana', 'council-cora'],
+    ], 'test-ballot-001');
+    $job = app(BallotPrinter::class)->print($payload);
+
+    expect($payload['payload_hash'])->toBeString()
+        ->and($payload['qr_payload'])->toBeString()
+        ->and($job['status'])->toBe('printed')
+        ->and(file_exists($job['artifact_path']))->toBeTrue();
+});
+
+test('counting appends accepted files and tally is generated from accepted records', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ], 'test-ballot-002');
+
+    $accepted = app(CountingService::class)->accept($payload['qr_payload']);
+    $duplicate = app(CountingService::class)->accept($payload['qr_payload']);
+    $tally = app(CountingService::class)->tally();
+
+    expect($accepted['status'])->toBe('accepted')
+        ->and($duplicate['status'])->toBe('rejected')
+        ->and($tally['accepted_ballots'])->toBe(1)
+        ->and($tally['tally']['president']['pres-ada'])->toBe(1)
+        ->and(app(ElectionStorage::class)->files('counting/accepted'))->toHaveCount(1);
+});
+
+test('spoiled ballot is rejected during counting', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-grace'],
+        'mayor' => ['mayor-jose'],
+        'council' => ['council-ben'],
+    ], 'test-ballot-spoiled');
+    app(SpoilBallot::class)->handle($payload['payload_hash']);
+
+    $record = app(CountingService::class)->accept($payload['qr_payload']);
+
+    expect($record['status'])->toBe('rejected')
+        ->and($record['reason'])->toContain('spoiled');
+});
+
+test('election return artifact is generated from tally', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-cora'],
+    ], 'test-ballot-003');
+    app(CountingService::class)->accept($payload['qr_payload']);
+    $return = app(ElectionReturnService::class)->generate(app(CountingService::class)->tally());
+
+    expect($return['return_hash'])->toBeString()
+        ->and(app(ElectionStorage::class)->readJson('returns/0421-A-return.json')['return_hash'])->toBe($return['return_hash']);
+});
+
+test('full demo scenario command succeeds', function (): void {
+    $this->artisan('election:scenario full-demo')
+        ->expectsOutput('Scenario full-demo passed.')
+        ->assertSuccessful();
+
+    $report = app(ElectionStorage::class)->readJson('scenarios/full-demo-report.json');
+
+    expect($report['passed'])->toBeTrue()
+        ->and($report['accepted_ballots'])->toBe(1)
+        ->and($report['rejected_ballots'])->toBe(1);
+});
+
+test('home page renders the ceremony shell', function (): void {
+    $this->withoutVite();
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Home')
+            ->has('snapshot.stage')
+        );
+});

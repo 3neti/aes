@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Election\Diagnostics;
+
+use App\Election\Core\ActivityJournal;
+use App\Election\Support\ElectionStorage;
+
+final class DiagnosticsService
+{
+    public function __construct(
+        private readonly ElectionStorage $storage,
+        private readonly ActivityJournal $journal,
+    ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function get(): array
+    {
+        return [
+            'storage_root' => $this->storage->root(),
+            'configuration' => $this->storage->readJson('runtime/active-precinct.json'),
+            'package' => $this->storage->readJson('packages/active-package.json'),
+            'journal_entries' => count($this->journal->entries()),
+            'accepted_ballots' => count($this->storage->files('counting/accepted')),
+            'rejected_ballots' => count($this->storage->files('counting/rejected')),
+            'printer' => 'file',
+            'scanner' => 'simulation',
+        ];
+    }
+}
