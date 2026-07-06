@@ -41,6 +41,7 @@
 - Downloadable TAR evidence bundle archive verification through an Artisan command and Diagnostics ceremony action, including persisted verification reports and mismatch inspection.
 - Upload-and-verify workflow for externally returned TAR evidence bundles copied back onto the appliance, with staged uploaded archive artifacts and source-aware verification reports.
 - Browser-level Diagnostics workflow coverage for building an evidence bundle archive, exercising the download link, uploading returned TAR bytes through the verification route, and confirming the visible verification result without JavaScript or console errors.
+- GitHub Actions CI wiring for a dedicated Playwright/Pest Browser job that installs Chromium and runs `tests/Browser` separately from the PHP-version matrix.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -93,6 +94,8 @@
   - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
+- `.github/workflows/tests.yml`
+  - dedicated browser test job with PHP 8.4, Node 22, `npm ci`, `npx playwright install --with-deps chromium`, asset build, and `vendor/bin/pest tests/Browser --ci`
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -118,6 +121,7 @@
 - `php artisan election:scenario full-demo`
 - `vendor/bin/pest tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php --compact`
 - `composer validate --strict`
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
 
 ## Verification Results
 
@@ -131,6 +135,7 @@
 - Friday certification scenario: passed.
 - Full demo scenario: passed.
 - Focused Pest browser Diagnostics suite: passed, 1 test and 25 assertions.
+- GitHub Actions workflow YAML parse: passed.
 
 ## Known Gaps
 
@@ -154,4 +159,4 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Add CI wiring for Playwright browser installation and a dedicated browser test job.
+- Add artifact upload on browser-test failure for Pest Browser screenshots.
