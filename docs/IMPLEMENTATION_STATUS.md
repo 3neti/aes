@@ -39,6 +39,7 @@
 - Physical removable-media readiness check scaffold for configured export targets, including directory availability, process writability, and probe write/delete checks.
 - Operator-facing evidence bundle archive build and download workflow for environments without mounted removable media.
 - Downloadable TAR evidence bundle archive verification through an Artisan command and Diagnostics ceremony action, including persisted verification reports and mismatch inspection.
+- Upload-and-verify workflow for externally returned TAR evidence bundles copied back onto the appliance, with staged uploaded archive artifacts and source-aware verification reports.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -88,6 +89,7 @@
   - Diagnostics removable-media readiness action for simulated and missing configured targets
   - Diagnostics evidence bundle archive build, TAR content smoke check, download route, and journal event
   - Diagnostics downloadable TAR evidence bundle archive verification action, persisted report projection, and journal event
+  - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -109,8 +111,8 @@
 ## Verification Results
 
 - Focused Pest lifecycle suite: passed, 30 tests and 143 assertions.
-- Focused Pest ceremony page suite: passed, 25 tests and 402 assertions.
-- Pest: passed, 57 tests and 547 assertions.
+- Focused Pest ceremony page suite: passed, 26 tests and 437 assertions.
+- Pest: passed, 58 tests and 582 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
@@ -129,6 +131,7 @@
 - Removable-media export is currently simulated as a local staging directory by default; configured physical targets are readiness-checked but not auto-mounted or write-protection-aware yet.
 - Evidence bundle archive downloads are currently uncompressed deterministic TAR files.
 - Downloaded archive verification currently supports the appliance-generated uncompressed TAR format only.
+- Returned archive upload verification stages uploaded TAR files locally before verification; no malware scanning or external media provenance workflow is implemented yet.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Backup appliance support is limited to deterministic re-derivation behavior in services and scenarios.
@@ -137,4 +140,4 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Add an upload-and-verify workflow for externally returned TAR bundles copied back onto the appliance.
+- Add browser-level Diagnostics workflow tests for evidence bundle download, upload, and verification interactions.

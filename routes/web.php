@@ -39,6 +39,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/diagnostics/evidence-bundle-archive', [DiagnosticsController::class, 'buildEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.build');
     Route::get('/diagnostics/evidence-bundle-archive/download', [DiagnosticsController::class, 'downloadEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.download');
     Route::post('/diagnostics/evidence-bundle-archive/verify', [DiagnosticsController::class, 'verifyEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.verify');
+    Route::post('/diagnostics/evidence-bundle-archive/upload-verify', [DiagnosticsController::class, 'verifyUploadedEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.upload-verify');
     Route::post('/diagnostics/removable-media/export', [DiagnosticsController::class, 'exportRemovableMedia'])->name('diagnostics.removable-media.export');
     Route::post('/diagnostics/removable-media/readiness', [DiagnosticsController::class, 'checkRemovableMediaReadiness'])->name('diagnostics.removable-media.readiness');
     Route::post('/diagnostics/removable-media/verify', [DiagnosticsController::class, 'verifyRemovableMedia'])->name('diagnostics.removable-media.verify');

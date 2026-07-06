@@ -101,13 +101,19 @@ type EvidenceExportVerification = {
 type EvidenceBundleArchiveVerification = {
     exists: boolean;
     verify_url: string;
+    upload_verify_url: string;
     archive_id?: string | null;
     archive_path?: string | null;
+    archive_source?: string | null;
     archive_sha256?: string | null;
     checked_files?: number;
     mismatch_count?: number;
     mismatches?: VerificationMismatch[];
     passed?: boolean;
+    uploaded_archive_artifact?: string | null;
+    uploaded_archive_original_name?: string | null;
+    uploaded_archive_sha256?: string | null;
+    uploaded_at?: string | null;
     verification_hash?: string | null;
     verified_at?: string | null;
 };
@@ -328,7 +334,7 @@ defineProps<{
             v-if="diagnostics.evidence_bundle_archive_verification"
             class="border border-stone-300 bg-white p-5"
         >
-            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+            <div class="flex flex-col gap-4 lg:flex-row lg:justify-between">
                 <div>
                     <h2 class="text-lg font-semibold">Archive Verification</h2>
                     <p class="mt-1 text-sm text-stone-700">
@@ -344,27 +350,77 @@ defineProps<{
                         }}
                     </p>
                 </div>
-                <Form
-                    :action="
-                        diagnostics.evidence_bundle_archive_verification
-                            .verify_url
-                    "
-                    method="post"
-                    #default="{ processing, wasSuccessful }"
-                >
-                    <div class="flex flex-col items-start gap-2">
-                        <button
-                            class="secondary-button"
-                            type="submit"
-                            :disabled="processing"
-                        >
-                            {{ processing ? 'Verifying...' : 'Verify Archive' }}
-                        </button>
-                        <p v-if="wasSuccessful" class="text-xs text-stone-600">
-                            Archive verification complete.
-                        </p>
-                    </div>
-                </Form>
+                <div class="grid gap-3 sm:grid-cols-2 lg:max-w-3xl">
+                    <Form
+                        :action="
+                            diagnostics.evidence_bundle_archive_verification
+                                .verify_url
+                        "
+                        method="post"
+                        #default="{ processing, wasSuccessful }"
+                    >
+                        <div class="flex flex-col items-start gap-2">
+                            <button
+                                class="secondary-button"
+                                type="submit"
+                                :disabled="processing"
+                            >
+                                {{
+                                    processing
+                                        ? 'Verifying...'
+                                        : 'Verify Built Archive'
+                                }}
+                            </button>
+                            <p
+                                v-if="wasSuccessful"
+                                class="text-xs text-stone-600"
+                            >
+                                Archive verification complete.
+                            </p>
+                        </div>
+                    </Form>
+                    <Form
+                        :action="
+                            diagnostics.evidence_bundle_archive_verification
+                                .upload_verify_url
+                        "
+                        method="post"
+                        enctype="multipart/form-data"
+                        #default="{ errors, processing, wasSuccessful }"
+                    >
+                        <div class="flex flex-col items-start gap-2">
+                            <input
+                                class="w-full border border-stone-300 bg-white px-3 py-2 text-sm"
+                                name="archive"
+                                type="file"
+                                accept=".tar,application/x-tar"
+                            />
+                            <button
+                                class="secondary-button"
+                                type="submit"
+                                :disabled="processing"
+                            >
+                                {{
+                                    processing
+                                        ? 'Verifying Upload...'
+                                        : 'Upload Returned TAR'
+                                }}
+                            </button>
+                            <p
+                                v-if="errors.archive"
+                                class="text-xs text-red-700"
+                            >
+                                {{ errors.archive }}
+                            </p>
+                            <p
+                                v-if="wasSuccessful"
+                                class="text-xs text-stone-600"
+                            >
+                                Uploaded archive verification complete.
+                            </p>
+                        </div>
+                    </Form>
+                </div>
             </div>
 
             <dl
@@ -379,6 +435,15 @@ defineProps<{
                                 .passed
                                 ? 'Passed'
                                 : 'Failed'
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Source</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .archive_source
                         }}
                     </dd>
                 </div>
@@ -415,6 +480,50 @@ defineProps<{
                         {{
                             diagnostics.evidence_bundle_archive_verification
                                 .mismatch_count
+                        }}
+                    </dd>
+                </div>
+                <div
+                    v-if="
+                        diagnostics.evidence_bundle_archive_verification
+                            .uploaded_archive_artifact
+                    "
+                >
+                    <dt class="font-semibold text-stone-700">
+                        Uploaded Artifact
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .uploaded_archive_artifact
+                        }}
+                    </dd>
+                </div>
+                <div
+                    v-if="
+                        diagnostics.evidence_bundle_archive_verification
+                            .uploaded_archive_original_name
+                    "
+                >
+                    <dt class="font-semibold text-stone-700">Uploaded Name</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .uploaded_archive_original_name
+                        }}
+                    </dd>
+                </div>
+                <div
+                    v-if="
+                        diagnostics.evidence_bundle_archive_verification
+                            .uploaded_at
+                    "
+                >
+                    <dt class="font-semibold text-stone-700">Uploaded At</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_bundle_archive_verification
+                                .uploaded_at
                         }}
                     </dd>
                 </div>

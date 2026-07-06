@@ -13,6 +13,8 @@ use App\Election\Diagnostics\RemovableMediaReadinessChecker;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\File;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -110,6 +112,19 @@ final class DiagnosticsController extends Controller
     public function verifyEvidenceBundleArchive(EvidenceBundleArchiveVerifier $verifier): RedirectResponse
     {
         $report = $verifier->writeReport();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('evidence_bundle_archive_verification_hash', $report['verification_hash'] ?? null);
+    }
+
+    public function verifyUploadedEvidenceBundleArchive(Request $request, EvidenceBundleArchiveVerifier $verifier): RedirectResponse
+    {
+        $validated = $request->validate([
+            'archive' => ['required', File::types(['tar'])->max('50mb')],
+        ]);
+
+        $report = $verifier->verifyUploadedArchive($validated['archive']);
 
         return redirect()
             ->route('election.diagnostics')

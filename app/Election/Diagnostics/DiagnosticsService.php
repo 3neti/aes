@@ -234,6 +234,7 @@ final class DiagnosticsService
             return [
                 'exists' => false,
                 'verify_url' => route('election.diagnostics.evidence-bundle-archive.verify'),
+                'upload_verify_url' => route('election.diagnostics.evidence-bundle-archive.upload-verify'),
             ];
         }
 
@@ -242,13 +243,19 @@ final class DiagnosticsService
         return [
             'exists' => true,
             'verify_url' => route('election.diagnostics.evidence-bundle-archive.verify'),
+            'upload_verify_url' => route('election.diagnostics.evidence-bundle-archive.upload-verify'),
             'archive_id' => $report['archive_id'] ?? null,
             'archive_path' => $report['archive_path'] ?? null,
+            'archive_source' => $report['archive_source'] ?? 'local-download',
             'archive_sha256' => $report['archive_sha256'] ?? null,
             'checked_files' => $report['checked_files'] ?? 0,
             'mismatch_count' => count($report['mismatches'] ?? []),
             'mismatches' => $report['mismatches'] ?? [],
             'passed' => $report['passed'] ?? false,
+            'uploaded_archive_artifact' => $report['uploaded_archive_artifact'] ?? null,
+            'uploaded_archive_original_name' => $report['uploaded_archive_original_name'] ?? null,
+            'uploaded_archive_sha256' => $report['uploaded_archive_sha256'] ?? null,
+            'uploaded_at' => $report['uploaded_at'] ?? null,
             'verification_hash' => $report['verification_hash'] ?? null,
             'verified_at' => $report['verified_at'] ?? null,
         ];

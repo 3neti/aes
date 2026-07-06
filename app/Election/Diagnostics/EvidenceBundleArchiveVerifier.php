@@ -7,6 +7,7 @@ use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Http\UploadedFile;
 use JsonException;
 
 final class EvidenceBundleArchiveVerifier
@@ -72,16 +73,19 @@ final class EvidenceBundleArchiveVerifier
     /**
      * @return array<string, mixed>
      */
-    public function writeReport(?string $archivePath = null): array
+    public function writeReport(?string $archivePath = null, array $context = []): array
     {
         $report = [
             ...$this->verify($archivePath),
+            'archive_source' => $context['archive_source'] ?? 'local-download',
             'verified_at' => $this->clock->now()->toIso8601String(),
+            ...$context,
         ];
         $report['verification_hash'] = $this->json->hash($report);
         $report['artifact_path'] = $this->storage->writeJson('diagnostics/evidence-bundle-archive-verification.json', $report);
 
         $this->journal->record($report['passed'] ? 'evidence_bundle.archive_verification_passed' : 'evidence_bundle.archive_verification_failed', [
+            'archive_source' => $report['archive_source'],
             'archive_id' => $report['archive_id'],
             'archive_sha256' => $report['archive_sha256'],
             'checked_files' => $report['checked_files'],
@@ -90,6 +94,33 @@ final class EvidenceBundleArchiveVerifier
         ]);
 
         return $report;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function verifyUploadedArchive(UploadedFile $archive): array
+    {
+        $contents = $archive->getContent();
+        $uploadedAt = $this->clock->now();
+        $archiveHash = hash('sha256', $contents);
+        $artifact = sprintf(
+            'uploaded-evidence-bundle-%s-%s.tar',
+            $uploadedAt->format('Ymd-His'),
+            substr($archiveHash, 0, 12),
+        );
+        $path = $this->storage->path('diagnostics/uploaded-archives/'.$artifact);
+
+        $this->files->ensureDirectoryExists(dirname($path));
+        $this->files->put($path, $contents);
+
+        return $this->writeReport($path, [
+            'archive_source' => 'operator-upload',
+            'uploaded_archive_artifact' => $artifact,
+            'uploaded_archive_original_name' => $archive->getClientOriginalName(),
+            'uploaded_archive_sha256' => $archiveHash,
+            'uploaded_at' => $uploadedAt->toIso8601String(),
+        ]);
     }
 
     private function resolveArchivePath(?string $archivePath): ?string

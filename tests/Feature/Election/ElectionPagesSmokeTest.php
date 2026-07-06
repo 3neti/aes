@@ -6,6 +6,7 @@ use App\Election\Printing\BallotPrinter;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
+use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
@@ -263,6 +264,59 @@ test('diagnostics can verify downloadable evidence bundle archive', function ():
 
     expect(collect(app(ActivityJournal::class)->entries())->last()['event_type'])
         ->toBe('evidence_bundle.archive_verification_passed');
+
+    app(ElectionClock::class)->unfreeze();
+});
+
+test('diagnostics can upload and verify returned evidence bundle archive', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-08 18:50:00');
+    app(ActivateSamplePackage::class)->handle();
+
+    $this->post(route('election.diagnostics.evidence-bundle-archive.build'))
+        ->assertRedirect(route('election.diagnostics'));
+
+    $archive = app(ElectionStorage::class)->readJson('diagnostics/evidence-bundle-archive.json');
+    $uploadedArchive = new UploadedFile(
+        $archive['archive_path'],
+        'returned-evidence-bundle.tar',
+        'application/x-tar',
+        null,
+        true,
+    );
+
+    $this->post(route('election.diagnostics.evidence-bundle-archive.upload-verify'), [
+        'archive' => $uploadedArchive,
+    ])
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('evidence_bundle_archive_verification_hash');
+
+    $report = app(ElectionStorage::class)->readJson('diagnostics/evidence-bundle-archive-verification.json');
+
+    expect($report['schema_version'])->toBe('evidence-bundle-archive-verification-1')
+        ->and($report['archive_source'])->toBe('operator-upload')
+        ->and($report['archive_id'])->toBe('evidence-bundle-20260508-185000')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['mismatches'])->toBe([])
+        ->and($report['uploaded_archive_original_name'])->toBe('returned-evidence-bundle.tar')
+        ->and($report['uploaded_archive_artifact'])->toStartWith('uploaded-evidence-bundle-20260508-185000-')
+        ->and(app(ElectionStorage::class)->path('diagnostics/uploaded-archives/'.$report['uploaded_archive_artifact']))->toBeReadableFile();
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.evidence_bundle_archive_verification.exists', true)
+            ->where('diagnostics.evidence_bundle_archive_verification.archive_source', 'operator-upload')
+            ->where('diagnostics.evidence_bundle_archive_verification.uploaded_archive_original_name', 'returned-evidence-bundle.tar')
+            ->where('diagnostics.evidence_bundle_archive_verification.verification_hash', $report['verification_hash'])
+            ->where('diagnostics.evidence_bundle_archive_verification.mismatch_count', 0)
+        );
+
+    $event = collect(app(ActivityJournal::class)->entries())->last();
+
+    expect($event['event_type'])->toBe('evidence_bundle.archive_verification_passed')
+        ->and($event['payload']['archive_source'])->toBe('operator-upload')
+        ->and($event['payload']['archive_id'])->toBe('evidence-bundle-20260508-185000');
 
     app(ElectionClock::class)->unfreeze();
 });
