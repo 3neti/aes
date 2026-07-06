@@ -40,6 +40,7 @@
 - Operator-facing evidence bundle archive build and download workflow for environments without mounted removable media.
 - Downloadable TAR evidence bundle archive verification through an Artisan command and Diagnostics ceremony action, including persisted verification reports and mismatch inspection.
 - Upload-and-verify workflow for externally returned TAR evidence bundles copied back onto the appliance, with staged uploaded archive artifacts and source-aware verification reports.
+- Browser-level Diagnostics workflow coverage for building an evidence bundle archive, exercising the download link, uploading returned TAR bytes through the verification route, and confirming the visible verification result without JavaScript or console errors.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -90,16 +91,24 @@
   - Diagnostics evidence bundle archive build, TAR content smoke check, download route, and journal event
   - Diagnostics downloadable TAR evidence bundle archive verification action, persisted report projection, and journal event
   - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
+- `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
+  - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
 
 - `php artisan wayfinder:generate --with-form --no-interaction`
 - `composer require bacon/bacon-qr-code --no-interaction`
+- `composer require pestphp/pest-plugin-browser --dev --no-interaction`
+- `npm install --save-dev playwright@latest`
+- `npx playwright install chromium`
 - `php artisan test --compact tests/Feature/Election/ElectionLifecycleTest.php`
 - `php artisan test --compact tests/Feature/Election/ElectionPagesSmokeTest.php`
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --compact`
 - `vendor/bin/pint --dirty --format agent`
 - `npm run format -- resources/js/pages/Election/Diagnostics.vue`
+- `vendor/bin/pest --compact`
 - `php artisan test --compact`
 - `npm run lint:check`
 - `npm run types:check`
@@ -107,18 +116,21 @@
 - `npm run build`
 - `php artisan election:scenario friday-certification`
 - `php artisan election:scenario full-demo`
+- `vendor/bin/pest tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php --compact`
+- `composer validate --strict`
 
 ## Verification Results
 
 - Focused Pest lifecycle suite: passed, 30 tests and 143 assertions.
 - Focused Pest ceremony page suite: passed, 26 tests and 437 assertions.
-- Pest: passed, 58 tests and 582 assertions.
+- Pest configured feature/unit suite: passed, 58 tests and 582 assertions.
 - TypeScript: passed.
 - ESLint: passed.
 - Prettier check: passed.
 - Vite production build: passed.
 - Friday certification scenario: passed.
 - Full demo scenario: passed.
+- Focused Pest browser Diagnostics suite: passed, 1 test and 25 assertions.
 
 ## Known Gaps
 
@@ -132,6 +144,8 @@
 - Evidence bundle archive downloads are currently uncompressed deterministic TAR files.
 - Downloaded archive verification currently supports the appliance-generated uncompressed TAR format only.
 - Returned archive upload verification stages uploaded TAR files locally before verification; no malware scanning or external media provenance workflow is implemented yet.
+- Browser tests use Pest Browser and Playwright. The Pest Browser Laravel request bridge does not currently forward multipart file uploads, so the upload verification route also accepts a base64 TAR payload for browser-level workflow coverage.
+- In this sandbox, `php artisan test` can fail after installing Pest Browser because the plugin attempts socket operations under sandbox restrictions; `vendor/bin/pest` is the verified test entry point for this slice.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Backup appliance support is limited to deterministic re-derivation behavior in services and scenarios.
@@ -140,4 +154,4 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Add browser-level Diagnostics workflow tests for evidence bundle download, upload, and verification interactions.
+- Add CI wiring for Playwright browser installation and a dedicated browser test job.

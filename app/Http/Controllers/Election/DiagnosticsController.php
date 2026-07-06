@@ -15,6 +15,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\File;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -121,10 +122,33 @@ final class DiagnosticsController extends Controller
     public function verifyUploadedEvidenceBundleArchive(Request $request, EvidenceBundleArchiveVerifier $verifier): RedirectResponse
     {
         $validated = $request->validate([
-            'archive' => ['required', File::types(['tar'])->max('50mb')],
+            'archive' => ['nullable', 'required_without:archive_payload', File::types(['tar'])->max('50mb')],
+            'archive_name' => ['nullable', 'string', 'max:255'],
+            'archive_payload' => ['nullable', 'required_without:archive', 'string'],
         ]);
 
-        $report = $verifier->verifyUploadedArchive($validated['archive']);
+        if (isset($validated['archive'])) {
+            $report = $verifier->verifyUploadedArchive($validated['archive']);
+        } else {
+            $contents = base64_decode((string) $validated['archive_payload'], true);
+
+            if ($contents === false) {
+                throw ValidationException::withMessages([
+                    'archive_payload' => 'The archive payload must be valid base64.',
+                ]);
+            }
+
+            if (strlen($contents) > 50 * 1024 * 1024) {
+                throw ValidationException::withMessages([
+                    'archive_payload' => 'The archive payload must not be greater than 50 megabytes.',
+                ]);
+            }
+
+            $report = $verifier->verifyUploadedArchiveContents(
+                $contents,
+                (string) ($validated['archive_name'] ?? 'returned-evidence-bundle.tar'),
+            );
+        }
 
         return redirect()
             ->route('election.diagnostics')

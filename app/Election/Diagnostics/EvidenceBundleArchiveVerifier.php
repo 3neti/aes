@@ -101,7 +101,17 @@ final class EvidenceBundleArchiveVerifier
      */
     public function verifyUploadedArchive(UploadedFile $archive): array
     {
-        $contents = $archive->getContent();
+        return $this->verifyUploadedArchiveContents(
+            $archive->getContent(),
+            $archive->getClientOriginalName(),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function verifyUploadedArchiveContents(string $contents, string $originalName): array
+    {
         $uploadedAt = $this->clock->now();
         $archiveHash = hash('sha256', $contents);
         $artifact = sprintf(
@@ -117,7 +127,7 @@ final class EvidenceBundleArchiveVerifier
         return $this->writeReport($path, [
             'archive_source' => 'operator-upload',
             'uploaded_archive_artifact' => $artifact,
-            'uploaded_archive_original_name' => $archive->getClientOriginalName(),
+            'uploaded_archive_original_name' => basename($originalName),
             'uploaded_archive_sha256' => $archiveHash,
             'uploaded_at' => $uploadedAt->toIso8601String(),
         ]);
