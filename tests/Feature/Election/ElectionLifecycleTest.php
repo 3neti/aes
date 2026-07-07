@@ -1,6 +1,7 @@
 <?php
 
 use App\Election\Attestation\OfficerAttestationService;
+use App\Election\Attestation\OfficerRegistry;
 use App\Election\Certification\CertificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
@@ -285,6 +286,16 @@ test('officer attestation rejects invalid signature artifact', function (): void
 
     expect(app(ElectionStorage::class)->files('attestations'))->toHaveCount(0)
         ->and(app(ElectionStorage::class)->files('attestation-signatures'))->toHaveCount(0);
+});
+
+test('officer registry can rotate a local pin with evidence artifact', function (): void {
+    $rotation = app(OfficerRegistry::class)->rotatePin('SIM-OFFICER-001', '123456', '654321');
+
+    expect($rotation['code_hash'])->toBe(hash('sha256', 'SIM-OFFICER-001'))
+        ->and($rotation['artifact_path'])->toBeReadableFile()
+        ->and(app(OfficerRegistry::class)->verify('SIM-OFFICER-001', '123456'))->toBeNull()
+        ->and(app(OfficerRegistry::class)->verify('SIM-OFFICER-001', '654321'))->not->toBeNull()
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))->toContain('officer.pin_rotated');
 });
 
 test('ballot finalization creates deterministic qr payload and print artifact', function (): void {

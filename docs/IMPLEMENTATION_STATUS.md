@@ -57,6 +57,7 @@
 - QR decoder portability note records the no-bloat dependency criteria and evaluation checklist for any future pure PHP decoder.
 - PDF artifacts now use a more structured deterministic layout with header band, subtitle, monospaced body text, separator lines, and source-of-truth footer.
 - Evidence manifest entries now use an internal `EvidenceArtifact` value object for file name, relative path, size, and SHA-256 shaping.
+- Officer registry management scaffold can rotate a local officer PIN into a runtime registry artifact and journal the rotation without adding authentication or an admin dashboard.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -87,6 +88,7 @@
   - manual and handheld scan normalization before counting
   - camera scanner health adapter selection, not-configured behavior, and QR PNG image data URI decode before counting
   - officer attestation artifact, signature artifact, journal event, local registry metadata, invalid PIN rejection, and invalid signature rejection
+  - local officer PIN rotation runtime registry artifact and journal event
   - removable-media evidence export verification success path and tampered artifact mismatch command failure
   - downloadable TAR evidence bundle archive verification success path and tampered archive mismatch command failure
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
@@ -206,6 +208,8 @@
 - Pest configured feature/unit suite after PDF layout pass: passed, 59 tests and 592 assertions.
 - Focused Pest ceremony page suite after EvidenceArtifact extraction: passed, 27 tests and 442 assertions.
 - Pest configured feature/unit suite after EvidenceArtifact extraction: passed, 59 tests and 592 assertions.
+- Focused Pest lifecycle suite after officer registry scaffold: passed, 31 tests and 154 assertions.
+- Pest configured feature/unit suite after officer registry scaffold: passed, 60 tests and 598 assertions.
 - Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.
 - GitHub Actions workflow YAML parse: passed.
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.
@@ -222,6 +226,7 @@
 - Scanner certification and scanning are adapter-driven for manual, handheld keyboard-wedge, and camera/image QR workflows. Browser camera capture is scaffolded for the Counting ceremony.
 - Browser camera capture requires operator browser permission and a secure origin as enforced by the browser.
 - Officer attestation uses a local deterministic PIN registry and PNG signature artifacts; no identity proofing workflow yet.
+- Officer PIN rotation is local and artifact-backed; there is still no officer identity proofing or multi-person approval workflow.
 - Removable-media export is currently simulated as a local staging directory by default; configured physical targets are readiness-checked but not auto-mounted or write-protection-aware yet.
 - Evidence bundle archive downloads are currently uncompressed deterministic TAR files.
 - Downloaded archive verification currently supports the appliance-generated uncompressed TAR format only.
@@ -236,3 +241,4 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add Poppler-based PDF render checks in an environment with `pdftoppm` and `pdfinfo` installed.
+- Add ceremony-safe UI for officer registry inspection/rotation only if election procedures require operator-driven PIN rotation.
