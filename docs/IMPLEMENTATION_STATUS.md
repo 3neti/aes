@@ -51,6 +51,7 @@
 - Browser-level Counting camera permission denied/unavailable workflow coverage with zero accepted scans.
 - Shared Pest browser media/canvas shim helpers for future camera workflow tests.
 - Counting scanner decode failures are converted into rejected scan feedback with one rejected counting evidence file instead of a server error.
+- Browser-level Counting rejected camera QR frame coverage for PNG frames that reach the scanner route but fail QR decode.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -109,6 +110,7 @@
 - `tests/Browser/CountingCameraCaptureWorkflowTest.php`
   - Counting ceremony camera controls with mocked `getUserMedia`, deterministic QR canvas capture, camera scanner route submission, accepted scan feedback, and counting append file assertion
   - Counting ceremony camera permission denied/unavailable feedback with no accepted counting file
+  - Counting ceremony camera frame with no decodable QR code rejected through scanner route feedback and rejected evidence assertion
 - `tests/Helpers/BrowserMedia.php`
   - reusable `browserMediaCaptureShim()` and `browserMediaDeniedShim()` helpers loaded from `tests/Pest.php`
 - `.github/workflows/tests.yml`
@@ -176,6 +178,8 @@
 - Focused Pest browser Counting camera workflow suite with permission denied/unavailable coverage: passed, 2 tests and 21 assertions.
 - Pest Browser suite with Diagnostics workflow, ceremony smoke coverage, Counting camera capture, and camera unavailable coverage: passed, 11 tests and 70 assertions.
 - Focused Pest browser Counting camera workflow suite after media helper extraction: passed, 2 tests and 21 assertions.
+- Focused Pest browser Counting rejected camera QR frame workflow suite: passed, 3 tests and 34 assertions.
+- Pest Browser suite with rejected camera QR frame coverage: passed, 12 tests and 83 assertions.
 - Focused Pest ceremony page suite after scanner decode hardening: passed, 27 tests and 442 assertions.
 - Pest configured feature/unit suite after scanner decode hardening: passed, 59 tests and 587 assertions.
 - Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.

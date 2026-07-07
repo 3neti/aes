@@ -66,3 +66,37 @@ test('operator sees feedback when camera permission is denied or unavailable', f
 
     expect(app(ElectionStorage::class)->files('counting/accepted'))->toHaveCount(0);
 });
+
+test('operator sees rejected feedback when camera frame has no decodable qr code', function (): void {
+    config()->set('election.devices.scanner.driver', 'camera');
+    config()->set('election.devices.scanner.camera.name', 'Browser Camera Test');
+
+    app(ActivateSamplePackage::class)->handle();
+
+    $page = visit('/election/counting')
+        ->assertSee('Camera Capture')
+        ->assertSee('Accepted 0')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+
+    $page->script(browserMediaCaptureShim(browserInvalidQrPngDataUri()));
+
+    $page->click('Start Camera')
+        ->assertSee('Camera ready.')
+        ->click('Capture Scan')
+        ->wait(1)
+        ->assertSee('Scan Rejected')
+        ->assertSee('Unable to decode QR artifact')
+        ->assertSee('scanner-decode')
+        ->assertSee('Rejected 1')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+
+    expect(app(ElectionStorage::class)->files('counting/accepted'))->toHaveCount(0)
+        ->and(app(ElectionStorage::class)->files('counting/rejected'))->toHaveCount(1);
+});
+
+function browserInvalidQrPngDataUri(): string
+{
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGOSHzRgAAAAABJRU5ErkJggg==';
+}
