@@ -62,6 +62,7 @@
 - Scenario command reports are now also archived outside the resettable election runtime under `storage/app/election-scenario-reports` with contextual filenames containing scenario clock time, precinct id, scenario name, and report hash prefix.
 - Evidence folder scenario plan and compass are persisted in `docs/EVIDENCE_FOLDER_SCENARIO_PLAN.md` and `docs/EVIDENCE_FOLDER_SCENARIO_COMPASS.md`.
 - Evidence folder scenario command is registered as `php artisan election:scenario evidence-folder-demo`.
+- Evidence folder scenario now persists numbered ceremony artifact folders and `artifact-index.json` under `storage/app/election-scenario-artifacts`.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -98,6 +99,7 @@
   - downloadable TAR evidence bundle archive verification success path and tampered archive mismatch command failure
   - scenario command durable report archiving outside resettable election runtime
   - evidence folder demo scenario command registration
+  - evidence folder demo numbered folder and artifact index generation
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage

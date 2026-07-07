@@ -36,6 +36,7 @@ final class ScenarioRunner
         private readonly ElectionReturnService $returns,
         private readonly LifecycleState $lifecycle,
         private readonly ActivityJournal $journal,
+        private readonly ScenarioEvidenceFolderBuilder $evidenceFolders,
     ) {}
 
     /**
@@ -54,6 +55,16 @@ final class ScenarioRunner
         };
 
         $this->storage->writeJson("scenarios/{$name}-report.json", $report);
+
+        if ($name === 'evidence-folder-demo') {
+            $report = [
+                ...$report,
+                ...$this->evidenceFolders->build($name, $report),
+            ];
+
+            $this->storage->writeJson("scenarios/{$name}-report.json", $report);
+        }
+
         $archivePath = $this->storage->writeScenarioReport($name, $report, $this->clock->now()->format('Y-m-d-His'));
         $this->clock->unfreeze();
 

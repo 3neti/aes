@@ -608,12 +608,16 @@ test('evidence folder demo scenario command is registered', function (): void {
     $this->artisan('election:scenario evidence-folder-demo')
         ->expectsOutput('Scenario evidence-folder-demo passed.')
         ->expectsOutputToContain('Report: ')
+        ->expectsOutputToContain('Evidence Folder: ')
         ->assertSuccessful();
 
     $report = app(ElectionStorage::class)->readJson('scenarios/evidence-folder-demo-report.json');
 
     expect($report['passed'])->toBeTrue()
-        ->and($report['scenario'])->toBe('evidence-folder-demo');
+        ->and($report['scenario'])->toBe('evidence-folder-demo')
+        ->and($report['evidence_folder_path'])->toBeDirectory()
+        ->and($report['artifact_index_path'])->toBeReadableFile()
+        ->and($report['artifact_count'])->toBeGreaterThan(0);
 });
 
 test('home page renders the ceremony shell', function (): void {
