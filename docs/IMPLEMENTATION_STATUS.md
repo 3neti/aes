@@ -60,6 +60,7 @@
 - Officer registry management scaffold can rotate a local officer PIN into a runtime registry artifact and journal the rotation without adding authentication or an admin dashboard.
 - Removable-media readiness reports now include operator-facing status codes and labels for simulated ready, ready, missing, not writable, probe failed, and not ready states.
 - Scenario command reports are now also archived outside the resettable election runtime under `storage/app/election-scenario-reports` with contextual filenames containing scenario clock time, precinct id, scenario name, and report hash prefix.
+- Evidence folder scenario plan and compass are persisted in `docs/EVIDENCE_FOLDER_SCENARIO_PLAN.md` and `docs/EVIDENCE_FOLDER_SCENARIO_COMPASS.md`.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
