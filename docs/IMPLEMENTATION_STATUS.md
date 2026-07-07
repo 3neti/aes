@@ -70,6 +70,7 @@
 - POP workbook importer preserves the 2025 NLE POP XLSX as source evidence and normalizes clustered precinct rows into deterministic local registry files.
 - POP registry lookup and imported precinct package skeleton creation are available through Artisan commands.
 - POP import demo scenario is available as `php artisan election:scenario pop-import-demo`.
+- POP importer documentation is available in `docs/POP_IMPORTER.md`.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`

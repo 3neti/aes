@@ -1,0 +1,323 @@
+# POP Precinct Workbook Importer
+
+## Purpose
+
+The POP importer loads the COMELEC 2025 NLE clustered precinct workbook into the precinct appliance as local evidence and deterministic native registry files.
+
+The source workbook is a precinct and polling-place registry. It does not contain contests, candidates, ballot styles, legal ballot definitions, or vote rules. Imported POP package skeletons are therefore not final election packages; they are location and precinct identity artifacts that can later be paired with proper election registries.
+
+## Source Workbook
+
+Current source file:
+
+```text
+/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx
+```
+
+Workbook shape:
+
+- Sheet: `FINAL_Clustered.POP_NLE_2025`
+- Data rows: `93629`
+- Unique clustered precinct ids: `93629`
+- Total registered voters: `69773653`
+
+Required columns:
+
+| Column | Meaning |
+| --- | --- |
+| `REGION` | Region name. |
+| `PROVINCE` | Province name. |
+| `CITY_MUNICIPALITY` | City or municipality name. |
+| `BARANGAY` | Barangay name. |
+| `CLUSTERED_PRECINCT` | Unique clustered precinct identifier. |
+| `PRECINCT_CLUSTER` | Comma-separated component precinct cluster values. |
+| `CLUSTERTOTAL` | Registered voters in the clustered precinct. |
+| `POLLING_PLACE` | Polling place name. |
+
+The importer rejects a workbook whose first-row headers do not exactly match this shape.
+
+## Import Strategy
+
+The importer uses PHP `ZipArchive` and `XMLReader` to read the `.xlsx` file directly. It does not require PhpSpreadsheet, Laravel Excel, or a database.
+
+The appliance keeps two forms of evidence:
+
+- Original XLSX copy, preserved as source evidence.
+- Normalized local files, used by the device for deterministic lookup and package-skeleton creation.
+
+The importer writes journal events:
+
+- `pop.imported` when import succeeds.
+- `pop.import_failed` when validation or parsing fails.
+- `pop.package_created` when an imported precinct package skeleton is written.
+
+## Directories And Files
+
+After import, files are written under resettable election runtime storage:
+
+```text
+storage/app/election/
+  imports/pop/2025NLE_POP.xlsx
+  registries/pop-2025-nle/
+    manifest.json
+    precincts.jsonl
+    clustered-precinct-index.json
+    location-summary.json
+  packages/imported/{clustered_precinct}.json
+  scenarios/pop-import-demo-report.json
+```
+
+Scenario reports are also archived outside resettable runtime storage:
+
+```text
+storage/app/election-scenario-reports/
+  2026-05-08-080000-7010001-pop-import-demo-51fd2c0f3bec-report.json
+```
+
+Important runtime reset note: `storage/app/election` is reset by scenarios and tests. Re-import the workbook after a reset, or use the durable scenario report when reviewing a completed scenario.
+
+## Normalized Precinct Record
+
+Each row in `precincts.jsonl` is one JSON object on one line:
+
+```json
+{
+  "schema_version": "pop-precinct-row-1",
+  "region": "BARMM",
+  "province": "BASILAN",
+  "city_municipality": "CITY OF ISABELA",
+  "barangay": "ISABELA PROPER",
+  "clustered_precinct": "7010001",
+  "precinct_cluster": "0001A, 0002A, 0003A",
+  "cluster_total": 521,
+  "polling_place": "ISABELA PROPER BARANGAY HALL",
+  "source_row": 2,
+  "row_hash": "..."
+}
+```
+
+Field notes:
+
+- `source_row` is the original Excel row number.
+- `row_hash` is the canonical hash of the normalized row before `row_hash` is added.
+- `cluster_total` is stored as an integer.
+- Text values are trimmed during import.
+
+## Manifest
+
+`manifest.json` records the import and the generated registry:
+
+```json
+{
+  "schema_version": "pop-registry-manifest-1",
+  "importer_version": "pop-workbook-importer-1",
+  "registry_version": "pop-2025-nle",
+  "sheet_name": "FINAL_Clustered.POP_NLE_2025",
+  "headers": ["REGION", "PROVINCE", "CITY_MUNICIPALITY", "BARANGAY", "CLUSTERED_PRECINCT", "PRECINCT_CLUSTER", "CLUSTERTOTAL", "POLLING_PLACE"],
+  "source": {
+    "original_path": "/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx",
+    "copied_path": "storage/app/election/imports/pop/2025NLE_POP.xlsx",
+    "filename": "2025NLE_POP.xlsx",
+    "bytes": 5333574,
+    "sha256": "..."
+  },
+  "row_count": 93629,
+  "unique_clustered_precinct_count": 93629,
+  "total_registered_voters": 69773653,
+  "registry_hash": "eb102e2c5b4497f676bfbbb4c5d381cd9d2bbd91c037a69cc8f894080292d0e1",
+  "precincts_path": ".../precincts.jsonl",
+  "index_path": ".../clustered-precinct-index.json",
+  "location_summary_path": ".../location-summary.json",
+  "manifest_hash": "..."
+}
+```
+
+`registry_hash` is computed from the emitted JSONL contents. Re-importing the same workbook should produce the same registry hash.
+
+## Index And Lookup
+
+`clustered-precinct-index.json` maps each `CLUSTERED_PRECINCT` to a byte position in `precincts.jsonl`:
+
+```json
+{
+  "7010001": {
+    "offset": 0,
+    "bytes": 355,
+    "row_hash": "..."
+  }
+}
+```
+
+`PopPrecinctRegistry::find()` consumes this index by:
+
+1. Reading `manifest.json`.
+2. Loading `clustered-precinct-index.json`.
+3. Seeking to the JSONL byte offset.
+4. Reading and decoding one line from `precincts.jsonl`.
+
+This avoids scanning all `93629` rows for each lookup.
+
+## Imported Package Skeleton
+
+`php artisan election:pop-activate 7010001` writes:
+
+```text
+storage/app/election/packages/imported/7010001.json
+```
+
+Package shape:
+
+```json
+{
+  "schema_version": "imported-pop-package-1",
+  "election_id": "2025NLE-POP",
+  "precinct_id": "7010001",
+  "ballot_style_id": "unassigned",
+  "registry_version": "pop-2025-nle",
+  "transport": "pop-workbook-import",
+  "signature": "UNSIGNED-POP-IMPORT-SIMULATION",
+  "location": {
+    "region": "BARMM",
+    "province": "BASILAN",
+    "city_municipality": "CITY OF ISABELA",
+    "barangay": "ISABELA PROPER",
+    "polling_place": "ISABELA PROPER BARANGAY HALL"
+  },
+  "precinct_cluster": "0001A, 0002A, 0003A",
+  "cluster_total": 521,
+  "source": {
+    "row": 2,
+    "row_hash": "...",
+    "registry_hash": "...",
+    "source_workbook_hash": "..."
+  },
+  "package_hash": "...",
+  "artifact_path": "..."
+}
+```
+
+`ballot_style_id` is intentionally `unassigned` because the POP workbook does not include ballot styles.
+
+## Console Commands
+
+Import the workbook:
+
+```bash
+php artisan election:pop-import /Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx
+```
+
+Verified output:
+
+```text
+POP workbook imported.
+Rows: 93629
+Unique clustered precincts: 93629
+Total registered voters: 69773653
+Registry hash: eb102e2c5b4497f676bfbbb4c5d381cd9d2bbd91c037a69cc8f894080292d0e1
+Manifest: /Users/rli/PhpstormProjects/aes/storage/app/election/registries/pop-2025-nle/manifest.json
+```
+
+Look up a clustered precinct:
+
+```bash
+php artisan election:pop-lookup 7010001
+```
+
+Verified output:
+
+```text
+Clustered precinct 7010001
+Region: BARMM
+Province: BASILAN
+City/Municipality: CITY OF ISABELA
+Barangay: ISABELA PROPER
+Precinct cluster: 0001A, 0002A, 0003A
+Cluster total: 521
+Polling place: ISABELA PROPER BARANGAY HALL
+```
+
+Create an imported package skeleton:
+
+```bash
+php artisan election:pop-activate 7010001
+```
+
+Verified output:
+
+```text
+Imported POP precinct package 7010001 written.
+Package hash: afe2320fe55cc3c3d2dfe274bd72360cb82ad11c9605d506c7c73918ad5ddb9a
+Artifact: /Users/rli/PhpstormProjects/aes/storage/app/election/packages/imported/7010001.json
+```
+
+Run the deterministic scenario:
+
+```bash
+php artisan election:scenario pop-import-demo
+```
+
+Verified output:
+
+```text
+Scenario pop-import-demo passed.
+Report: /Users/rli/PhpstormProjects/aes/storage/app/election-scenario-reports/2026-05-08-080000-7010001-pop-import-demo-51fd2c0f3bec-report.json
+```
+
+## Consumption Flow
+
+Operator/import flow:
+
+1. Place or provide the POP workbook path on the appliance.
+2. Run `election:pop-import`.
+3. Review `manifest.json` and command output.
+4. Run `election:pop-lookup {clustered_precinct}` to inspect a precinct.
+5. Run `election:pop-activate {clustered_precinct}` to create a package skeleton.
+
+Device/service flow:
+
+1. `PopWorkbookImporter` copies the XLSX and writes normalized registry files.
+2. `PopPrecinctRegistry` reads the manifest and index.
+3. `PopPrecinctRegistry::find()` performs direct JSONL lookup by clustered precinct id.
+4. `ActivateImportedPrecinctPackage` writes a deterministic package skeleton.
+5. `ScenarioRunner` can execute `pop-import-demo` for repeatable lifecycle verification.
+
+## Verification
+
+Focused test file:
+
+```text
+tests/Feature/Election/PopWorkbookImportTest.php
+```
+
+Coverage:
+
+- Real workbook import writes manifest, source copy, JSONL, index, and location summary.
+- Known workbook facts are verified: `93629` rows, `93629` unique clustered precincts, expected headers, and `69773653` registered voters.
+- Re-importing the same workbook preserves the same registry hash.
+- Lookup for `7010001` returns the expected location and polling place.
+- Package activation writes `packages/imported/7010001.json`.
+- Invalid headers fail with a clear error.
+- `pop-import-demo` scenario imports the workbook and writes a package skeleton.
+
+Verified runs:
+
+```text
+vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact
+```
+
+Passed: 4 tests, 52 assertions.
+
+```text
+vendor/bin/pest --compact
+```
+
+Passed: 66 tests, 871 assertions.
+
+## Operational Limits
+
+- `storage/app/election` is resettable runtime storage. Scenario and test resets remove imported POP files.
+- The durable `pop-import-demo` scenario report is retained under `storage/app/election-scenario-reports`.
+- `pop-import-demo` currently uses the local path `/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx`.
+- There is no Inertia UI for POP import, lookup, or activation yet.
+- There is no COMELEC workbook signature verification yet.
+- The imported package skeleton is not a legal election package until paired with official contests, candidates, ballot styles, signatures, and certification procedures.
