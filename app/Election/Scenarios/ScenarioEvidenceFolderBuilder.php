@@ -163,6 +163,11 @@ final class ScenarioEvidenceFolderBuilder
     private function copyArtifact(string $folder, string $directory, string $category, string $source): array
     {
         $target = $folder.'/'.$directory.'/'.basename($source);
+
+        if ($this->files->exists($target)) {
+            $target = $folder.'/'.$directory.'/'.basename(dirname($source)).'-'.basename($source);
+        }
+
         $this->files->copy($source, $target);
 
         return $this->artifactRecord($category, $target, $source, $directory.'/'.basename($target));

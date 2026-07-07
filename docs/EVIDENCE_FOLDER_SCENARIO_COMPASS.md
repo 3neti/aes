@@ -23,7 +23,7 @@ Create `php artisan election:scenario evidence-folder-demo` so a complete simula
 | Evidence folder builder | Complete | Copies runtime artifacts into numbered durable evidence folders and writes an artifact index. |
 | Summary reports | Complete | Generates JSON and text reports with flow, statistics, hashes, and artifact pointers. |
 | Tally sheet artifacts | Complete | Generates deterministic tally sheet TXT/PDF artifacts and copies them into the evidence folder. |
-| Scenario verification | Pending | Add focused feature coverage for folder contents and hashes. |
+| Scenario verification | Complete | Verifies numbered folders, required artifacts, summary pointers, copied hashes, and persistence after a later scenario run. |
 | Final run and status | Pending | Run scenario and update docs with paths and results. |
 
 ## Commit Log
@@ -35,7 +35,8 @@ Create `php artisan election:scenario evidence-folder-demo` so a complete simula
 | Evidence folder builder | `1a6831e` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 180 assertions |
 | Summary reports | `88cfaf7` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 187 assertions |
 | Tally sheet artifacts | Pending | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 192 assertions |
+| Scenario verification | Pending | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 363 assertions |
 
 ## Next Slice
 
-Add focused verification for folder contents, summary pointers, copied hashes, and persistence after later scenario runs.
+Run final commands, update status and compass with generated evidence paths and results.

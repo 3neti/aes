@@ -65,6 +65,7 @@
 - Evidence folder scenario now persists numbered ceremony artifact folders and `artifact-index.json` under `storage/app/election-scenario-artifacts`.
 - Evidence folder scenario writes `summary-report.json` and `summary-report.txt` with lifecycle flow, statistics, hashes, and artifact pointers.
 - Evidence folder scenario writes deterministic `tally-sheet.txt` and `tally-sheet.pdf` artifacts into the counting-and-tally evidence folder.
+- Evidence folder scenario verification now checks required folders, required artifacts, summary pointers, copied file hashes, and persistence after a later runtime reset.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -104,6 +105,7 @@
   - evidence folder demo numbered folder and artifact index generation
   - evidence folder demo summary report output
   - evidence folder demo tally sheet text and PDF artifacts
+  - evidence folder demo evidence folder content, pointer, hash, and persistence verification
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage

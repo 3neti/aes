@@ -613,20 +613,56 @@ test('evidence folder demo scenario command is registered', function (): void {
 
     $report = app(ElectionStorage::class)->readJson('scenarios/evidence-folder-demo-report.json');
     $summary = json_decode(file_get_contents($report['summary_report_path']), true, flags: JSON_THROW_ON_ERROR);
+    $index = json_decode(file_get_contents($report['artifact_index_path']), true, flags: JSON_THROW_ON_ERROR);
+    $folder = $report['evidence_folder_path'];
 
     expect($report['passed'])->toBeTrue()
         ->and($report['scenario'])->toBe('evidence-folder-demo')
-        ->and($report['evidence_folder_path'])->toBeDirectory()
+        ->and($folder)->toBeDirectory()
         ->and($report['artifact_index_path'])->toBeReadableFile()
         ->and($report['summary_report_path'])->toBeReadableFile()
         ->and($report['summary_report_text_path'])->toBeReadableFile()
         ->and($report['artifact_count'])->toBeGreaterThan(0)
-        ->and($report['evidence_folder_path'].'/05-counting-and-tally/tally-sheet.txt')->toBeReadableFile()
-        ->and($report['evidence_folder_path'].'/05-counting-and-tally/tally-sheet.pdf')->toBeReadableFile()
+        ->and($folder.'/01-device-initiation-scan-documents')->toBeDirectory()
+        ->and($folder.'/02-device-and-certification-reports')->toBeDirectory()
+        ->and($folder.'/03-officer-attestations')->toBeDirectory()
+        ->and($folder.'/04-ballots')->toBeDirectory()
+        ->and($folder.'/05-counting-and-tally')->toBeDirectory()
+        ->and($folder.'/06-election-return')->toBeDirectory()
+        ->and($folder.'/07-journal')->toBeDirectory()
+        ->and($folder.'/01-device-initiation-scan-documents/cert-001-qr.png')->toBeReadableFile()
+        ->and($folder.'/02-device-and-certification-reports/device-certification-report.json')->toBeReadableFile()
+        ->and($folder.'/04-ballots/demo-ballot-001.pdf')->toBeReadableFile()
+        ->and($folder.'/05-counting-and-tally/tally-sheet.txt')->toBeReadableFile()
+        ->and($folder.'/05-counting-and-tally/tally-sheet.pdf')->toBeReadableFile()
+        ->and($folder.'/06-election-return/0421-A-return.pdf')->toBeReadableFile()
         ->and($summary['flow'])->not->toBeEmpty()
         ->and($summary['statistics']['accepted_ballots'])->toBe(1)
+        ->and($summary['statistics']['rejected_ballots'])->toBe(1)
+        ->and($summary['statistics']['total_evidence_files_copied'])->toBe($index['artifact_count'])
+        ->and($summary['important_hashes']['election_return_hash'])->toBe($report['return_hash'])
+        ->and($summary['artifact_pointers']['device_initiation_scan_documents'])->not->toBeEmpty()
+        ->and($summary['artifact_pointers']['officer_attestations'])->not->toBeEmpty()
         ->and($summary['artifact_pointers']['counting_and_tally'])->not->toBeEmpty()
         ->and($summary['artifact_pointers']['ballots'])->not->toBeEmpty();
+
+    expect(glob($folder.'/03-officer-attestations/attestation-*.json') ?: [])->not->toBeEmpty()
+        ->and(glob($folder.'/03-officer-attestations/attestation-*.png') ?: [])->not->toBeEmpty();
+
+    foreach ($index['artifacts'] as $artifact) {
+        $path = $folder.'/'.$artifact['relative_path'];
+
+        expect($path)->toBeReadableFile()
+            ->and(filesize($path))->toBe($artifact['bytes'])
+            ->and(hash_file('sha256', $path))->toBe($artifact['sha256']);
+    }
+
+    $this->artisan('election:scenario full-demo')
+        ->expectsOutput('Scenario full-demo passed.')
+        ->assertSuccessful();
+
+    expect($folder)->toBeDirectory()
+        ->and($report['summary_report_path'])->toBeReadableFile();
 });
 
 test('home page renders the ceremony shell', function (): void {
