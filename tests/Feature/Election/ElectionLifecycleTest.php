@@ -306,6 +306,9 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
         ->and(file_exists($job['pdf_artifact_path']))->toBeTrue()
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('%PDF-1.4')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('Official Simulation Ballot')
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('Alternative Election System - Simulation Evidence Artifact')
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('Paper ballots remain the legal source of truth.')
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('/BaseFont /Courier')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('pres-ada');
 });
 
@@ -543,6 +546,8 @@ test('election return artifact is generated from tally', function (): void {
         ->and(app(ElectionStorage::class)->readJson('returns/0421-A-return.json')['return_hash'])->toBe($return['return_hash'])
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('%PDF-1.4')
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Election Return')
+        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Alternative Election System - Simulation Evidence Artifact')
+        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Paper ballots remain the legal source of truth.')
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('pres-ada: 1');
 });
 

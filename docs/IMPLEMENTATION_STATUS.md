@@ -55,6 +55,7 @@
 - CI operations note for manually confirming controlled browser screenshot/log artifact uploads in GitHub Actions.
 - QR decode is now behind an internal `QrCodeDecoder` adapter with `ZbarPngQrCodeDecoder` as the default implementation, preparing for a future pure PHP decoder without changing election services.
 - QR decoder portability note records the no-bloat dependency criteria and evaluation checklist for any future pure PHP decoder.
+- PDF artifacts now use a more structured deterministic layout with header band, subtitle, monospaced body text, separator lines, and source-of-truth footer.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -131,6 +132,8 @@
   - missing-artifact troubleshooting checklist
 - `docs/QR_DECODER_PORTABILITY.md`
   - adapter boundary summary, dependency acceptance criteria, and verification checklist for any pure PHP QR decoder candidate
+- `docs/PDF_ARTIFACTS.md`
+  - current PDF layout, structural verification, and pending Poppler render-check procedure
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -195,6 +198,8 @@
 - Pest configured feature/unit suite after scanner decode hardening: passed, 59 tests and 587 assertions.
 - Focused Pest lifecycle suite after QR decoder adapter extraction: passed, 30 tests and 143 assertions.
 - Pest configured feature/unit suite after QR decoder adapter extraction: passed, 59 tests and 587 assertions.
+- Focused Pest lifecycle suite after PDF layout pass: passed, 30 tests and 148 assertions.
+- Pest configured feature/unit suite after PDF layout pass: passed, 59 tests and 592 assertions.
 - Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.
 - GitHub Actions workflow YAML parse: passed.
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.
@@ -206,6 +211,7 @@
 
 - QR decoding currently uses the local `zbarimg` binary; a pure PHP or packaged decoder adapter may be preferable for deployment portability.
 - PDF ballot and Election Return artifacts are generated with a simple internal PDF renderer.
+- Poppler (`pdftoppm`, `pdfinfo`) was not available in the local environment for PNG render verification during the PDF layout pass.
 - Printer health certification can probe CUPS status when configured, and CUPS ballot submission is available behind an opt-in driver only after matching certification. File artifact printing remains the default and no ESC/POS output is implemented.
 - Scanner certification and scanning are adapter-driven for manual, handheld keyboard-wedge, and camera/image QR workflows. Browser camera capture is scaffolded for the Counting ceremony.
 - Browser camera capture requires operator browser permission and a secure origin as enforced by the browser.
@@ -223,4 +229,4 @@
 ## Next Recommended Steps
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
-- Add PDF visual design pass and Poppler-based render checks if Poppler is available.
+- Add Poppler-based PDF render checks in an environment with `pdftoppm` and `pdfinfo` installed.
