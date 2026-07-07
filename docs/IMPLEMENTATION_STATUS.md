@@ -42,6 +42,11 @@
 - Upload-and-verify workflow for externally returned TAR evidence bundles copied back onto the appliance, with staged uploaded archive artifacts and source-aware verification reports.
 - Browser-level Diagnostics workflow coverage for building an evidence bundle archive, exercising the download link, uploading returned TAR bytes through the verification route, and confirming the visible verification result without JavaScript or console errors.
 - GitHub Actions CI wiring for a dedicated Playwright/Pest Browser job that installs Chromium and runs `tests/Browser` separately from the PHP-version matrix.
+- GitHub Actions failure artifact upload for Pest Browser screenshots so failed browser runs expose captured UI evidence without committing screenshots.
+- Browser testing workflow documentation for local setup, CI troubleshooting, and screenshot artifact inspection.
+- GitHub Actions failure artifact upload for Laravel backend logs during browser-test failures.
+- Browser smoke coverage for Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics with JavaScript error and console log assertions.
+- Manual GitHub Actions controlled browser artifact failure input that writes screenshot/log marker files and fails the browser job to verify artifact uploads.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -94,8 +99,18 @@
   - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
+- `tests/Browser/ElectionCeremonyPagesSmokeTest.php`
+  - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics browser smoke coverage with `assertNoJavaScriptErrors()` and `assertNoConsoleLogs()`
 - `.github/workflows/tests.yml`
   - dedicated browser test job with PHP 8.4, Node 22, `npm ci`, `npx playwright install --with-deps chromium`, asset build, and `vendor/bin/pest tests/Browser --ci`
+  - browser screenshot artifact upload on failed browser-test runs
+  - Laravel backend log artifact upload on failed browser-test runs
+  - manual `workflow_dispatch` controlled browser artifact failure input
+- `docs/BROWSER_TESTING_WORKFLOW.md`
+  - local Pest Browser setup and run commands
+  - CI browser job shape and screenshot/backend-log artifact inspection workflow
+  - controlled artifact verification workflow for screenshot/log upload checks
+  - troubleshooting notes for Playwright, Inertia/Vite, returned TAR upload verification, and CI backend context
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -120,7 +135,13 @@
 - `php artisan election:scenario friday-certification`
 - `php artisan election:scenario full-demo`
 - `vendor/bin/pest tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php --compact`
+- `vendor/bin/pest tests/Browser --compact`
+- `vendor/bin/pest tests/Browser/ElectionCeremonyPagesSmokeTest.php --compact`
+- `vendor/bin/pest --compact`
 - `composer validate --strict`
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
+- Documentation-only slice; no additional test command required.
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
 
 ## Verification Results
@@ -135,7 +156,13 @@
 - Friday certification scenario: passed.
 - Full demo scenario: passed.
 - Focused Pest browser Diagnostics suite: passed, 1 test and 25 assertions.
+- Pest Browser suite: passed, 1 test and 25 assertions.
+- Focused Pest browser ceremony smoke suite: passed, 8 tests and 24 assertions.
+- Pest Browser suite with Diagnostics workflow and ceremony smoke coverage: passed, 9 tests and 49 assertions.
+- Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.
 - GitHub Actions workflow YAML parse: passed.
+- GitHub Actions browser backend-log artifact workflow YAML parse: passed.
+- GitHub Actions controlled browser artifact failure workflow YAML parse: passed.
 
 ## Known Gaps
 
@@ -158,5 +185,5 @@
 ## Next Recommended Steps
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
-- Add full browser tests with JavaScript error checks once Pest Browser or equivalent Playwright tooling is installed.
-- Add artifact upload on browser-test failure for Pest Browser screenshots.
+- Add Counting camera-capture browser workflow coverage with mocked `getUserMedia` when the test harness supports browser permission stubbing.
+- Add a short CI operations note after running the controlled artifact check remotely and confirming both artifacts appear in GitHub Actions.

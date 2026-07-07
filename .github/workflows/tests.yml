@@ -13,6 +13,13 @@ on:
       - main
       - master
       - workos
+  workflow_dispatch:
+    inputs:
+      force_browser_artifact_failure:
+        description: 'Create controlled browser failure artifacts and fail the browser job'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -104,3 +111,27 @@ jobs:
 
       - name: Browser Tests
         run: vendor/bin/pest tests/Browser --ci
+
+      - name: Create Controlled Browser Failure Artifacts
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.force_browser_artifact_failure }}
+        run: |
+          mkdir -p tests/Browser/Screenshots storage/logs
+          printf 'Controlled browser artifact failure requested by workflow_dispatch.\n' > tests/Browser/Screenshots/controlled-browser-artifact-failure.txt
+          printf 'Controlled browser artifact failure requested by workflow_dispatch.\n' > storage/logs/controlled-browser-artifact-failure.log
+          exit 1
+
+      - name: Upload Browser Screenshots
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-screenshots
+          path: tests/Browser/Screenshots
+          if-no-files-found: ignore
+
+      - name: Upload Browser Backend Logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-backend-logs
+          path: storage/logs
+          if-no-files-found: ignore
