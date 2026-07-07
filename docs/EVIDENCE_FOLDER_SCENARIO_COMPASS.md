@@ -24,6 +24,7 @@ Create `php artisan election:scenario evidence-folder-demo` so a complete simula
 | Summary reports | Complete | Generates JSON and text reports with flow, statistics, hashes, and artifact pointers. |
 | Tally sheet artifacts | Complete | Generates deterministic tally sheet TXT/PDF artifacts and copies them into the evidence folder. |
 | Scenario verification | Complete | Verifies numbered folders, required artifacts, summary pointers, copied hashes, and persistence after a later scenario run. |
+| Deterministic reruns | Complete | Rebuilds the durable evidence folder on each run to prevent stale artifact accumulation. |
 | Final run and status | Pending | Run scenario and update docs with paths and results. |
 
 ## Commit Log
@@ -34,8 +35,9 @@ Create `php artisan election:scenario evidence-folder-demo` so a complete simula
 | Storage and scenario registration | `7ad825e` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 175 assertions |
 | Evidence folder builder | `1a6831e` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 180 assertions |
 | Summary reports | `88cfaf7` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 187 assertions |
-| Tally sheet artifacts | Pending | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 192 assertions |
-| Scenario verification | Pending | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 363 assertions |
+| Tally sheet artifacts | `670465d` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 192 assertions |
+| Scenario verification | `fd03d39` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 363 assertions |
+| Deterministic reruns | Pending | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`; `php artisan election:scenario evidence-folder-demo` | Passed: 33 tests, 363 assertions; scenario passed |
 
 ## Next Slice
 

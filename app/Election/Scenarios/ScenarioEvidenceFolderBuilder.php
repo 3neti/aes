@@ -25,6 +25,11 @@ final class ScenarioEvidenceFolderBuilder
     public function build(string $scenario, array $report): array
     {
         $folder = $this->folderPath($scenario, $report);
+
+        if ($this->files->isDirectory($folder)) {
+            $this->files->deleteDirectory($folder);
+        }
+
         $this->files->ensureDirectoryExists($folder);
         $this->writeTallySheet();
 

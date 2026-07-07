@@ -66,6 +66,7 @@
 - Evidence folder scenario writes `summary-report.json` and `summary-report.txt` with lifecycle flow, statistics, hashes, and artifact pointers.
 - Evidence folder scenario writes deterministic `tally-sheet.txt` and `tally-sheet.pdf` artifacts into the counting-and-tally evidence folder.
 - Evidence folder scenario verification now checks required folders, required artifacts, summary pointers, copied file hashes, and persistence after a later runtime reset.
+- Evidence folder scenario now rebuilds its durable evidence folder before copying artifacts so deterministic reruns do not accumulate stale files.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
