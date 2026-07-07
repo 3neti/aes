@@ -69,6 +69,7 @@
 - Evidence folder scenario now rebuilds its durable evidence folder before copying artifacts so deterministic reruns do not accumulate stale files.
 - POP workbook importer preserves the 2025 NLE POP XLSX as source evidence and normalizes clustered precinct rows into deterministic local registry files.
 - POP registry lookup and imported precinct package skeleton creation are available through Artisan commands.
+- POP import demo scenario is available as `php artisan election:scenario pop-import-demo`.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -176,6 +177,8 @@
 - `vendor/bin/pest --compact`
 - `vendor/bin/pint --dirty --format agent`
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
+- `vendor/bin/pint --dirty --format agent`
+- `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
 - `php artisan test --compact`
 - `npm run lint:check`
 - `npm run types:check`
@@ -262,6 +265,7 @@
 - Evidence folder statistics: 6 scan documents, 2 passed device checks, 3 certification ballots, 2 attestations, 2 signatures, 2 finalized ballots, 2 printed ballots, 1 spoiled ballot, 1 accepted ballot, 1 rejected ballot, 3 contests tallied, 28 journal entries, 36 evidence files copied, and 275451 evidence bytes copied.
 - Pest configured feature/unit suite after evidence folder scenario completion: passed, 62 tests and 819 assertions.
 - POP importer focused suite: passed, 3 tests and 41 assertions.
+- POP import demo scenario focused suite: passed, 4 tests and 52 assertions.
 
 ## Known Gaps
 

@@ -10,7 +10,9 @@ use App\Election\Devices\DeviceCertificationService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
+use App\Election\Preparation\ActivateImportedPrecinctPackage;
 use App\Election\Preparation\ActivateSamplePackage;
+use App\Election\Preparation\PopWorkbookImporter;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\SpoilBallot;
 use App\Election\Returns\ElectionReturnService;
@@ -37,6 +39,8 @@ final class ScenarioRunner
         private readonly LifecycleState $lifecycle,
         private readonly ActivityJournal $journal,
         private readonly ScenarioEvidenceFolderBuilder $evidenceFolders,
+        private readonly PopWorkbookImporter $popImporter,
+        private readonly ActivateImportedPrecinctPackage $activateImportedPrecinct,
     ) {}
 
     /**
@@ -51,6 +55,7 @@ final class ScenarioRunner
             'friday-certification' => $this->fridayCertification(),
             'full-demo' => $this->fullDemo(),
             'evidence-folder-demo' => $this->evidenceFolderDemo(),
+            'pop-import-demo' => $this->popImportDemo(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -160,6 +165,33 @@ final class ScenarioRunner
         return [
             ...$this->fullDemo(),
             'scenario' => 'evidence-folder-demo',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function popImportDemo(): array
+    {
+        $manifest = $this->popImporter->import('/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx');
+        $package = $this->activateImportedPrecinct->handle('7010001');
+
+        return [
+            'scenario' => 'pop-import-demo',
+            'passed' => $manifest['row_count'] === 93629
+                && $manifest['unique_clustered_precinct_count'] === 93629
+                && $package['precinct_id'] === '7010001',
+            'precinct_id' => $package['precinct_id'],
+            'registry_version' => $manifest['registry_version'],
+            'row_count' => $manifest['row_count'],
+            'unique_clustered_precinct_count' => $manifest['unique_clustered_precinct_count'],
+            'total_registered_voters' => $manifest['total_registered_voters'],
+            'registry_hash' => $manifest['registry_hash'],
+            'manifest_hash' => $manifest['manifest_hash'],
+            'manifest_path' => $manifest['artifact_path'],
+            'package_hash' => $package['package_hash'],
+            'package_path' => $package['artifact_path'],
+            'journal_entries' => count($this->journal->entries()),
         ];
     }
 

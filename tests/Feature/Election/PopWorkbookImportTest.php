@@ -99,6 +99,28 @@ test('pop workbook import rejects invalid headers and journals the failure', fun
         ->assertFailed();
 });
 
+test('pop import demo scenario imports workbook and writes a package skeleton', function (): void {
+    $path = popWorkbookPath();
+
+    if (! file_exists($path)) {
+        $this->markTestSkipped("POP workbook fixture is not available at {$path}.");
+    }
+
+    $this->artisan('election:scenario pop-import-demo')
+        ->expectsOutput('Scenario pop-import-demo passed.')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $report = app(ElectionStorage::class)->readJson('scenarios/pop-import-demo-report.json');
+
+    expect($report['passed'])->toBeTrue()
+        ->and($report['row_count'])->toBe(93629)
+        ->and($report['unique_clustered_precinct_count'])->toBe(93629)
+        ->and($report['precinct_id'])->toBe('7010001')
+        ->and($report['manifest_path'])->toBeReadableFile()
+        ->and($report['package_path'])->toBeReadableFile();
+});
+
 function popWorkbookPath(): string
 {
     return '/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx';
