@@ -570,11 +570,35 @@ test('full demo scenario command succeeds', function (): void {
         ->assertSuccessful();
 
     $report = app(ElectionStorage::class)->readJson('scenarios/full-demo-report.json');
+    $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
 
     expect($report['passed'])->toBeTrue()
+        ->and($report['precinct_id'])->toBe('7010001')
+        ->and($report['pop_import']['mapping_profile'])->toBe('comelec-pop-2025-nle')
+        ->and($report['pop_import']['row_count'])->toBe(93629)
+        ->and($report['pop_import']['clustered_precinct'])->toBe('7010001')
+        ->and($report['pop_import']['precinct_location']['polling_place'])->toBe('ISABELA PROPER BARANGAY HALL')
+        ->and($configuration['precinct_id'])->toBe('7010001')
+        ->and($configuration['ballot_style_id'])->toBe('BS-0421-A')
         ->and($report['accepted_ballots'])->toBe(1)
         ->and($report['rejected_ballots'])->toBe(1)
         ->and($report['attestation_hashes'])->toHaveCount(2);
+});
+
+test('full demo scenario uses configurable pop import defaults', function (): void {
+    config()->set('election.pop.source_path', resource_path('election/pop/2025NLE_POP.xlsx'));
+    config()->set('election.pop.profile', 'comelec-pop-2025-nle');
+    config()->set('election.pop.clustered_precinct', '7010001');
+
+    $this->artisan('election:scenario full-demo')
+        ->expectsOutput('Scenario full-demo passed.')
+        ->assertSuccessful();
+
+    $report = app(ElectionStorage::class)->readJson('scenarios/full-demo-report.json');
+
+    expect($report['pop_import']['source_path'])->toBe(resource_path('election/pop/2025NLE_POP.xlsx'))
+        ->and($report['pop_import']['mapping_profile'])->toBe('comelec-pop-2025-nle')
+        ->and($report['pop_import']['clustered_precinct'])->toBe('7010001');
 });
 
 test('scenario command archives reports outside resettable election runtime', function (): void {
@@ -600,7 +624,7 @@ test('scenario command archives reports outside resettable election runtime', fu
         ->and($fridayReports[0])->toBeReadableFile()
         ->and($fullDemoReports[0])->toBeReadableFile()
         ->and(basename($fridayReports[0]))->toContain('2026-05-08-080001-0421-a-friday-certification')
-        ->and(basename($fullDemoReports[0]))->toContain('2026-05-08-080001-0421-a-full-demo')
+        ->and(basename($fullDemoReports[0]))->toContain('2026-05-08-080001-7010001-full-demo')
         ->and($storage->readJson('scenarios/full-demo-report.json')['passed'])->toBeTrue();
 });
 
@@ -618,11 +642,14 @@ test('evidence folder demo scenario command is registered', function (): void {
 
     expect($report['passed'])->toBeTrue()
         ->and($report['scenario'])->toBe('evidence-folder-demo')
+        ->and($report['precinct_id'])->toBe('7010001')
+        ->and($report['pop_import']['row_count'])->toBe(93629)
         ->and($folder)->toBeDirectory()
         ->and($report['artifact_index_path'])->toBeReadableFile()
         ->and($report['summary_report_path'])->toBeReadableFile()
         ->and($report['summary_report_text_path'])->toBeReadableFile()
         ->and($report['artifact_count'])->toBeGreaterThan(0)
+        ->and($folder.'/00-pop-import-and-precinct-source')->toBeDirectory()
         ->and($folder.'/01-device-initiation-scan-documents')->toBeDirectory()
         ->and($folder.'/02-device-and-certification-reports')->toBeDirectory()
         ->and($folder.'/03-officer-attestations')->toBeDirectory()
@@ -630,17 +657,23 @@ test('evidence folder demo scenario command is registered', function (): void {
         ->and($folder.'/05-counting-and-tally')->toBeDirectory()
         ->and($folder.'/06-election-return')->toBeDirectory()
         ->and($folder.'/07-journal')->toBeDirectory()
+        ->and($folder.'/00-pop-import-and-precinct-source/manifest.json')->toBeReadableFile()
+        ->and($folder.'/00-pop-import-and-precinct-source/2025NLE_POP.xlsx')->toBeReadableFile()
+        ->and($folder.'/00-pop-import-and-precinct-source/active-precinct.json')->toBeReadableFile()
         ->and($folder.'/01-device-initiation-scan-documents/cert-001-qr.png')->toBeReadableFile()
         ->and($folder.'/02-device-and-certification-reports/device-certification-report.json')->toBeReadableFile()
         ->and($folder.'/04-ballots/demo-ballot-001.pdf')->toBeReadableFile()
         ->and($folder.'/05-counting-and-tally/tally-sheet.txt')->toBeReadableFile()
         ->and($folder.'/05-counting-and-tally/tally-sheet.pdf')->toBeReadableFile()
-        ->and($folder.'/06-election-return/0421-A-return.pdf')->toBeReadableFile()
+        ->and($folder.'/06-election-return/7010001-return.pdf')->toBeReadableFile()
         ->and($summary['flow'])->not->toBeEmpty()
+        ->and($summary['pop_import']['clustered_precinct'])->toBe('7010001')
         ->and($summary['statistics']['accepted_ballots'])->toBe(1)
         ->and($summary['statistics']['rejected_ballots'])->toBe(1)
         ->and($summary['statistics']['total_evidence_files_copied'])->toBe($index['artifact_count'])
         ->and($summary['important_hashes']['election_return_hash'])->toBe($report['return_hash'])
+        ->and($summary['important_hashes']['pop_registry_hash'])->toBe($report['pop_import']['registry_hash'])
+        ->and($summary['artifact_pointers']['pop_import_and_precinct_source'])->not->toBeEmpty()
         ->and($summary['artifact_pointers']['device_initiation_scan_documents'])->not->toBeEmpty()
         ->and($summary['artifact_pointers']['officer_attestations'])->not->toBeEmpty()
         ->and($summary['artifact_pointers']['counting_and_tally'])->not->toBeEmpty()

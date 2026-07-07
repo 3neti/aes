@@ -92,6 +92,19 @@ final class ScenarioEvidenceFolderBuilder
     {
         return [
             [
+                'category' => 'pop_import_and_precinct_source',
+                'directory' => '00-pop-import-and-precinct-source',
+                'sources' => [
+                    $this->storage->path('registries/pop-2025-nle/manifest.json'),
+                    $this->storage->path('registries/pop-2025-nle/clustered-precinct-index.json'),
+                    $this->storage->path('registries/pop-2025-nle/location-summary.json'),
+                    ...$this->storage->files('imports/pop'),
+                    ...$this->storage->files('packages/imported'),
+                    $this->storage->path('packages/active-package.json'),
+                    $this->storage->path('runtime/active-precinct.json'),
+                ],
+            ],
+            [
                 'category' => 'device_initiation_scan_documents',
                 'directory' => '01-device-initiation-scan-documents',
                 'sources' => [
@@ -276,6 +289,7 @@ final class ScenarioEvidenceFolderBuilder
             'election_id' => $configuration['election_id'] ?? null,
             'precinct_id' => $report['precinct_id'] ?? null,
             'flow' => $this->flow($report),
+            'pop_import' => $report['pop_import'] ?? null,
             'statistics' => $this->statistics($artifacts, $deviceReport, $certificationReport, $tally, $report),
             'artifact_pointers' => collect($artifacts)
                 ->groupBy('category')
@@ -283,6 +297,9 @@ final class ScenarioEvidenceFolderBuilder
                 ->all(),
             'important_hashes' => [
                 'mapping_hash' => $configuration['mapping_hash'] ?? null,
+                'pop_registry_hash' => $report['pop_import']['registry_hash'] ?? null,
+                'pop_manifest_hash' => $report['pop_import']['manifest_hash'] ?? null,
+                'pop_package_hash' => $report['pop_import']['package_hash'] ?? null,
                 'device_certification_report_hash' => $deviceReport['report_hash'] ?? null,
                 'friday_certification_report_hash' => $certificationReport['report_hash'] ?? null,
                 'ballot_payload_hashes' => collect($this->matchingStorageFiles('ballots', 'demo-'))
@@ -307,7 +324,8 @@ final class ScenarioEvidenceFolderBuilder
     private function flow(array $report): array
     {
         return [
-            ['step' => 'Activate sample precinct package', 'status' => 'complete'],
+            ['step' => 'Import POP workbook and activate precinct source', 'status' => isset($report['pop_import']) ? 'complete' : 'missing'],
+            ['step' => 'Bind POP precinct to sample ballot definition', 'status' => 'complete'],
             ['step' => 'Generate certification scan documents', 'status' => 'complete'],
             ['step' => 'Run device certification', 'status' => isset($report['device_report_hash']) ? 'complete' : 'missing'],
             ['step' => 'Run Friday certification', 'status' => isset($report['return_hash']) ? 'complete' : 'missing'],
@@ -380,6 +398,17 @@ final class ScenarioEvidenceFolderBuilder
 
         foreach ($summary['statistics'] as $name => $value) {
             $lines[] = "- {$name}: {$value}";
+        }
+
+        $lines[] = '';
+        $lines[] = 'POP Import:';
+
+        if (($summary['pop_import'] ?? null) === null) {
+            $lines[] = '- n/a';
+        } else {
+            foreach ($summary['pop_import'] as $name => $value) {
+                $lines[] = '- '.$name.': '.(is_array($value) ? json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : ($value ?? 'n/a'));
+            }
         }
 
         $lines[] = '';

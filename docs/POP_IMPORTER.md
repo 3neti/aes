@@ -11,7 +11,15 @@ The source workbook is a precinct and polling-place registry. It does not contai
 Current source file:
 
 ```text
-/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx
+resources/election/pop/2025NLE_POP.xlsx
+```
+
+The scenario default is configurable through `config/election.php`:
+
+```text
+election.pop.source_path
+election.pop.profile
+election.pop.clustered_precinct
 ```
 
 Workbook shape:
@@ -148,7 +156,7 @@ Field notes:
   "mapping_profile": "comelec-pop-2025-nle",
   "canonical_fields": ["region", "province", "city_municipality", "barangay", "clustered_precinct", "precinct_cluster", "cluster_total", "polling_place"],
   "source": {
-    "original_path": "/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx",
+    "original_path": "resources/election/pop/2025NLE_POP.xlsx",
     "copied_path": "storage/app/election/imports/pop/2025NLE_POP.xlsx",
     "filename": "2025NLE_POP.xlsx",
     "bytes": 5333574,
@@ -236,7 +244,13 @@ Package shape:
 Import the workbook:
 
 ```bash
-php artisan election:pop-import /Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx
+php artisan election:pop-import resources/election/pop/2025NLE_POP.xlsx
+```
+
+Custom path import:
+
+```bash
+php artisan election:pop-import /path/to/2025NLE_POP.xlsx
 ```
 
 Import with the strict alternate mapping profile:
@@ -303,6 +317,10 @@ Scenario pop-import-demo passed.
 Report: /Users/rli/PhpstormProjects/aes/storage/app/election-scenario-reports/2026-05-08-080000-7010001-pop-import-demo-51fd2c0f3bec-report.json
 ```
 
+The lifecycle `full-demo` and `evidence-folder-demo` scenarios now use the configured POP source by default. Their scenario reports include a `pop_import` section with source path, mapping profile, source label, row counts, registry hash, manifest hash/path, selected clustered precinct, precinct location, package hash, and package path.
+
+The evidence folder scenario also includes a `00-pop-import-and-precinct-source` folder containing the POP manifest, index, location summary, source workbook copy, imported package, active package, and active precinct configuration when present.
+
 ## Consumption Flow
 
 Operator/import flow:
@@ -319,7 +337,8 @@ Device/service flow:
 2. `PopPrecinctRegistry` reads the manifest and index.
 3. `PopPrecinctRegistry::find()` performs direct JSONL lookup by clustered precinct id.
 4. `ActivateImportedPrecinctPackage` writes a deterministic package skeleton.
-5. `ScenarioRunner` can execute `pop-import-demo` for repeatable lifecycle verification.
+5. `ScenarioRunner` can execute `pop-import-demo` for importer verification.
+6. `ScenarioRunner` uses configured POP defaults in `full-demo` and `evidence-folder-demo` to activate the imported precinct identity for the lifecycle flow.
 
 ## Verification
 
@@ -343,7 +362,9 @@ Coverage:
 - Missing mapped fields fail with a clear error.
 - Duplicate source headers fail with a clear error.
 - Duplicate clustered precinct ids fail with a clear error.
-- `pop-import-demo` scenario imports the workbook and writes a package skeleton.
+- `pop-import-demo` scenario imports the configured workbook and writes a package skeleton.
+- `full-demo` scenario imports POP, activates clustered precinct `7010001`, and writes POP details into the scenario report.
+- `evidence-folder-demo` copies POP import evidence and includes POP details in the summary report.
 
 Verified runs:
 
@@ -363,7 +384,7 @@ Passed: 71 tests, 897 assertions.
 
 - `storage/app/election` is resettable runtime storage. Scenario and test resets remove imported POP files.
 - The durable `pop-import-demo` scenario report is retained under `storage/app/election-scenario-reports`.
-- `pop-import-demo` currently uses the local path `/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx`.
+- Scenario POP source, profile, and clustered precinct are configurable through `election.pop.*` config values.
 - There is no Inertia UI for POP import, lookup, or activation yet.
 - There is no COMELEC workbook signature verification yet.
 - The imported package skeleton is not a legal election package until paired with official contests, candidates, ballot styles, signatures, and certification procedures.

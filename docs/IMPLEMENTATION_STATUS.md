@@ -70,6 +70,7 @@
 - POP workbook importer preserves the 2025 NLE POP XLSX as source evidence and normalizes clustered precinct rows into deterministic local registry files.
 - POP workbook importer now uses a source adapter and explicit mapping profiles, with manifest metadata for source type, source label, source headers, mapping profile, and canonical fields.
 - POP workbook importer includes a strict alternate Excel mapping profile and developer manual for adding future profiles.
+- Lifecycle full-demo and evidence-folder scenarios now import configurable POP workbook defaults and include POP report sections.
 - POP registry lookup and imported precinct package skeleton creation are available through Artisan commands.
 - POP import demo scenario is available as `php artisan election:scenario pop-import-demo`.
 - POP importer documentation is available in `docs/POP_IMPORTER.md`.
@@ -188,7 +189,7 @@
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
 - `vendor/bin/pint --dirty --format agent`
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
-- `php artisan election:pop-import /Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx`
+- `php artisan election:pop-import resources/election/pop/2025NLE_POP.xlsx`
 - `php artisan election:pop-lookup 7010001`
 - `php artisan election:pop-activate 7010001`
 - `php artisan election:scenario pop-import-demo`
@@ -261,6 +262,11 @@
 - Pest configured feature/unit suite after POP importer mapper/profile extraction: passed, 71 tests and 897 assertions.
 - POP importer alternate strict profile focused suite: passed, 11 tests and 94 assertions.
 - Pest configured feature/unit suite after alternate POP profile: passed, 73 tests and 913 assertions.
+- POP-backed lifecycle focused suite: passed, 34 tests and 415 assertions.
+- POP importer repository fixture focused suite: passed, 11 tests and 94 assertions.
+- Pest configured feature/unit suite after POP-backed lifecycle scenarios: passed, 74 tests and 965 assertions.
+- POP-backed full demo scenario: passed and wrote `storage/app/election-scenario-reports/2026-05-08-080001-7010001-full-demo-5f06678dc00b-report.json`.
+- POP-backed evidence folder scenario: passed and wrote `storage/app/election-scenario-artifacts/2026-05-08-080001-7010001-evidence-folder-demo-36e5247059eb`.
 - Focused Pest ceremony page suite after removable-media readiness status labels: passed, 27 tests and 454 assertions.
 - TypeScript after removable-media readiness status labels: passed.
 - Pest configured feature/unit suite after removable-media readiness status labels: passed, 60 tests and 610 assertions.

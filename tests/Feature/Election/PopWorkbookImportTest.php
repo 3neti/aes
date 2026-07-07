@@ -321,7 +321,7 @@ test('pop import demo scenario imports workbook and writes a package skeleton', 
 
 function popWorkbookPath(): string
 {
-    return '/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx';
+    return (string) config('election.pop.source_path');
 }
 
 /**

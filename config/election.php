@@ -6,6 +6,11 @@ return [
         'precinct_id' => '0421-A',
         'ballot_style_id' => 'BS-0421-A',
     ],
+    'pop' => [
+        'source_path' => env('ELECTION_POP_SOURCE_PATH', resource_path('election/pop/2025NLE_POP.xlsx')),
+        'profile' => env('ELECTION_POP_PROFILE', 'comelec-pop-2025-nle'),
+        'clustered_precinct' => env('ELECTION_POP_CLUSTERED_PRECINCT', '7010001'),
+    ],
     'officers' => [
         [
             'code' => 'SIM-OFFICER-001',

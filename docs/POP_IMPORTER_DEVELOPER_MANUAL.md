@@ -102,4 +102,16 @@ If the real POP workbook is available locally, the focused suite also verifies t
 
 The manifest records `source_type`, `source_label`, `source_headers`, `mapping_profile`, and `canonical_fields`. These fields are operator evidence and should stay stable.
 
+Lifecycle scenarios consume POP through configurable defaults in `config/election.php`:
+
+```text
+election.pop.source_path
+election.pop.profile
+election.pop.clustered_precinct
+```
+
+`full-demo` and `evidence-folder-demo` import the configured POP workbook before certification, activate the configured clustered precinct, then bind that POP precinct identity to the sample ballot definition. POP supplies precinct identity and location; the simulation ballot contests still come from `resources/election/sample`.
+
+Scenario reports include a `pop_import` section. Evidence-folder summaries also include `pop_import`, POP hashes in `important_hashes`, and a `pop_import_and_precinct_source` artifact category.
+
 PDF import is not enabled. If COMELEC provides PDF sources, add a separate `PopSourceAdapter` with PDF fixtures and extraction tests before allowing operator use. PDF table extraction must prove row counts, field alignment, totals, and deterministic output.

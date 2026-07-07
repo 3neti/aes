@@ -5,6 +5,7 @@ namespace App\Election\Scenarios;
 use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Certification\CertificationService;
 use App\Election\Core\ActivityJournal;
+use App\Election\Core\CanonicalJson;
 use App\Election\Counting\CountingService;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Lifecycle\CeremonyActions;
@@ -12,7 +13,9 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateImportedPrecinctPackage;
 use App\Election\Preparation\ActivateSamplePackage;
+use App\Election\Preparation\DeterministicMapper;
 use App\Election\Preparation\PopWorkbookImporter;
+use App\Election\Preparation\SampleElectionData;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\SpoilBallot;
 use App\Election\Returns\ElectionReturnService;
@@ -41,6 +44,9 @@ final class ScenarioRunner
         private readonly ScenarioEvidenceFolderBuilder $evidenceFolders,
         private readonly PopWorkbookImporter $popImporter,
         private readonly ActivateImportedPrecinctPackage $activateImportedPrecinct,
+        private readonly SampleElectionData $sample,
+        private readonly DeterministicMapper $mapper,
+        private readonly CanonicalJson $json,
     ) {}
 
     /**
@@ -106,7 +112,8 @@ final class ScenarioRunner
      */
     private function fullDemo(): array
     {
-        $configuration = $this->activate->handle();
+        $pop = $this->activateConfiguredPopPrecinct();
+        $configuration = $pop['configuration'];
         $this->clock->tick();
         $devices = $this->devices->run();
         $certification = $this->certification->run();
@@ -143,6 +150,7 @@ final class ScenarioRunner
             'scenario' => 'full-demo',
             'passed' => $devices['passed'] && $certification['passed'] && $accepted['status'] === 'accepted' && $rejected['status'] === 'rejected',
             'precinct_id' => $configuration['precinct_id'],
+            'pop_import' => $pop['report'],
             'device_report_hash' => $devices['report_hash'],
             'print_job' => $printJob,
             'accepted_ballots' => $tally['accepted_ballots'],
@@ -173,15 +181,20 @@ final class ScenarioRunner
      */
     private function popImportDemo(): array
     {
-        $manifest = $this->popImporter->import('/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx');
-        $package = $this->activateImportedPrecinct->handle('7010001');
+        $sourcePath = $this->popSourcePath();
+        $profile = $this->popProfile();
+        $clusteredPrecinct = $this->popClusteredPrecinct();
+        $manifest = $this->popImporter->import($sourcePath, $profile);
+        $package = $this->activateImportedPrecinct->handle($clusteredPrecinct);
+        $report = $this->popReport($manifest, $package, $sourcePath, $profile, $clusteredPrecinct);
 
         return [
             'scenario' => 'pop-import-demo',
             'passed' => $manifest['row_count'] === 93629
                 && $manifest['unique_clustered_precinct_count'] === 93629
-                && $package['precinct_id'] === '7010001',
+                && $package['precinct_id'] === $clusteredPrecinct,
             'precinct_id' => $package['precinct_id'],
+            'pop_import' => $report,
             'registry_version' => $manifest['registry_version'],
             'row_count' => $manifest['row_count'],
             'unique_clustered_precinct_count' => $manifest['unique_clustered_precinct_count'],
@@ -192,6 +205,92 @@ final class ScenarioRunner
             'package_hash' => $package['package_hash'],
             'package_path' => $package['artifact_path'],
             'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array{configuration: array<string, mixed>, report: array<string, mixed>}
+     */
+    private function activateConfiguredPopPrecinct(): array
+    {
+        $sourcePath = $this->popSourcePath();
+        $profile = $this->popProfile();
+        $clusteredPrecinct = $this->popClusteredPrecinct();
+        $manifest = $this->popImporter->import($sourcePath, $profile);
+        $importedPackage = $this->activateImportedPrecinct->handle($clusteredPrecinct);
+        $samplePackage = $this->sample->package();
+        $registries = $this->sample->registries();
+        $activePackage = [
+            ...$samplePackage,
+            'election_id' => $importedPackage['election_id'],
+            'precinct_id' => $importedPackage['precinct_id'],
+            'registry_version' => $importedPackage['registry_version'],
+            'transport' => 'pop-workbook-import-with-sample-ballot-definition',
+            'signature' => $importedPackage['signature'],
+            'pop_source' => [
+                'package_hash' => $importedPackage['package_hash'],
+                'registry_hash' => $manifest['registry_hash'],
+                'manifest_hash' => $manifest['manifest_hash'],
+            ],
+        ];
+        $configuration = $this->mapper->derive($registries, $activePackage);
+        $activePackage['package_hash'] = $this->json->hash($activePackage);
+        $activePackage['registry_hash'] = $this->json->hash($registries);
+
+        $this->storage->writeJson('registries/sample.json', $registries);
+        $this->storage->writeJson('packages/active-package.json', $activePackage);
+        $this->storage->writeJson('runtime/active-precinct.json', $configuration);
+        $this->lifecycle->set(Lifecycle::Certification, false);
+        $this->journal->record('pop.lifecycle_package_activated', [
+            'precinct_id' => $configuration['precinct_id'],
+            'mapping_hash' => $configuration['mapping_hash'],
+            'registry_hash' => $manifest['registry_hash'],
+            'mapping_profile' => $profile,
+        ]);
+        $this->journal->record('lifecycle.stage_set', ['stage' => Lifecycle::Certification]);
+
+        return [
+            'configuration' => $configuration,
+            'report' => $this->popReport($manifest, $importedPackage, $sourcePath, $profile, $clusteredPrecinct),
+        ];
+    }
+
+    private function popSourcePath(): string
+    {
+        return (string) config('election.pop.source_path');
+    }
+
+    private function popProfile(): string
+    {
+        return (string) config('election.pop.profile');
+    }
+
+    private function popClusteredPrecinct(): string
+    {
+        return (string) config('election.pop.clustered_precinct');
+    }
+
+    /**
+     * @param  array<string, mixed>  $manifest
+     * @param  array<string, mixed>  $package
+     * @return array<string, mixed>
+     */
+    private function popReport(array $manifest, array $package, string $sourcePath, string $profile, string $clusteredPrecinct): array
+    {
+        return [
+            'source_path' => $sourcePath,
+            'mapping_profile' => $profile,
+            'source_label' => $manifest['source_label'] ?? null,
+            'row_count' => $manifest['row_count'] ?? null,
+            'unique_clustered_precinct_count' => $manifest['unique_clustered_precinct_count'] ?? null,
+            'total_registered_voters' => $manifest['total_registered_voters'] ?? null,
+            'registry_hash' => $manifest['registry_hash'] ?? null,
+            'manifest_hash' => $manifest['manifest_hash'] ?? null,
+            'manifest_path' => $manifest['artifact_path'] ?? null,
+            'clustered_precinct' => $clusteredPrecinct,
+            'precinct_location' => $package['location'] ?? [],
+            'package_hash' => $package['package_hash'] ?? null,
+            'package_path' => $package['artifact_path'] ?? null,
         ];
     }
 
