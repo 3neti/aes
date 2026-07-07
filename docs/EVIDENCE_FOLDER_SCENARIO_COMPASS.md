@@ -25,7 +25,7 @@ Create `php artisan election:scenario evidence-folder-demo` so a complete simula
 | Tally sheet artifacts | Complete | Generates deterministic tally sheet TXT/PDF artifacts and copies them into the evidence folder. |
 | Scenario verification | Complete | Verifies numbered folders, required artifacts, summary pointers, copied hashes, and persistence after a later scenario run. |
 | Deterministic reruns | Complete | Rebuilds the durable evidence folder on each run to prevent stale artifact accumulation. |
-| Final run and status | Pending | Run scenario and update docs with paths and results. |
+| Final run and status | Complete | Final commands passed and generated stable evidence folder/report paths. |
 
 ## Commit Log
 
@@ -37,8 +37,35 @@ Create `php artisan election:scenario evidence-folder-demo` so a complete simula
 | Summary reports | `88cfaf7` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 187 assertions |
 | Tally sheet artifacts | `670465d` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 192 assertions |
 | Scenario verification | `fd03d39` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 363 assertions |
-| Deterministic reruns | Pending | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`; `php artisan election:scenario evidence-folder-demo` | Passed: 33 tests, 363 assertions; scenario passed |
+| Deterministic reruns | `730a908` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`; `php artisan election:scenario evidence-folder-demo` | Passed: 33 tests, 363 assertions; scenario passed |
+| Final run and status | Pending | `vendor/bin/pint --dirty --format agent`; `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`; `php artisan election:scenario evidence-folder-demo`; `vendor/bin/pest --compact` | Passed; 33 lifecycle tests and 363 assertions; scenario passed; 62 configured tests and 819 assertions |
+
+## Final Artifacts
+
+- Evidence folder: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38`
+- Summary report: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38/summary-report.json`
+- Summary text report: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38/summary-report.txt`
+- Artifact index: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38/artifact-index.json`
+- Durable scenario report: `storage/app/election-scenario-reports/2026-05-08-080001-0421-a-evidence-folder-demo-855437357857-report.json`
+
+## Final Statistics
+
+- Scan documents generated: 6
+- Device checks passed: 2
+- Device checks failed: 0
+- Certification ballots counted: 3
+- Officer attestations captured: 2
+- Signatures captured: 2
+- Ballots finalized: 2
+- Ballots printed: 2
+- Ballots spoiled: 1
+- Accepted ballots: 1
+- Rejected ballots: 1
+- Contests tallied: 3
+- Journal entries: 28
+- Evidence files copied: 36
+- Evidence bytes copied: 275451
 
 ## Next Slice
 
-Run final commands, update status and compass with generated evidence paths and results.
+No remaining planned slice for `evidence-folder-demo`; future work should start from a new compass entry.

@@ -199,6 +199,10 @@
 - `php artisan election:scenario friday-certification`
 - `php artisan election:scenario full-demo`
 - `vendor/bin/pest --compact`
+- `vendor/bin/pint --dirty --format agent`
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`
+- `php artisan election:scenario evidence-folder-demo`
+- `vendor/bin/pest --compact`
 
 ## Verification Results
 
@@ -245,6 +249,14 @@
 - Persisted Friday certification report: `storage/app/election-scenario-reports/2026-05-08-080001-0421-a-friday-certification-5b1f4f08f5d7-report.json`.
 - Persisted full demo report: `storage/app/election-scenario-reports/2026-05-08-080001-0421-a-full-demo-3de8e721eadb-report.json`.
 - Pest configured feature/unit suite after scenario report archiving: passed, 61 tests and 626 assertions.
+- Evidence folder scenario final Pint run: passed.
+- Evidence folder scenario focused lifecycle suite: passed, 33 tests and 363 assertions.
+- Evidence folder scenario command: passed.
+- Evidence folder: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38`.
+- Evidence folder summary report: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38/summary-report.json`.
+- Evidence folder durable scenario report: `storage/app/election-scenario-reports/2026-05-08-080001-0421-a-evidence-folder-demo-855437357857-report.json`.
+- Evidence folder statistics: 6 scan documents, 2 passed device checks, 3 certification ballots, 2 attestations, 2 signatures, 2 finalized ballots, 2 printed ballots, 1 spoiled ballot, 1 accepted ballot, 1 rejected ballot, 3 contests tallied, 28 journal entries, 36 evidence files copied, and 275451 evidence bytes copied.
+- Pest configured feature/unit suite after evidence folder scenario completion: passed, 62 tests and 819 assertions.
 
 ## Known Gaps
 
