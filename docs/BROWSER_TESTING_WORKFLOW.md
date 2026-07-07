@@ -124,6 +124,6 @@ If the UI renders without expected text, verify that the Inertia page still expo
 
 If archive upload verification fails only in browser tests, remember that Pest Browser's Laravel request bridge does not currently forward multipart file uploads in this project. The browser workflow uses the supported base64 TAR payload route for browser-level coverage; feature tests cover real uploaded files.
 
-If Counting camera capture fails only in browser tests, check the media shim in `tests/Browser/CountingCameraCaptureWorkflowTest.php`. The test intentionally avoids physical camera hardware by mocking `navigator.mediaDevices.getUserMedia`, video dimensions, and canvas QR image capture. The same file also covers the permission denied/unavailable path by forcing `getUserMedia` to reject and asserting no scan is accepted.
+If Counting camera capture fails only in browser tests, check the media shims in `tests/Helpers/BrowserMedia.php`. The tests intentionally avoid physical camera hardware by mocking `navigator.mediaDevices.getUserMedia`, video dimensions, and canvas QR image capture. The same helper file also exposes the permission denied/unavailable shim used to force `getUserMedia` to reject and assert no scan is accepted.
 
 If tests pass locally but fail in CI, inspect the screenshot artifact first, then the backend log artifact, then the browser job logs. Screenshots explain the browser state; Laravel logs explain server-side failures that may be hidden behind a generic browser assertion.

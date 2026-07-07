@@ -49,6 +49,7 @@
 - Manual GitHub Actions controlled browser artifact failure input that writes screenshot/log marker files and fails the browser job to verify artifact uploads.
 - Browser-level Counting camera-capture workflow coverage with mocked media capture and deterministic QR canvas output.
 - Browser-level Counting camera permission denied/unavailable workflow coverage with zero accepted scans.
+- Shared Pest browser media/canvas shim helpers for future camera workflow tests.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -106,6 +107,8 @@
 - `tests/Browser/CountingCameraCaptureWorkflowTest.php`
   - Counting ceremony camera controls with mocked `getUserMedia`, deterministic QR canvas capture, camera scanner route submission, accepted scan feedback, and counting append file assertion
   - Counting ceremony camera permission denied/unavailable feedback with no accepted counting file
+- `tests/Helpers/BrowserMedia.php`
+  - reusable `browserMediaCaptureShim()` and `browserMediaDeniedShim()` helpers loaded from `tests/Pest.php`
 - `.github/workflows/tests.yml`
   - dedicated browser test job with PHP 8.4, Node 22, `npm ci`, `npx playwright install --with-deps chromium`, asset build, and `vendor/bin/pest tests/Browser --ci`
   - browser screenshot artifact upload on failed browser-test runs
@@ -169,6 +172,7 @@
 - Pest Browser suite with Diagnostics workflow, ceremony smoke coverage, and Counting camera capture workflow: passed, 10 tests and 61 assertions.
 - Focused Pest browser Counting camera workflow suite with permission denied/unavailable coverage: passed, 2 tests and 21 assertions.
 - Pest Browser suite with Diagnostics workflow, ceremony smoke coverage, Counting camera capture, and camera unavailable coverage: passed, 11 tests and 70 assertions.
+- Focused Pest browser Counting camera workflow suite after media helper extraction: passed, 2 tests and 21 assertions.
 - Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.
 - GitHub Actions workflow YAML parse: passed.
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.
@@ -196,4 +200,4 @@
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add a short CI operations note after running the controlled artifact check remotely and confirming both artifacts appear in GitHub Actions.
-- Add a test helper for repeated browser media/canvas shims if more camera browser workflows are added.
+- Add browser coverage for rejected camera QR frames that reach the scanner route but fail QR decode.

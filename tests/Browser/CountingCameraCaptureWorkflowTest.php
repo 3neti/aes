@@ -20,10 +20,7 @@ test('operator can submit a camera capture frame through the counting ceremony',
         'council' => ['council-ana'],
     ], 'browser-camera-ballot-001');
 
-    $qrDataUri = json_encode(
-        'data:image/png;base64,'.base64_encode(file_get_contents($payload['qr_artifact_path'])),
-        JSON_THROW_ON_ERROR,
-    );
+    $qrDataUri = 'data:image/png;base64,'.base64_encode(file_get_contents($payload['qr_artifact_path']));
 
     $page = visit('/election/counting')
         ->assertSee('Camera Capture')
@@ -31,38 +28,7 @@ test('operator can submit a camera capture frame through the counting ceremony',
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 
-    $page->script(<<<JS
-        () => {
-            const qrDataUri = {$qrDataUri};
-
-            Object.defineProperty(navigator, 'mediaDevices', {
-                configurable: true,
-                value: {
-                    getUserMedia: async () => new MediaStream(),
-                },
-            });
-
-            Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', {
-                configurable: true,
-                get: () => 640,
-            });
-
-            Object.defineProperty(HTMLVideoElement.prototype, 'videoHeight', {
-                configurable: true,
-                get: () => 480,
-            });
-
-            HTMLVideoElement.prototype.play = async () => undefined;
-
-            HTMLCanvasElement.prototype.getContext = () => ({
-                drawImage: () => undefined,
-            });
-
-            HTMLCanvasElement.prototype.toDataURL = () => qrDataUri;
-
-            return true;
-        }
-    JS);
+    $page->script(browserMediaCaptureShim($qrDataUri));
 
     $page->click('Start Camera')
         ->assertSee('Camera ready.')
@@ -90,20 +56,7 @@ test('operator sees feedback when camera permission is denied or unavailable', f
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 
-    $page->script(<<<'JS'
-        () => {
-            Object.defineProperty(navigator, 'mediaDevices', {
-                configurable: true,
-                value: {
-                    getUserMedia: async () => {
-                        throw new DOMException('Permission denied', 'NotAllowedError');
-                    },
-                },
-            });
-
-            return true;
-        }
-    JS);
+    $page->script(browserMediaDeniedShim());
 
     $page->click('Start Camera')
         ->assertSee('Camera permission was denied or unavailable.')
