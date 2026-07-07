@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 final class CountingController extends Controller
 {
@@ -26,7 +27,26 @@ final class CountingController extends Controller
     public function scan(Request $request, CountingService $counting, BallotScanner $scanner): RedirectResponse
     {
         $validated = $request->validate(['payload' => ['required', 'string']]);
-        $scan = $scanner->scan($validated['payload']);
+        $rawInput = $validated['payload'];
+
+        try {
+            $scan = $scanner->scan($rawInput);
+        } catch (Throwable $exception) {
+            $record = $counting->rejectRawInput($rawInput, $exception->getMessage(), 'scanner-decode');
+
+            return redirect()
+                ->route('election.counting')
+                ->with('scan_feedback', [
+                    'status' => 'rejected',
+                    'adapter' => $record['adapter'],
+                    'sequence' => $record['sequence'],
+                    'ballot_id' => null,
+                    'payload_hash' => null,
+                    'raw_payload_hash' => $record['raw_payload_hash'],
+                    'reason' => $record['reason'],
+                ]);
+        }
+
         $record = $counting->accept($scan['payload']);
 
         return redirect()

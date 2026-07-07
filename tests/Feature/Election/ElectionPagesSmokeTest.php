@@ -510,6 +510,28 @@ test('counting route can scan camera qr image data uri', function (): void {
     }
 });
 
+test('counting route records scanner decode failures as rejected scan feedback', function (): void {
+    config()->set('election.devices.scanner.driver', 'camera');
+    config()->set('election.devices.scanner.camera.name', 'Precinct Camera 1');
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        $this->post(route('election.counting.scan'), [
+            'payload' => 'data:image/png;base64,'.base64_encode(cameraDecodeFailurePng()),
+        ])
+            ->assertRedirect(route('election.counting'))
+            ->assertSessionHas('scan_feedback', fn (array $feedback): bool => $feedback['status'] === 'rejected'
+                && $feedback['adapter'] === 'scanner-decode'
+                && str_contains($feedback['reason'], 'Unable to decode QR artifact'));
+
+        expect(app(ElectionStorage::class)->files('counting/accepted'))->toHaveCount(0)
+            ->and(app(ElectionStorage::class)->files('counting/rejected'))->toHaveCount(1);
+    } finally {
+        config()->set('election.devices.scanner.driver', 'manual');
+    }
+});
+
 test('counting page shows operator feedback after accepted and rejected scans', function (): void {
     app(ActivateSamplePackage::class)->handle();
 
@@ -608,4 +630,15 @@ test('ceremony shell requires officer signature artifact', function (): void {
 function pagesTestSignatureDataUri(): string
 {
     return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGOSHzRgAAAAABJRU5ErkJggg==';
+}
+
+function cameraDecodeFailurePng(): string
+{
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGOSHzRgAAAAABJRU5ErkJggg==', true);
+
+    if ($png === false) {
+        throw new RuntimeException('Invalid camera decode failure PNG fixture.');
+    }
+
+    return $png;
 }

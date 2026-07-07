@@ -50,6 +50,7 @@
 - Browser-level Counting camera-capture workflow coverage with mocked media capture and deterministic QR canvas output.
 - Browser-level Counting camera permission denied/unavailable workflow coverage with zero accepted scans.
 - Shared Pest browser media/canvas shim helpers for future camera workflow tests.
+- Counting scanner decode failures are converted into rejected scan feedback with one rejected counting evidence file instead of a server error.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -89,6 +90,7 @@
   - ceremony shell officer attestation action
   - Printing ceremony certification gate error path for CUPS driver
   - Counting route scan through configured handheld and camera scanner adapters
+  - Counting route scanner decode failure feedback and rejected evidence file
   - Counting page operator feedback after accepted and rejected scan attempts
   - ceremony shell officer PIN validation failure path
   - ceremony shell officer signature required validation path
@@ -146,6 +148,7 @@
 - `vendor/bin/pest tests/Browser --compact`
 - `vendor/bin/pest tests/Browser/ElectionCeremonyPagesSmokeTest.php --compact`
 - `vendor/bin/pest tests/Browser/CountingCameraCaptureWorkflowTest.php --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --compact`
 - `vendor/bin/pest --compact`
 - `composer validate --strict`
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
@@ -173,6 +176,8 @@
 - Focused Pest browser Counting camera workflow suite with permission denied/unavailable coverage: passed, 2 tests and 21 assertions.
 - Pest Browser suite with Diagnostics workflow, ceremony smoke coverage, Counting camera capture, and camera unavailable coverage: passed, 11 tests and 70 assertions.
 - Focused Pest browser Counting camera workflow suite after media helper extraction: passed, 2 tests and 21 assertions.
+- Focused Pest ceremony page suite after scanner decode hardening: passed, 27 tests and 442 assertions.
+- Pest configured feature/unit suite after scanner decode hardening: passed, 59 tests and 587 assertions.
 - Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.
 - GitHub Actions workflow YAML parse: passed.
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.

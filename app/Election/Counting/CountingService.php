@@ -60,6 +60,26 @@ final class CountingService
     /**
      * @return array<string, mixed>
      */
+    public function rejectRawInput(string $rawInput, string $reason, string $adapter): array
+    {
+        $record = [
+            'schema_version' => 'counting-record-1',
+            'sequence' => count($this->storage->files('counting/rejected')) + 1,
+            'adapter' => $adapter,
+            'raw_payload_hash' => hash('sha256', $rawInput),
+            'reason' => $reason,
+            'status' => 'rejected',
+        ];
+
+        $this->storage->writeJson("counting/rejected/{$record['sequence']}-{$record['raw_payload_hash']}.json", $record);
+        $this->journal->record('ballot.rejected', $record);
+
+        return $record;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function tally(): array
     {
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
