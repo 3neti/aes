@@ -383,6 +383,8 @@ test('diagnostics can check simulated removable media readiness', function (): v
     expect($report['schema_version'])->toBe('removable-media-readiness-report-1')
         ->and($report['ready'])->toBeTrue()
         ->and($report['configured'])->toBeFalse()
+        ->and($report['status'])->toBe('simulated_ready')
+        ->and($report['status_label'])->toBe('Simulated Local Target Ready')
         ->and($report['readiness_hash'])->toBeString()
         ->and(collect($report['checks'])->pluck('passed')->every(fn (bool $passed): bool => $passed))->toBeTrue();
 
@@ -392,6 +394,8 @@ test('diagnostics can check simulated removable media readiness', function (): v
             ->component('Election/Diagnostics')
             ->where('diagnostics.removable_media_readiness.exists', true)
             ->where('diagnostics.removable_media_readiness.ready', true)
+            ->where('diagnostics.removable_media_readiness.status', 'simulated_ready')
+            ->where('diagnostics.removable_media_readiness.status_label', 'Simulated Local Target Ready')
             ->where('diagnostics.removable_media_readiness.readiness_hash', $report['readiness_hash'])
         );
 
@@ -413,6 +417,8 @@ test('diagnostics reports missing configured removable media target as not ready
 
         expect($report['ready'])->toBeFalse()
             ->and($report['configured'])->toBeTrue()
+            ->and($report['status'])->toBe('missing')
+            ->and($report['status_label'])->toBe('Target Missing')
             ->and($report['target_path'])->toBe($target)
             ->and(collect($report['checks'])->firstWhere('name', 'directory_available')['passed'])->toBeFalse();
 
@@ -422,6 +428,8 @@ test('diagnostics reports missing configured removable media target as not ready
                 ->component('Election/Diagnostics')
                 ->where('diagnostics.removable_media_readiness.exists', true)
                 ->where('diagnostics.removable_media_readiness.ready', false)
+                ->where('diagnostics.removable_media_readiness.status', 'missing')
+                ->where('diagnostics.removable_media_readiness.status_label', 'Target Missing')
                 ->where('diagnostics.removable_media_readiness.target_path', $target)
             );
     } finally {

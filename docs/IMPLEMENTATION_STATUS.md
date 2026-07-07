@@ -58,6 +58,7 @@
 - PDF artifacts now use a more structured deterministic layout with header band, subtitle, monospaced body text, separator lines, and source-of-truth footer.
 - Evidence manifest entries now use an internal `EvidenceArtifact` value object for file name, relative path, size, and SHA-256 shaping.
 - Officer registry management scaffold can rotate a local officer PIN into a runtime registry artifact and journal the rotation without adding authentication or an admin dashboard.
+- Removable-media readiness reports now include operator-facing status codes and labels for simulated ready, ready, missing, not writable, probe failed, and not ready states.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -107,6 +108,7 @@
   - Diagnostics removable-media export staging, copied artifact evidence, summary projection, and journal event
   - Diagnostics evidence export verification action, persisted report projection, and journal event
   - Diagnostics removable-media readiness action for simulated and missing configured targets
+  - removable-media readiness status/status label projection for simulated and missing targets
   - Diagnostics evidence bundle archive build, TAR content smoke check, download route, and journal event
   - Diagnostics downloadable TAR evidence bundle archive verification action, persisted report projection, and journal event
   - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
@@ -210,6 +212,9 @@
 - Pest configured feature/unit suite after EvidenceArtifact extraction: passed, 59 tests and 592 assertions.
 - Focused Pest lifecycle suite after officer registry scaffold: passed, 31 tests and 154 assertions.
 - Pest configured feature/unit suite after officer registry scaffold: passed, 60 tests and 598 assertions.
+- Focused Pest ceremony page suite after removable-media readiness status labels: passed, 27 tests and 454 assertions.
+- TypeScript after removable-media readiness status labels: passed.
+- Pest configured feature/unit suite after removable-media readiness status labels: passed, 60 tests and 610 assertions.
 - Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.
 - GitHub Actions workflow YAML parse: passed.
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.
@@ -242,3 +247,4 @@
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
 - Add Poppler-based PDF render checks in an environment with `pdftoppm` and `pdfinfo` installed.
 - Add ceremony-safe UI for officer registry inspection/rotation only if election procedures require operator-driven PIN rotation.
+- Add configured removable-media target labels/export checklist if field procedures require multiple named devices.

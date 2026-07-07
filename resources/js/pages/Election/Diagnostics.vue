@@ -71,6 +71,8 @@ type RemovableMediaReadiness = {
     checked_at?: string | null;
     configured?: boolean;
     ready?: boolean;
+    status?: string;
+    status_label?: string;
     target_path: string;
     readiness_hash?: string | null;
     checks?: ReadinessCheck[];
@@ -605,9 +607,11 @@ defineProps<{
                     <dt class="font-semibold text-stone-700">Status</dt>
                     <dd class="mt-1 break-all text-stone-600">
                         {{
-                            diagnostics.removable_media_readiness.ready
+                            diagnostics.removable_media_readiness
+                                .status_label ??
+                            (diagnostics.removable_media_readiness.ready
                                 ? 'Ready'
-                                : 'Not Ready'
+                                : 'Not Ready')
                         }}
                     </dd>
                 </div>

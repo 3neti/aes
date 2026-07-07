@@ -185,6 +185,8 @@ final class DiagnosticsService
             'checked_at' => $report['checked_at'] ?? null,
             'configured' => $report['configured'] ?? false,
             'ready' => $report['ready'] ?? false,
+            'status' => $report['status'] ?? (($report['ready'] ?? false) ? 'ready' : 'not_ready'),
+            'status_label' => $report['status_label'] ?? (($report['ready'] ?? false) ? 'Ready' : 'Not Ready'),
             'target_path' => $report['target_path'] ?? $this->removableMediaRoot(),
             'readiness_hash' => $report['readiness_hash'] ?? null,
             'checks' => $report['checks'] ?? [],

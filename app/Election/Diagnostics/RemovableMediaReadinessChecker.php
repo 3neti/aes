@@ -40,6 +40,8 @@ final class RemovableMediaReadinessChecker
             'ready' => collect($checks)->every(fn (array $check): bool => $check['passed'] === true),
             'checks' => $checks,
         ];
+        $report['status'] = $this->status($report);
+        $report['status_label'] = $this->statusLabel($report['status']);
         $report['readiness_hash'] = $this->json->hash($report);
         $report['artifact_path'] = $this->storage->writeJson('diagnostics/removable-media-readiness.json', $report);
 
@@ -50,6 +52,44 @@ final class RemovableMediaReadinessChecker
         ]);
 
         return $report;
+    }
+
+    /**
+     * @param  array<string, mixed>  $report
+     */
+    private function status(array $report): string
+    {
+        if (($report['ready'] ?? false) === true) {
+            return ($report['configured'] ?? false) ? 'ready' : 'simulated_ready';
+        }
+
+        $checks = collect($report['checks'] ?? []);
+
+        if ($checks->firstWhere('name', 'directory_available')['passed'] === false) {
+            return 'missing';
+        }
+
+        if ($checks->firstWhere('name', 'writable')['passed'] === false) {
+            return 'not_writable';
+        }
+
+        if ($checks->firstWhere('name', 'probe_write_delete')['passed'] === false) {
+            return 'probe_failed';
+        }
+
+        return 'not_ready';
+    }
+
+    private function statusLabel(string $status): string
+    {
+        return match ($status) {
+            'ready' => 'Ready',
+            'simulated_ready' => 'Simulated Local Target Ready',
+            'missing' => 'Target Missing',
+            'not_writable' => 'Target Not Writable',
+            'probe_failed' => 'Probe Write Failed',
+            default => 'Not Ready',
+        };
     }
 
     private function targetRoot(): string
