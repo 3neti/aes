@@ -17,9 +17,19 @@ final class ElectionStorage
         return storage_path('app/election');
     }
 
+    public function scenarioReportsRoot(): string
+    {
+        return storage_path('app/election-scenario-reports');
+    }
+
     public function path(string $relative): string
     {
         return $this->root().'/'.ltrim($relative, '/');
+    }
+
+    public function scenarioReportPath(string $filename): string
+    {
+        return $this->scenarioReportsRoot().'/'.ltrim($filename, '/');
     }
 
     public function ensureDirectories(): void
@@ -81,6 +91,24 @@ final class ElectionStorage
         return $path;
     }
 
+    /**
+     * @param  array<string, mixed>  $report
+     */
+    public function writeScenarioReport(string $scenario, array $report, string $timestamp): string
+    {
+        $this->files->ensureDirectoryExists($this->scenarioReportsRoot());
+
+        $precinct = $this->slug((string) ($report['precinct_id'] ?? 'unknown-precinct'));
+        $scenario = $this->slug($scenario);
+        $hash = substr($this->json->hash($report), 0, 12);
+        $filename = "{$timestamp}-{$precinct}-{$scenario}-{$hash}-report.json";
+        $path = $this->scenarioReportPath($filename);
+
+        $this->files->put($path, $this->json->encode($report));
+
+        return $path;
+    }
+
     public function writeText(string $relative, string $contents): string
     {
         $this->ensureDirectories();
@@ -118,5 +146,13 @@ final class ElectionStorage
             ->sort()
             ->values()
             ->all();
+    }
+
+    private function slug(string $value): string
+    {
+        $slug = strtolower((string) preg_replace('/[^A-Za-z0-9]+/', '-', $value));
+        $slug = trim($slug, '-');
+
+        return $slug === '' ? 'unknown' : $slug;
     }
 }

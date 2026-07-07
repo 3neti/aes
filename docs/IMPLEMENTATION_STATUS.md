@@ -59,6 +59,7 @@
 - Evidence manifest entries now use an internal `EvidenceArtifact` value object for file name, relative path, size, and SHA-256 shaping.
 - Officer registry management scaffold can rotate a local officer PIN into a runtime registry artifact and journal the rotation without adding authentication or an admin dashboard.
 - Removable-media readiness reports now include operator-facing status codes and labels for simulated ready, ready, missing, not writable, probe failed, and not ready states.
+- Scenario command reports are now also archived outside the resettable election runtime under `storage/app/election-scenario-reports` with contextual filenames containing scenario clock time, precinct id, scenario name, and report hash prefix.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -92,6 +93,7 @@
   - local officer PIN rotation runtime registry artifact and journal event
   - removable-media evidence export verification success path and tampered artifact mismatch command failure
   - downloadable TAR evidence bundle archive verification success path and tampered archive mismatch command failure
+  - scenario command durable report archiving outside resettable election runtime
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -179,6 +181,11 @@
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
 - Documentation-only CI operations slice; no test command required.
 - Documentation-only QR decoder portability slice; no dependency or test command required.
+- `vendor/bin/pint --dirty --format agent`
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`
+- `php artisan election:scenario friday-certification`
+- `php artisan election:scenario full-demo`
+- `vendor/bin/pest --compact`
 
 ## Verification Results
 
@@ -221,6 +228,10 @@
 - GitHub Actions controlled browser artifact failure workflow YAML parse: passed.
 - CI operations note added; remote controlled artifact confirmation is an operator-run GitHub Actions procedure.
 - QR decoder portability note added; no pure PHP decoder dependency selected yet.
+- Scenario report archive focused lifecycle suite: passed, 32 tests and 170 assertions.
+- Persisted Friday certification report: `storage/app/election-scenario-reports/2026-05-08-080001-0421-a-friday-certification-5b1f4f08f5d7-report.json`.
+- Persisted full demo report: `storage/app/election-scenario-reports/2026-05-08-080001-0421-a-full-demo-3de8e721eadb-report.json`.
+- Pest configured feature/unit suite after scenario report archiving: passed, 61 tests and 626 assertions.
 
 ## Known Gaps
 

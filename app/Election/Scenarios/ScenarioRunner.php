@@ -53,9 +53,13 @@ final class ScenarioRunner
         };
 
         $this->storage->writeJson("scenarios/{$name}-report.json", $report);
+        $archivePath = $this->storage->writeScenarioReport($name, $report, $this->clock->now()->format('Y-m-d-His'));
         $this->clock->unfreeze();
 
-        return $report;
+        return [
+            ...$report,
+            'archived_report_path' => $archivePath,
+        ];
     }
 
     /**

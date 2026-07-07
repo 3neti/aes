@@ -27,6 +27,7 @@ use App\Election\Scanning\BallotScanner;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\StandardQrCode;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -565,6 +566,7 @@ test('election return artifact is generated from tally', function (): void {
 test('full demo scenario command succeeds', function (): void {
     $this->artisan('election:scenario full-demo')
         ->expectsOutput('Scenario full-demo passed.')
+        ->expectsOutputToContain('Report: ')
         ->assertSuccessful();
 
     $report = app(ElectionStorage::class)->readJson('scenarios/full-demo-report.json');
@@ -573,6 +575,33 @@ test('full demo scenario command succeeds', function (): void {
         ->and($report['accepted_ballots'])->toBe(1)
         ->and($report['rejected_ballots'])->toBe(1)
         ->and($report['attestation_hashes'])->toHaveCount(2);
+});
+
+test('scenario command archives reports outside resettable election runtime', function (): void {
+    $storage = app(ElectionStorage::class);
+    app(Filesystem::class)->deleteDirectory($storage->scenarioReportsRoot());
+
+    $this->artisan('election:scenario friday-certification')
+        ->expectsOutput('Scenario friday-certification passed.')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $fridayReports = glob($storage->scenarioReportsRoot().'/*friday-certification*-report.json') ?: [];
+
+    $this->artisan('election:scenario full-demo')
+        ->expectsOutput('Scenario full-demo passed.')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $fullDemoReports = glob($storage->scenarioReportsRoot().'/*full-demo*-report.json') ?: [];
+
+    expect($fridayReports)->toHaveCount(1)
+        ->and($fullDemoReports)->toHaveCount(1)
+        ->and($fridayReports[0])->toBeReadableFile()
+        ->and($fullDemoReports[0])->toBeReadableFile()
+        ->and(basename($fridayReports[0]))->toContain('2026-05-08-080001-0421-a-friday-certification')
+        ->and(basename($fullDemoReports[0]))->toContain('2026-05-08-080001-0421-a-full-demo')
+        ->and($storage->readJson('scenarios/full-demo-report.json')['passed'])->toBeTrue();
 });
 
 test('home page renders the ceremony shell', function (): void {

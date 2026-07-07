@@ -16,6 +16,7 @@ final class ElectionScenarioCommand extends Command
         $report = $runner->run((string) $this->argument('scenario'));
 
         $this->line("Scenario {$report['scenario']} ".($report['passed'] ? 'passed' : 'failed').'.');
+        $this->line("Report: {$report['archived_report_path']}");
 
         return $report['passed'] ? self::SUCCESS : self::FAILURE;
     }
