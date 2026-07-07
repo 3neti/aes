@@ -67,6 +67,8 @@
 - Evidence folder scenario writes deterministic `tally-sheet.txt` and `tally-sheet.pdf` artifacts into the counting-and-tally evidence folder.
 - Evidence folder scenario verification now checks required folders, required artifacts, summary pointers, copied file hashes, and persistence after a later runtime reset.
 - Evidence folder scenario now rebuilds its durable evidence folder before copying artifacts so deterministic reruns do not accumulate stale files.
+- POP workbook importer preserves the 2025 NLE POP XLSX as source evidence and normalizes clustered precinct rows into deterministic local registry files.
+- POP registry lookup and imported precinct package skeleton creation are available through Artisan commands.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -172,6 +174,8 @@
 - `vendor/bin/pint --dirty --format agent`
 - `npm run format -- resources/js/pages/Election/Diagnostics.vue`
 - `vendor/bin/pest --compact`
+- `vendor/bin/pint --dirty --format agent`
+- `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
 - `php artisan test --compact`
 - `npm run lint:check`
 - `npm run types:check`
@@ -257,6 +261,7 @@
 - Evidence folder durable scenario report: `storage/app/election-scenario-reports/2026-05-08-080001-0421-a-evidence-folder-demo-855437357857-report.json`.
 - Evidence folder statistics: 6 scan documents, 2 passed device checks, 3 certification ballots, 2 attestations, 2 signatures, 2 finalized ballots, 2 printed ballots, 1 spoiled ballot, 1 accepted ballot, 1 rejected ballot, 3 contests tallied, 28 journal entries, 36 evidence files copied, and 275451 evidence bytes copied.
 - Pest configured feature/unit suite after evidence folder scenario completion: passed, 62 tests and 819 assertions.
+- POP importer focused suite: passed, 3 tests and 41 assertions.
 
 ## Known Gaps
 
