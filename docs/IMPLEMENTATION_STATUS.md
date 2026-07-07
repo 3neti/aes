@@ -54,6 +54,7 @@
 - Browser-level Counting rejected camera QR frame coverage for PNG frames that reach the scanner route but fail QR decode.
 - CI operations note for manually confirming controlled browser screenshot/log artifact uploads in GitHub Actions.
 - QR decode is now behind an internal `QrCodeDecoder` adapter with `ZbarPngQrCodeDecoder` as the default implementation, preparing for a future pure PHP decoder without changing election services.
+- QR decoder portability note records the no-bloat dependency criteria and evaluation checklist for any future pure PHP decoder.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -128,6 +129,8 @@
 - `docs/CI_OPERATIONS.md`
   - manual controlled browser artifact check procedure and expected artifact names
   - missing-artifact troubleshooting checklist
+- `docs/QR_DECODER_PORTABILITY.md`
+  - adapter boundary summary, dependency acceptance criteria, and verification checklist for any pure PHP QR decoder candidate
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -164,6 +167,7 @@
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
 - Documentation-only CI operations slice; no test command required.
+- Documentation-only QR decoder portability slice; no dependency or test command required.
 
 ## Verification Results
 
@@ -196,6 +200,7 @@
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.
 - GitHub Actions controlled browser artifact failure workflow YAML parse: passed.
 - CI operations note added; remote controlled artifact confirmation is an operator-run GitHub Actions procedure.
+- QR decoder portability note added; no pure PHP decoder dependency selected yet.
 
 ## Known Gaps
 
@@ -218,4 +223,4 @@
 ## Next Recommended Steps
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
-- Add a pure PHP QR decoder implementation or selected dependency only after evaluating deployability and deterministic decode behavior.
+- Add PDF visual design pass and Poppler-based render checks if Poppler is available.
