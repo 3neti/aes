@@ -52,6 +52,7 @@
 - Shared Pest browser media/canvas shim helpers for future camera workflow tests.
 - Counting scanner decode failures are converted into rejected scan feedback with one rejected counting evidence file instead of a server error.
 - Browser-level Counting rejected camera QR frame coverage for PNG frames that reach the scanner route but fail QR decode.
+- CI operations note for manually confirming controlled browser screenshot/log artifact uploads in GitHub Actions.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -123,6 +124,9 @@
   - CI browser job shape and screenshot/backend-log artifact inspection workflow
   - controlled artifact verification workflow for screenshot/log upload checks
   - troubleshooting notes for Playwright, Inertia/Vite, returned TAR upload verification, and CI backend context
+- `docs/CI_OPERATIONS.md`
+  - manual controlled browser artifact check procedure and expected artifact names
+  - missing-artifact troubleshooting checklist
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -157,6 +161,7 @@
 - Documentation-only slice; no additional test command required.
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
+- Documentation-only CI operations slice; no test command required.
 
 ## Verification Results
 
@@ -186,6 +191,7 @@
 - GitHub Actions workflow YAML parse: passed.
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.
 - GitHub Actions controlled browser artifact failure workflow YAML parse: passed.
+- CI operations note added; remote controlled artifact confirmation is an operator-run GitHub Actions procedure.
 
 ## Known Gaps
 
@@ -208,5 +214,5 @@
 ## Next Recommended Steps
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
-- Add a short CI operations note after running the controlled artifact check remotely and confirming both artifacts appear in GitHub Actions.
+- Add pure PHP QR decode adapter investigation to reduce appliance dependency on `zbarimg`.
 - Add browser coverage for rejected camera QR frames that reach the scanner route but fail QR decode.
