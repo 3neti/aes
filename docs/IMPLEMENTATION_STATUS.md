@@ -179,6 +179,11 @@
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
 - `vendor/bin/pint --dirty --format agent`
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
+- `php artisan election:pop-import /Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx`
+- `php artisan election:pop-lookup 7010001`
+- `php artisan election:pop-activate 7010001`
+- `php artisan election:scenario pop-import-demo`
+- `vendor/bin/pest --compact`
 - `php artisan test --compact`
 - `npm run lint:check`
 - `npm run types:check`
@@ -266,6 +271,11 @@
 - Pest configured feature/unit suite after evidence folder scenario completion: passed, 62 tests and 819 assertions.
 - POP importer focused suite: passed, 3 tests and 41 assertions.
 - POP import demo scenario focused suite: passed, 4 tests and 52 assertions.
+- POP workbook import command: passed with 93629 rows, 93629 unique clustered precincts, 69773653 total registered voters, and registry hash `eb102e2c5b4497f676bfbbb4c5d381cd9d2bbd91c037a69cc8f894080292d0e1`.
+- POP lookup command for `7010001`: passed and returned BARMM / BASILAN / CITY OF ISABELA / ISABELA PROPER / ISABELA PROPER BARANGAY HALL.
+- POP package activation command for `7010001`: passed and wrote `storage/app/election/packages/imported/7010001.json`.
+- POP import demo scenario: passed and wrote `storage/app/election-scenario-reports/2026-05-08-080000-7010001-pop-import-demo-51fd2c0f3bec-report.json`.
+- Pest configured feature/unit suite after POP importer completion: passed, 66 tests and 871 assertions.
 
 ## Known Gaps
 
