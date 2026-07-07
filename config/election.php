@@ -11,6 +11,14 @@ return [
         'profile' => env('ELECTION_POP_PROFILE', 'comelec-pop-2025-nle'),
         'clustered_precinct' => env('ELECTION_POP_CLUSTERED_PRECINCT', '7010001'),
     ],
+    'pdf' => [
+        'ghostscript_binary' => env('ELECTION_PDF_GHOSTSCRIPT_BINARY', 'gs'),
+    ],
+    'clc' => [
+        'source_path' => env('ELECTION_CLC_SOURCE_PATH', resource_path('election/clc')),
+        'profile' => env('ELECTION_CLC_PROFILE', 'comelec-clc-2025-nle'),
+        'registry_version' => env('ELECTION_CLC_REGISTRY_VERSION', 'clc-2025-nle'),
+    ],
     'officers' => [
         [
             'code' => 'SIM-OFFICER-001',

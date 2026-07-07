@@ -20,6 +20,8 @@ use App\Election\Scanning\HandheldPayloadScanner;
 use App\Election\Scanning\ManualPayloadScanner;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\GhostscriptPdfTextExtractor;
+use App\Election\Support\PdfTextExtractor;
 use App\Election\Support\SimplePdf;
 use App\Election\Voting\QrCodeDecoder;
 use App\Election\Voting\StandardQrCode;
@@ -40,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ElectionClock::class);
         $this->app->bind(QrCodeDecoder::class, ZbarPngQrCodeDecoder::class);
+        $this->app->bind(PdfTextExtractor::class, GhostscriptPdfTextExtractor::class);
 
         $this->app->bind(BallotPrinter::class, function (Application $app): BallotPrinter {
             if (config('election.devices.printer.driver') === 'cups') {

@@ -71,10 +71,14 @@
 - POP workbook importer now uses a source adapter and explicit mapping profiles, with manifest metadata for source type, source label, source headers, mapping profile, and canonical fields.
 - POP workbook importer includes a strict alternate Excel mapping profile and developer manual for adding future profiles.
 - Lifecycle full-demo and evidence-folder scenarios now import configurable POP workbook defaults and include POP report sections.
+- CLC candidate PDF importer uses reusable Ghostscript PDF text extraction, writes candidate registries, and includes placeholder candidate image metadata.
+- Precinct candidate command combines imported POP precinct records with imported CLC candidate registries for ballot-facing candidate previews.
 - POP registry lookup and imported precinct package skeleton creation are available through Artisan commands.
 - POP import demo scenario is available as `php artisan election:scenario pop-import-demo`.
 - POP importer documentation is available in `docs/POP_IMPORTER.md`.
 - POP importer developer manual is available in `docs/POP_IMPORTER_DEVELOPER_MANUAL.md`.
+- CLC candidate importer documentation is available in `docs/CLC_CANDIDATE_IMPORTER.md`.
+- PDF text extraction documentation is available in `docs/PDF_TEXT_EXTRACTION.md`.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -181,6 +185,11 @@
 - `npm run format -- resources/js/pages/Election/Diagnostics.vue`
 - `vendor/bin/pest --compact`
 - `vendor/bin/pint --dirty --format agent`
+- `vendor/bin/pest tests/Feature/Election/ClcCandidateImportTest.php --compact`
+- `vendor/bin/pest tests/Feature/Election/PrecinctCandidatesCommandTest.php --compact`
+- `php artisan election:clc-import`
+- `php artisan election:precinct-candidates 7010001 --write-report`
+- `vendor/bin/pint --dirty --format agent`
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
 - `vendor/bin/pint --dirty --format agent`
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
@@ -267,6 +276,11 @@
 - Pest configured feature/unit suite after POP-backed lifecycle scenarios: passed, 74 tests and 965 assertions.
 - POP-backed full demo scenario: passed and wrote `storage/app/election-scenario-reports/2026-05-08-080001-7010001-full-demo-5f06678dc00b-report.json`.
 - POP-backed evidence folder scenario: passed and wrote `storage/app/election-scenario-artifacts/2026-05-08-080001-7010001-evidence-folder-demo-36e5247059eb`.
+- CLC candidate importer focused suite: passed, 2 tests and 26 assertions.
+- Precinct candidates command focused suite: passed, 3 tests and 28 assertions.
+- Pest configured feature/unit suite after CLC candidate import: passed, 79 tests and 1019 assertions.
+- CLC candidate import command: passed with 21 sources, 1329 de-duplicated candidates, and 1 needs-review row.
+- Precinct candidate report command for `7010001`: passed with 2 contests and 339 candidates.
 - Focused Pest ceremony page suite after removable-media readiness status labels: passed, 27 tests and 454 assertions.
 - TypeScript after removable-media readiness status labels: passed.
 - Pest configured feature/unit suite after removable-media readiness status labels: passed, 60 tests and 610 assertions.
