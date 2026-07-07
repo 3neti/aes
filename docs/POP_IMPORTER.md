@@ -55,11 +55,14 @@ Current mapping profiles:
 | Profile | Purpose |
 | --- | --- |
 | `comelec-pop-2025-nle` | Default strict 2025 NLE POP workbook profile. Requires exact headers and ordering. |
+| `comelec-pop-2025-nle-alt` | Strict alternate 2025 NLE profile for representative renamed headers. Requires exact headers and ordering. |
 | `comelec-pop-renamed-reordered-demo` | Test/demo profile showing renamed and reordered source headers. Requires explicit `--profile`. |
 
 If COMELEC changes the Excel shape, add a new explicit mapping profile and tests for the new headers. Do not silently change the default profile, because deterministic re-import of the known 2025 workbook is part of the appliance evidence chain.
 
 If the source arrives as PDFs, add a new source adapter that extracts table rows and returns `PopSourceData`. The registry writer and canonical mapping contract should remain unchanged. PDF extraction should stay explicit and separately tested because PDF tables are layout artifacts, not structured registries.
+
+Developer maintenance instructions are in `docs/POP_IMPORTER_DEVELOPER_MANUAL.md`.
 
 ## Import Strategy
 
@@ -236,10 +239,10 @@ Import the workbook:
 php artisan election:pop-import /Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx
 ```
 
-Import with an explicit alternate mapping profile:
+Import with the strict alternate mapping profile:
 
 ```bash
-php artisan election:pop-import /path/to/changed-pop.xlsx --profile=comelec-pop-renamed-reordered-demo
+php artisan election:pop-import /path/to/alternate-pop.xlsx --profile=comelec-pop-2025-nle-alt
 ```
 
 Verified output:
@@ -336,6 +339,7 @@ Coverage:
 - Manifest metadata records source type, source label, source headers, mapping profile, and canonical fields.
 - Invalid headers fail with a clear error under the default profile.
 - Renamed and reordered headers import only when an explicit matching profile is selected.
+- Alternate strict headers import only when the exact alternate profile order is used.
 - Missing mapped fields fail with a clear error.
 - Duplicate source headers fail with a clear error.
 - Duplicate clustered precinct ids fail with a clear error.

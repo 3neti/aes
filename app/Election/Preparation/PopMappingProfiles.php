@@ -8,6 +8,8 @@ final class PopMappingProfiles
 {
     public const Default = 'comelec-pop-2025-nle';
 
+    public const Alternate2025Nle = 'comelec-pop-2025-nle-alt';
+
     public const RenamedReorderedDemo = 'comelec-pop-renamed-reordered-demo';
 
     public static function get(?string $name = null): PopMappingProfile
@@ -25,6 +27,21 @@ final class PopMappingProfiles
                     'precinct_cluster' => 'PRECINCT_CLUSTER',
                     'cluster_total' => 'CLUSTERTOTAL',
                     'polling_place' => 'POLLING_PLACE',
+                ],
+                requiresExactHeaders: true,
+            ),
+            self::Alternate2025Nle => new PopMappingProfile(
+                name: self::Alternate2025Nle,
+                sourceLabel: 'FINAL_Clustered.POP_NLE_2025',
+                fieldMap: [
+                    'region' => 'REGION_NAME',
+                    'province' => 'PROVINCE_NAME',
+                    'city_municipality' => 'CITY_OR_MUNICIPALITY',
+                    'barangay' => 'BARANGAY_NAME',
+                    'clustered_precinct' => 'CLUSTERED_PRECINCT_ID',
+                    'precinct_cluster' => 'PRECINCTS_INCLUDED',
+                    'cluster_total' => 'REGISTERED_VOTERS',
+                    'polling_place' => 'POLLING_PLACE_NAME',
                 ],
                 requiresExactHeaders: true,
             ),

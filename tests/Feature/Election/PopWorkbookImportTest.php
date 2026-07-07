@@ -158,6 +158,72 @@ test('pop workbook import maps renamed and reordered headers with an explicit pr
         ->and($manifest['mapping_profile'])->toBe(PopMappingProfiles::RenamedReorderedDemo);
 });
 
+test('pop workbook import maps alternate strict 2025 nle headers with an explicit profile', function (): void {
+    $headers = alternatePopHeaders();
+    $path = makePopWorkbook($headers, [[
+        'ALT REGION',
+        'ALT PROVINCE',
+        'ALT CITY',
+        'ALT BARANGAY',
+        '9990002',
+        '0003A, 0004A',
+        '654',
+        'ALT POLLING PLACE',
+    ]]);
+
+    $this->artisan('election:pop-import', [
+        'path' => $path,
+        '--profile' => PopMappingProfiles::Alternate2025Nle,
+    ])
+        ->expectsOutput('Mapping profile: comelec-pop-2025-nle-alt')
+        ->expectsOutput('Rows: 1')
+        ->assertSuccessful();
+
+    $record = app(PopPrecinctRegistry::class)->find('9990002');
+    $manifest = app(ElectionStorage::class)->readJson('registries/pop-2025-nle/manifest.json');
+
+    expect($record['region'])->toBe('ALT REGION')
+        ->and($record['province'])->toBe('ALT PROVINCE')
+        ->and($record['city_municipality'])->toBe('ALT CITY')
+        ->and($record['barangay'])->toBe('ALT BARANGAY')
+        ->and($record['clustered_precinct'])->toBe('9990002')
+        ->and($record['precinct_cluster'])->toBe('0003A, 0004A')
+        ->and($record['cluster_total'])->toBe(654)
+        ->and($record['polling_place'])->toBe('ALT POLLING PLACE')
+        ->and($manifest['mapping_profile'])->toBe(PopMappingProfiles::Alternate2025Nle)
+        ->and($manifest['source_headers'])->toBe($headers)
+        ->and($manifest['canonical_fields'])->toBe([
+            'region',
+            'province',
+            'city_municipality',
+            'barangay',
+            'clustered_precinct',
+            'precinct_cluster',
+            'cluster_total',
+            'polling_place',
+        ]);
+});
+
+test('pop workbook import rejects reordered alternate headers under the strict alternate profile', function (): void {
+    $path = makePopWorkbook([
+        'POLLING_PLACE_NAME',
+        'REGISTERED_VOTERS',
+        'PRECINCTS_INCLUDED',
+        'CLUSTERED_PRECINCT_ID',
+        'BARANGAY_NAME',
+        'CITY_OR_MUNICIPALITY',
+        'PROVINCE_NAME',
+        'REGION_NAME',
+    ], []);
+
+    $this->artisan('election:pop-import', [
+        'path' => $path,
+        '--profile' => PopMappingProfiles::Alternate2025Nle,
+    ])
+        ->expectsOutputToContain('POP workbook headers do not match')
+        ->assertFailed();
+});
+
 test('pop workbook import rejects renamed headers under the default profile', function (): void {
     $path = makePopWorkbook([
         'POLLING_PLACE_NAME',
@@ -256,6 +322,23 @@ test('pop import demo scenario imports workbook and writes a package skeleton', 
 function popWorkbookPath(): string
 {
     return '/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx';
+}
+
+/**
+ * @return array<int, string>
+ */
+function alternatePopHeaders(): array
+{
+    return [
+        'REGION_NAME',
+        'PROVINCE_NAME',
+        'CITY_OR_MUNICIPALITY',
+        'BARANGAY_NAME',
+        'CLUSTERED_PRECINCT_ID',
+        'PRECINCTS_INCLUDED',
+        'REGISTERED_VOTERS',
+        'POLLING_PLACE_NAME',
+    ];
 }
 
 /**

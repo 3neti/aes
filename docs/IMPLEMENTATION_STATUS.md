@@ -69,9 +69,11 @@
 - Evidence folder scenario now rebuilds its durable evidence folder before copying artifacts so deterministic reruns do not accumulate stale files.
 - POP workbook importer preserves the 2025 NLE POP XLSX as source evidence and normalizes clustered precinct rows into deterministic local registry files.
 - POP workbook importer now uses a source adapter and explicit mapping profiles, with manifest metadata for source type, source label, source headers, mapping profile, and canonical fields.
+- POP workbook importer includes a strict alternate Excel mapping profile and developer manual for adding future profiles.
 - POP registry lookup and imported precinct package skeleton creation are available through Artisan commands.
 - POP import demo scenario is available as `php artisan election:scenario pop-import-demo`.
 - POP importer documentation is available in `docs/POP_IMPORTER.md`.
+- POP importer developer manual is available in `docs/POP_IMPORTER_DEVELOPER_MANUAL.md`.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -181,6 +183,9 @@
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
 - `vendor/bin/pint --dirty --format agent`
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
+- `vendor/bin/pest --compact`
+- `vendor/bin/pint --dirty --format agent`
+- `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
 - `vendor/bin/pint --dirty --format agent`
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
 - `php artisan election:pop-import /Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx`
@@ -254,6 +259,8 @@
 - Pest configured feature/unit suite after officer registry scaffold: passed, 60 tests and 598 assertions.
 - POP importer mapper/profile focused suite: passed, 9 tests and 78 assertions.
 - Pest configured feature/unit suite after POP importer mapper/profile extraction: passed, 71 tests and 897 assertions.
+- POP importer alternate strict profile focused suite: passed, 11 tests and 94 assertions.
+- Pest configured feature/unit suite after alternate POP profile: passed, 73 tests and 913 assertions.
 - Focused Pest ceremony page suite after removable-media readiness status labels: passed, 27 tests and 454 assertions.
 - TypeScript after removable-media readiness status labels: passed.
 - Pest configured feature/unit suite after removable-media readiness status labels: passed, 60 tests and 610 assertions.
