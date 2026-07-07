@@ -49,6 +49,7 @@ final class ScenarioRunner
         $report = match ($name) {
             'friday-certification' => $this->fridayCertification(),
             'full-demo' => $this->fullDemo(),
+            'evidence-folder-demo' => $this->evidenceFolderDemo(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -137,6 +138,17 @@ final class ScenarioRunner
             ],
             'stage' => $this->lifecycle->current(),
             'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function evidenceFolderDemo(): array
+    {
+        return [
+            ...$this->fullDemo(),
+            'scenario' => 'evidence-folder-demo',
         ];
     }
 

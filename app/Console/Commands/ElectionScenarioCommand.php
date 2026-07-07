@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 final class ElectionScenarioCommand extends Command
 {
-    protected $signature = 'election:scenario {scenario : friday-certification or full-demo}';
+    protected $signature = 'election:scenario {scenario : friday-certification, full-demo, or evidence-folder-demo}';
 
     protected $description = 'Run a deterministic Alternative Election System scenario.';
 
@@ -17,6 +17,10 @@ final class ElectionScenarioCommand extends Command
 
         $this->line("Scenario {$report['scenario']} ".($report['passed'] ? 'passed' : 'failed').'.');
         $this->line("Report: {$report['archived_report_path']}");
+
+        if (isset($report['evidence_folder_path'])) {
+            $this->line("Evidence Folder: {$report['evidence_folder_path']}");
+        }
 
         return $report['passed'] ? self::SUCCESS : self::FAILURE;
     }

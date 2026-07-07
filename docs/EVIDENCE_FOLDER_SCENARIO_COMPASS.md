@@ -18,8 +18,8 @@ Create `php artisan election:scenario evidence-folder-demo` so a complete simula
 | Slice | Status | Notes |
 | --- | --- | --- |
 | Plan and compass persisted | Complete | This compass and the implementation plan are the slice source of truth. |
-| Storage helpers | Pending | Add durable scenario artifact root helpers. |
-| Scenario registration | Pending | Register `evidence-folder-demo` and command output. |
+| Storage helpers | Complete | Added durable scenario artifact root helper plan target. |
+| Scenario registration | Complete | `evidence-folder-demo` is registered and callable. |
 | Evidence folder builder | Pending | Copy artifacts into numbered ceremony folders. |
 | Summary reports | Pending | Generate JSON and text reports with flow, statistics, and pointers. |
 | Tally sheet artifacts | Pending | Generate tally sheet text and PDF artifacts. |
@@ -30,8 +30,9 @@ Create `php artisan election:scenario evidence-folder-demo` so a complete simula
 
 | Slice | Commit | Tests/Checks | Result |
 | --- | --- | --- | --- |
-| Plan and compass persisted | Pending | Documentation-only | Pending |
+| Plan and compass persisted | `ea28ceb` | Documentation-only | Committed |
+| Storage and scenario registration | Pending | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 175 assertions |
 
 ## Next Slice
 
-Add durable storage helpers and register the `evidence-folder-demo` scenario.
+Add the evidence folder builder and copy generated artifacts into numbered ceremony folders.

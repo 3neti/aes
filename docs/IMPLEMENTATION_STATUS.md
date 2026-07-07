@@ -61,9 +61,11 @@
 - Removable-media readiness reports now include operator-facing status codes and labels for simulated ready, ready, missing, not writable, probe failed, and not ready states.
 - Scenario command reports are now also archived outside the resettable election runtime under `storage/app/election-scenario-reports` with contextual filenames containing scenario clock time, precinct id, scenario name, and report hash prefix.
 - Evidence folder scenario plan and compass are persisted in `docs/EVIDENCE_FOLDER_SCENARIO_PLAN.md` and `docs/EVIDENCE_FOLDER_SCENARIO_COMPASS.md`.
+- Evidence folder scenario command is registered as `php artisan election:scenario evidence-folder-demo`.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
+  - `php artisan election:scenario evidence-folder-demo`
 
 ## Tests Added
 
@@ -95,6 +97,7 @@
   - removable-media evidence export verification success path and tampered artifact mismatch command failure
   - downloadable TAR evidence bundle archive verification success path and tampered archive mismatch command failure
   - scenario command durable report archiving outside resettable election runtime
+  - evidence folder demo scenario command registration
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage

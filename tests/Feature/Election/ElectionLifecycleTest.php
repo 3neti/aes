@@ -604,6 +604,18 @@ test('scenario command archives reports outside resettable election runtime', fu
         ->and($storage->readJson('scenarios/full-demo-report.json')['passed'])->toBeTrue();
 });
 
+test('evidence folder demo scenario command is registered', function (): void {
+    $this->artisan('election:scenario evidence-folder-demo')
+        ->expectsOutput('Scenario evidence-folder-demo passed.')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $report = app(ElectionStorage::class)->readJson('scenarios/evidence-folder-demo-report.json');
+
+    expect($report['passed'])->toBeTrue()
+        ->and($report['scenario'])->toBe('evidence-folder-demo');
+});
+
 test('home page renders the ceremony shell', function (): void {
     $this->withoutVite();
 

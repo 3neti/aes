@@ -22,6 +22,11 @@ final class ElectionStorage
         return storage_path('app/election-scenario-reports');
     }
 
+    public function scenarioArtifactsRoot(): string
+    {
+        return storage_path('app/election-scenario-artifacts');
+    }
+
     public function path(string $relative): string
     {
         return $this->root().'/'.ltrim($relative, '/');
@@ -30,6 +35,11 @@ final class ElectionStorage
     public function scenarioReportPath(string $filename): string
     {
         return $this->scenarioReportsRoot().'/'.ltrim($filename, '/');
+    }
+
+    public function scenarioArtifactPath(string $relative): string
+    {
+        return $this->scenarioArtifactsRoot().'/'.ltrim($relative, '/');
     }
 
     public function ensureDirectories(): void
