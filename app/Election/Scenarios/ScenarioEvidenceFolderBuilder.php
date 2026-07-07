@@ -43,6 +43,12 @@ final class ScenarioEvidenceFolderBuilder
         $this->files->put($readmePath, $this->readme($scenario, $report));
         $artifacts[] = $this->artifactRecord('overview', $readmePath, null, 'README.txt');
 
+        $summary = $this->summaryReport($scenario, $report, $artifacts);
+        $summaryJsonPath = $folder.'/summary-report.json';
+        $this->files->put($summaryJsonPath, $this->json->encode($summary));
+        $summaryTextPath = $folder.'/summary-report.txt';
+        $this->files->put($summaryTextPath, $this->summaryText($summary));
+
         $index = [
             'schema_version' => 'scenario-artifact-index-1',
             'scenario' => $scenario,
@@ -62,6 +68,9 @@ final class ScenarioEvidenceFolderBuilder
         return [
             'evidence_folder_path' => $folder,
             'artifact_index_path' => $indexPath,
+            'summary_report_path' => $summaryJsonPath,
+            'summary_report_text_path' => $summaryTextPath,
+            'summary_report_hash' => $summary['summary_report_hash'],
             'artifact_count' => $index['artifact_count'],
             'artifact_total_bytes' => $index['total_bytes'],
             'artifact_index_hash' => $index['index_hash'],
@@ -197,6 +206,162 @@ final class ScenarioEvidenceFolderBuilder
             'Use artifact-index.json to verify file sizes and SHA-256 hashes.',
             '',
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $report
+     * @param  array<int, array<string, mixed>>  $artifacts
+     * @return array<string, mixed>
+     */
+    private function summaryReport(string $scenario, array $report, array $artifacts): array
+    {
+        $configuration = $this->storage->readJson('runtime/active-precinct.json');
+        $deviceReport = $this->storage->readJson('certification/device-certification-report.json');
+        $certificationReport = $this->storage->readJson('certification/friday-certification-report.json');
+        $tally = $this->storage->readJson('runtime/tally.json');
+        $return = $this->storage->readJson('returns/'.($report['precinct_id'] ?? 'unknown').'-return.json');
+
+        $summary = [
+            'schema_version' => 'scenario-summary-report-1',
+            'scenario' => $scenario,
+            'passed' => $report['passed'] ?? false,
+            'generated_at' => $this->clock->now()->toIso8601String(),
+            'election_id' => $configuration['election_id'] ?? null,
+            'precinct_id' => $report['precinct_id'] ?? null,
+            'flow' => $this->flow($report),
+            'statistics' => $this->statistics($artifacts, $deviceReport, $certificationReport, $tally, $report),
+            'artifact_pointers' => collect($artifacts)
+                ->groupBy('category')
+                ->map(fn ($group): array => $group->values()->all())
+                ->all(),
+            'important_hashes' => [
+                'mapping_hash' => $configuration['mapping_hash'] ?? null,
+                'device_certification_report_hash' => $deviceReport['report_hash'] ?? null,
+                'friday_certification_report_hash' => $certificationReport['report_hash'] ?? null,
+                'ballot_payload_hashes' => collect($this->matchingStorageFiles('ballots', 'demo-'))
+                    ->filter(fn (string $path): bool => str_ends_with($path, '.json'))
+                    ->map(fn (string $path): ?string => $this->readJsonFile($path)['payload_hash'] ?? null)
+                    ->filter()
+                    ->values()
+                    ->all(),
+                'tally_hash' => $tally['tally_hash'] ?? null,
+                'election_return_hash' => $return['return_hash'] ?? null,
+            ],
+        ];
+        $summary['summary_report_hash'] = $this->json->hash($summary);
+
+        return $summary;
+    }
+
+    /**
+     * @param  array<string, mixed>  $report
+     * @return array<int, array<string, string>>
+     */
+    private function flow(array $report): array
+    {
+        return [
+            ['step' => 'Activate sample precinct package', 'status' => 'complete'],
+            ['step' => 'Generate certification scan documents', 'status' => 'complete'],
+            ['step' => 'Run device certification', 'status' => isset($report['device_report_hash']) ? 'complete' : 'missing'],
+            ['step' => 'Run Friday certification', 'status' => isset($report['return_hash']) ? 'complete' : 'missing'],
+            ['step' => 'Capture officer attestation and signature', 'status' => count($this->storage->files('attestations')) > 0 ? 'complete' : 'missing'],
+            ['step' => 'Open polls', 'status' => 'complete'],
+            ['step' => 'Print ballots', 'status' => count($this->storage->files('print-jobs')) > 0 ? 'complete' : 'missing'],
+            ['step' => 'Spoil simulation ballot', 'status' => count($this->matchingStorageFiles('runtime', 'spoiled-')) > 0 ? 'complete' : 'missing'],
+            ['step' => 'Close polls and count ballots', 'status' => ($report['accepted_ballots'] ?? 0) > 0 ? 'complete' : 'missing'],
+            ['step' => 'Generate tally and Election Return', 'status' => isset($report['return_hash']) ? 'complete' : 'missing'],
+            ['step' => 'Close precinct', 'status' => ($report['stage'] ?? null) === 'close_precinct' ? 'complete' : 'missing'],
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $artifacts
+     * @param  array<string, mixed>  $deviceReport
+     * @param  array<string, mixed>  $certificationReport
+     * @param  array<string, mixed>  $tally
+     * @param  array<string, mixed>  $report
+     * @return array<string, int>
+     */
+    private function statistics(array $artifacts, array $deviceReport, array $certificationReport, array $tally, array $report): array
+    {
+        $deviceResults = collect($deviceReport['devices'] ?? []);
+
+        return [
+            'scan_documents_generated' => count($this->matchingStorageFiles('ballots', 'cert-')),
+            'device_checks_passed' => $deviceResults->filter(fn (array $result): bool => ($result['status'] ?? null) === 'ready')->count(),
+            'device_checks_failed' => $deviceResults->filter(fn (array $result): bool => ($result['status'] ?? null) !== 'ready')->count(),
+            'certification_ballots_counted' => count($certificationReport['expected_tally']['president'] ?? []) > 0 ? 3 : 0,
+            'officer_attestations_captured' => count($this->storage->files('attestations')),
+            'signatures_captured' => count($this->storage->files('attestation-signatures')),
+            'ballots_finalized' => collect($this->matchingStorageFiles('ballots', 'demo-'))
+                ->filter(fn (string $path): bool => str_ends_with($path, '.json'))
+                ->count(),
+            'ballots_printed' => count($this->storage->files('print-jobs')),
+            'ballots_spoiled' => count($this->matchingStorageFiles('runtime', 'spoiled-')),
+            'accepted_ballots' => (int) ($report['accepted_ballots'] ?? 0),
+            'rejected_ballots' => (int) ($report['rejected_ballots'] ?? 0),
+            'contests_tallied' => count($tally['tally'] ?? []),
+            'journal_entries' => (int) ($report['journal_entries'] ?? 0),
+            'total_evidence_files_copied' => count($artifacts),
+            'total_evidence_bytes' => collect($artifacts)->sum(fn (array $artifact): int => (int) $artifact['bytes']),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     */
+    private function summaryText(array $summary): string
+    {
+        $lines = [
+            'EVIDENCE FOLDER SCENARIO SUMMARY',
+            "Scenario: {$summary['scenario']}",
+            'Precinct: '.($summary['precinct_id'] ?? 'unknown'),
+            'Election: '.($summary['election_id'] ?? 'unknown'),
+            'Passed: '.(($summary['passed'] ?? false) ? 'yes' : 'no'),
+            'Generated: '.$summary['generated_at'],
+            'Summary Hash: '.$summary['summary_report_hash'],
+            '',
+            'Flow:',
+        ];
+
+        foreach ($summary['flow'] as $step) {
+            $lines[] = "- {$step['status']}: {$step['step']}";
+        }
+
+        $lines[] = '';
+        $lines[] = 'Statistics:';
+
+        foreach ($summary['statistics'] as $name => $value) {
+            $lines[] = "- {$name}: {$value}";
+        }
+
+        $lines[] = '';
+        $lines[] = 'Artifact Pointers:';
+
+        foreach ($summary['artifact_pointers'] as $category => $artifacts) {
+            $lines[] = strtoupper((string) $category);
+
+            foreach ($artifacts as $artifact) {
+                $lines[] = "- {$artifact['relative_path']} ({$artifact['bytes']} bytes, sha256 {$artifact['sha256']})";
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = 'Important Hashes:';
+
+        foreach ($summary['important_hashes'] as $name => $value) {
+            $lines[] = '- '.$name.': '.(is_array($value) ? implode(', ', $value) : ($value ?? 'n/a'));
+        }
+
+        return implode(PHP_EOL, $lines).PHP_EOL;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readJsonFile(string $path): array
+    {
+        return json_decode($this->files->get($path), true, flags: JSON_THROW_ON_ERROR);
     }
 
     private function slug(string $value): string

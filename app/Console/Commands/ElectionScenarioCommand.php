@@ -22,6 +22,10 @@ final class ElectionScenarioCommand extends Command
             $this->line("Evidence Folder: {$report['evidence_folder_path']}");
         }
 
+        if (isset($report['summary_report_path'])) {
+            $this->line("Summary Report: {$report['summary_report_path']}");
+        }
+
         return $report['passed'] ? self::SUCCESS : self::FAILURE;
     }
 }

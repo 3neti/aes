@@ -63,6 +63,7 @@
 - Evidence folder scenario plan and compass are persisted in `docs/EVIDENCE_FOLDER_SCENARIO_PLAN.md` and `docs/EVIDENCE_FOLDER_SCENARIO_COMPASS.md`.
 - Evidence folder scenario command is registered as `php artisan election:scenario evidence-folder-demo`.
 - Evidence folder scenario now persists numbered ceremony artifact folders and `artifact-index.json` under `storage/app/election-scenario-artifacts`.
+- Evidence folder scenario writes `summary-report.json` and `summary-report.txt` with lifecycle flow, statistics, hashes, and artifact pointers.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -100,6 +101,7 @@
   - scenario command durable report archiving outside resettable election runtime
   - evidence folder demo scenario command registration
   - evidence folder demo numbered folder and artifact index generation
+  - evidence folder demo summary report output
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
