@@ -340,12 +340,7 @@ final class DiagnosticsService
     private function manifestFiles(string $directory): array
     {
         return collect($this->storage->files($directory))
-            ->map(fn (string $path): array => [
-                'file' => basename($path),
-                'relative_path' => $directory.'/'.basename($path),
-                'bytes' => filesize($path),
-                'sha256' => hash_file('sha256', $path),
-            ])
+            ->map(fn (string $path): array => EvidenceArtifact::fromPath($directory, $path)->toManifestEntry())
             ->values()
             ->all();
     }

@@ -56,6 +56,7 @@
 - QR decode is now behind an internal `QrCodeDecoder` adapter with `ZbarPngQrCodeDecoder` as the default implementation, preparing for a future pure PHP decoder without changing election services.
 - QR decoder portability note records the no-bloat dependency criteria and evaluation checklist for any future pure PHP decoder.
 - PDF artifacts now use a more structured deterministic layout with header band, subtitle, monospaced body text, separator lines, and source-of-truth footer.
+- Evidence manifest entries now use an internal `EvidenceArtifact` value object for file name, relative path, size, and SHA-256 shaping.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -134,6 +135,8 @@
   - adapter boundary summary, dependency acceptance criteria, and verification checklist for any pure PHP QR decoder candidate
 - `docs/PDF_ARTIFACTS.md`
   - current PDF layout, structural verification, and pending Poppler render-check procedure
+- `app/Election/Diagnostics/EvidenceArtifact.php`
+  - internal value object for deterministic evidence manifest entries without introducing a media package
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -163,6 +166,7 @@
 - `vendor/bin/pest tests/Browser/CountingCameraCaptureWorkflowTest.php --compact`
 - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --compact`
 - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --compact`
 - `vendor/bin/pest --compact`
 - `composer validate --strict`
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
@@ -200,6 +204,8 @@
 - Pest configured feature/unit suite after QR decoder adapter extraction: passed, 59 tests and 587 assertions.
 - Focused Pest lifecycle suite after PDF layout pass: passed, 30 tests and 148 assertions.
 - Pest configured feature/unit suite after PDF layout pass: passed, 59 tests and 592 assertions.
+- Focused Pest ceremony page suite after EvidenceArtifact extraction: passed, 27 tests and 442 assertions.
+- Pest configured feature/unit suite after EvidenceArtifact extraction: passed, 59 tests and 592 assertions.
 - Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.
 - GitHub Actions workflow YAML parse: passed.
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.
