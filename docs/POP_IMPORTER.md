@@ -34,7 +34,32 @@ Required columns:
 | `CLUSTERTOTAL` | Registered voters in the clustered precinct. |
 | `POLLING_PLACE` | Polling place name. |
 
-The importer rejects a workbook whose first-row headers do not exactly match this shape.
+The default mapping profile rejects a workbook whose first-row headers do not exactly match this shape.
+
+## Mapping Profiles And Source Adapters
+
+The importer is split into three responsibilities:
+
+- `PopSourceAdapter` extracts rows from a physical source file.
+- `PopMappingProfile` maps source headers into canonical POP registry fields.
+- `PopWorkbookImporter` writes the deterministic registry files and manifest.
+
+Current adapter:
+
+| Adapter | Source type | Status |
+| --- | --- | --- |
+| `XlsxPopSourceAdapter` | `.xlsx` workbook | Active. |
+
+Current mapping profiles:
+
+| Profile | Purpose |
+| --- | --- |
+| `comelec-pop-2025-nle` | Default strict 2025 NLE POP workbook profile. Requires exact headers and ordering. |
+| `comelec-pop-renamed-reordered-demo` | Test/demo profile showing renamed and reordered source headers. Requires explicit `--profile`. |
+
+If COMELEC changes the Excel shape, add a new explicit mapping profile and tests for the new headers. Do not silently change the default profile, because deterministic re-import of the known 2025 workbook is part of the appliance evidence chain.
+
+If the source arrives as PDFs, add a new source adapter that extracts table rows and returns `PopSourceData`. The registry writer and canonical mapping contract should remain unchanged. PDF extraction should stay explicit and separately tested because PDF tables are layout artifacts, not structured registries.
 
 ## Import Strategy
 
@@ -114,6 +139,11 @@ Field notes:
   "registry_version": "pop-2025-nle",
   "sheet_name": "FINAL_Clustered.POP_NLE_2025",
   "headers": ["REGION", "PROVINCE", "CITY_MUNICIPALITY", "BARANGAY", "CLUSTERED_PRECINCT", "PRECINCT_CLUSTER", "CLUSTERTOTAL", "POLLING_PLACE"],
+  "source_type": "xlsx",
+  "source_label": "FINAL_Clustered.POP_NLE_2025",
+  "source_headers": ["REGION", "PROVINCE", "CITY_MUNICIPALITY", "BARANGAY", "CLUSTERED_PRECINCT", "PRECINCT_CLUSTER", "CLUSTERTOTAL", "POLLING_PLACE"],
+  "mapping_profile": "comelec-pop-2025-nle",
+  "canonical_fields": ["region", "province", "city_municipality", "barangay", "clustered_precinct", "precinct_cluster", "cluster_total", "polling_place"],
   "source": {
     "original_path": "/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx",
     "copied_path": "storage/app/election/imports/pop/2025NLE_POP.xlsx",
@@ -206,10 +236,17 @@ Import the workbook:
 php artisan election:pop-import /Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx
 ```
 
+Import with an explicit alternate mapping profile:
+
+```bash
+php artisan election:pop-import /path/to/changed-pop.xlsx --profile=comelec-pop-renamed-reordered-demo
+```
+
 Verified output:
 
 ```text
 POP workbook imported.
+Mapping profile: comelec-pop-2025-nle
 Rows: 93629
 Unique clustered precincts: 93629
 Total registered voters: 69773653
@@ -296,7 +333,12 @@ Coverage:
 - Re-importing the same workbook preserves the same registry hash.
 - Lookup for `7010001` returns the expected location and polling place.
 - Package activation writes `packages/imported/7010001.json`.
-- Invalid headers fail with a clear error.
+- Manifest metadata records source type, source label, source headers, mapping profile, and canonical fields.
+- Invalid headers fail with a clear error under the default profile.
+- Renamed and reordered headers import only when an explicit matching profile is selected.
+- Missing mapped fields fail with a clear error.
+- Duplicate source headers fail with a clear error.
+- Duplicate clustered precinct ids fail with a clear error.
 - `pop-import-demo` scenario imports the workbook and writes a package skeleton.
 
 Verified runs:
@@ -305,13 +347,13 @@ Verified runs:
 vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact
 ```
 
-Passed: 4 tests, 52 assertions.
+Passed: 9 tests, 78 assertions.
 
 ```text
 vendor/bin/pest --compact
 ```
 
-Passed: 66 tests, 871 assertions.
+Passed: 71 tests, 897 assertions.
 
 ## Operational Limits
 

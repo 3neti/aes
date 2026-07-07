@@ -1,5 +1,6 @@
 <?php
 
+use App\Election\Preparation\PopMappingProfiles;
 use App\Election\Preparation\PopPrecinctRegistry;
 use App\Election\Preparation\PopWorkbookImporter;
 use App\Election\Support\ElectionStorage;
@@ -17,6 +18,7 @@ test('pop workbook import writes deterministic registry artifacts from the 2025 
 
     $this->artisan('election:pop-import', ['path' => $path])
         ->expectsOutput('POP workbook imported.')
+        ->expectsOutput('Mapping profile: comelec-pop-2025-nle')
         ->expectsOutput('Rows: 93629')
         ->expectsOutput('Unique clustered precincts: 93629')
         ->assertSuccessful();
@@ -35,6 +37,20 @@ test('pop workbook import writes deterministic registry artifacts from the 2025 
             'PRECINCT_CLUSTER',
             'CLUSTERTOTAL',
             'POLLING_PLACE',
+        ])
+        ->and($manifest['source_type'])->toBe('xlsx')
+        ->and($manifest['source_label'])->toBe('FINAL_Clustered.POP_NLE_2025')
+        ->and($manifest['source_headers'])->toBe($manifest['headers'])
+        ->and($manifest['mapping_profile'])->toBe(PopMappingProfiles::Default)
+        ->and($manifest['canonical_fields'])->toBe([
+            'region',
+            'province',
+            'city_municipality',
+            'barangay',
+            'clustered_precinct',
+            'precinct_cluster',
+            'cluster_total',
+            'polling_place',
         ])
         ->and($manifest['total_registered_voters'])->toBe(69773653)
         ->and($manifest['source']['copied_path'])->toBeReadableFile()
@@ -92,10 +108,126 @@ test('pop registry lookup and package activation use clustered precinct records'
 });
 
 test('pop workbook import rejects invalid headers and journals the failure', function (): void {
-    $path = makeInvalidPopWorkbook();
+    $path = makePopWorkbook(['WRONG', 'HEADER'], []);
 
     $this->artisan('election:pop-import', ['path' => $path])
         ->expectsOutputToContain('POP workbook headers do not match')
+        ->assertFailed();
+});
+
+test('pop workbook import maps renamed and reordered headers with an explicit profile', function (): void {
+    $path = makePopWorkbook([
+        'POLLING_PLACE_NAME',
+        'REGISTERED_VOTERS',
+        'PRECINCTS_INCLUDED',
+        'CLUSTERED_PRECINCT_ID',
+        'BARANGAY_NAME',
+        'CITY_OR_MUNICIPALITY',
+        'PROVINCE_NAME',
+        'REGION_NAME',
+    ], [[
+        'ALT POLLING PLACE',
+        '321',
+        '0001A, 0002A',
+        '9990001',
+        'ALT BARANGAY',
+        'ALT CITY',
+        'ALT PROVINCE',
+        'ALT REGION',
+    ]]);
+
+    $this->artisan('election:pop-import', [
+        'path' => $path,
+        '--profile' => PopMappingProfiles::RenamedReorderedDemo,
+    ])
+        ->expectsOutput('Mapping profile: comelec-pop-renamed-reordered-demo')
+        ->expectsOutput('Rows: 1')
+        ->assertSuccessful();
+
+    $record = app(PopPrecinctRegistry::class)->find('9990001');
+    $manifest = app(ElectionStorage::class)->readJson('registries/pop-2025-nle/manifest.json');
+
+    expect($record['region'])->toBe('ALT REGION')
+        ->and($record['province'])->toBe('ALT PROVINCE')
+        ->and($record['city_municipality'])->toBe('ALT CITY')
+        ->and($record['barangay'])->toBe('ALT BARANGAY')
+        ->and($record['clustered_precinct'])->toBe('9990001')
+        ->and($record['precinct_cluster'])->toBe('0001A, 0002A')
+        ->and($record['cluster_total'])->toBe(321)
+        ->and($record['polling_place'])->toBe('ALT POLLING PLACE')
+        ->and($manifest['mapping_profile'])->toBe(PopMappingProfiles::RenamedReorderedDemo);
+});
+
+test('pop workbook import rejects renamed headers under the default profile', function (): void {
+    $path = makePopWorkbook([
+        'POLLING_PLACE_NAME',
+        'REGISTERED_VOTERS',
+        'PRECINCTS_INCLUDED',
+        'CLUSTERED_PRECINCT_ID',
+        'BARANGAY_NAME',
+        'CITY_OR_MUNICIPALITY',
+        'PROVINCE_NAME',
+        'REGION_NAME',
+    ], []);
+
+    $this->artisan('election:pop-import', ['path' => $path])
+        ->expectsOutputToContain('POP workbook headers do not match')
+        ->assertFailed();
+});
+
+test('pop workbook import rejects profiles with missing mapped source fields', function (): void {
+    $path = makePopWorkbook([
+        'POLLING_PLACE_NAME',
+        'PRECINCTS_INCLUDED',
+        'CLUSTERED_PRECINCT_ID',
+        'BARANGAY_NAME',
+        'CITY_OR_MUNICIPALITY',
+        'PROVINCE_NAME',
+        'REGION_NAME',
+    ], []);
+
+    $this->artisan('election:pop-import', [
+        'path' => $path,
+        '--profile' => PopMappingProfiles::RenamedReorderedDemo,
+    ])
+        ->expectsOutputToContain('Missing required POP source header [REGISTERED_VOTERS]')
+        ->assertFailed();
+});
+
+test('pop workbook import rejects duplicate source headers', function (): void {
+    $path = makePopWorkbook([
+        'REGION',
+        'REGION',
+        'CITY_MUNICIPALITY',
+        'BARANGAY',
+        'CLUSTERED_PRECINCT',
+        'PRECINCT_CLUSTER',
+        'CLUSTERTOTAL',
+        'POLLING_PLACE',
+    ], []);
+
+    $this->artisan('election:pop-import', ['path' => $path])
+        ->expectsOutputToContain('POP source headers contain duplicates')
+        ->assertFailed();
+});
+
+test('pop workbook import rejects duplicate clustered precinct ids', function (): void {
+    $path = makePopWorkbook([
+        'REGION',
+        'PROVINCE',
+        'CITY_MUNICIPALITY',
+        'BARANGAY',
+        'CLUSTERED_PRECINCT',
+        'PRECINCT_CLUSTER',
+        'CLUSTERTOTAL',
+        'POLLING_PLACE',
+    ], [
+        ['REGION A', 'PROVINCE A', 'CITY A', 'BARANGAY A', '1001', '0001A', '10', 'PLACE A'],
+        ['REGION B', 'PROVINCE B', 'CITY B', 'BARANGAY B', '1001', '0002A', '11', 'PLACE B'],
+    ]);
+
+    $this->artisan('election:pop-import', ['path' => $path])
+        ->expectsOutputToContain('Duplicate clustered precinct [1001]')
         ->assertFailed();
 });
 
@@ -126,9 +258,13 @@ function popWorkbookPath(): string
     return '/Users/rli/Documents/COMELEC/POP/2025NLE_POP.xlsx';
 }
 
-function makeInvalidPopWorkbook(): string
+/**
+ * @param  array<int, string>  $headers
+ * @param  array<int, array<int, string>>  $rows
+ */
+function makePopWorkbook(array $headers, array $rows): string
 {
-    $path = sys_get_temp_dir().'/invalid-pop-workbook.xlsx';
+    $path = tempnam(sys_get_temp_dir(), 'pop-workbook-').'.xlsx';
     @unlink($path);
 
     $zip = new ZipArchive;
@@ -147,18 +283,55 @@ XML);
     <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
 </Relationships>
 XML);
-    $zip->addFromString('xl/worksheets/sheet1.xml', <<<'XML'
+    $sheetRows = [makePopWorkbookRow(1, $headers)];
+
+    foreach ($rows as $index => $row) {
+        $sheetRows[] = makePopWorkbookRow($index + 2, $row);
+    }
+
+    $sheetData = implode(PHP_EOL, $sheetRows);
+
+    $zip->addFromString('xl/worksheets/sheet1.xml', <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
     <sheetData>
-        <row r="1">
-            <c r="A1" t="str"><v>WRONG</v></c>
-            <c r="B1" t="str"><v>HEADER</v></c>
-        </row>
+{$sheetData}
     </sheetData>
 </worksheet>
 XML);
     $zip->close();
 
     return $path;
+}
+
+/**
+ * @param  array<int, string>  $values
+ */
+function makePopWorkbookRow(int $rowNumber, array $values): string
+{
+    $cells = array_map(
+        fn (int $index, string $value): string => sprintf(
+            '<c r="%s%d" t="str"><v>%s</v></c>',
+            popWorkbookColumnName($index + 1),
+            $rowNumber,
+            htmlspecialchars($value, ENT_XML1 | ENT_COMPAT, 'UTF-8'),
+        ),
+        array_keys($values),
+        $values,
+    );
+
+    return sprintf('        <row r="%d">%s</row>', $rowNumber, implode('', $cells));
+}
+
+function popWorkbookColumnName(int $column): string
+{
+    $name = '';
+
+    while ($column > 0) {
+        $column--;
+        $name = chr(65 + ($column % 26)).$name;
+        $column = intdiv($column, 26);
+    }
+
+    return $name;
 }
