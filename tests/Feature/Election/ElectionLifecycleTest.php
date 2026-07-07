@@ -621,8 +621,11 @@ test('evidence folder demo scenario command is registered', function (): void {
         ->and($report['summary_report_path'])->toBeReadableFile()
         ->and($report['summary_report_text_path'])->toBeReadableFile()
         ->and($report['artifact_count'])->toBeGreaterThan(0)
+        ->and($report['evidence_folder_path'].'/05-counting-and-tally/tally-sheet.txt')->toBeReadableFile()
+        ->and($report['evidence_folder_path'].'/05-counting-and-tally/tally-sheet.pdf')->toBeReadableFile()
         ->and($summary['flow'])->not->toBeEmpty()
         ->and($summary['statistics']['accepted_ballots'])->toBe(1)
+        ->and($summary['artifact_pointers']['counting_and_tally'])->not->toBeEmpty()
         ->and($summary['artifact_pointers']['ballots'])->not->toBeEmpty();
 });
 

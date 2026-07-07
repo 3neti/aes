@@ -5,6 +5,7 @@ namespace App\Election\Scenarios;
 use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\SimplePdf;
 use Illuminate\Filesystem\Filesystem;
 
 final class ScenarioEvidenceFolderBuilder
@@ -14,6 +15,7 @@ final class ScenarioEvidenceFolderBuilder
         private readonly Filesystem $files,
         private readonly CanonicalJson $json,
         private readonly ElectionClock $clock,
+        private readonly SimplePdf $pdf,
     ) {}
 
     /**
@@ -24,6 +26,7 @@ final class ScenarioEvidenceFolderBuilder
     {
         $folder = $this->folderPath($scenario, $report);
         $this->files->ensureDirectoryExists($folder);
+        $this->writeTallySheet();
 
         $artifacts = [];
 
@@ -123,6 +126,8 @@ final class ScenarioEvidenceFolderBuilder
                     ...$this->storage->files('counting/accepted'),
                     ...$this->storage->files('counting/rejected'),
                     $this->storage->path('runtime/tally.json'),
+                    $this->storage->path('runtime/tally-sheet.txt'),
+                    $this->storage->path('runtime/tally-sheet.pdf'),
                 ],
             ],
             [
@@ -206,6 +211,38 @@ final class ScenarioEvidenceFolderBuilder
             'Use artifact-index.json to verify file sizes and SHA-256 hashes.',
             '',
         ]);
+    }
+
+    private function writeTallySheet(): void
+    {
+        $configuration = $this->storage->readJson('runtime/active-precinct.json');
+        $tally = $this->storage->readJson('runtime/tally.json');
+
+        if ($configuration === [] || $tally === []) {
+            return;
+        }
+
+        $lines = [
+            'TALLY SHEET',
+            'Election: '.($configuration['election_id'] ?? 'unknown'),
+            'Precinct: '.($configuration['precinct_id'] ?? 'unknown'),
+            'Accepted Ballots: '.($tally['accepted_ballots'] ?? 0),
+            'Rejected Ballots: '.($tally['rejected_ballots'] ?? 0),
+            'Tally Hash: '.($tally['tally_hash'] ?? 'unknown'),
+            '',
+            'Totals:',
+        ];
+
+        foreach (($tally['tally'] ?? []) as $contest => $totals) {
+            $lines[] = strtoupper((string) $contest);
+
+            foreach ($totals as $candidate => $votes) {
+                $lines[] = "  {$candidate}: {$votes}";
+            }
+        }
+
+        $this->storage->writeText('runtime/tally-sheet.txt', implode(PHP_EOL, $lines).PHP_EOL);
+        $this->storage->writeText('runtime/tally-sheet.pdf', $this->pdf->render('Tally Sheet', $lines));
     }
 
     /**
