@@ -7,10 +7,13 @@ use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use RuntimeException;
-use Symfony\Component\Process\Process;
 
 final class StandardQrCode
 {
+    public function __construct(
+        private readonly QrCodeDecoder $decoder,
+    ) {}
+
     public function renderPng(string $payload): string
     {
         $renderer = new ImageRenderer(
@@ -23,18 +26,7 @@ final class StandardQrCode
 
     public function decodePngFile(string $path): string
     {
-        if (! file_exists($path)) {
-            throw new RuntimeException("QR artifact [{$path}] does not exist.");
-        }
-
-        $process = new Process(['zbarimg', '--quiet', '--raw', $path]);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new RuntimeException('Unable to decode QR artifact: '.$process->getErrorOutput());
-        }
-
-        return trim($process->getOutput());
+        return $this->decoder->decodePngFile($path);
     }
 
     public function decodePngBytes(string $contents): string

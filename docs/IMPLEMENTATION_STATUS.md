@@ -53,6 +53,7 @@
 - Counting scanner decode failures are converted into rejected scan feedback with one rejected counting evidence file instead of a server error.
 - Browser-level Counting rejected camera QR frame coverage for PNG frames that reach the scanner route but fail QR decode.
 - CI operations note for manually confirming controlled browser screenshot/log artifact uploads in GitHub Actions.
+- QR decode is now behind an internal `QrCodeDecoder` adapter with `ZbarPngQrCodeDecoder` as the default implementation, preparing for a future pure PHP decoder without changing election services.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -155,6 +156,7 @@
 - `vendor/bin/pest tests/Browser/ElectionCeremonyPagesSmokeTest.php --compact`
 - `vendor/bin/pest tests/Browser/CountingCameraCaptureWorkflowTest.php --compact`
 - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`
 - `vendor/bin/pest --compact`
 - `composer validate --strict`
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
@@ -187,6 +189,8 @@
 - Pest Browser suite with rejected camera QR frame coverage: passed, 12 tests and 83 assertions.
 - Focused Pest ceremony page suite after scanner decode hardening: passed, 27 tests and 442 assertions.
 - Pest configured feature/unit suite after scanner decode hardening: passed, 59 tests and 587 assertions.
+- Focused Pest lifecycle suite after QR decoder adapter extraction: passed, 30 tests and 143 assertions.
+- Pest configured feature/unit suite after QR decoder adapter extraction: passed, 59 tests and 587 assertions.
 - Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.
 - GitHub Actions workflow YAML parse: passed.
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.
@@ -214,5 +218,4 @@
 ## Next Recommended Steps
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
-- Add pure PHP QR decode adapter investigation to reduce appliance dependency on `zbarimg`.
-- Add browser coverage for rejected camera QR frames that reach the scanner route but fail QR decode.
+- Add a pure PHP QR decoder implementation or selected dependency only after evaluating deployability and deterministic decode behavior.

@@ -21,7 +21,9 @@ use App\Election\Scanning\ManualPayloadScanner;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
+use App\Election\Voting\QrCodeDecoder;
 use App\Election\Voting\StandardQrCode;
+use App\Election\Voting\ZbarPngQrCodeDecoder;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Date;
@@ -37,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(ElectionClock::class);
+        $this->app->bind(QrCodeDecoder::class, ZbarPngQrCodeDecoder::class);
 
         $this->app->bind(BallotPrinter::class, function (Application $app): BallotPrinter {
             if (config('election.devices.printer.driver') === 'cups') {
