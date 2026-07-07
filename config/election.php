@@ -9,7 +9,7 @@ return [
     'pop' => [
         'source_path' => env('ELECTION_POP_SOURCE_PATH', resource_path('election/pop/2025NLE_POP.xlsx')),
         'profile' => env('ELECTION_POP_PROFILE', 'comelec-pop-2025-nle'),
-        'clustered_precinct' => env('ELECTION_POP_CLUSTERED_PRECINCT', '7010001'),
+        'clustered_precinct' => env('ELECTION_POP_CLUSTERED_PRECINCT', '39010001'),
     ],
     'pdf' => [
         'ghostscript_binary' => env('ELECTION_PDF_GHOSTSCRIPT_BINARY', 'gs'),
@@ -18,6 +18,22 @@ return [
         'source_path' => env('ELECTION_CLC_SOURCE_PATH', resource_path('election/clc')),
         'profile' => env('ELECTION_CLC_PROFILE', 'comelec-clc-2025-nle'),
         'registry_version' => env('ELECTION_CLC_REGISTRY_VERSION', 'clc-2025-nle'),
+        'precinct_aliases' => [
+            'BINONDO' => 'CITY OF MANILA',
+            'ERMITA' => 'CITY OF MANILA',
+            'INTRAMUROS' => 'CITY OF MANILA',
+            'MALATE' => 'CITY OF MANILA',
+            'PACO' => 'CITY OF MANILA',
+            'PANDACAN' => 'CITY OF MANILA',
+            'PORT AREA' => 'CITY OF MANILA',
+            'QUIAPO' => 'CITY OF MANILA',
+            'SAMPALOC' => 'CITY OF MANILA',
+            'SAN MIGUEL' => 'CITY OF MANILA',
+            'SAN NICOLAS' => 'CITY OF MANILA',
+            'SANTA ANA' => 'CITY OF MANILA',
+            'SANTA CRUZ' => 'CITY OF MANILA',
+            'TONDO' => 'CITY OF MANILA',
+        ],
     ],
     'officers' => [
         [

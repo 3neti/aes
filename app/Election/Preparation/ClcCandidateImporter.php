@@ -398,8 +398,8 @@ final class ClcCandidateImporter
 
     private function district(string $geography): ?string
     {
-        if (preg_match('/-\s*([A-Z]+ DIST)$/', $geography, $matches)) {
-            return $matches[1];
+        if (preg_match('/-\s*([A-Z]+)\s+(?:LEG)?DIST$/', $geography, $matches)) {
+            return $matches[1].' DIST';
         }
 
         return null;

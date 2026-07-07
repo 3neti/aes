@@ -22,6 +22,8 @@ election.pop.profile
 election.pop.clustered_precinct
 ```
 
+The current repository default clustered precinct is `39010001` in Tondo, NCR - Manila. It is used because the available POP workbook and CLC PDFs can be combined into a local Manila candidate preview.
+
 Workbook shape:
 
 - Sheet: `FINAL_Clustered.POP_NLE_2025`
@@ -107,7 +109,7 @@ Scenario reports are also archived outside resettable runtime storage:
 
 ```text
 storage/app/election-scenario-reports/
-  2026-05-08-080000-7010001-pop-import-demo-51fd2c0f3bec-report.json
+  2026-05-08-080000-39010001-pop-import-demo-...-report.json
 ```
 
 Important runtime reset note: `storage/app/election` is reset by scenarios and tests. Re-import the workbook after a reset, or use the durable scenario report when reviewing a completed scenario.
@@ -119,15 +121,15 @@ Each row in `precincts.jsonl` is one JSON object on one line:
 ```json
 {
   "schema_version": "pop-precinct-row-1",
-  "region": "BARMM",
-  "province": "BASILAN",
-  "city_municipality": "CITY OF ISABELA",
-  "barangay": "ISABELA PROPER",
-  "clustered_precinct": "7010001",
-  "precinct_cluster": "0001A, 0002A, 0003A",
-  "cluster_total": 521,
-  "polling_place": "ISABELA PROPER BARANGAY HALL",
-  "source_row": 2,
+  "region": "NCR",
+  "province": "NCR - MANILA",
+  "city_municipality": "TONDO",
+  "barangay": "BARANGAY 1",
+  "clustered_precinct": "39010001",
+  "precinct_cluster": "0001A, 0001B, 0002A, 0002B, 0003A",
+  "cluster_total": 947,
+  "polling_place": "ISABELO DELOS REYES ELEMENTARY SCHOOL",
+  "source_row": 8284,
   "row_hash": "..."
 }
 ```
@@ -181,9 +183,9 @@ Field notes:
 
 ```json
 {
-  "7010001": {
-    "offset": 0,
-    "bytes": 355,
+  "39010001": {
+    "offset": 3210489,
+    "bytes": 392,
     "row_hash": "..."
   }
 }
@@ -200,10 +202,10 @@ This avoids scanning all `93629` rows for each lookup.
 
 ## Imported Package Skeleton
 
-`php artisan election:pop-activate 7010001` writes:
+`php artisan election:pop-activate 39010001` writes:
 
 ```text
-storage/app/election/packages/imported/7010001.json
+storage/app/election/packages/imported/39010001.json
 ```
 
 Package shape:
@@ -212,22 +214,22 @@ Package shape:
 {
   "schema_version": "imported-pop-package-1",
   "election_id": "2025NLE-POP",
-  "precinct_id": "7010001",
+  "precinct_id": "39010001",
   "ballot_style_id": "unassigned",
   "registry_version": "pop-2025-nle",
   "transport": "pop-workbook-import",
   "signature": "UNSIGNED-POP-IMPORT-SIMULATION",
   "location": {
-    "region": "BARMM",
-    "province": "BASILAN",
-    "city_municipality": "CITY OF ISABELA",
-    "barangay": "ISABELA PROPER",
-    "polling_place": "ISABELA PROPER BARANGAY HALL"
+    "region": "NCR",
+    "province": "NCR - MANILA",
+    "city_municipality": "TONDO",
+    "barangay": "BARANGAY 1",
+    "polling_place": "ISABELO DELOS REYES ELEMENTARY SCHOOL"
   },
-  "precinct_cluster": "0001A, 0002A, 0003A",
-  "cluster_total": 521,
+  "precinct_cluster": "0001A, 0001B, 0002A, 0002B, 0003A",
+  "cluster_total": 947,
   "source": {
-    "row": 2,
+    "row": 8284,
     "row_hash": "...",
     "registry_hash": "...",
     "source_workbook_hash": "..."
@@ -274,34 +276,34 @@ Manifest: /Users/rli/PhpstormProjects/aes/storage/app/election/registries/pop-20
 Look up a clustered precinct:
 
 ```bash
-php artisan election:pop-lookup 7010001
+php artisan election:pop-lookup 39010001
 ```
 
 Verified output:
 
 ```text
-Clustered precinct 7010001
-Region: BARMM
-Province: BASILAN
-City/Municipality: CITY OF ISABELA
-Barangay: ISABELA PROPER
-Precinct cluster: 0001A, 0002A, 0003A
-Cluster total: 521
-Polling place: ISABELA PROPER BARANGAY HALL
+Clustered precinct 39010001
+Region: NCR
+Province: NCR - MANILA
+City/Municipality: TONDO
+Barangay: BARANGAY 1
+Precinct cluster: 0001A, 0001B, 0002A, 0002B, 0003A
+Cluster total: 947
+Polling place: ISABELO DELOS REYES ELEMENTARY SCHOOL
 ```
 
 Create an imported package skeleton:
 
 ```bash
-php artisan election:pop-activate 7010001
+php artisan election:pop-activate 39010001
 ```
 
 Verified output:
 
 ```text
-Imported POP precinct package 7010001 written.
-Package hash: afe2320fe55cc3c3d2dfe274bd72360cb82ad11c9605d506c7c73918ad5ddb9a
-Artifact: /Users/rli/PhpstormProjects/aes/storage/app/election/packages/imported/7010001.json
+Imported POP precinct package 39010001 written.
+Package hash: a54555376f7cd1819223f4f4052ceeee6555d102b2e732c3a28e887119b8be8b
+Artifact: /Users/rli/PhpstormProjects/aes/storage/app/election/packages/imported/39010001.json
 ```
 
 Run the deterministic scenario:
@@ -314,7 +316,7 @@ Verified output:
 
 ```text
 Scenario pop-import-demo passed.
-Report: /Users/rli/PhpstormProjects/aes/storage/app/election-scenario-reports/2026-05-08-080000-7010001-pop-import-demo-51fd2c0f3bec-report.json
+Report: /Users/rli/PhpstormProjects/aes/storage/app/election-scenario-reports/2026-05-08-080000-39010001-pop-import-demo-...-report.json
 ```
 
 The lifecycle `full-demo` and `evidence-folder-demo` scenarios now use the configured POP source by default. Their scenario reports include a `pop_import` section with source path, mapping profile, source label, row counts, registry hash, manifest hash/path, selected clustered precinct, precinct location, package hash, and package path.
@@ -353,8 +355,8 @@ Coverage:
 - Real workbook import writes manifest, source copy, JSONL, index, and location summary.
 - Known workbook facts are verified: `93629` rows, `93629` unique clustered precincts, expected headers, and `69773653` registered voters.
 - Re-importing the same workbook preserves the same registry hash.
-- Lookup for `7010001` returns the expected location and polling place.
-- Package activation writes `packages/imported/7010001.json`.
+- Lookup for `7010001` remains covered as a registry regression.
+- Package activation writes `packages/imported/7010001.json` in the focused regression test.
 - Manifest metadata records source type, source label, source headers, mapping profile, and canonical fields.
 - Invalid headers fail with a clear error under the default profile.
 - Renamed and reordered headers import only when an explicit matching profile is selected.
@@ -363,7 +365,7 @@ Coverage:
 - Duplicate source headers fail with a clear error.
 - Duplicate clustered precinct ids fail with a clear error.
 - `pop-import-demo` scenario imports the configured workbook and writes a package skeleton.
-- `full-demo` scenario imports POP, activates clustered precinct `7010001`, and writes POP details into the scenario report.
+- `full-demo` scenario imports POP, activates the configured clustered precinct, and writes POP details into the scenario report.
 - `evidence-folder-demo` copies POP import evidence and includes POP details in the summary report.
 
 Verified runs:

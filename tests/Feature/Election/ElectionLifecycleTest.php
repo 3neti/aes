@@ -573,12 +573,12 @@ test('full demo scenario command succeeds', function (): void {
     $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
 
     expect($report['passed'])->toBeTrue()
-        ->and($report['precinct_id'])->toBe('7010001')
+        ->and($report['precinct_id'])->toBe('39010001')
         ->and($report['pop_import']['mapping_profile'])->toBe('comelec-pop-2025-nle')
         ->and($report['pop_import']['row_count'])->toBe(93629)
-        ->and($report['pop_import']['clustered_precinct'])->toBe('7010001')
-        ->and($report['pop_import']['precinct_location']['polling_place'])->toBe('ISABELA PROPER BARANGAY HALL')
-        ->and($configuration['precinct_id'])->toBe('7010001')
+        ->and($report['pop_import']['clustered_precinct'])->toBe('39010001')
+        ->and($report['pop_import']['precinct_location']['polling_place'])->toBe('ISABELO DELOS REYES ELEMENTARY SCHOOL')
+        ->and($configuration['precinct_id'])->toBe('39010001')
         ->and($configuration['ballot_style_id'])->toBe('BS-0421-A')
         ->and($report['accepted_ballots'])->toBe(1)
         ->and($report['rejected_ballots'])->toBe(1)
@@ -588,7 +588,7 @@ test('full demo scenario command succeeds', function (): void {
 test('full demo scenario uses configurable pop import defaults', function (): void {
     config()->set('election.pop.source_path', resource_path('election/pop/2025NLE_POP.xlsx'));
     config()->set('election.pop.profile', 'comelec-pop-2025-nle');
-    config()->set('election.pop.clustered_precinct', '7010001');
+    config()->set('election.pop.clustered_precinct', '39010001');
 
     $this->artisan('election:scenario full-demo')
         ->expectsOutput('Scenario full-demo passed.')
@@ -598,7 +598,7 @@ test('full demo scenario uses configurable pop import defaults', function (): vo
 
     expect($report['pop_import']['source_path'])->toBe(resource_path('election/pop/2025NLE_POP.xlsx'))
         ->and($report['pop_import']['mapping_profile'])->toBe('comelec-pop-2025-nle')
-        ->and($report['pop_import']['clustered_precinct'])->toBe('7010001');
+        ->and($report['pop_import']['clustered_precinct'])->toBe('39010001');
 });
 
 test('scenario command archives reports outside resettable election runtime', function (): void {
@@ -624,7 +624,7 @@ test('scenario command archives reports outside resettable election runtime', fu
         ->and($fridayReports[0])->toBeReadableFile()
         ->and($fullDemoReports[0])->toBeReadableFile()
         ->and(basename($fridayReports[0]))->toContain('2026-05-08-080001-0421-a-friday-certification')
-        ->and(basename($fullDemoReports[0]))->toContain('2026-05-08-080001-7010001-full-demo')
+        ->and(basename($fullDemoReports[0]))->toContain('2026-05-08-080001-39010001-full-demo')
         ->and($storage->readJson('scenarios/full-demo-report.json')['passed'])->toBeTrue();
 });
 
@@ -642,7 +642,7 @@ test('evidence folder demo scenario command is registered', function (): void {
 
     expect($report['passed'])->toBeTrue()
         ->and($report['scenario'])->toBe('evidence-folder-demo')
-        ->and($report['precinct_id'])->toBe('7010001')
+        ->and($report['precinct_id'])->toBe('39010001')
         ->and($report['pop_import']['row_count'])->toBe(93629)
         ->and($folder)->toBeDirectory()
         ->and($report['artifact_index_path'])->toBeReadableFile()
@@ -665,9 +665,9 @@ test('evidence folder demo scenario command is registered', function (): void {
         ->and($folder.'/04-ballots/demo-ballot-001.pdf')->toBeReadableFile()
         ->and($folder.'/05-counting-and-tally/tally-sheet.txt')->toBeReadableFile()
         ->and($folder.'/05-counting-and-tally/tally-sheet.pdf')->toBeReadableFile()
-        ->and($folder.'/06-election-return/7010001-return.pdf')->toBeReadableFile()
+        ->and($folder.'/06-election-return/39010001-return.pdf')->toBeReadableFile()
         ->and($summary['flow'])->not->toBeEmpty()
-        ->and($summary['pop_import']['clustered_precinct'])->toBe('7010001')
+        ->and($summary['pop_import']['clustered_precinct'])->toBe('39010001')
         ->and($summary['statistics']['accepted_ballots'])->toBe(1)
         ->and($summary['statistics']['rejected_ballots'])->toBe(1)
         ->and($summary['statistics']['total_evidence_files_copied'])->toBe($index['artifact_count'])

@@ -73,6 +73,7 @@
 - Lifecycle full-demo and evidence-folder scenarios now import configurable POP workbook defaults and include POP report sections.
 - CLC candidate PDF importer uses reusable Ghostscript PDF text extraction, writes candidate registries, and includes placeholder candidate image metadata.
 - Precinct candidate command combines imported POP precinct records with imported CLC candidate registries for ballot-facing candidate previews.
+- Scenario POP defaults now use real Manila clustered precinct `39010001` in Tondo, with CLC precinct aliases mapping Manila POP subareas to `CITY OF MANILA` candidate contests.
 - POP registry lookup and imported precinct package skeleton creation are available through Artisan commands.
 - POP import demo scenario is available as `php artisan election:scenario pop-import-demo`.
 - POP importer documentation is available in `docs/POP_IMPORTER.md`.
@@ -188,7 +189,7 @@
 - `vendor/bin/pest tests/Feature/Election/ClcCandidateImportTest.php --compact`
 - `vendor/bin/pest tests/Feature/Election/PrecinctCandidatesCommandTest.php --compact`
 - `php artisan election:clc-import`
-- `php artisan election:precinct-candidates 7010001 --write-report`
+- `php artisan election:precinct-candidates 39010001 --district="FIRST DIST" --write-report`
 - `vendor/bin/pint --dirty --format agent`
 - `vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact`
 - `vendor/bin/pint --dirty --format agent`
@@ -201,6 +202,8 @@
 - `php artisan election:pop-import resources/election/pop/2025NLE_POP.xlsx`
 - `php artisan election:pop-lookup 7010001`
 - `php artisan election:pop-activate 7010001`
+- `php artisan election:pop-lookup 39010001`
+- `php artisan election:pop-activate 39010001`
 - `php artisan election:scenario pop-import-demo`
 - `vendor/bin/pest --compact`
 - `php artisan test --compact`
@@ -281,6 +284,16 @@
 - Pest configured feature/unit suite after CLC candidate import: passed, 79 tests and 1019 assertions.
 - CLC candidate import command: passed with 21 sources, 1329 de-duplicated candidates, and 1 needs-review row.
 - Precinct candidate report command for `7010001`: passed with 2 contests and 339 candidates.
+- POP lookup command for Manila precinct `39010001`: passed and returned NCR / NCR - MANILA / TONDO / BARANGAY 1 / ISABELO DELOS REYES ELEMENTARY SCHOOL.
+- POP package activation command for `39010001`: passed and wrote `storage/app/election/packages/imported/39010001.json`.
+- Precinct candidate report command for `39010001 --district="FIRST DIST"`: passed with 6 contests and 387 candidates.
+- Manila-backed POP import demo scenario: passed and wrote `storage/app/election-scenario-reports/2026-05-08-080000-39010001-pop-import-demo-cc8b95e8adf4-report.json`.
+- Manila-backed full demo scenario: passed and wrote `storage/app/election-scenario-reports/2026-05-08-080001-39010001-full-demo-0be3d5020a77-report.json`.
+- Manila-backed evidence folder scenario: passed and wrote `storage/app/election-scenario-artifacts/2026-05-08-080001-39010001-evidence-folder-demo-3a8c4189edbb`.
+- POP importer focused suite after Manila default: passed, 11 tests and 94 assertions.
+- Precinct candidate focused suite after Manila default: passed, 3 tests and 31 assertions.
+- Lifecycle focused suite after Manila default: passed, 34 tests and 415 assertions.
+- Pest configured feature/unit suite after Manila default: passed, 79 tests and 1022 assertions.
 - Focused Pest ceremony page suite after removable-media readiness status labels: passed, 27 tests and 454 assertions.
 - TypeScript after removable-media readiness status labels: passed.
 - Pest configured feature/unit suite after removable-media readiness status labels: passed, 60 tests and 610 assertions.

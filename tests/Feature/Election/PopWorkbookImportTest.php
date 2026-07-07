@@ -314,7 +314,7 @@ test('pop import demo scenario imports workbook and writes a package skeleton', 
     expect($report['passed'])->toBeTrue()
         ->and($report['row_count'])->toBe(93629)
         ->and($report['unique_clustered_precinct_count'])->toBe(93629)
-        ->and($report['precinct_id'])->toBe('7010001')
+        ->and($report['precinct_id'])->toBe('39010001')
         ->and($report['manifest_path'])->toBeReadableFile()
         ->and($report['package_path'])->toBeReadableFile();
 });

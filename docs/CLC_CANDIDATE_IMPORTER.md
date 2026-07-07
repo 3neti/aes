@@ -28,10 +28,10 @@ php artisan election:clc-import /path/to/CLC2025_Senator.pdf
 View candidates for a clustered precinct after POP and CLC imports:
 
 ```bash
-php artisan election:precinct-candidates 7010001
+php artisan election:precinct-candidates 39010001 --district="FIRST DIST"
 php artisan election:precinct-candidates 76010001 --district="FIRST DIST"
-php artisan election:precinct-candidates 7010001 --json
-php artisan election:precinct-candidates 7010001 --write-report
+php artisan election:precinct-candidates 39010001 --district="FIRST DIST" --json
+php artisan election:precinct-candidates 39010001 --district="FIRST DIST" --write-report
 ```
 
 `election:precinct-candidates` combines:
@@ -40,6 +40,8 @@ php artisan election:precinct-candidates 7010001 --write-report
 - CLC candidate contests from `registries/clc-2025-nle`.
 
 District-level contests require `--district` when the city has more than one district in the CLC registry.
+
+The default demonstration precinct is `39010001` in Tondo, NCR - Manila. The POP workbook names Manila subareas such as `TONDO`, while CLC PDFs group local contests under `NCR - CITY OF MANILA`; `config/election.php` contains the current CLC precinct aliases that bridge those labels for candidate preview.
 
 ## Output Files
 
@@ -99,6 +101,7 @@ Current behavior:
 - POP determines precinct identity and location.
 - CLC determines candidate/contest lists.
 - `election:precinct-candidates` previews the combined POP + CLC candidate set.
+- `39010001 --district="FIRST DIST"` currently resolves 6 contests and 387 candidates, including national, party-list, Manila citywide, and Manila First District contests.
 
 Future ballot-generation work should consume the precinct candidate report or resolver directly.
 

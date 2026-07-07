@@ -22,7 +22,7 @@ final class PrecinctCandidateResolver
     {
         $precinct = $this->pop->find($clusteredPrecinct);
         $manifest = $this->clc->manifest();
-        $city = $this->normalize((string) $precinct['city_municipality']);
+        $city = $this->normalize($this->candidateLocality((string) $precinct['city_municipality']));
         $candidates = collect($this->clc->candidates());
         $districts = $candidates
             ->filter(fn (array $candidate): bool => $candidate['scope'] === 'district' && str_contains($this->normalize((string) $candidate['geography']), $city))
@@ -101,6 +101,14 @@ final class PrecinctCandidateResolver
         $value = str_replace(['CITY OF ', 'MUNICIPALITY OF '], '', $value);
 
         return trim((string) preg_replace('/[^A-Z0-9]+/', ' ', $value));
+    }
+
+    private function candidateLocality(string $cityMunicipality): string
+    {
+        $aliases = config('election.clc.precinct_aliases', []);
+        $key = strtoupper(trim($cityMunicipality));
+
+        return is_array($aliases) && isset($aliases[$key]) ? (string) $aliases[$key] : $cityMunicipality;
     }
 
     /**
