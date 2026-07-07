@@ -49,6 +49,12 @@ Run only the ceremony page smoke coverage:
 vendor/bin/pest tests/Browser/ElectionCeremonyPagesSmokeTest.php --compact
 ```
 
+Run only the Counting camera capture workflow:
+
+```bash
+vendor/bin/pest tests/Browser/CountingCameraCaptureWorkflowTest.php --compact
+```
+
 For local debugging, Pest Browser supports headed and debug modes:
 
 ```bash
@@ -117,5 +123,7 @@ If browser tests fail before opening the app, check that `npm ci`, `composer ins
 If the UI renders without expected text, verify that the Inertia page still exposes the expected ceremony labels and that the Vite build is current. The ceremony smoke test intentionally checks Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics for JavaScript errors and console logs.
 
 If archive upload verification fails only in browser tests, remember that Pest Browser's Laravel request bridge does not currently forward multipart file uploads in this project. The browser workflow uses the supported base64 TAR payload route for browser-level coverage; feature tests cover real uploaded files.
+
+If Counting camera capture fails only in browser tests, check the media shim in `tests/Browser/CountingCameraCaptureWorkflowTest.php`. The test intentionally avoids physical camera hardware by mocking `navigator.mediaDevices.getUserMedia`, video dimensions, and canvas QR image capture. The same file also covers the permission denied/unavailable path by forcing `getUserMedia` to reject and asserting no scan is accepted.
 
 If tests pass locally but fail in CI, inspect the screenshot artifact first, then the backend log artifact, then the browser job logs. Screenshots explain the browser state; Laravel logs explain server-side failures that may be hidden behind a generic browser assertion.

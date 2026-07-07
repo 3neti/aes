@@ -47,6 +47,8 @@
 - GitHub Actions failure artifact upload for Laravel backend logs during browser-test failures.
 - Browser smoke coverage for Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics with JavaScript error and console log assertions.
 - Manual GitHub Actions controlled browser artifact failure input that writes screenshot/log marker files and fails the browser job to verify artifact uploads.
+- Browser-level Counting camera-capture workflow coverage with mocked media capture and deterministic QR canvas output.
+- Browser-level Counting camera permission denied/unavailable workflow coverage with zero accepted scans.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -101,6 +103,9 @@
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - `tests/Browser/ElectionCeremonyPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics browser smoke coverage with `assertNoJavaScriptErrors()` and `assertNoConsoleLogs()`
+- `tests/Browser/CountingCameraCaptureWorkflowTest.php`
+  - Counting ceremony camera controls with mocked `getUserMedia`, deterministic QR canvas capture, camera scanner route submission, accepted scan feedback, and counting append file assertion
+  - Counting ceremony camera permission denied/unavailable feedback with no accepted counting file
 - `.github/workflows/tests.yml`
   - dedicated browser test job with PHP 8.4, Node 22, `npm ci`, `npx playwright install --with-deps chromium`, asset build, and `vendor/bin/pest tests/Browser --ci`
   - browser screenshot artifact upload on failed browser-test runs
@@ -137,6 +142,7 @@
 - `vendor/bin/pest tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php --compact`
 - `vendor/bin/pest tests/Browser --compact`
 - `vendor/bin/pest tests/Browser/ElectionCeremonyPagesSmokeTest.php --compact`
+- `vendor/bin/pest tests/Browser/CountingCameraCaptureWorkflowTest.php --compact`
 - `vendor/bin/pest --compact`
 - `composer validate --strict`
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/tests.yml")'`
@@ -159,6 +165,10 @@
 - Pest Browser suite: passed, 1 test and 25 assertions.
 - Focused Pest browser ceremony smoke suite: passed, 8 tests and 24 assertions.
 - Pest Browser suite with Diagnostics workflow and ceremony smoke coverage: passed, 9 tests and 49 assertions.
+- Focused Pest browser Counting camera capture workflow suite: passed, 1 test and 12 assertions.
+- Pest Browser suite with Diagnostics workflow, ceremony smoke coverage, and Counting camera capture workflow: passed, 10 tests and 61 assertions.
+- Focused Pest browser Counting camera workflow suite with permission denied/unavailable coverage: passed, 2 tests and 21 assertions.
+- Pest Browser suite with Diagnostics workflow, ceremony smoke coverage, Counting camera capture, and camera unavailable coverage: passed, 11 tests and 70 assertions.
 - Pest configured feature/unit suite after browser smoke addition: passed, 58 tests and 582 assertions.
 - GitHub Actions workflow YAML parse: passed.
 - GitHub Actions browser backend-log artifact workflow YAML parse: passed.
@@ -185,5 +195,5 @@
 ## Next Recommended Steps
 
 - Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
-- Add Counting camera-capture browser workflow coverage with mocked `getUserMedia` when the test harness supports browser permission stubbing.
 - Add a short CI operations note after running the controlled artifact check remotely and confirming both artifacts appear in GitHub Actions.
+- Add a test helper for repeated browser media/canvas shims if more camera browser workflows are added.
