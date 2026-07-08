@@ -578,7 +578,10 @@ test('full demo scenario command succeeds', function (): void {
         ->and($report['pop_import']['clustered_precinct'])->toBe('39010001')
         ->and($report['pop_import']['precinct_location']['polling_place'])->toBe('ISABELO DELOS REYES ELEMENTARY SCHOOL')
         ->and($configuration['precinct_id'])->toBe('39010001')
-        ->and($configuration['ballot_style_id'])->toBe('BS-0421-A')
+        ->and($configuration['ballot_style_id'])->toBe('BS-2025NLE-39010001')
+        ->and($report['ballot_definition']['contest_count'])->toBe(6)
+        ->and($report['ballot_definition']['candidate_count'])->toBe(387)
+        ->and(collect($configuration['contests'])->pluck('office')->contains('PRESIDENT'))->toBeFalse()
         ->and($report['accepted_ballots'])->toBe(1)
         ->and($report['rejected_ballots'])->toBe(1)
         ->and($report['attestation_hashes'])->toHaveCount(2);
@@ -605,14 +608,14 @@ test('scenario command writes run first report folders', function (): void {
 
     $this->artisan('election:scenario friday-certification')
         ->expectsOutput('Scenario friday-certification passed.')
-        ->expectsOutputToContain('Run ID: 20260508-080000-0421-a-friday-certification')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-friday-certification')
         ->expectsOutputToContain('Run Folder: ')
         ->expectsOutputToContain('Report: ')
         ->assertSuccessful();
 
     $fridayRun = $storage->currentRun();
 
-    expect($fridayRun['run_id'])->toBe('20260508-080000-0421-a-friday-certification')
+    expect($fridayRun['run_id'])->toBe('20260508-080000-39010001-friday-certification')
         ->and($fridayRun['run_path'].'/00-start-here')->toBeDirectory()
         ->and(glob($fridayRun['run_path'].'/00-start-here/*friday-certification*-report.json') ?: [])->not->toBeEmpty();
 

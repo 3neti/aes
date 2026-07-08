@@ -6,7 +6,6 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Counting\CountingService;
 use App\Election\Preparation\ActivateSamplePackage;
-use App\Election\Preparation\SampleElectionData;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
 
@@ -14,7 +13,7 @@ final class CertificationService
 {
     public function __construct(
         private readonly ActivateSamplePackage $activate,
-        private readonly SampleElectionData $sample,
+        private readonly CertificationDeckBuilder $deckBuilder,
         private readonly BallotPayloadService $payloads,
         private readonly CountingService $counting,
         private readonly ElectionStorage $storage,
@@ -33,7 +32,7 @@ final class CertificationService
             $configuration = $this->activate->handle();
         }
 
-        $deck = $this->sample->certificationBallots();
+        $deck = $this->deckBuilder->build($configuration);
         $this->clearCountingFiles();
 
         foreach ($deck['ballots'] as $ballot) {
