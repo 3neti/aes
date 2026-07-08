@@ -3,6 +3,7 @@
 namespace App\Election\Printing;
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
 
@@ -12,6 +13,7 @@ final class FileBallotPrinter implements BallotPrinter
         private readonly ElectionStorage $storage,
         private readonly ActivityJournal $journal,
         private readonly SimplePdf $pdf,
+        private readonly BallotConfigurationLabels $labels,
     ) {}
 
     public function print(array $payload): array
@@ -24,8 +26,8 @@ final class FileBallotPrinter implements BallotPrinter
         $contents .= "Payload Hash: {$payload['payload_hash']}\n\n";
         $contents .= "QR Artifact: {$payload['qr_artifact_path']}\n\n";
 
-        foreach ($payload['selections'] as $contest => $candidateIds) {
-            $contents .= strtoupper((string) $contest).': '.implode(', ', $candidateIds)."\n";
+        foreach ($this->labels->selectionLines($payload['selections']) as $line) {
+            $contents .= $line."\n";
         }
 
         $contents .= "\nQR Payload:\n{$payload['qr_payload']}\n";
@@ -38,10 +40,7 @@ final class FileBallotPrinter implements BallotPrinter
             "Payload Hash: {$payload['payload_hash']}",
             "QR Artifact: {$payload['qr_artifact_path']}",
             'Selections:',
-            ...collect($payload['selections'])
-                ->map(fn (array $candidateIds, string $contest): string => strtoupper($contest).': '.implode(', ', $candidateIds))
-                ->values()
-                ->all(),
+            ...$this->labels->selectionLines($payload['selections']),
         ]));
         $job = [
             'schema_version' => 'print-job-1',

@@ -3,6 +3,7 @@
 namespace App\Election\Returns;
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
@@ -14,6 +15,7 @@ final class ElectionReturnService
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
         private readonly SimplePdf $pdf,
+        private readonly BallotConfigurationLabels $labels,
     ) {}
 
     /**
@@ -58,12 +60,8 @@ final class ElectionReturnService
         $text .= "Rejected Ballots: {$return['rejected_ballots']}\n";
         $text .= "Return Hash: {$return['return_hash']}\n\n";
 
-        foreach ($return['tally'] as $contest => $totals) {
-            $text .= strtoupper((string) $contest)."\n";
-
-            foreach ($totals as $candidate => $votes) {
-                $text .= "  {$candidate}: {$votes}\n";
-            }
+        foreach ($this->labels->tallyLines($return['tally']) as $line) {
+            $text .= $line."\n";
         }
 
         return $text;
@@ -84,13 +82,7 @@ final class ElectionReturnService
             'Totals:',
         ];
 
-        foreach ($return['tally'] as $contest => $totals) {
-            $lines[] = strtoupper((string) $contest);
-
-            foreach ($totals as $candidate => $votes) {
-                $lines[] = "  {$candidate}: {$votes}";
-            }
-        }
+        array_push($lines, ...$this->labels->tallyLines($return['tally']));
 
         return $lines;
     }

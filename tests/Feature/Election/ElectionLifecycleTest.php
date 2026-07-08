@@ -559,7 +559,7 @@ test('election return artifact is generated from tally', function (): void {
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Election Return')
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Alternative Election System - Simulation Evidence Artifact')
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Paper ballots remain the legal source of truth.')
-        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('pres-ada: 1');
+        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('1. Ada Santos: 1');
 });
 
 test('full demo scenario command succeeds', function (): void {
@@ -570,6 +570,9 @@ test('full demo scenario command succeeds', function (): void {
 
     $report = app(ElectionStorage::class)->readJson('scenarios/full-demo-report.json');
     $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
+    $returnText = file_get_contents(app(ElectionStorage::class)->path('returns/39010001-return.txt'));
+    $tallySheet = app(ElectionStorage::class)->readText('runtime/tally-sheet.txt');
+    $printedBallot = file_get_contents($report['print_job']['artifact_path']);
 
     expect($report['passed'])->toBeTrue()
         ->and($report['precinct_id'])->toBe('39010001')
@@ -582,6 +585,11 @@ test('full demo scenario command succeeds', function (): void {
         ->and($report['ballot_definition']['contest_count'])->toBe(6)
         ->and($report['ballot_definition']['candidate_count'])->toBe(387)
         ->and(collect($configuration['contests'])->pluck('office')->contains('PRESIDENT'))->toBeFalse()
+        ->and($printedBallot)->toContain('SENATOR - PHILIPPINES')
+        ->and($printedBallot)->toContain('1. ABALOS, BENHUR (PFP)')
+        ->and($tallySheet)->toContain('PARTY LIST - PHILIPPINES')
+        ->and($returnText)->toContain('MAYOR - NCR - CITY OF MANILA')
+        ->and($returnText)->toContain('DOMAGOSO, ISKO MORENO')
         ->and($report['accepted_ballots'])->toBe(1)
         ->and($report['rejected_ballots'])->toBe(1)
         ->and($report['attestation_hashes'])->toHaveCount(2);

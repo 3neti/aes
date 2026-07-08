@@ -3,6 +3,7 @@
 namespace App\Election\Counting;
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
@@ -16,6 +17,7 @@ final class CountingService
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
         private readonly SimplePdf $pdf,
+        private readonly BallotConfigurationLabels $labels,
     ) {}
 
     /**
@@ -176,13 +178,7 @@ final class CountingService
             'Totals:',
         ];
 
-        foreach (($tally['tally'] ?? []) as $contest => $totals) {
-            $lines[] = strtoupper((string) $contest);
-
-            foreach ($totals as $candidate => $votes) {
-                $lines[] = "  {$candidate}: {$votes}";
-            }
-        }
+        array_push($lines, ...$this->labels->tallyLines($tally['tally'] ?? []));
 
         $this->storage->writeText('runtime/tally-sheet.txt', implode(PHP_EOL, $lines).PHP_EOL);
         $this->storage->writeText('runtime/tally-sheet.pdf', $this->pdf->render('Tally Sheet', $lines));
