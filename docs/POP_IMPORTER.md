@@ -327,7 +327,7 @@ Run Folder: /Users/rli/PhpstormProjects/aes/storage/app/election/runs/20260508-0
 Report: /Users/rli/PhpstormProjects/aes/storage/app/election/runs/20260508-080000-39010001-pop-import-demo/00-start-here/2026-05-08-080000-39010001-pop-import-demo-...-report.json
 ```
 
-The lifecycle `full-demo` and `evidence-folder-demo` scenarios now use the configured POP source by default. Their scenario reports include a `pop_import` section with source path, mapping profile, source label, row counts, registry hash, manifest hash/path, selected clustered precinct, precinct location, package hash, and package path.
+The lifecycle `friday-certification`, `full-demo`, and `evidence-folder-demo` scenarios now use the configured POP source by default. They also import the configured CLC PDF source and activate a deterministic POP + CLC ballot definition for the selected precinct. Their scenario reports include `pop_import` and `ballot_definition` sections with source paths, mapping profile, row counts, registry hashes, selected clustered precinct, precinct location, contest counts, candidate counts, package hash, and artifact paths.
 
 The evidence folder scenario now writes a normal run folder with numbered ceremony directories. POP source evidence remains under `source-data`; the active precinct and active package are under `01-precinct-preparation`.
 
@@ -347,8 +347,10 @@ Device/service flow:
 2. `PopPrecinctRegistry` reads the manifest and index.
 3. `PopPrecinctRegistry::find()` performs direct JSONL lookup by clustered precinct id.
 4. `ActivateImportedPrecinctPackage` writes a deterministic package skeleton.
-5. `ScenarioRunner` can execute `pop-import-demo` for importer verification.
-6. `ScenarioRunner` uses configured POP defaults in `full-demo` and `evidence-folder-demo` to activate the imported precinct identity for the lifecycle flow.
+5. `PrecinctBallotDefinitionBuilder` combines the POP precinct with the imported CLC candidate registry and configured district.
+6. `ActivatePrecinctBallotPackage` writes the active POP + CLC package, active precinct configuration, and ballot definition report.
+7. `ScenarioRunner` can execute `pop-import-demo` for importer verification.
+8. `ScenarioRunner` uses configured POP defaults in `friday-certification`, `full-demo`, and `evidence-folder-demo` to activate the imported precinct identity and actual ballot definition for the lifecycle flow.
 
 ## Verification
 
@@ -373,8 +375,8 @@ Coverage:
 - Duplicate source headers fail with a clear error.
 - Duplicate clustered precinct ids fail with a clear error.
 - `pop-import-demo` scenario imports the configured workbook and writes a package skeleton.
-- `full-demo` scenario imports POP, activates the configured clustered precinct, and writes POP details into the scenario report.
-- `evidence-folder-demo` copies POP import evidence and includes POP details in the summary report.
+- `full-demo` scenario imports POP and CLC, activates the configured clustered precinct, and writes POP and ballot definition details into the scenario report.
+- `evidence-folder-demo` copies POP/CLC import evidence and includes POP and ballot definition details in the summary report.
 
 Verified runs:
 

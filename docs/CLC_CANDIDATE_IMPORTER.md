@@ -94,16 +94,18 @@ Candidate photos are not imported yet. The placeholder shape is stable so a futu
 
 ## Ballot Use
 
-This importer creates the candidate/contest read model that ballots should consume later. It does not yet replace the sample ballot definition in lifecycle scenarios.
+This importer creates the candidate/contest read model consumed by the active POP + CLC ballot definition. Lifecycle scenarios now use the configured Tondo clustered precinct by default and derive the ballot package from imported POP precinct data plus imported CLC candidate data.
 
 Current behavior:
 
 - POP determines precinct identity and location.
 - CLC determines candidate/contest lists.
 - `election:precinct-candidates` previews the combined POP + CLC candidate set.
-- `39010001 --district="FIRST DIST"` currently resolves 6 contests and 387 candidates, including national, party-list, Manila citywide, and Manila First District contests.
+- `39010001 --district="FIRST DIST"` currently resolves 6 contests and 387 candidates, including Senator, Party List, Manila First Legislative District congressman, Manila Mayor, Manila Vice-Mayor, and Manila First District Councilor contests.
+- `full-demo`, `evidence-folder-demo`, and `friday-certification` activate a deterministic ballot style `BS-2025NLE-39010001` from this candidate set.
+- Candidate image placeholders are preserved in the active precinct configuration so future local files or URLs can be attached without changing ballot consumers.
 
-Future ballot-generation work should consume the precinct candidate report or resolver directly.
+The active ballot intentionally excludes a President contest because the configured 2025 NLE scope is national only up to Senator and Party List, plus the applicable Manila local contests.
 
 ## Verification
 

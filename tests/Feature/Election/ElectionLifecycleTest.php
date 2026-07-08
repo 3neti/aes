@@ -320,7 +320,7 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('Alternative Election System - Simulation Evidence Artifact')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('Paper ballots remain the legal source of truth.')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('/BaseFont /Courier')
-        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('pres-ada');
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('1. Ada Santos');
 });
 
 test('cups ballot printer submits generated artifact when configured', function (): void {

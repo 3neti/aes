@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
 use App\Election\Devices\CameraScannerHealthCheck;
 use App\Election\Devices\CupsPrinterHealthCheck;
@@ -51,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
                         $app->make(ElectionStorage::class),
                         $app->make(ActivityJournal::class),
                         $app->make(SimplePdf::class),
+                        $app->make(BallotConfigurationLabels::class),
                     ),
                     $app->make(ElectionStorage::class),
                     $app->make(ActivityJournal::class),

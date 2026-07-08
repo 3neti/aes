@@ -73,6 +73,11 @@
 - CLC candidate PDF importer uses reusable Ghostscript PDF text extraction, writes candidate registries, and includes placeholder candidate image metadata.
 - Precinct candidate command combines imported POP precinct records with imported CLC candidate registries for ballot-facing candidate previews.
 - Scenario POP defaults now use real Manila clustered precinct `39010001` in Tondo, with CLC precinct aliases mapping Manila POP subareas to `CITY OF MANILA` candidate contests.
+- Active Tondo ballot packages are now generated from POP + CLC data instead of the embedded sample ballot definition, using `BS-2025NLE-39010001`.
+- The active Tondo ballot includes Senator, Party List, Manila First Legislative District congressman, Manila Mayor, Manila Vice-Mayor, and Manila First District Councilor contests, and excludes President.
+- Friday certification, full demo, and evidence folder scenarios now activate the actual Tondo POP + CLC ballot definition and include `ballot_definition` report sections.
+- Voting finalization now accepts dynamic contest-keyed selections, and the operator ballot page includes per-contest candidate search for large Senator and Party List contests.
+- Printed ballot artifacts, tally sheets, and Election Return artifacts now render human-readable contest and candidate labels while preserving deterministic candidate IDs in JSON evidence.
 - POP registry lookup and imported precinct package skeleton creation are available through Artisan commands.
 - POP import demo scenario is available as `php artisan election:scenario pop-import-demo`.
 - POP importer documentation is available in `docs/POP_IMPORTER.md`.
@@ -333,6 +338,19 @@
 - Run-first full demo scenario: passed and wrote `storage/app/election/runs/20260508-080000-39010001-full-demo`.
 - Run-first evidence folder demo scenario: passed and wrote `storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo`.
 - Legacy generated roots `storage/app/election-scenario-reports` and `storage/app/election-scenario-artifacts` are removed by reset and no longer used by active writers.
+- Tondo POP + CLC ballot definition focused suite: passed, 3 tests and 39 assertions.
+- Tondo scenario/certification focused suite: passed, 4 tests and 50 assertions.
+- Tondo artifact label focused suite: passed, 4 tests and 39 assertions.
+- Tondo failure-regression focused suite for print/certification/evidence-folder paths: passed, 6 tests and 255 assertions.
+- Frontend production build after dynamic voting UI: passed with Wayfinder route/type generation.
+- Pint after Tondo POP + CLC ballot integration: passed.
+- Pest configured feature/unit suite after Tondo POP + CLC ballot integration: passed, 82 tests and 1065 assertions.
+- Tondo Friday certification scenario: passed and wrote `storage/app/election/runs/20260508-080000-39010001-friday-certification`.
+- Tondo full demo scenario: passed and wrote `storage/app/election/runs/20260508-080000-39010001-full-demo`.
+- Tondo evidence folder scenario: passed and wrote `storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo`.
+- Latest Tondo evidence folder report: `storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo/00-start-here/2026-05-08-080001-39010001-evidence-folder-demo-6d91a111bf39-report.json`.
+- Latest Tondo evidence folder summary: `storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo/run-summary.json`.
+- Latest Tondo evidence folder artifact index: `storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo/artifact-index.json`.
 
 ## Known Gaps
 

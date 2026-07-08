@@ -12,15 +12,15 @@ final class CertificationDeckBuilder
     {
         $ballots = [
             [
-                'id' => 'cert-ballot-001',
+                'id' => 'cert-001',
                 'selections' => $this->selections($configuration, 0),
             ],
             [
-                'id' => 'cert-ballot-002',
+                'id' => 'cert-002',
                 'selections' => $this->selections($configuration, 1),
             ],
             [
-                'id' => 'cert-ballot-003',
+                'id' => 'cert-003',
                 'selections' => $this->selections($configuration, 0),
             ],
         ];
