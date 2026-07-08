@@ -152,6 +152,46 @@ Digital representations exist only for convenience and transmission.
 
 Operational confidence is established through printed certification reports generated before and after election activities.
 
+## Minutes and Evidence
+
+The machine journal is not the only record.
+
+The election also produces legal evidence:
+
+- Minutes
+- reports
+- receipts
+- certificates
+- printed artifacts
+- QR artifacts
+- seals
+- envelopes
+- custody records
+
+The architecture therefore treats evidence as a first-class concern.
+
+The relationship is:
+
+```
+Ceremony
+
+↓
+
+Evidence
+
+↓
+
+Certification
+
+↓
+
+Trust
+```
+
+Certification does not create trust by assertion.
+
+Certification consumes evidence already produced by the ceremony.
+
 ---
 
 # 6. The Raspberry Pi
@@ -309,7 +349,7 @@ No specialized technician.
 
 ---
 
-# 13. Certification
+# 13. Certification and Final Testing and Sealing
 
 Confidence should never rely upon trust alone.
 
@@ -318,18 +358,29 @@ Every important operational phase should be certified.
 Examples include:
 
 - precinct activation
-- Friday readiness
+- Final Testing and Sealing
 - opening polls
 - closing polls
 - counting
 - Election Return generation
+- transmission
+- final backup
+- custody turnover
 - precinct closure
 
 Certification is evidence-based.
 
-It is generated from journaled events.
+It is generated from evidence.
+
+That evidence includes machine journals, legal Minutes, printed reports, officer attestations, receipt records, and custody records.
 
 It produces reports that may later be electronically signed.
+
+Friday Certification remains a useful plain-language idea.
+
+Architecturally, it is now understood as the implementation of COMELEC Final Testing and Sealing.
+
+Final Testing and Sealing proves readiness through diagnostics, initialization, certification ballots, manual verification, comparison, VVPAT or approved equivalent verification, zero-out, and sealing.
 
 ---
 
@@ -378,6 +429,18 @@ Election Return
 
 ↓
 
+Transmission
+
+↓
+
+Final Backup
+
+↓
+
+Custody Turnover
+
+↓
+
 Close Precinct
 
 ↓
@@ -386,6 +449,12 @@ Audit
 ```
 
 The operator should almost never need menus.
+
+The legal detail should not make the interface feel like an administration system.
+
+Each additional legal ceremony exists only to answer the same question:
+
+> What must happen next?
 
 ---
 
@@ -463,6 +532,9 @@ The project adopts principles refined through years of developing transactional 
 
 - deterministic execution
 - append-only journals
+- legal Minutes
+- evidence-first certification
+- custody-aware artifacts
 - reproducible workflows
 - adapter-based hardware integration
 - comprehensive lifecycle testing
@@ -483,12 +555,13 @@ The project will continue to be evaluated against the following principles.
 2. **No critical information should exist only inside a device.**
 3. **Every important artifact should be printable.**
 4. **Every important process should be reproducible.**
-5. **Every important state transition should be journaled.**
-6. **Every important ceremony should be certifiable.**
-7. **Any certified device should replace another without changing the election outcome.**
-8. **Technology should simplify elections, not complicate them.**
-9. **When doubt exists, paper prevails.**
-10. **The architecture should be understandable by engineers, election officers, watchers, and the public alike.**
+5. **Every important machine state transition should be journaled.**
+6. **Every important legal proceeding should have Minutes where required.**
+7. **Every important ceremony should be certifiable from evidence.**
+8. **Any certified device should replace another without changing the election outcome.**
+9. **Technology should simplify elections, not complicate them.**
+10. **When doubt exists, paper prevails.**
+11. **The architecture should be understandable by engineers, election officers, watchers, and the public alike.**
 
 ---
 

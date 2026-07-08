@@ -102,6 +102,12 @@ Counting
 
 Returns
 
+Evidence
+
+Transmission
+
+Custody
+
 Audit
 
 Diagnostics
@@ -120,11 +126,21 @@ ElectionCore --> Certification
 
 ElectionCore --> Voting
 
+ElectionCore --> Evidence
+
 Voting --> Printing
 
 Printing --> Counting
 
 Counting --> Returns
+
+Returns --> Transmission
+
+Transmission --> Custody
+
+Evidence --> Certification
+
+Custody --> Audit
 
 Returns --> Audit
 
@@ -171,6 +187,12 @@ Election Returns
 Activity Journal
 
 Counting Journal
+
+Minutes
+
+Transmission Reports
+
+Custody Records
 ```
 
 ---
@@ -212,6 +234,10 @@ Certification Ballots
 
 Official Ballots
 
+VVPAT or Approved Equivalent Evidence
+
+Seal and Envelope Data
+
 Printer Status
 
 Scanner Status
@@ -238,6 +264,14 @@ Diagnostics Report
 
 Journal Entries
 
+Minutes
+
+Transmission Report
+
+Custody Record
+
+Zero-Out Report
+
 QR Codes
 ```
 
@@ -256,9 +290,13 @@ PRECINCT ||--o{ BALLOT : issues
 
 PRECINCT ||--o{ JOURNAL_ENTRY : records
 
+PRECINCT ||--o{ MINUTES_ENTRY : documents
+
 PRECINCT ||--o{ CERTIFICATION_REPORT : generates
 
 PRECINCT ||--o{ ELECTION_RETURN : produces
+
+PRECINCT ||--o{ CUSTODY_RECORD : turns_over
 
 BALLOT_STYLE ||--o{ CONTEST : contains
 
@@ -273,6 +311,10 @@ COUNTING_RECORD }o--|| ELECTION_RETURN : contributes_to
 OFFICER ||--o{ OFFICER_ATTESTATION : signs
 
 DEVICE ||--o{ JOURNAL_ENTRY : produces
+
+ELECTION_RETURN ||--o{ TRANSMISSION_REPORT : transmitted_as
+
+CUSTODY_RECORD ||--o{ SEAL : secured_by
 ```
 
 ---
@@ -291,6 +333,10 @@ The UI always presents:
 - Current Ceremony
 - Next Required Action
 
+Legal detail is expressed as guided ceremonies, not as administration menus.
+
+Final Testing and Sealing, initialization, transmission, final backup, and custody turnover are all ceremony steps.
+
 ---
 
 # 10. Primary Navigation
@@ -300,7 +346,7 @@ flowchart LR
 
 Provision
 
-Certification
+FTS
 
 OpenPolls
 
@@ -312,11 +358,17 @@ Counting
 
 ElectionReturn
 
+Transmission
+
+FinalBackup
+
+Custody
+
 ClosePrecinct
 
-Provision --> Certification
+Provision --> FTS
 
-Certification --> OpenPolls
+FTS --> OpenPolls
 
 OpenPolls --> Voting
 
@@ -326,7 +378,13 @@ ClosePolls --> Counting
 
 Counting --> ElectionReturn
 
-ElectionReturn --> ClosePrecinct
+ElectionReturn --> Transmission
+
+Transmission --> FinalBackup
+
+FinalBackup --> Custody
+
+Custody --> ClosePrecinct
 ```
 
 ---
@@ -344,11 +402,11 @@ ElectionReturn --> ClosePrecinct
 
  Current Stage
 
- READY FOR CERTIFICATION
+ READY FOR FTS
 
 ────────────────────────────────────────────────────────
 
- ▶ Start Certification
+ ▶ Start FTS
 
 ────────────────────────────────────────────────────────
 
@@ -358,7 +416,7 @@ ElectionReturn --> ClosePrecinct
 
  ✓ Mapping Derived
 
- ○ Certification Pending
+ ○ FTS Pending
 
 +------------------------------------------------------+
 ```
@@ -370,7 +428,7 @@ ElectionReturn --> ClosePrecinct
 ```text
 +------------------------------------------------------+
 
- Friday Certification
+ Final Testing and Sealing
 
 ────────────────────────────────────────────────────────
 
@@ -384,7 +442,15 @@ ElectionReturn --> ClosePrecinct
 
  ✓ Certification Deck
 
- ✓ Election Return
+ ✓ Initialization Report
+
+ ✓ Manual Verification
+
+ ✓ VVPAT / Equivalent Verification
+
+ ✓ Zero-Out
+
+ ✓ Sealing Evidence
 
 ────────────────────────────────────────────────────────
 
@@ -567,7 +633,31 @@ Rejected
 
 ---
 
-# 19. Timeline Screen
+# 19. Transmission Screen
+
+```text
++------------------------------------------------------+
+
+ Transmission
+
+────────────────────────────────────────────────────────
+
+ Election Return Ready
+
+ Destination Status
+
+ Pending
+
+────────────────────────────────────────────────────────
+
+ [ Start Transmission ]
+
++------------------------------------------------------+
+```
+
+---
+
+# 20. Timeline Screen
 
 ```text
 +------------------------------------------------------+
@@ -588,14 +678,20 @@ Rejected
 
 17:48 Election Return Generated
 
-17:55 Precinct Closed
+17:50 Transmission Evidenced
+
+17:53 Final Backup Completed
+
+17:55 Custody Recorded
+
+18:00 Precinct Closed
 
 +------------------------------------------------------+
 ```
 
 ---
 
-# 20. Diagnostics
+# 21. Diagnostics
 
 ```text
 +------------------------------------------------------+
@@ -614,6 +710,10 @@ Storage
 
 Journal
 
+Minutes
+
+Custody
+
 Configuration Hashes
 
 Software Version
@@ -627,7 +727,7 @@ Software Version
 
 ---
 
-# 21. Hardware Interaction
+# 22. Hardware Interaction
 
 ```mermaid
 flowchart LR
@@ -669,14 +769,30 @@ Election Return
 
 ---
 
-# 22. Reporting Architecture
+# 23. Reporting Architecture
 
 ```text
 Certification Report
 
 ↓
 
+Diagnostic Report
+
+↓
+
+Initialization Report
+
+↓
+
 Election Return
+
+↓
+
+Transmission Report
+
+↓
+
+Zero-Out Report
 
 ↓
 
@@ -693,9 +809,13 @@ Scenario Report
 
 Every report shall be printable.
 
+Reports are evidence artifacts.
+
+They are consumed by certification, audit, and custody workflows.
+
 ---
 
-# 23. Scenario Runner
+# 24. Scenario Runner
 
 ```mermaid
 flowchart TD
@@ -716,6 +836,10 @@ Artifacts
 
 ↓
 
+Evidence
+
+↓
+
 Validation
 
 ↓
@@ -725,7 +849,7 @@ Certification Report
 
 ---
 
-# 24. Future Design Deliverables
+# 25. Future Design Deliverables
 
 The following detailed artifacts will be developed during implementation.
 
@@ -737,6 +861,7 @@ The following detailed artifacts will be developed during implementation.
 - Printer Rendering Specification
 - QR Payload Specification
 - Election Dictionary Specification
+- Evidence and Custody Detail Design
 - Sequence Diagrams
 - Hardware Certification Procedures
 

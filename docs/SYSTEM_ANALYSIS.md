@@ -54,7 +54,7 @@ flowchart TD
 
     P1[Prepare Precinct]
 
-    P2[Friday Certification]
+    P2[Final Testing and Sealing]
 
     P3[Voting]
 
@@ -64,7 +64,11 @@ flowchart TD
 
     P6[Election Return]
 
-    P7[Audit]
+    P7[Transmission]
+
+    P8[Custody]
+
+    P9[Audit]
 
     D1[(National Registries)]
 
@@ -75,6 +79,10 @@ flowchart TD
     D4[(Counting Journal)]
 
     D5[(Election Return)]
+
+    D6[(Evidence)]
+
+    D7[(Custody Records)]
 
     D1 --> P1
     D2 --> P1
@@ -96,6 +104,20 @@ flowchart TD
     P6 --> D5
 
     D5 --> P7
+
+    P1 --> D6
+    P2 --> D6
+    P3 --> D6
+    P4 --> D6
+    P5 --> D6
+    P6 --> D6
+    P7 --> D6
+
+    P7 --> P8
+    P8 --> D7
+
+    D6 --> P9
+    D7 --> P9
 ```
 
 ---
@@ -200,7 +222,7 @@ Next -->|No| ER
 
 ---
 
-# 5. Friday Certification Workflow
+# 5. Final Testing and Sealing Workflow
 
 ```mermaid
 flowchart TD
@@ -210,6 +232,10 @@ Boot
 Package
 
 Mapping
+
+Diagnostics
+
+Initialization
 
 Printer
 
@@ -221,7 +247,13 @@ Count
 
 Compare
 
+Manual[Manual Verification]
+
+VVPAT[VVPAT or Equivalent Verification]
+
 Report
+
+ZeroOut[Zero-Out]
 
 Seal
 
@@ -229,7 +261,11 @@ Boot --> Package
 
 Package --> Mapping
 
-Mapping --> Printer
+Mapping --> Diagnostics
+
+Diagnostics --> Initialization
+
+Initialization --> Printer
 
 Printer --> Scanner
 
@@ -239,9 +275,15 @@ Golden --> Count
 
 Count --> Compare
 
-Compare --> Report
+Compare --> Manual
 
-Report --> Seal
+Manual --> VVPAT
+
+VVPAT --> Report
+
+Report --> ZeroOut
+
+ZeroOut --> Seal
 ```
 
 ---
@@ -267,7 +309,13 @@ ClosePolls --> Counting
 
 Counting --> ElectionReturn
 
-ElectionReturn --> ClosePrecinct
+ElectionReturn --> Transmission
+
+Transmission --> FinalBackup
+
+FinalBackup --> Custody
+
+Custody --> ClosePrecinct
 
 ClosePrecinct --> Audit
 
@@ -361,6 +409,12 @@ Counting
 
 Returns[Election Return]
 
+Evidence
+
+Transmission
+
+Custody
+
 Audit
 
 ScenarioRunner
@@ -377,11 +431,21 @@ Core --> Certification
 
 Core --> Voting
 
+Core --> Evidence
+
 Voting --> Printing
 
 Printing --> Counting
 
 Counting --> Returns
+
+Returns --> Transmission
+
+Transmission --> Custody
+
+Evidence --> Certification
+
+Custody --> Audit
 
 Returns --> Audit
 
@@ -413,7 +477,7 @@ T[Technician]
 
 UC1((Activate Device))
 
-UC2((Run Certification))
+UC2((Run FTS))
 
 UC3((Open Polls))
 
@@ -427,11 +491,15 @@ UC7((Count Ballots))
 
 UC8((Generate Election Return))
 
-UC9((Close Precinct))
+UC9((Transmit Results))
 
-UC10((Run Audit))
+UC10((Record Custody))
 
-UC11((Diagnostics))
+UC11((Close Precinct))
+
+UC12((Run Audit))
+
+UC13((Diagnostics))
 
 EO --> UC1
 
@@ -451,9 +519,13 @@ EO --> UC8
 
 EO --> UC9
 
-A --> UC10
+EO --> UC10
 
-T --> UC11
+EO --> UC11
+
+A --> UC12
+
+T --> UC13
 ```
 
 ---

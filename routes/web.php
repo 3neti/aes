@@ -7,6 +7,7 @@ use App\Http\Controllers\Election\DiagnosticsController;
 use App\Http\Controllers\Election\HomeController;
 use App\Http\Controllers\Election\PrintingController;
 use App\Http\Controllers\Election\ProvisionController;
+use App\Http\Controllers\Election\TransmissionController;
 use App\Http\Controllers\Election\ReturnsController;
 use App\Http\Controllers\Election\VotingController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,9 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/returns', [ReturnsController::class, 'show'])->name('returns');
     Route::post('/returns/generate', [ReturnsController::class, 'generate'])->name('returns.generate');
     Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
+    Route::get('/transmission', [TransmissionController::class, 'show'])->name('transmission');
+    Route::post('/transmission/send', [TransmissionController::class, 'send'])->name('transmission.send');
+    Route::post('/transmission/custody', [TransmissionController::class, 'recordCustody'])->name('transmission.custody');
     Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');
     Route::post('/diagnostics/certify-devices', [DiagnosticsController::class, 'certifyDevices'])->name('diagnostics.certify-devices');
     Route::post('/diagnostics/evidence-manifest', [DiagnosticsController::class, 'generateEvidenceManifest'])->name('diagnostics.evidence-manifest.generate');

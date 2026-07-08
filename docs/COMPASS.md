@@ -60,9 +60,9 @@ The current architecture is divided into the following domains.
 ```
 Election Core
 
-Precinct Preparation
+Lifecycle
 
-Certification
+Preparation
 
 Voting
 
@@ -72,15 +72,21 @@ Counting
 
 Election Return
 
+Evidence
+
+Certification / FTS
+
+Custody
+
+Transmission
+
 Audit
 
 Scenario Runner
 
-Devices
-
-Lifecycle
-
 Diagnostics
+
+Devices
 
 Infrastructure
 ```
@@ -97,14 +103,26 @@ The heart of the election.
 
 Responsibilities:
 
-- election lifecycle
 - ceremonies
 - state transitions
 - domain models
+- legal procedure boundaries
 
 ---
 
-## Precinct Preparation
+## Lifecycle
+
+Responsibilities:
+
+- ceremony ordering
+- workflow engine
+- navigation
+- timeline
+- next-action guidance
+
+---
+
+## Preparation
 
 Responsibilities:
 
@@ -113,18 +131,6 @@ Responsibilities:
 - precinct activation
 - deterministic mapping
 - configuration persistence
-
----
-
-## Certification
-
-Responsibilities:
-
-- Friday certification
-- certification ballots
-- certification reports
-- operational checkpoints
-- officer attestations
 
 ---
 
@@ -148,7 +154,7 @@ Responsibilities:
 - printer abstraction
 - PDF rendering
 - ESC/POS rendering
-- print journaling
+- print evidence
 
 ---
 
@@ -169,9 +175,68 @@ Responsibilities:
 Responsibilities:
 
 - Election Return generation
+- printable returns
+- digital return artifacts
+- return signing and posting evidence
+
+---
+
+## Evidence
+
+Responsibilities:
+
+- activity journals
+- legal Minutes
 - reports
-- printable artifacts
-- digital artifacts
+- certificates
+- receipts
+- printed artifacts
+- QR artifacts
+- generated forms
+- signatures and attestations
+
+---
+
+## Certification / FTS
+
+Responsibilities:
+
+- COMELEC Final Testing and Sealing
+- certification ballots
+- diagnostics
+- initialization report
+- manual verification
+- comparison
+- VVPAT or approved equivalent verification
+- zero-out
+- sealing readiness
+
+---
+
+## Custody
+
+Responsibilities:
+
+- envelopes
+- paper seals
+- ballot boxes
+- storage devices
+- evidence containers
+- recipients
+- turnover
+- chain of custody
+
+---
+
+## Transmission
+
+Responsibilities:
+
+- result transmission
+- retransmission
+- destination status
+- transmission reports
+- offline failure evidence
 
 ---
 
@@ -179,10 +244,10 @@ Responsibilities:
 
 Responsibilities:
 
-- journals
-- reconciliation
+- evidence reconciliation
 - manual audit
 - independent recount
+- custody review
 - verification
 
 ---
@@ -194,30 +259,8 @@ Responsibilities:
 - deterministic scenarios
 - lifecycle replay
 - hardware simulation
+- legal ceremony simulation
 - acceptance testing
-
----
-
-## Devices
-
-Responsibilities:
-
-- Raspberry Pi
-- printers
-- scanners
-- cameras
-- tablets
-
----
-
-## Lifecycle
-
-Responsibilities:
-
-- ceremonies
-- workflow engine
-- navigation
-- timeline
 
 ---
 
@@ -231,6 +274,20 @@ Responsibilities:
 - printer health
 - scanner health
 - technician tools
+- diagnostic reports
+
+---
+
+## Devices
+
+Responsibilities:
+
+- Raspberry Pi
+- printers
+- scanners
+- cameras
+- tablets
+- storage media
 
 ---
 
@@ -277,7 +334,7 @@ No election logic yet.
 
 # Wave 2
 
-## Precinct Preparation
+## Preparation
 
 Deliverables
 
@@ -299,15 +356,19 @@ Generic appliance becomes a precinct appliance.
 
 Deliverables
 
-- certification workflow
-- certification reports
+- Final Testing and Sealing workflow
+- certification summary report
+- diagnostic report
+- initialization report
 - certification ballots
-- Friday rehearsal
+- manual verification
+- zero-out
+- sealing evidence
 - readiness verification
 
 End Result
 
-Certified precinct.
+Certified and sealed precinct.
 
 ---
 
@@ -374,6 +435,7 @@ Deliverables
 - printable reports
 - QR representation
 - digital artifacts
+- return signing and posting evidence
 
 End Result
 
@@ -382,6 +444,26 @@ Official precinct result.
 ---
 
 # Wave 8
+
+## Transmission and Custody
+
+Deliverables
+
+- transmission workflow
+- retransmission workflow
+- transmission report
+- custody records
+- envelopes and seals
+- final backup
+- turnover checklist
+
+End Result
+
+Results transmitted or transmission failure evidenced; election artifacts secured.
+
+---
+
+# Wave 9
 
 ## Audit
 
@@ -398,7 +480,7 @@ Public confidence.
 
 ---
 
-# Wave 9
+# Wave 10
 
 ## Hardening
 
@@ -493,7 +575,7 @@ Primary ceremonies:
 ```
 Provision
 
-Certification
+Final Testing and Sealing
 
 Open Polls
 
@@ -505,10 +587,18 @@ Counting
 
 Election Return
 
+Transmission
+
+Final Backup
+
+Custody Turnover
+
 Close Precinct
 ```
 
 The application always displays one primary action.
+
+The UI may use simpler local labels, but the underlying ceremony model must remain legally explicit. "Certification" is a product concept; **Final Testing and Sealing** is the legal ceremony it implements.
 
 ---
 
@@ -543,10 +633,13 @@ Business logic shall never depend on hardware.
 The following capabilities apply across every domain.
 
 - Domain Dictionary
-- Journaling
+- Evidence
+- Activity Journals
+- Minutes
 - Scenario Runner
 - Certification
 - Diagnostics
+- Custody
 - Hashing
 - Signatures
 - Reporting
@@ -562,6 +655,8 @@ Not before they stabilize.
 Potential candidates include:
 
 - Certification
+- Evidence
+- Custody
 - Scenario Runner
 - Election Dictionary
 - Printer Abstraction

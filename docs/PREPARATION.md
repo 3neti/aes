@@ -1,6 +1,6 @@
 # Alternative Election System
 ## Preparing the Precinct Election Appliance
-### From National Preparation to Friday Certification
+### From National Preparation to Final Testing and Sealing
 
 > **Working Draft**
 >
@@ -223,11 +223,11 @@ Nothing critical should exist only inside a storage device.
 
 ---
 
-# 9. Friday Certification
+# 9. Final Testing and Sealing
 
-On the Friday preceding Election Day...
+Before Election Day...
 
-every precinct performs an end-to-end certification.
+every precinct performs Final Testing and Sealing.
 
 This is not merely a hardware test.
 
@@ -237,27 +237,55 @@ The objective is simple.
 
 Demonstrate that the appliance produces the expected election artifacts before any voter arrives.
 
+The project may still use "Certification" as a simple product word.
+
+Legally, this ceremony implements COMELEC Final Testing and Sealing.
+
 ---
 
-# 10. Certification Activities
+# 10. Final Testing and Sealing Activities
 
-The certification process verifies every critical subsystem.
+The FTS process verifies every critical subsystem and produces the evidence required to trust the appliance.
 
 Examples include:
 
 - package verification
 - precinct activation
 - ballot derivation
+- diagnostics
+- initialization report
 - printer operation
 - scanner operation
 - QR generation
 - QR decoding
 - counting workflow
 - Election Return generation
+- manual verification
+- VVPAT or approved architectural equivalent verification
+- zero-out
+- sealing
 
 Every step is recorded.
 
 Nothing is assumed.
+
+The evidence chain is:
+
+```text
+FTS Ceremony
+
+↓
+
+Evidence
+
+↓
+
+Certification
+
+↓
+
+Trust
+```
 
 ---
 
@@ -283,23 +311,34 @@ the appliance is not certified.
 
 ---
 
-# 12. Certification Reports
+# 12. Evidence Produced by Final Testing and Sealing
 
 At the conclusion of testing...
 
 the appliance generates a Certification Report.
 
-The report documents:
+That report summarizes the evidence.
+
+It does not replace the evidence.
+
+FTS evidence includes:
 
 - software version
 - package version
 - registry versions
 - mapping hash
+- diagnostic results
+- initialization report
 - printer verification
 - scanner verification
 - Certification Ballot results
 - expected Election Return hash
 - generated Election Return hash
+- manual verification result
+- VVPAT or equivalent verification result
+- zero-out result
+- sealing record
+- custody record
 
 The report may later be electronically signed by the Election Officers.
 
@@ -317,7 +356,7 @@ The counting journal is emptied.
 
 The election data is reset.
 
-Only the certified precinct configuration remains.
+Only the certified precinct configuration and required evidence remain.
 
 The appliance is now ready for Election Day.
 
@@ -337,7 +376,9 @@ The mapping hashes are frozen.
 
 Any modification invalidates certification.
 
-The precinct begins Election Day with confidence that the certified appliance is identical to the appliance that completed Friday's verification.
+The sealing record identifies the evidence containers, seals, storage devices, and custody facts needed to prove that the certified appliance has not been altered.
+
+The precinct begins Election Day with confidence that the certified appliance is identical to the appliance that completed FTS.
 
 ---
 

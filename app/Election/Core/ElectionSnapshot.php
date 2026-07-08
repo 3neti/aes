@@ -38,6 +38,8 @@ final class ElectionSnapshot
                 'printJobs' => count($this->storage->files('print-jobs')),
                 'ballots' => count($this->storage->files('ballots')),
                 'attestations' => count($this->storage->files('attestations')),
+                'transmissions' => count($this->storage->files('transmission')),
+                'custody_records' => count($this->storage->files('custody')),
             ],
         ];
     }

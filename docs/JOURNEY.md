@@ -233,6 +233,10 @@ Election Officers formally close voting.
 
 No additional ballots may be issued.
 
+Any special polling ballots that must be included in the precinct are received or accounted for.
+
+The Minutes record the legally important facts.
+
 The application transitions to the counting ceremony.
 
 ---
@@ -293,7 +297,29 @@ The Election Return becomes an official election artifact.
 
 ---
 
-# 14. Closing the Precinct
+# 14. Transmission and Final Backup
+
+After the Election Return is generated...
+
+the precinct performs the required transmission ceremony when the transmission channel is available.
+
+If transmission succeeds...
+
+the transmission evidence is printed or preserved.
+
+If transmission fails...
+
+the failure is recorded and the operator is guided through the approved retry or deferral path.
+
+The appliance then performs final backup.
+
+The goal is not to make the network the source of truth.
+
+The goal is to produce evidence of what happened.
+
+---
+
+# 15. Custody and Closing the Precinct
 
 Once all required reports have been generated...
 
@@ -303,13 +329,15 @@ Operational artifacts are preserved.
 
 Certification reports are completed.
 
+Minutes, reports, envelopes, seals, storage devices, and ballot box custody are accounted for.
+
 The election appliance is no longer active.
 
 The election itself continues through the established canvassing process.
 
 ---
 
-# 15. The Election Officer Journey
+# 16. The Election Officer Journey
 
 The Election Officer's experience is intentionally different from a traditional administration application.
 
@@ -331,9 +359,13 @@ The application behaves like a checklist.
 
 Not a management system.
 
+That checklist now includes legal ceremonies such as Final Testing and Sealing, initialization, transmission, final backup, and custody turnover.
+
+Each ceremony still presents only the next required action.
+
 ---
 
-# 16. The Voter Experience
+# 17. The Voter Experience
 
 The voter should never think about technology.
 
@@ -351,7 +383,7 @@ The election remains.
 
 ---
 
-# 17. The Design Philosophy
+# 18. The Design Philosophy
 
 Every screen in the application should answer only one question:
 

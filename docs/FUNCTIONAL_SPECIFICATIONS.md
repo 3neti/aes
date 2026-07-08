@@ -37,7 +37,7 @@ The system covers:
 
 - precinct preparation
 - precinct activation
-- Friday certification
+- Final Testing and Sealing certification
 - voting
 - ballot printing
 - ballot spoilage
@@ -109,6 +109,18 @@ Counting
 ↓
 
 Election Return
+
+↓
+
+Transmission
+
+↓
+
+Final Backup
+
+↓
+
+Custody
 
 ↓
 
@@ -190,21 +202,32 @@ Identical inputs shall always produce identical outputs.
 
 ---
 
-# 9. Friday Certification
+# 9. Final Testing and Sealing
 
-The appliance shall provide a complete certification workflow.
+The appliance shall provide a complete certification workflow that implements COMELEC Final Testing and Sealing (FTS).
 
-Certification shall include:
+FTS shall include:
 
 - package verification
 - mapping verification
+- diagnostics
+- initialization report
 - printer verification
 - scanner verification
 - QR verification
 - counting verification
+- manual verification
+- comparison of expected and actual results
+- VVPAT or approved architectural equivalent verification
+- zero-out
+- sealing evidence
 - Election Return verification
 
-Certification shall generate a Certification Report.
+FTS shall generate the required evidence artifacts, including diagnostic evidence, initialization evidence, comparison evidence, zero-out evidence, and a certification summary report.
+
+Certification consumes evidence.
+
+It does not replace the evidence.
 
 ---
 
@@ -228,7 +251,9 @@ The appliance shall prevent voting until polls are officially opened.
 
 Opening polls shall require authorized officer approval.
 
-Opening shall be journaled.
+Opening shall produce both journal evidence and legal Minutes entries.
+
+Opening shall include initialization evidence showing that the precinct begins from a zero state.
 
 ---
 
@@ -309,6 +334,7 @@ After closing:
 
 - no new voting sessions shall begin;
 - incomplete sessions shall be handled according to election policy.
+- special polling ballots, if any, shall be received or accounted for before final result generation.
 
 ---
 
@@ -366,9 +392,29 @@ The Election Return shall be printable.
 
 The Election Return may also be digitally represented.
 
+The Election Return workflow shall support signing, posting, copy distribution, and evidence of public completion.
+
 ---
 
-# 22. Certification During Operations
+# 22. Transmission
+
+The appliance shall support transmission of precinct results when a legally required transmission channel is available.
+
+Transmission shall:
+
+- occur after Election Return generation;
+- record destination status;
+- support retransmission attempts;
+- generate a Transmission Report;
+- preserve evidence when transmission is unavailable or unsuccessful.
+
+Offline operation shall not prevent voting or counting.
+
+Offline operation shall require transmission failure or deferral to be evidenced.
+
+---
+
+# 23. Certification During Operations
 
 The appliance shall support certification checkpoints including:
 
@@ -377,13 +423,16 @@ The appliance shall support certification checkpoints including:
 - polls closed
 - counting completed
 - Election Return generated
+- transmission completed or evidenced
+- final backup completed
+- custody turnover completed
 - precinct closed
 
-Each certification shall produce journal evidence.
+Each certification shall consume evidence from journals, Minutes, reports, receipts, signatures, and custody records.
 
 ---
 
-# 23. Officer Attestation
+# 24. Officer Attestation
 
 The appliance shall support officer attestation.
 
@@ -395,9 +444,48 @@ The architecture shall support multiple methods including:
 
 ---
 
-# 24. Activity Journal
+# 25. Evidence
 
-Every important state transition shall be journaled.
+The system shall treat evidence as a first-class domain.
+
+Evidence shall include:
+
+- activity journals;
+- legal Minutes;
+- reports;
+- certificates;
+- receipts;
+- printed artifacts;
+- QR artifacts;
+- generated forms;
+- seals;
+- envelopes;
+- storage devices;
+- custody records.
+
+The evidence principle is:
+
+```text
+Ceremony
+
+↓
+
+Evidence
+
+↓
+
+Certification
+
+↓
+
+Trust
+```
+
+---
+
+# 26. Activity Journal
+
+Every important machine state transition shall be journaled.
 
 Examples include:
 
@@ -408,13 +496,56 @@ Examples include:
 - spoilage
 - counting
 - Election Return generation
+- transmission
+- final backup
 - closure
 
 The journal shall be append-only.
 
 ---
 
-# 25. Diagnostics
+# 27. Minutes
+
+The system shall distinguish legal Minutes from the Activity Journal.
+
+The Activity Journal is machine evidence.
+
+The Minutes are the legal record of human proceedings.
+
+Minutes shall record legally meaningful observations such as:
+
+- ceremony opening and completion;
+- officer attestations;
+- watcher presence or protest;
+- report printing;
+- manual verification;
+- rejected or spoiled ballots;
+- custody and turnover facts.
+
+Minutes and journal entries shall reference each other where appropriate.
+
+---
+
+# 28. Custody
+
+The system shall support custody records.
+
+Custody shall cover:
+
+- envelopes;
+- paper seals;
+- ballot boxes;
+- storage devices;
+- evidence containers;
+- recipients;
+- turnover;
+- chain of custody.
+
+The system shall model the concepts behind official forms without requiring a separate forms catalog at this stage.
+
+---
+
+# 29. Diagnostics
 
 The appliance shall provide diagnostics including:
 
@@ -424,12 +555,13 @@ The appliance shall provide diagnostics including:
 - registry versions
 - configuration hashes
 - journal inspection
+- diagnostic report generation
 
 Diagnostics shall be protected from normal operators.
 
 ---
 
-# 26. Backup Appliance
+# 30. Backup Appliance
 
 A replacement appliance shall:
 
@@ -441,7 +573,7 @@ A replacement appliance shall:
 
 ---
 
-# 27. Hardware Independence
+# 31. Hardware Independence
 
 Business logic shall not depend upon:
 
@@ -454,7 +586,7 @@ Hardware shall be abstracted through adapters.
 
 ---
 
-# 28. Offline Operation
+# 32. Offline Operation
 
 The appliance shall operate without Internet connectivity.
 
@@ -464,7 +596,7 @@ Failure of external communication shall not interrupt voting or counting.
 
 ---
 
-# 29. User Interface
+# 33. User Interface
 
 The application shall guide operators through ceremonies rather than administration screens.
 
@@ -476,7 +608,7 @@ The system shall always display:
 
 ---
 
-# 30. Domain Dictionary
+# 34. Domain Dictionary
 
 The system shall provide a configurable domain dictionary.
 
@@ -493,7 +625,7 @@ Business logic shall not depend on displayed terminology.
 
 ---
 
-# 31. Scenario Runner
+# 35. Scenario Runner
 
 The system shall provide a Lifecycle Scenario Runner.
 
@@ -502,12 +634,14 @@ Scenarios shall support:
 - simulation
 - hardware execution
 - deterministic replay
+- legal ceremony replay
+- evidence verification
 
 Scenarios shall be executable through automated testing.
 
 ---
 
-# 32. Acceptance Testing
+# 36. Acceptance Testing
 
 The system shall support end-to-end acceptance testing including:
 
@@ -517,11 +651,15 @@ The system shall support end-to-end acceptance testing including:
 - physical QR scanning
 - Certification Ballot execution
 - Election Return comparison
+- FTS execution
+- initialization report verification
+- transmission report verification
+- custody turnover verification
 - backup appliance verification
 
 ---
 
-# 33. Audit
+# 37. Audit
 
 The system shall support post-election audit.
 
@@ -530,13 +668,15 @@ Audit workflows shall include:
 - manual recount
 - independent scanner recount
 - journal comparison
+- Minutes comparison
 - Election Return comparison
+- custody review
 
 Paper ballots shall remain the authoritative reference.
 
 ---
 
-# 34. Security
+# 38. Security
 
 The system shall provide:
 
@@ -545,12 +685,14 @@ The system shall provide:
 - deterministic configuration;
 - integrity verification;
 - append-only journals;
+- legal Minutes;
+- custody records;
 - officer authentication;
 - optional electronic signatures.
 
 ---
 
-# 35. Non-Functional Requirements
+# 39. Non-Functional Requirements
 
 The system shall be:
 
@@ -568,17 +710,19 @@ The system shall be:
 
 ---
 
-# 36. Guiding Functional Principles
+# 40. Guiding Functional Principles
 
 The implementation shall preserve the following principles:
 
 1. Printed ballots are the legal source of truth.
 2. The appliance is an operational tool, not the authority.
 3. Every important artifact shall be printable.
-4. Every important operation shall be journaled.
+4. Every important machine operation shall be journaled.
 5. Every important ceremony shall be certifiable.
 6. Every lifecycle shall be executable through the Scenario Runner.
 7. Every certified appliance shall produce identical results from identical inputs.
 8. Hardware replacement shall not alter election outcomes.
 9. Manual recount shall always remain possible.
 10. Technology shall simplify election administration without diminishing transparency, auditability, or public confidence.
+11. Legal Minutes and machine journals shall remain distinct but cross-referenced.
+12. Custody shall be evidenced from artifact creation through turnover.

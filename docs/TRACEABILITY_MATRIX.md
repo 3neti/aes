@@ -182,6 +182,8 @@ Each requirement shall contain:
 | Use Case | User interaction |
 | Scenario | Lifecycle scenario |
 | Tests | Automated verification |
+| Evidence | Journals, Minutes, reports, receipts, or artifacts proving the requirement |
+| Custody | Containers, seals, recipients, and turnover evidence when applicable |
 | Certification | Operational verification |
 | Status | Planned / Implemented / Verified |
 
@@ -299,11 +301,16 @@ Verify:
 
 ## Level 7
 
-Friday Certification
+Final Testing and Sealing
 
 Verify:
 
 - operational readiness
+- diagnostic evidence
+- initialization evidence
+- manual verification
+- zero-out
+- sealing
 
 ---
 
@@ -389,7 +396,7 @@ Verify:
 
 ---
 
-## Friday Certification
+## Final Testing and Sealing
 
 Verify:
 
@@ -398,6 +405,11 @@ Verify:
 - scanner
 - hashes
 - reports
+- initialization report
+- manual verification
+- VVPAT or equivalent verification
+- zero-out
+- sealing evidence
 
 ---
 
@@ -448,6 +460,42 @@ Verify:
 - totals
 - report
 - printing
+- signing evidence
+- posting or distribution evidence
+
+---
+
+## Transmission
+
+Verify:
+
+- destination status
+- retransmission
+- Transmission Report
+- failure or deferral evidence
+
+---
+
+## Final Backup
+
+Verify:
+
+- backup completion
+- storage-device evidence
+- report or receipt evidence
+
+---
+
+## Custody
+
+Verify:
+
+- envelopes
+- paper seals
+- ballot box custody
+- storage device custody
+- recipient turnover
+- chain-of-custody record
 
 ---
 
@@ -458,6 +506,7 @@ Verify:
 - lifecycle completion
 - exports
 - reports
+- custody completion
 
 ---
 
@@ -470,7 +519,7 @@ Examples:
 ```text id="h2j2p7"
 Provision
 
-Friday Certification
+Final Testing and Sealing
 
 Voting
 
@@ -479,6 +528,12 @@ Spoilage
 Counting
 
 Election Return
+
+Transmission
+
+Final Backup
+
+Custody
 
 Recovery
 
@@ -531,7 +586,7 @@ Network Recovery
 
 # 11. Certification Verification
 
-Friday Certification shall verify:
+Final Testing and Sealing shall verify:
 
 - package integrity
 - mapping integrity
@@ -540,8 +595,18 @@ Friday Certification shall verify:
 - Certification Ballots
 - expected Election Return
 - generated Election Return
+- diagnostic report
+- initialization report
+- manual verification
+- VVPAT or approved equivalent verification
+- zero-out
+- sealing evidence
 
 PASS requires exact agreement.
+
+Certification consumes evidence.
+
+Evidence includes journals, legal Minutes, reports, receipts, certificates, signatures, seals, containers, storage-device records, and custody records.
 
 ---
 
@@ -626,11 +691,47 @@ Election continues.
 
 Officer:
 
-Run Friday Certification.
+Run Final Testing and Sealing.
 
 Expected:
 
 PASS.
+
+---
+
+## Evidence
+
+Operator:
+
+Complete a ceremony.
+
+Expected:
+
+Journal evidence and Minutes evidence reference the same legally meaningful event.
+
+---
+
+## Custody
+
+Operator:
+
+Turn over election artifacts.
+
+Expected:
+
+Recipient, container, seal, and custody status are recorded.
+
+---
+
+## Transmission
+
+Operator:
+
+Transmit Election Return.
+
+Expected:
+
+Transmission status is evidenced, including retry or deferral when needed.
 
 ---
 
@@ -704,6 +805,18 @@ Certification Reports
 
 ↓
 
+Transmission Reports
+
+↓
+
+Minutes
+
+↓
+
+Custody Records
+
+↓
+
 Audit Report
 
 All discrepancies shall be documented.
@@ -733,7 +846,11 @@ Verification artifacts include:
 - Vitest Suite
 - Scenario Library
 - Hardware Test Procedures
-- Friday Certification Reports
+- FTS Certification Reports
+- Diagnostic Reports
+- Initialization Reports
+- Transmission Reports
+- Custody Records
 - User Acceptance Scripts
 - Regression Library
 - Audit Reports
