@@ -1,81 +1,65 @@
-# Evidence Folder Scenario Implementation Plan
+# Run-First Evidence Scenario Plan
 
 ## Summary
 
-Add a deterministic `evidence-folder-demo` scenario that runs the full precinct lifecycle and persists a curated evidence folder under `storage/app/election-scenario-artifacts`. The command prints both the durable report path and the evidence folder path.
+`php artisan election:scenario evidence-folder-demo` now produces a normal run folder under `storage/app/election/runs/{run_id}`. The run folder is the operator-facing evidence bundle; it uses numbered ceremony directories so non-developers can browse files in lifecycle order.
 
-```bash
-php artisan election:scenario evidence-folder-demo
-```
-
-## Evidence Folder Shape
+## Run Folder Shape
 
 ```text
-storage/app/election-scenario-artifacts/
-  2026-05-08-080001-0421-a-evidence-folder-demo-{hash}/
+storage/app/election/
+  README.txt
+  LATEST_RUN.txt
+  current-run.json
+  runs/{run_id}/
     README.txt
-    summary-report.json
-    summary-report.txt
+    run-summary.json
+    run-summary.txt
     artifact-index.json
-    01-device-initiation-scan-documents/
-    02-device-and-certification-reports/
-    03-officer-attestations/
-    04-ballots/
-    05-counting-and-tally/
-    06-election-return/
-    07-journal/
+    00-start-here/
+    01-precinct-preparation/
+    02-device-certification/
+    03-polls-opening/
+    04-voting-and-printing/
+    05-polls-closing/
+    06-counting-and-tally/
+    07-election-return/
+    08-precinct-closing/
+    09-exports-and-verification/
+    10-journal/
+  source-data/
+    pop/
+    clc/
+    imported-packages/
 ```
+
+## Operator Flow
+
+1. Open `storage/app/election/LATEST_RUN.txt`.
+2. Open the pointed run folder.
+3. Read `README.txt` and `run-summary.txt`.
+4. Browse numbered ceremony folders in order.
+5. Use `artifact-index.json` for SHA-256 hashes and file sizes.
 
 ## Scenario Flow
 
-1. Reset runtime election storage and freeze the deterministic scenario clock.
-2. Activate the sample precinct package.
-3. Generate certification deck scan documents.
-4. Run device certification.
-5. Run Friday certification.
-6. Capture officer attestation and signature artifact.
-7. Open polls.
-8. Finalize and print a counted ballot.
-9. Finalize, print, and spoil a second ballot.
-10. Close polls and start counting.
-11. Count the valid ballot and reject the spoiled ballot.
-12. Generate tally, tally sheet, Election Return, return attestation, and close precinct.
-13. Copy evidence into a durable numbered folder.
-14. Generate `artifact-index.json`, `summary-report.json`, and `summary-report.txt`.
-15. Write the normal durable scenario report archive.
+1. Reset old generated election artifacts.
+2. Start run `20260508-080000-39010001-evidence-folder-demo`.
+3. Import POP, activate the Manila precinct, and bind sample ballot data.
+4. Run certification, voting, printing, counting, tally, Election Return, attestations, and journal writes into ceremony folders.
+5. Write scenario report in `00-start-here`.
+6. Write `run-summary.json`, `run-summary.txt`, and `artifact-index.json`.
 
-## Required Summary Report
-
-The final report is the operator-facing table of contents. It must include:
-
-- scenario name, precinct id, election id, generated timestamp, pass/fail
-- lifecycle flow in order
-- statistics for scan documents, device checks, certification ballots, attestations, signatures, ballots, prints, spoiled ballots, accepted ballots, rejected ballots, contests tallied, journal entries, total evidence files, and total bytes
-- grouped artifact pointers with relative path, original source path, SHA-256 hash, and byte size
-- important hashes for mapping, device certification, Friday certification, ballot payloads, tally, Election Return, and summary report
-
-## Implementation Slices
-
-1. Persist this plan and compass, then commit.
-2. Add storage helpers and scenario registration, then commit.
-3. Add evidence folder builder and artifact copying, then commit.
-4. Add summary report JSON/TXT, then commit.
-5. Add tally sheet TXT/PDF artifacts, then commit.
-6. Add focused scenario verification tests, then commit.
-7. Run final commands, update status and compass with paths/results, then commit.
-
-## Tests And Commands
+## Verification
 
 ```bash
-vendor/bin/pint --dirty --format agent
 vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact
 php artisan election:scenario evidence-folder-demo
 vendor/bin/pest --compact
 ```
 
-## Assumptions
+Current verified run:
 
-- The Friday certification deck QR artifacts are the documents to scan to initiate and certify the device.
-- The output is readable folders plus summary reports, not only a TAR archive.
-- Existing removable-media and TAR export workflows remain separate.
-- No real scanner or printer hardware is required.
+```text
+storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo
+```

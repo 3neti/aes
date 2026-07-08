@@ -165,8 +165,7 @@ test('diagnostics can generate and download precinct evidence manifest', functio
 
     expect($manifest['schema_version'])->toBe('precinct-evidence-manifest-1')
         ->and($manifest['configuration']['precinct_id'])->toBe('0421-A')
-        ->and($manifest['categories']['attestations']['files'])->toHaveCount(1)
-        ->and($manifest['categories']['attestation_signatures']['files'])->toHaveCount(1)
+        ->and($manifest['categories']['polls_opening']['files'])->toHaveCount(2)
         ->and($manifest['manifest_hash'])->toBeString();
 
     $this->get(route('election.diagnostics'))
@@ -175,7 +174,7 @@ test('diagnostics can generate and download precinct evidence manifest', functio
             ->component('Election/Diagnostics')
             ->where('diagnostics.evidence_manifest.exists', true)
             ->where('diagnostics.evidence_manifest.manifest_hash', $manifest['manifest_hash'])
-            ->where('diagnostics.evidence_manifest.categories.attestations', 1)
+            ->where('diagnostics.evidence_manifest.categories.polls_opening', 2)
         );
 
     $this->get(route('election.diagnostics.evidence-manifest.download'))
@@ -211,7 +210,8 @@ test('diagnostics can build and download evidence bundle archive', function (): 
         ->and($report['archive_sha256'])->toBe(hash_file('sha256', $report['archive_path']))
         ->and($archive)->toContain('evidence-manifest.json')
         ->and($archive)->toContain('archive-index.json')
-        ->and($archive)->toContain('artifacts/attestations/');
+        ->and($archive)->toContain('03-polls-opening')
+        ->and($archive)->toContain('attestation-000001');
 
     $this->get(route('election.diagnostics'))
         ->assertSuccessful()
@@ -351,10 +351,10 @@ test('diagnostics can stage removable media evidence export', function (): void 
     expect($report['schema_version'])->toBe('removable-media-export-report-1')
         ->and($report['export_id'])->toBe('evidence-export-20260508-190000')
         ->and($report['artifact_count'])->toBeGreaterThan(2)
-        ->and(collect($report['copied_files'])->contains(fn (array $file): bool => $file['target'] === 'artifacts/attestations/'.$attestationArtifact))->toBeTrue()
+        ->and(collect($report['copied_files'])->contains(fn (array $file): bool => $file['target'] === 'artifacts/03-polls-opening/attestations/'.$attestationArtifact))->toBeTrue()
         ->and($exportRoot.'/evidence-manifest.json')->toBeReadableFile()
-        ->and($exportRoot.'/artifacts/attestations/'.$attestationArtifact)->toBeReadableFile()
-        ->and($exportRoot.'/artifacts/attestation-signatures/'.$signatureArtifact)->toBeReadableFile();
+        ->and($exportRoot.'/artifacts/03-polls-opening/attestations/'.$attestationArtifact)->toBeReadableFile()
+        ->and($exportRoot.'/artifacts/03-polls-opening/signatures/'.$signatureArtifact)->toBeReadableFile();
 
     $this->get(route('election.diagnostics'))
         ->assertSuccessful()

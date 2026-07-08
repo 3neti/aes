@@ -59,14 +59,13 @@
 - Evidence manifest entries now use an internal `EvidenceArtifact` value object for file name, relative path, size, and SHA-256 shaping.
 - Officer registry management scaffold can rotate a local officer PIN into a runtime registry artifact and journal the rotation without adding authentication or an admin dashboard.
 - Removable-media readiness reports now include operator-facing status codes and labels for simulated ready, ready, missing, not writable, probe failed, and not ready states.
-- Scenario command reports are now also archived outside the resettable election runtime under `storage/app/election-scenario-reports` with contextual filenames containing scenario clock time, precinct id, scenario name, and report hash prefix.
+- Scenario command reports now live inside run-first storage under `storage/app/election/runs/{run_id}/00-start-here`.
 - Evidence folder scenario plan and compass are persisted in `docs/EVIDENCE_FOLDER_SCENARIO_PLAN.md` and `docs/EVIDENCE_FOLDER_SCENARIO_COMPASS.md`.
 - Evidence folder scenario command is registered as `php artisan election:scenario evidence-folder-demo`.
-- Evidence folder scenario now persists numbered ceremony artifact folders and `artifact-index.json` under `storage/app/election-scenario-artifacts`.
-- Evidence folder scenario writes `summary-report.json` and `summary-report.txt` with lifecycle flow, statistics, hashes, and artifact pointers.
-- Evidence folder scenario writes deterministic `tally-sheet.txt` and `tally-sheet.pdf` artifacts into the counting-and-tally evidence folder.
-- Evidence folder scenario verification now checks required folders, required artifacts, summary pointers, copied file hashes, and persistence after a later runtime reset.
-- Evidence folder scenario now rebuilds its durable evidence folder before copying artifacts so deterministic reruns do not accumulate stale files.
+- Evidence folder scenario now produces the standard run-first numbered ceremony folder layout under `storage/app/election/runs/{run_id}`.
+- Run folders write `run-summary.json`, `run-summary.txt`, and `artifact-index.json` at the run root.
+- Counting now writes deterministic `tally-sheet.txt` and `tally-sheet.pdf` artifacts directly into `06-counting-and-tally`.
+- Storage reset now removes legacy `storage/app/election-scenario-reports` and `storage/app/election-scenario-artifacts` roots before recreating the run-first skeleton.
 - POP workbook importer preserves the 2025 NLE POP XLSX as source evidence and normalizes clustered precinct rows into deterministic local registry files.
 - POP workbook importer now uses a source adapter and explicit mapping profiles, with manifest metadata for source type, source label, source headers, mapping profile, and canonical fields.
 - POP workbook importer includes a strict alternate Excel mapping profile and developer manual for adding future profiles.
@@ -80,6 +79,7 @@
 - POP importer developer manual is available in `docs/POP_IMPORTER_DEVELOPER_MANUAL.md`.
 - CLC candidate importer documentation is available in `docs/CLC_CANDIDATE_IMPORTER.md`.
 - PDF text extraction documentation is available in `docs/PDF_TEXT_EXTRACTION.md`.
+- Run-first storage is now the operator-facing evidence layout, with `LATEST_RUN.txt` pointing to the current run and source imports under `storage/app/election/source-data`.
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
@@ -322,6 +322,17 @@
 - POP package activation command for `7010001`: passed and wrote `storage/app/election/packages/imported/7010001.json`.
 - POP import demo scenario: passed and wrote `storage/app/election-scenario-reports/2026-05-08-080000-7010001-pop-import-demo-51fd2c0f3bec-report.json`.
 - Pest configured feature/unit suite after POP importer completion: passed, 66 tests and 871 assertions.
+- Run-first storage lifecycle suite: passed, 34 tests and 407 assertions.
+- Run-first storage ceremony page suite: passed, 27 tests and 454 assertions.
+- Run-first storage POP importer suite: passed, 11 tests and 94 assertions.
+- Run-first storage precinct candidates suite: passed, 3 tests and 31 assertions.
+- Run-first storage CLC importer suite: passed, 2 tests and 26 assertions.
+- Pest configured feature/unit suite after run-first storage rationalization: passed, 79 tests and 1014 assertions.
+- Pest Browser suite after run-first storage rationalization: passed, 12 tests and 83 assertions.
+- Run-first POP import demo scenario: passed and wrote `storage/app/election/runs/20260508-080000-39010001-pop-import-demo`.
+- Run-first full demo scenario: passed and wrote `storage/app/election/runs/20260508-080000-39010001-full-demo`.
+- Run-first evidence folder demo scenario: passed and wrote `storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo`.
+- Legacy generated roots `storage/app/election-scenario-reports` and `storage/app/election-scenario-artifacts` are removed by reset and no longer used by active writers.
 
 ## Known Gaps
 

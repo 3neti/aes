@@ -91,28 +91,34 @@ The importer writes journal events:
 
 ## Directories And Files
 
-After import, files are written under resettable election runtime storage:
+After import, source files and registries are written under source-data:
 
 ```text
 storage/app/election/
-  imports/pop/2025NLE_POP.xlsx
-  registries/pop-2025-nle/
-    manifest.json
-    precincts.jsonl
-    clustered-precinct-index.json
-    location-summary.json
-  packages/imported/{clustered_precinct}.json
-  scenarios/pop-import-demo-report.json
+  source-data/
+    pop/
+      imports/2025NLE_POP.xlsx
+      registries/pop-2025-nle/
+        manifest.json
+        precincts.jsonl
+        clustered-precinct-index.json
+        location-summary.json
+    imported-packages/{clustered_precinct}.json
+  runs/{run_id}/
+    00-start-here/*-report.json
+    01-precinct-preparation/
 ```
 
-Scenario reports are also archived outside resettable runtime storage:
+Scenario reports are written inside the active run folder:
 
 ```text
-storage/app/election-scenario-reports/
-  2026-05-08-080000-39010001-pop-import-demo-...-report.json
+storage/app/election/runs/20260508-080000-39010001-pop-import-demo/
+  00-start-here/2026-05-08-080000-39010001-pop-import-demo-...-report.json
+  run-summary.json
+  artifact-index.json
 ```
 
-Important runtime reset note: `storage/app/election` is reset by scenarios and tests. Re-import the workbook after a reset, or use the durable scenario report when reviewing a completed scenario.
+Important runtime reset note: `storage/app/election` is reset by scenarios and tests. Each scenario starts with a clean run-first storage tree.
 
 ## Normalized Precinct Record
 
@@ -159,7 +165,7 @@ Field notes:
   "canonical_fields": ["region", "province", "city_municipality", "barangay", "clustered_precinct", "precinct_cluster", "cluster_total", "polling_place"],
   "source": {
     "original_path": "resources/election/pop/2025NLE_POP.xlsx",
-    "copied_path": "storage/app/election/imports/pop/2025NLE_POP.xlsx",
+    "copied_path": "storage/app/election/source-data/pop/imports/2025NLE_POP.xlsx",
     "filename": "2025NLE_POP.xlsx",
     "bytes": 5333574,
     "sha256": "..."
@@ -205,7 +211,7 @@ This avoids scanning all `93629` rows for each lookup.
 `php artisan election:pop-activate 39010001` writes:
 
 ```text
-storage/app/election/packages/imported/39010001.json
+storage/app/election/source-data/imported-packages/39010001.json
 ```
 
 Package shape:
@@ -270,7 +276,7 @@ Rows: 93629
 Unique clustered precincts: 93629
 Total registered voters: 69773653
 Registry hash: eb102e2c5b4497f676bfbbb4c5d381cd9d2bbd91c037a69cc8f894080292d0e1
-Manifest: /Users/rli/PhpstormProjects/aes/storage/app/election/registries/pop-2025-nle/manifest.json
+Manifest: /Users/rli/PhpstormProjects/aes/storage/app/election/source-data/pop/registries/pop-2025-nle/manifest.json
 ```
 
 Look up a clustered precinct:
@@ -303,7 +309,7 @@ Verified output:
 ```text
 Imported POP precinct package 39010001 written.
 Package hash: a54555376f7cd1819223f4f4052ceeee6555d102b2e732c3a28e887119b8be8b
-Artifact: /Users/rli/PhpstormProjects/aes/storage/app/election/packages/imported/39010001.json
+Artifact: /Users/rli/PhpstormProjects/aes/storage/app/election/source-data/imported-packages/39010001.json
 ```
 
 Run the deterministic scenario:
@@ -316,12 +322,14 @@ Verified output:
 
 ```text
 Scenario pop-import-demo passed.
-Report: /Users/rli/PhpstormProjects/aes/storage/app/election-scenario-reports/2026-05-08-080000-39010001-pop-import-demo-...-report.json
+Run ID: 20260508-080000-39010001-pop-import-demo
+Run Folder: /Users/rli/PhpstormProjects/aes/storage/app/election/runs/20260508-080000-39010001-pop-import-demo
+Report: /Users/rli/PhpstormProjects/aes/storage/app/election/runs/20260508-080000-39010001-pop-import-demo/00-start-here/2026-05-08-080000-39010001-pop-import-demo-...-report.json
 ```
 
 The lifecycle `full-demo` and `evidence-folder-demo` scenarios now use the configured POP source by default. Their scenario reports include a `pop_import` section with source path, mapping profile, source label, row counts, registry hash, manifest hash/path, selected clustered precinct, precinct location, package hash, and package path.
 
-The evidence folder scenario also includes a `00-pop-import-and-precinct-source` folder containing the POP manifest, index, location summary, source workbook copy, imported package, active package, and active precinct configuration when present.
+The evidence folder scenario now writes a normal run folder with numbered ceremony directories. POP source evidence remains under `source-data`; the active precinct and active package are under `01-precinct-preparation`.
 
 ## Consumption Flow
 
@@ -384,8 +392,8 @@ Passed: 71 tests, 897 assertions.
 
 ## Operational Limits
 
-- `storage/app/election` is resettable runtime storage. Scenario and test resets remove imported POP files.
-- The durable `pop-import-demo` scenario report is retained under `storage/app/election-scenario-reports`.
+- `storage/app/election` is resettable runtime storage. Scenario and test resets remove old generated runs and recreate the run-first skeleton.
+- Scenario reports are retained inside the active run's `00-start-here` folder.
 - Scenario POP source, profile, and clustered precinct are configurable through `election.pop.*` config values.
 - There is no Inertia UI for POP import, lookup, or activation yet.
 - There is no COMELEC workbook signature verification yet.

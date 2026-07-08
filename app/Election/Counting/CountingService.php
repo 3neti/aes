@@ -5,6 +5,7 @@ namespace App\Election\Counting;
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\SimplePdf;
 use App\Election\Voting\BallotPayloadService;
 
 final class CountingService
@@ -14,6 +15,7 @@ final class CountingService
         private readonly BallotPayloadService $payloads,
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
+        private readonly SimplePdf $pdf,
     ) {}
 
     /**
@@ -109,6 +111,7 @@ final class CountingService
         ];
         $result['tally_hash'] = $this->json->hash($result);
         $this->storage->writeJson('runtime/tally.json', $result);
+        $this->writeTallySheet($configuration, $result);
 
         return $result;
     }
@@ -154,5 +157,34 @@ final class CountingService
                 throw new \RuntimeException('Duplicate ballot payload.');
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @param  array<string, mixed>  $tally
+     */
+    private function writeTallySheet(array $configuration, array $tally): void
+    {
+        $lines = [
+            'TALLY SHEET',
+            'Election: '.($configuration['election_id'] ?? 'unknown'),
+            'Precinct: '.($configuration['precinct_id'] ?? 'unknown'),
+            'Accepted Ballots: '.($tally['accepted_ballots'] ?? 0),
+            'Rejected Ballots: '.($tally['rejected_ballots'] ?? 0),
+            'Tally Hash: '.($tally['tally_hash'] ?? 'unknown'),
+            '',
+            'Totals:',
+        ];
+
+        foreach (($tally['tally'] ?? []) as $contest => $totals) {
+            $lines[] = strtoupper((string) $contest);
+
+            foreach ($totals as $candidate => $votes) {
+                $lines[] = "  {$candidate}: {$votes}";
+            }
+        }
+
+        $this->storage->writeText('runtime/tally-sheet.txt', implode(PHP_EOL, $lines).PHP_EOL);
+        $this->storage->writeText('runtime/tally-sheet.pdf', $this->pdf->render('Tally Sheet', $lines));
     }
 }

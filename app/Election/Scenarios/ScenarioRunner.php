@@ -41,7 +41,6 @@ final class ScenarioRunner
         private readonly ElectionReturnService $returns,
         private readonly LifecycleState $lifecycle,
         private readonly ActivityJournal $journal,
-        private readonly ScenarioEvidenceFolderBuilder $evidenceFolders,
         private readonly PopWorkbookImporter $popImporter,
         private readonly ActivateImportedPrecinctPackage $activateImportedPrecinct,
         private readonly SampleElectionData $sample,
@@ -56,6 +55,7 @@ final class ScenarioRunner
     {
         $this->storage->reset();
         $this->clock->freeze('2026-05-08 08:00:00');
+        $this->storage->startRun($name, $this->scenarioPrecinct($name), $this->clock->now()->format('Ymd-His'));
 
         $report = match ($name) {
             'friday-certification' => $this->fridayCertification(),
@@ -66,21 +66,13 @@ final class ScenarioRunner
         };
 
         $this->storage->writeJson("scenarios/{$name}-report.json", $report);
-
-        if ($name === 'evidence-folder-demo') {
-            $report = [
-                ...$report,
-                ...$this->evidenceFolders->build($name, $report),
-            ];
-
-            $this->storage->writeJson("scenarios/{$name}-report.json", $report);
-        }
-
         $archivePath = $this->storage->writeScenarioReport($name, $report, $this->clock->now()->format('Y-m-d-His'));
+        $run = $this->storage->finalizeRun($name, $report);
         $this->clock->unfreeze();
 
         return [
             ...$report,
+            ...$run,
             'archived_report_path' => $archivePath,
         ];
     }
@@ -268,6 +260,15 @@ final class ScenarioRunner
     private function popClusteredPrecinct(): string
     {
         return (string) config('election.pop.clustered_precinct');
+    }
+
+    private function scenarioPrecinct(string $name): string
+    {
+        return match ($name) {
+            'friday-certification' => '0421-A',
+            'full-demo', 'evidence-folder-demo', 'pop-import-demo' => $this->popClusteredPrecinct(),
+            default => 'unknown-precinct',
+        };
     }
 
     /**

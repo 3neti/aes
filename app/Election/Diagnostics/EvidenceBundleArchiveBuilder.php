@@ -74,7 +74,7 @@ final class EvidenceBundleArchiveBuilder
         foreach ($manifest['categories'] ?? [] as $category) {
             foreach ($category['files'] ?? [] as $file) {
                 $relativePath = (string) $file['relative_path'];
-                $sourcePath = $this->storage->path($relativePath);
+                $sourcePath = $this->storage->runPath($relativePath);
 
                 if (! $this->files->exists($sourcePath)) {
                     continue;

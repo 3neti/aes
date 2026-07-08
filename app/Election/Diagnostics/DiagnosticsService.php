@@ -311,19 +311,16 @@ final class DiagnosticsService
     private function manifestCategories(): array
     {
         $directories = [
-            'registries' => 'registries',
-            'packages' => 'packages',
-            'runtime' => 'runtime',
-            'journals' => 'journals',
-            'ballots' => 'ballots',
-            'print_jobs' => 'print-jobs',
-            'accepted_counting_records' => 'counting/accepted',
-            'rejected_counting_records' => 'counting/rejected',
-            'returns' => 'returns',
-            'certification' => 'certification',
-            'attestations' => 'attestations',
-            'attestation_signatures' => 'attestation-signatures',
-            'scenarios' => 'scenarios',
+            'start_here' => '00-start-here',
+            'precinct_preparation' => '01-precinct-preparation',
+            'device_certification' => '02-device-certification',
+            'polls_opening' => '03-polls-opening',
+            'voting_and_printing' => '04-voting-and-printing',
+            'polls_closing' => '05-polls-closing',
+            'counting_and_tally' => '06-counting-and-tally',
+            'election_return' => '07-election-return',
+            'precinct_closing' => '08-precinct-closing',
+            'journal' => '10-journal',
         ];
 
         return collect($directories)
@@ -341,8 +338,19 @@ final class DiagnosticsService
      */
     private function manifestFiles(string $directory): array
     {
-        return collect($this->storage->files($directory))
-            ->map(fn (string $path): array => EvidenceArtifact::fromPath($directory, $path)->toManifestEntry())
+        $root = $this->storage->runPath($directory);
+
+        if (! $this->files->isDirectory($root)) {
+            return [];
+        }
+
+        return collect($this->files->allFiles($root))
+            ->map(function ($file) use ($directory, $root): array {
+                $nested = trim(str_replace($root, '', dirname($file->getPathname())), '/');
+                $artifactDirectory = $nested === '' ? $directory : $directory.'/'.$nested;
+
+                return EvidenceArtifact::fromPath($artifactDirectory, $file->getPathname())->toManifestEntry();
+            })
             ->values()
             ->all();
     }

@@ -10,7 +10,7 @@ physical source file
   -> PopSourceData
   -> PopMappingProfile
   -> PopWorkbookImporter
-  -> storage/app/election/registries/pop-2025-nle
+  -> storage/app/election/source-data/pop/registries/pop-2025-nle
 ```
 
 `PopSourceAdapter` reads a physical source format and returns headers plus rows. `XlsxPopSourceAdapter` is the active adapter for `.xlsx` files.

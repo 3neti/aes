@@ -16,15 +16,12 @@ final class ElectionScenarioCommand extends Command
         $report = $runner->run((string) $this->argument('scenario'));
 
         $this->line("Scenario {$report['scenario']} ".($report['passed'] ? 'passed' : 'failed').'.');
+        $this->line("Run ID: {$report['run_id']}");
+        $this->line("Run Folder: {$report['run_path']}");
+        $this->line("Start Here: {$report['start_here_path']}");
         $this->line("Report: {$report['archived_report_path']}");
-
-        if (isset($report['evidence_folder_path'])) {
-            $this->line("Evidence Folder: {$report['evidence_folder_path']}");
-        }
-
-        if (isset($report['summary_report_path'])) {
-            $this->line("Summary Report: {$report['summary_report_path']}");
-        }
+        $this->line("Summary Report: {$report['summary_report_path']}");
+        $this->line("Artifact Index: {$report['artifact_index_path']}");
 
         return $report['passed'] ? self::SUCCESS : self::FAILURE;
     }

@@ -1,71 +1,52 @@
-# Evidence Folder Scenario Compass
+# Run-First Evidence Scenario Compass
 
 ## Objective
 
-Create `php artisan election:scenario evidence-folder-demo` so a complete simulated precinct lifecycle produces a durable, readable evidence folder plus a final summary report with flow, statistics, hashes, and pointers to all important files.
-
-## Principles
-
-- Paper and printable artifacts remain primary evidence.
-- Scenario output is deterministic and reproducible.
-- Runtime resets must not delete persisted scenario evidence folders.
-- The final report is the operator-facing table of contents.
-- The scenario remains simulation-first and requires no real printer or scanner hardware.
-- `.codex/config.toml` is never staged or committed.
+Keep scenario and operator evidence under one intuitive run folder with numbered ceremony directories.
 
 ## Current Status
 
 | Slice | Status | Notes |
 | --- | --- | --- |
-| Plan and compass persisted | Complete | This compass and the implementation plan are the slice source of truth. |
-| Storage helpers | Complete | Added durable scenario artifact root helper plan target. |
-| Scenario registration | Complete | `evidence-folder-demo` is registered and callable. |
-| Evidence folder builder | Complete | Copies runtime artifacts into numbered durable evidence folders and writes an artifact index. |
-| Summary reports | Complete | Generates JSON and text reports with flow, statistics, hashes, and artifact pointers. |
-| Tally sheet artifacts | Complete | Generates deterministic tally sheet TXT/PDF artifacts and copies them into the evidence folder. |
-| Scenario verification | Complete | Verifies numbered folders, required artifacts, summary pointers, copied hashes, and persistence after a later scenario run. |
-| Deterministic reruns | Complete | Rebuilds the durable evidence folder on each run to prevent stale artifact accumulation. |
-| Final run and status | Complete | Final commands passed and generated stable evidence folder/report paths. |
+| Legacy artifact cleanup | Complete | `ElectionStorage::reset()` removes old `election-scenario-*` roots and recreates only the new skeleton. |
+| Run context | Complete | Scenarios write `current-run.json`, `LATEST_RUN.txt`, and `runs/{run_id}`. |
+| Numbered ceremony folders | Complete | Artifacts are routed to `00-start-here` through `10-journal`. |
+| Source data separation | Complete | POP/CLC imports and imported package skeletons live under `source-data`. |
+| Scenario command output | Complete | Commands print run id, run folder, start-here path, report, summary, and artifact index. |
+| Diagnostics/export integration | Complete | Evidence manifests, TAR archives, removable-media exports, and verification reports use the active run. |
+| Tests | Complete | Lifecycle, page diagnostics, POP/CLC focused tests, and the full configured Pest suite passed. |
 
-## Commit Log
+## Current Run Shape
 
-| Slice | Commit | Tests/Checks | Result |
-| --- | --- | --- | --- |
-| Plan and compass persisted | `ea28ceb` | Documentation-only | Committed |
-| Storage and scenario registration | `7ad825e` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 175 assertions |
-| Evidence folder builder | `1a6831e` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 180 assertions |
-| Summary reports | `88cfaf7` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 187 assertions |
-| Tally sheet artifacts | `670465d` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 192 assertions |
-| Scenario verification | `fd03d39` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` | Passed: 33 tests, 363 assertions |
-| Deterministic reruns | `730a908` | `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`; `php artisan election:scenario evidence-folder-demo` | Passed: 33 tests, 363 assertions; scenario passed |
-| Final run and status | Pending | `vendor/bin/pint --dirty --format agent`; `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`; `php artisan election:scenario evidence-folder-demo`; `vendor/bin/pest --compact` | Passed; 33 lifecycle tests and 363 assertions; scenario passed; 62 configured tests and 819 assertions |
+```text
+storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo/
+  00-start-here/
+  01-precinct-preparation/
+  02-device-certification/
+  03-polls-opening/
+  04-voting-and-printing/
+  05-polls-closing/
+  06-counting-and-tally/
+  07-election-return/
+  08-precinct-closing/
+  09-exports-and-verification/
+  10-journal/
+```
 
-## Final Artifacts
+## Verified Commands
 
-- Evidence folder: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38`
-- Summary report: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38/summary-report.json`
-- Summary text report: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38/summary-report.txt`
-- Artifact index: `storage/app/election-scenario-artifacts/2026-05-08-080001-0421-a-evidence-folder-demo-4dedf7c65e38/artifact-index.json`
-- Durable scenario report: `storage/app/election-scenario-reports/2026-05-08-080001-0421-a-evidence-folder-demo-855437357857-report.json`
-
-## Final Statistics
-
-- Scan documents generated: 6
-- Device checks passed: 2
-- Device checks failed: 0
-- Certification ballots counted: 3
-- Officer attestations captured: 2
-- Signatures captured: 2
-- Ballots finalized: 2
-- Ballots printed: 2
-- Ballots spoiled: 1
-- Accepted ballots: 1
-- Rejected ballots: 1
-- Contests tallied: 3
-- Journal entries: 28
-- Evidence files copied: 36
-- Evidence bytes copied: 275451
+```bash
+vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact
+vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --compact
+vendor/bin/pest tests/Feature/Election/PopWorkbookImportTest.php --compact
+vendor/bin/pest tests/Feature/Election/PrecinctCandidatesCommandTest.php --compact
+vendor/bin/pest tests/Feature/Election/ClcCandidateImportTest.php --compact
+vendor/bin/pest --compact
+php artisan election:scenario pop-import-demo
+php artisan election:scenario full-demo
+php artisan election:scenario evidence-folder-demo
+```
 
 ## Next Slice
 
-No remaining planned slice for `evidence-folder-demo`; future work should start from a new compass entry.
+Add a Diagnostics UI panel that links directly to `LATEST_RUN.txt`, the active run summary, artifact index, ballot folder, tally folder, and Election Return folder.

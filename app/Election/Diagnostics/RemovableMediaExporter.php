@@ -84,7 +84,7 @@ final class RemovableMediaExporter
             ->flatMap(fn (array $category): array => $category['files'] ?? [])
             ->map(function (array $file) use ($targetRoot): array {
                 $relativePath = (string) $file['relative_path'];
-                $sourcePath = $this->storage->path($relativePath);
+                $sourcePath = $this->storage->runPath($relativePath);
                 $targetPath = $targetRoot.'/artifacts/'.$relativePath;
 
                 $this->files->ensureDirectoryExists(dirname($targetPath));

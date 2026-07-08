@@ -27,7 +27,6 @@ use App\Election\Scanning\BallotScanner;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\StandardQrCode;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -601,86 +600,92 @@ test('full demo scenario uses configurable pop import defaults', function (): vo
         ->and($report['pop_import']['clustered_precinct'])->toBe('39010001');
 });
 
-test('scenario command archives reports outside resettable election runtime', function (): void {
+test('scenario command writes run first report folders', function (): void {
     $storage = app(ElectionStorage::class);
-    app(Filesystem::class)->deleteDirectory($storage->scenarioReportsRoot());
 
     $this->artisan('election:scenario friday-certification')
         ->expectsOutput('Scenario friday-certification passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-0421-a-friday-certification')
+        ->expectsOutputToContain('Run Folder: ')
         ->expectsOutputToContain('Report: ')
         ->assertSuccessful();
 
-    $fridayReports = glob($storage->scenarioReportsRoot().'/*friday-certification*-report.json') ?: [];
+    $fridayRun = $storage->currentRun();
+
+    expect($fridayRun['run_id'])->toBe('20260508-080000-0421-a-friday-certification')
+        ->and($fridayRun['run_path'].'/00-start-here')->toBeDirectory()
+        ->and(glob($fridayRun['run_path'].'/00-start-here/*friday-certification*-report.json') ?: [])->not->toBeEmpty();
 
     $this->artisan('election:scenario full-demo')
         ->expectsOutput('Scenario full-demo passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-full-demo')
+        ->expectsOutputToContain('Run Folder: ')
         ->expectsOutputToContain('Report: ')
         ->assertSuccessful();
 
-    $fullDemoReports = glob($storage->scenarioReportsRoot().'/*full-demo*-report.json') ?: [];
+    $fullDemoRun = $storage->currentRun();
 
-    expect($fridayReports)->toHaveCount(1)
-        ->and($fullDemoReports)->toHaveCount(1)
-        ->and($fridayReports[0])->toBeReadableFile()
-        ->and($fullDemoReports[0])->toBeReadableFile()
-        ->and(basename($fridayReports[0]))->toContain('2026-05-08-080001-0421-a-friday-certification')
-        ->and(basename($fullDemoReports[0]))->toContain('2026-05-08-080001-39010001-full-demo')
+    expect($fullDemoRun['run_id'])->toBe('20260508-080000-39010001-full-demo')
+        ->and($fullDemoRun['run_path'].'/README.txt')->toBeReadableFile()
+        ->and($fullDemoRun['run_path'].'/run-summary.txt')->toBeReadableFile()
+        ->and($fullDemoRun['run_path'].'/artifact-index.json')->toBeReadableFile()
+        ->and(storage_path('app/election/LATEST_RUN.txt'))->toBeReadableFile()
+        ->and(storage_path('app/election-scenario-reports'))->not->toBeDirectory()
+        ->and(storage_path('app/election-scenario-artifacts'))->not->toBeDirectory()
         ->and($storage->readJson('scenarios/full-demo-report.json')['passed'])->toBeTrue();
 });
 
 test('evidence folder demo scenario command is registered', function (): void {
     $this->artisan('election:scenario evidence-folder-demo')
         ->expectsOutput('Scenario evidence-folder-demo passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-evidence-folder-demo')
+        ->expectsOutputToContain('Run Folder: ')
+        ->expectsOutputToContain('Start Here: ')
         ->expectsOutputToContain('Report: ')
-        ->expectsOutputToContain('Evidence Folder: ')
         ->assertSuccessful();
 
     $report = app(ElectionStorage::class)->readJson('scenarios/evidence-folder-demo-report.json');
-    $summary = json_decode(file_get_contents($report['summary_report_path']), true, flags: JSON_THROW_ON_ERROR);
-    $index = json_decode(file_get_contents($report['artifact_index_path']), true, flags: JSON_THROW_ON_ERROR);
-    $folder = $report['evidence_folder_path'];
+    $run = app(ElectionStorage::class)->currentRun();
+    $summary = json_decode(file_get_contents($run['summary_report_path']), true, flags: JSON_THROW_ON_ERROR);
+    $index = json_decode(file_get_contents($run['artifact_index_path']), true, flags: JSON_THROW_ON_ERROR);
+    $folder = $run['run_path'];
 
     expect($report['passed'])->toBeTrue()
         ->and($report['scenario'])->toBe('evidence-folder-demo')
         ->and($report['precinct_id'])->toBe('39010001')
         ->and($report['pop_import']['row_count'])->toBe(93629)
+        ->and($run['run_id'])->toBe('20260508-080000-39010001-evidence-folder-demo')
         ->and($folder)->toBeDirectory()
-        ->and($report['artifact_index_path'])->toBeReadableFile()
-        ->and($report['summary_report_path'])->toBeReadableFile()
-        ->and($report['summary_report_text_path'])->toBeReadableFile()
-        ->and($report['artifact_count'])->toBeGreaterThan(0)
-        ->and($folder.'/00-pop-import-and-precinct-source')->toBeDirectory()
-        ->and($folder.'/01-device-initiation-scan-documents')->toBeDirectory()
-        ->and($folder.'/02-device-and-certification-reports')->toBeDirectory()
-        ->and($folder.'/03-officer-attestations')->toBeDirectory()
-        ->and($folder.'/04-ballots')->toBeDirectory()
-        ->and($folder.'/05-counting-and-tally')->toBeDirectory()
-        ->and($folder.'/06-election-return')->toBeDirectory()
-        ->and($folder.'/07-journal')->toBeDirectory()
-        ->and($folder.'/00-pop-import-and-precinct-source/manifest.json')->toBeReadableFile()
-        ->and($folder.'/00-pop-import-and-precinct-source/2025NLE_POP.xlsx')->toBeReadableFile()
-        ->and($folder.'/00-pop-import-and-precinct-source/active-precinct.json')->toBeReadableFile()
-        ->and($folder.'/01-device-initiation-scan-documents/cert-001-qr.png')->toBeReadableFile()
-        ->and($folder.'/02-device-and-certification-reports/device-certification-report.json')->toBeReadableFile()
-        ->and($folder.'/04-ballots/demo-ballot-001.pdf')->toBeReadableFile()
-        ->and($folder.'/05-counting-and-tally/tally-sheet.txt')->toBeReadableFile()
-        ->and($folder.'/05-counting-and-tally/tally-sheet.pdf')->toBeReadableFile()
-        ->and($folder.'/06-election-return/39010001-return.pdf')->toBeReadableFile()
-        ->and($summary['flow'])->not->toBeEmpty()
-        ->and($summary['pop_import']['clustered_precinct'])->toBe('39010001')
-        ->and($summary['statistics']['accepted_ballots'])->toBe(1)
-        ->and($summary['statistics']['rejected_ballots'])->toBe(1)
-        ->and($summary['statistics']['total_evidence_files_copied'])->toBe($index['artifact_count'])
-        ->and($summary['important_hashes']['election_return_hash'])->toBe($report['return_hash'])
-        ->and($summary['important_hashes']['pop_registry_hash'])->toBe($report['pop_import']['registry_hash'])
-        ->and($summary['artifact_pointers']['pop_import_and_precinct_source'])->not->toBeEmpty()
-        ->and($summary['artifact_pointers']['device_initiation_scan_documents'])->not->toBeEmpty()
-        ->and($summary['artifact_pointers']['officer_attestations'])->not->toBeEmpty()
-        ->and($summary['artifact_pointers']['counting_and_tally'])->not->toBeEmpty()
-        ->and($summary['artifact_pointers']['ballots'])->not->toBeEmpty();
+        ->and($run['artifact_index_path'])->toBeReadableFile()
+        ->and($run['summary_report_path'])->toBeReadableFile()
+        ->and($run['summary_report_text_path'])->toBeReadableFile()
+        ->and($folder.'/00-start-here')->toBeDirectory()
+        ->and($folder.'/01-precinct-preparation')->toBeDirectory()
+        ->and($folder.'/02-device-certification')->toBeDirectory()
+        ->and($folder.'/03-polls-opening')->toBeDirectory()
+        ->and($folder.'/04-voting-and-printing')->toBeDirectory()
+        ->and($folder.'/05-polls-closing')->toBeDirectory()
+        ->and($folder.'/06-counting-and-tally')->toBeDirectory()
+        ->and($folder.'/07-election-return')->toBeDirectory()
+        ->and($folder.'/08-precinct-closing')->toBeDirectory()
+        ->and($folder.'/09-exports-and-verification')->toBeDirectory()
+        ->and($folder.'/10-journal')->toBeDirectory()
+        ->and($folder.'/01-precinct-preparation/active-precinct.json')->toBeReadableFile()
+        ->and($folder.'/02-device-certification/scan-documents/cert-001-qr.png')->toBeReadableFile()
+        ->and($folder.'/02-device-certification/device-certification-report.json')->toBeReadableFile()
+        ->and($folder.'/03-polls-opening/attestations')->toBeDirectory()
+        ->and($folder.'/03-polls-opening/signatures')->toBeDirectory()
+        ->and($folder.'/04-voting-and-printing/ballots/demo-ballot-001.pdf')->toBeReadableFile()
+        ->and($folder.'/06-counting-and-tally/tally-sheet.txt')->toBeReadableFile()
+        ->and($folder.'/06-counting-and-tally/tally-sheet.pdf')->toBeReadableFile()
+        ->and($folder.'/07-election-return/39010001-return.pdf')->toBeReadableFile()
+        ->and($summary['important_paths']['ballots'])->toBe($folder.'/04-voting-and-printing')
+        ->and($summary['important_paths']['election_return'])->toBe($folder.'/07-election-return')
+        ->and($index['artifact_count'])->toBeGreaterThan(0)
+        ->and(collect($index['artifacts'])->pluck('relative_path'))->toContain('04-voting-and-printing/ballots/demo-ballot-001.pdf');
 
-    expect(glob($folder.'/03-officer-attestations/attestation-*.json') ?: [])->not->toBeEmpty()
-        ->and(glob($folder.'/03-officer-attestations/attestation-*.png') ?: [])->not->toBeEmpty();
+    expect(glob($folder.'/03-polls-opening/attestations/attestation-*.json') ?: [])->not->toBeEmpty()
+        ->and(glob($folder.'/03-polls-opening/signatures/attestation-*.png') ?: [])->not->toBeEmpty();
 
     foreach ($index['artifacts'] as $artifact) {
         $path = $folder.'/'.$artifact['relative_path'];
@@ -694,8 +699,8 @@ test('evidence folder demo scenario command is registered', function (): void {
         ->expectsOutput('Scenario full-demo passed.')
         ->assertSuccessful();
 
-    expect($folder)->toBeDirectory()
-        ->and($report['summary_report_path'])->toBeReadableFile();
+    expect($folder)->not->toBeDirectory()
+        ->and($run['summary_report_path'])->not->toBeReadableFile();
 });
 
 test('home page renders the ceremony shell', function (): void {

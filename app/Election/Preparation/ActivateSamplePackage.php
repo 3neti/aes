@@ -28,6 +28,10 @@ final class ActivateSamplePackage
         $package = $this->sample->package();
         $configuration = $this->mapper->derive($registries, $package);
 
+        if ($this->storage->currentRun() === []) {
+            $this->storage->startRun('operator', (string) $configuration['precinct_id'], now()->format('Ymd-His'));
+        }
+
         $this->storage->writeJson('registries/sample.json', $registries);
         $this->storage->writeJson('packages/active-package.json', [
             ...$package,
