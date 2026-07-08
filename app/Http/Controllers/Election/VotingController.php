@@ -28,19 +28,16 @@ final class VotingController extends Controller
     public function finalize(Request $request, BallotPayloadService $payloads): RedirectResponse
     {
         $validated = $request->validate([
-            'president' => ['nullable', 'array'],
-            'president.*' => ['string'],
-            'mayor' => ['nullable', 'array'],
-            'mayor.*' => ['string'],
-            'council' => ['nullable', 'array'],
-            'council.*' => ['string'],
+            'selections' => ['nullable', 'array'],
+            'selections.*' => ['array'],
+            'selections.*.*' => ['string'],
         ]);
 
-        $payload = $payloads->finalize([
-            'president' => array_values($validated['president'] ?? []),
-            'mayor' => array_values($validated['mayor'] ?? []),
-            'council' => array_values($validated['council'] ?? []),
-        ]);
+        $selections = collect($validated['selections'] ?? [])
+            ->map(fn (array $candidateIds): array => array_values($candidateIds))
+            ->all();
+
+        $payload = $payloads->finalize($selections);
 
         return redirect()->route('election.printing', ['ballot' => $payload['ballot_id']]);
     }

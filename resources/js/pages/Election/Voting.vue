@@ -1,10 +1,36 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
-import type { ElectionSnapshot } from '@/components/election/types';
+import type { Candidate, ElectionSnapshot } from '@/components/election/types';
 import { closePolls, finalize, openPolls } from '@/routes/election/voting';
 
 defineProps<{ snapshot: ElectionSnapshot }>();
+
+const filters = ref<Record<string, string>>({});
+
+const filteredCandidates = (
+    contestId: string,
+    candidates: Candidate[],
+): Candidate[] => {
+    const term = (filters.value[contestId] ?? '').trim().toLowerCase();
+
+    if (term === '') {
+        return candidates;
+    }
+
+    return candidates.filter((candidate) =>
+        [
+            candidate.name,
+            candidate.full_name ?? '',
+            candidate.political_party ?? '',
+            String(candidate.ballot_number ?? candidate.ordinal),
+        ]
+            .join(' ')
+            .toLowerCase()
+            .includes(term),
+    );
+};
 </script>
 
 <template>
@@ -40,9 +66,23 @@ defineProps<{ snapshot: ElectionSnapshot }>();
                         Select up to {{ contest.max_selections }}
                     </p>
                 </div>
-                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                <div class="mt-3">
+                    <input
+                        v-model="filters[contest.id]"
+                        class="w-full border border-stone-300 px-3 py-2 text-sm"
+                        :name="`filter-${contest.id}`"
+                        placeholder="Search candidates"
+                        type="search"
+                    />
+                </div>
+                <div
+                    class="mt-3 grid max-h-96 gap-2 overflow-y-auto pr-1 sm:grid-cols-2"
+                >
                     <label
-                        v-for="candidate in contest.candidates"
+                        v-for="candidate in filteredCandidates(
+                            contest.id,
+                            contest.candidates,
+                        )"
                         :key="candidate.id"
                         class="flex items-center gap-3 border border-stone-300 p-3"
                     >
@@ -52,12 +92,21 @@ defineProps<{ snapshot: ElectionSnapshot }>();
                                     ? 'radio'
                                     : 'checkbox'
                             "
-                            :name="`${contest.id}[]`"
+                            :name="`selections[${contest.id}][]`"
                             :value="candidate.id"
                         />
-                        <span
-                            >{{ candidate.ordinal }}. {{ candidate.name }}</span
-                        >
+                        <span class="min-w-0">
+                            <span class="block font-medium"
+                                >{{
+                                    candidate.ballot_number ?? candidate.ordinal
+                                }}. {{ candidate.name }}</span
+                            >
+                            <span
+                                v-if="candidate.political_party"
+                                class="block text-xs text-stone-600"
+                                >{{ candidate.political_party }}</span
+                            >
+                        </span>
                     </label>
                 </div>
             </div>

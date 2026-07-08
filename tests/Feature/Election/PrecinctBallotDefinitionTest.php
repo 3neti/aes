@@ -60,3 +60,32 @@ test('tondo precinct ballot package activates deterministic configuration', func
         ->and($activation['report']['artifact_path'])->toBeReadableFile()
         ->and(app(LifecycleState::class)->current())->toBe(Lifecycle::Certification);
 });
+
+test('voting route finalizes dynamic tondo contest selections', function (): void {
+    app(ActivatePrecinctBallotPackage::class)->handle('39010001', 'FIRST DIST');
+    $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
+    $selections = collect($configuration['contests'])
+        ->mapWithKeys(fn (array $contest): array => [
+            $contest['id'] => collect($contest['candidates'])
+                ->take((int) $contest['max_selections'])
+                ->pluck('id')
+                ->all(),
+        ])
+        ->all();
+
+    $response = $this->post(route('election.voting.finalize'), ['selections' => $selections]);
+
+    $response->assertRedirect();
+
+    expect($response->headers->get('Location'))->toContain('/election/printing/');
+
+    $payloadPath = collect(app(ElectionStorage::class)->files('ballots'))
+        ->first(fn (string $path): bool => str_ends_with($path, '.json'));
+
+    expect($payloadPath)->toBeReadableFile();
+
+    $payload = json_decode(file_get_contents($payloadPath), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(array_keys($payload['selections']))->toEqualCanonicalizing(array_keys($selections))
+        ->and(array_key_exists('president', $payload['selections']))->toBeFalse();
+});
