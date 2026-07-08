@@ -43,6 +43,13 @@ final class DeterministicMapper
                             'id' => $candidate['id'],
                             'name' => $candidate['name'],
                             'ordinal' => $index + 1,
+                            'ballot_number' => $candidate['ballot_number'] ?? $index + 1,
+                            'full_name' => $candidate['full_name'] ?? $candidate['name'],
+                            'political_party' => $candidate['political_party'] ?? null,
+                            'source_file' => $candidate['source_file'] ?? null,
+                            'source_page' => $candidate['source_page'] ?? null,
+                            'candidate_hash' => $candidate['candidate_hash'] ?? null,
+                            'candidate_image' => $candidate['candidate_image'] ?? null,
                         ];
                     })
                     ->all();
@@ -50,6 +57,9 @@ final class DeterministicMapper
                 return [
                     'id' => $contest['id'],
                     'title' => $contest['title'],
+                    'office' => $contest['office'] ?? $contest['title'],
+                    'geography' => $contest['geography'] ?? null,
+                    'district' => $contest['district'] ?? null,
                     'max_selections' => $contest['max_selections'],
                     'candidates' => $candidates,
                 ];

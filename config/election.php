@@ -10,6 +10,15 @@ return [
         'source_path' => env('ELECTION_POP_SOURCE_PATH', resource_path('election/pop/2025NLE_POP.xlsx')),
         'profile' => env('ELECTION_POP_PROFILE', 'comelec-pop-2025-nle'),
         'clustered_precinct' => env('ELECTION_POP_CLUSTERED_PRECINCT', '39010001'),
+        'district' => env('ELECTION_POP_DISTRICT', 'FIRST DIST'),
+        'contest_rules' => [
+            'SENATOR' => 12,
+            'PARTY LIST' => 1,
+            'MEMBER, HOUSE OF REPRESENTATIVES' => 1,
+            'MAYOR' => 1,
+            'VICE-MAYOR' => 1,
+            'COUNCILOR' => 6,
+        ],
     ],
     'pdf' => [
         'ghostscript_binary' => env('ELECTION_PDF_GHOSTSCRIPT_BINARY', 'gs'),
