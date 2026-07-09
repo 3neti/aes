@@ -882,6 +882,48 @@ test('counting page shows operator feedback after accepted and rejected scans', 
         );
 });
 
+test('counting page exposes legal evidence summaries', function (): void {
+    $this->artisan('election:scenario close-polls-and-counting-legal-evidence')
+        ->assertSuccessful();
+
+    $closeEvidence = app(ElectionStorage::class)->readJson('closing/close-polls-legal-evidence.json');
+    $countingEvidence = app(ElectionStorage::class)->readJson('counting/counting-legal-evidence.json');
+
+    $this->get(route('election.counting'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Counting')
+            ->where('closePollsLegalEvidence.exists', true)
+            ->where('closePollsLegalEvidence.evidence_hash', $closeEvidence['evidence_hash'])
+            ->where('countingLegalEvidence.exists', true)
+            ->where('countingLegalEvidence.accepted_ballots', 1)
+            ->where('countingLegalEvidence.rejected_ballots', 1)
+            ->where('countingLegalEvidence.tally_hash', $countingEvidence['tally_hash'])
+        );
+});
+
+test('counting completion is blocked outside counting stage', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::ClosePolls);
+
+    $this->from(route('election.counting'))
+        ->post(route('election.counting.complete'))
+        ->assertRedirect(route('election.counting'))
+        ->assertSessionHasErrors('lifecycle');
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::ClosePolls);
+});
+
+test('counting completion writes legal evidence and advances to election return', function (): void {
+    $this->artisan('election:scenario close-polls-and-counting-legal-evidence')
+        ->assertSuccessful();
+
+    $this->post(route('election.counting.complete'))
+        ->assertRedirect(route('election.returns'));
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::ElectionReturn);
+});
+
 test('ceremony shell can record officer attestation', function (): void {
     $this->from(route('election.certification'))
         ->post(route('election.attestations.store'), [
@@ -927,6 +969,44 @@ test('voting page can run open polls with authorized officer and write opening i
         ->and(file_exists($artifactPath))->toBeTrue()
         ->and($report)->toHaveKeys(['passed', 'report_hash', 'precinct_id', 'checks'])
         ->and(is_bool($report['passed']))->toBeTrue();
+});
+
+test('voting page rejects open polls from an invalid lifecycle stage', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::Provision);
+
+    $this->from(route('election.voting'))
+        ->post(route('election.voting.open-polls'), [
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_pin' => '123456',
+        ])->assertRedirect(route('election.voting'))
+        ->assertSessionHasErrors('lifecycle');
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::Provision);
+});
+
+test('voting page cannot close polls before voting starts', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::OpenPrecinct);
+
+    $this->from(route('election.voting'))
+        ->post(route('election.voting.close-polls'))
+        ->assertRedirect(route('election.voting'))
+        ->assertSessionHasErrors('lifecycle');
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::OpenPrecinct);
+});
+
+test('voting page cannot finalize ballots before polls are active', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::OpenPolls);
+
+    $this->from(route('election.voting'))
+        ->post(route('election.voting.finalize'))
+        ->assertRedirect(route('election.voting'))
+        ->assertSessionHasErrors('lifecycle');
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::OpenPolls);
 });
 
 test('voting page rejects invalid officer pin for open polls', function (): void {

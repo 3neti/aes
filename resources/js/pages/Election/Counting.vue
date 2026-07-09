@@ -22,6 +22,27 @@ defineProps<{
         rejected_ballots: number;
         tally: Record<string, Record<string, number>>;
     };
+    closePollsLegalEvidence: {
+        exists: boolean;
+        run_id: string | null;
+        precinct_id: string | null;
+        generated_at: string | null;
+        evidence_hash: string | null;
+        accepted_ballots_before_counting: number | null;
+        rejected_ballots_before_counting: number | null;
+        artifact: string;
+    };
+    countingLegalEvidence: {
+        exists: boolean;
+        run_id: string | null;
+        precinct_id: string | null;
+        generated_at: string | null;
+        evidence_hash: string | null;
+        accepted_ballots: number | null;
+        rejected_ballots: number | null;
+        tally_hash: string | null;
+        artifact: string;
+    };
     scanFeedback?: ScanFeedback | null;
 }>();
 
@@ -268,10 +289,16 @@ onBeforeUnmount(() => stopCamera(false));
                         {{ tally.rejected_ballots }}
                     </p>
                 </div>
-                <Form v-bind="complete.form()">
+                <Form v-bind="complete.form()" #default="{ errors }">
                     <button class="secondary-button" type="submit">
                         Complete Counting
                     </button>
+                    <p
+                        v-if="errors.lifecycle"
+                        class="mt-2 text-sm font-semibold text-rose-700"
+                    >
+                        {{ errors.lifecycle }}
+                    </p>
                 </Form>
             </div>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
@@ -292,6 +319,43 @@ onBeforeUnmount(() => stopCamera(false));
                         </div>
                     </dl>
                 </div>
+            </div>
+        </section>
+
+        <section class="border border-stone-300 bg-white p-5">
+            <h2 class="text-lg font-semibold">Legal Evidence</h2>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <dl class="grid gap-2 text-xs">
+                    <dt class="font-semibold">Close Polls Legal Evidence</dt>
+                    <dd
+                        v-if="closePollsLegalEvidence.exists"
+                        class="text-stone-700"
+                    >
+                        <p>{{ closePollsLegalEvidence.evidence_hash }}</p>
+                        <p class="mt-1">
+                            Before-counting ballots:
+                            {{ closePollsLegalEvidence.accepted_ballots_before_counting }} /
+                            rejected {{ closePollsLegalEvidence.rejected_ballots_before_counting }}
+                        </p>
+                    </dd>
+                    <dd v-else class="text-stone-500">Not available yet.</dd>
+                </dl>
+
+                <dl class="grid gap-2 text-xs">
+                    <dt class="font-semibold">Counting Legal Evidence</dt>
+                    <dd
+                        v-if="countingLegalEvidence.exists"
+                        class="text-stone-700"
+                    >
+                        <p>{{ countingLegalEvidence.evidence_hash }}</p>
+                        <p class="mt-1">
+                            Tally:
+                            {{ countingLegalEvidence.accepted_ballots }} /
+                            {{ countingLegalEvidence.rejected_ballots }}
+                        </p>
+                    </dd>
+                    <dd v-else class="text-stone-500">Not available yet.</dd>
+                </dl>
             </div>
         </section>
     </CeremonyLayout>

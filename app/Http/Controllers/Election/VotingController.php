@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Election;
 use App\Election\Attestation\OfficerRegistry;
 use App\Election\Certification\InitializationReportService;
 use App\Election\Core\ElectionSnapshot;
+use App\Election\Counting\CountingLegalEvidenceService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 final class VotingController extends Controller
 {
@@ -41,17 +43,32 @@ final class VotingController extends Controller
             ]);
         }
 
-        if ($lifecycle->current() === Lifecycle::OpenPrecinct) {
-            $initializationReport->write('opening/initialization-report.json');
-        }
+        try {
+            if ($lifecycle->current() === Lifecycle::OpenPrecinct) {
+                $initializationReport->write('opening/initialization-report.json');
+            }
 
-        $ceremonies->openPolls($officer['name']);
+            $ceremonies->openPolls($officer['name']);
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages([
+                'lifecycle' => 'Cannot open polls from the current lifecycle stage: '.$lifecycle->current().'.',
+            ]);
+        }
 
         return redirect()->route('election.voting');
     }
 
-    public function finalize(Request $request, BallotPayloadService $payloads): RedirectResponse
-    {
+    public function finalize(
+        Request $request,
+        BallotPayloadService $payloads,
+        LifecycleState $lifecycle,
+    ): RedirectResponse {
+        if ($lifecycle->current() !== Lifecycle::Voting) {
+            throw ValidationException::withMessages([
+                'lifecycle' => 'Votes can only be finalized while voting is active.',
+            ]);
+        }
+
         $validated = $request->validate([
             'selections' => ['nullable', 'array'],
             'selections.*' => ['array'],
@@ -67,10 +84,19 @@ final class VotingController extends Controller
         return redirect()->route('election.printing', ['ballot' => $payload['ballot_id']]);
     }
 
-    public function closePolls(CeremonyActions $ceremonies): RedirectResponse
-    {
-        $ceremonies->closePolls();
-        $ceremonies->startCounting();
+    public function closePolls(
+        CeremonyActions $ceremonies,
+        CountingLegalEvidenceService $legalEvidence,
+    ): RedirectResponse {
+        try {
+            $ceremonies->closePolls();
+            $legalEvidence->writeForClosePolls();
+            $ceremonies->startCounting();
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages([
+                'lifecycle' => $exception->getMessage(),
+            ]);
+        }
 
         return redirect()->route('election.counting');
     }

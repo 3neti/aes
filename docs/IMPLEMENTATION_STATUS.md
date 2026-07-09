@@ -3,12 +3,16 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Election Day Setup and Open Polls Initialization Slice (Slice 11)
-- Next Slice: Official Minutes Baseline Slice (Slice 12)
+- Completed Slice: Close Polls and Counting Legal Evidence Slice (Slice 14)
+- Next Slice: Election Return Legal Artifact Slice (Slice 15)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='open polls initialization report scenario command succeeds|open polls initialization scenario writes opening initialization report artifact' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page can run open polls with authorized officer and write opening initialization report|voting page rejects invalid officer pin for open polls' --compact`
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='voting legal edge cases scenario blocks invalid lifecycle transitions' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page rejects open polls from an invalid lifecycle stage|voting page cannot close polls before voting starts|voting page cannot finalize ballots before polls are active' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='close polls and counting legal evidence scenario records both evidences' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='counting page exposes legal evidence summaries|counting completion is blocked outside counting stage|counting completion writes legal evidence and advances to election return' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite command succeeds|legal scenario suite includes electoral board baseline artifact|legal scenario suite creates an evidence reference baseline artifact|legal scenario suite includes electoral board baseline artifact|eb-role-baseline scenario writes an electoral board role baseline artifact|supply verification baseline scenario command succeeds|supply verification scenario creates supply verification baseline artifact' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='provision page can run and display legal scenario suite harness|provision page can generate and display electoral board role baseline|provision page can generate and display supply verification baseline' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual verification passes with matching official return|manual verification fails when manual totals differ|friday certification scenario includes manual verification report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
@@ -19,6 +23,8 @@
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run zero-out and sealing' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pint --dirty --format agent`
   - `php -l` checks passed for all changed files
+  - `php artisan election:scenario voting-legal-edge-cases` (pass)
+  - `php artisan election:scenario close-polls-and-counting-legal-evidence` (pass)
   - `php artisan election:scenario initialization-report` (pass)
   - `php artisan election:scenario friday-certification` (pass)
 - Known limitations: pest browser socket binding errors prevent targeted feature commands from running in this environment when browser plugin is active.
@@ -49,6 +55,9 @@
 - Slice 9: FTS Discrepancy and Minutes Slice (implemented)
 - Slice 10: Zero-Out and Sealing Slice (implemented)
 - Slice 11: Election Day Setup and Open Polls Initialization Slice (implemented)
+- Slice 12: Official Minutes Baseline Slice (implemented)
+- Slice 13: Voting Legal Edge Cases Slice (implemented)
+- Slice 14: Close Polls and Counting Legal Evidence Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.

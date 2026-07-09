@@ -12,6 +12,7 @@ use App\Election\Certification\ManualVerificationService;
 use App\Election\Certification\SealingService;
 use App\Election\Certification\ZeroOutService;
 use App\Election\Core\ActivityJournal;
+use App\Election\Counting\CountingLegalEvidenceService;
 use App\Election\Counting\CountingService;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\EvidenceReferenceBaselineService;
@@ -31,6 +32,7 @@ use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
 use InvalidArgumentException;
+use RuntimeException;
 
 final class ScenarioRunner
 {
@@ -54,6 +56,7 @@ final class ScenarioRunner
         private readonly ActivatePrecinctBallotPackage $activatePrecinctBallot,
         private readonly CertificationDeckBuilder $deckBuilder,
         private readonly InitializationReportService $initializationReport,
+        private readonly CountingLegalEvidenceService $countingLegalEvidence,
         private readonly ManualVerificationService $manualVerification,
         private readonly DiscrepancyReportService $discrepancy,
         private readonly ZeroOutService $zeroOut,
@@ -85,6 +88,8 @@ final class ScenarioRunner
             'legal-suite' => $this->legalSuite(),
             'fts-manual-verification-discrepancy' => $this->manualVerificationDiscrepancyScenario(),
             'fts-zero-out' => $this->zeroOutScenario(),
+            'voting-legal-edge-cases' => $this->votingLegalEdgeCasesScenario(),
+            'close-polls-and-counting-legal-evidence' => $this->closePollsAndCountingLegalEvidenceScenario(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -476,6 +481,114 @@ final class ScenarioRunner
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function closePollsAndCountingLegalEvidenceScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+        $this->ceremonies->openPolls('Scenario Officer');
+        $this->ceremonies->openPolls('Scenario Officer');
+
+        $acceptedPayload = $this->payloads->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'scenario-close-and-count-accepted');
+
+        $rejectedPayload = $this->payloads->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'scenario-close-and-count-rejected');
+        $this->spoil->handle($rejectedPayload['payload_hash']);
+
+        $this->ceremonies->closePolls('Scenario Officer');
+        $closeEvidence = $this->countingLegalEvidence->writeForClosePolls();
+        $this->ceremonies->startCounting();
+
+        $this->counting->accept($acceptedPayload['qr_payload']);
+        $this->counting->accept($rejectedPayload['qr_payload']);
+        $tally = $this->counting->tally();
+        $countingEvidence = $this->countingLegalEvidence->writeForCompletion($tally);
+
+        return [
+            'scenario' => 'close-polls-and-counting-legal-evidence',
+            'passed' => (bool) ($closeEvidence['evidence_hash'] ?? false) && (bool) ($countingEvidence['evidence_hash'] ?? false),
+            'run_id' => $countingEvidence['run_id'] ?? null,
+            'precinct_id' => $activation['configuration']['precinct_id'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'close_polls_evidence_path' => $closeEvidence['artifact_path'] ?? null,
+            'close_polls_evidence_hash' => $closeEvidence['evidence_hash'] ?? null,
+            'counting_evidence_path' => $countingEvidence['artifact_path'] ?? null,
+            'counting_evidence_hash' => $countingEvidence['evidence_hash'] ?? null,
+            'accepted_ballots_counted' => $countingEvidence['accepted_ballots'] ?? 0,
+            'rejected_ballots_counted' => $countingEvidence['rejected_ballots'] ?? 0,
+            'stage_after_completion' => $this->lifecycle->current(),
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function votingLegalEdgeCasesScenario(): array
+    {
+        $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+
+        $this->lifecycle->set(Lifecycle::Provision);
+
+        $invalidOpenFromProvision = false;
+        $invalidCloseFromOpenPolls = false;
+        $invalidCloseFromClosePolls = false;
+        $stageAfterValidOpen = null;
+        $stageAfterClose = null;
+
+        try {
+            $this->ceremonies->openPolls();
+        } catch (RuntimeException) {
+            $invalidOpenFromProvision = true;
+        }
+
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+        $this->ceremonies->openPolls('Scenario Officer');
+        $stageAfterValidOpen = $this->lifecycle->current();
+
+        try {
+            $this->ceremonies->closePolls('Scenario Officer');
+        } catch (RuntimeException) {
+            $invalidCloseFromOpenPolls = true;
+        }
+
+        $this->lifecycle->set(Lifecycle::OpenPolls);
+        $this->ceremonies->openPolls('Scenario Officer');
+        $this->ceremonies->closePolls('Scenario Officer');
+
+        $stageAfterClose = $this->lifecycle->current();
+
+        try {
+            $this->ceremonies->closePolls('Scenario Officer');
+        } catch (RuntimeException) {
+            $invalidCloseFromClosePolls = true;
+        }
+
+        return [
+            'scenario' => 'voting-legal-edge-cases',
+            'passed' => $invalidOpenFromProvision && $invalidCloseFromOpenPolls && $invalidCloseFromClosePolls,
+            'invalid_open_from_provision' => $invalidOpenFromProvision,
+            'invalid_close_from_open_polls' => $invalidCloseFromOpenPolls,
+            'invalid_close_from_close_polls' => $invalidCloseFromClosePolls,
+            'stage_after_valid_open' => $stageAfterValidOpen,
+            'stage_after_close' => $stageAfterClose,
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
      * @return array{configuration: array<string, mixed>, pop_import: array<string, mixed>, ballot_definition: array<string, mixed>}
      */
     private function activateConfiguredPrecinctBallot(): array
@@ -524,7 +637,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
-            'open-polls-initialization-report' => $this->popClusteredPrecinct(),
+            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

@@ -212,6 +212,58 @@ test('fts zero-out and sealing scenario clears counting artifacts', function ():
         ->and($storage->files('runtime/spoiled-ballots'))->toHaveCount(0);
 });
 
+test('voting legal edge cases scenario blocks invalid lifecycle transitions', function (): void {
+    $this->artisan('election:scenario voting-legal-edge-cases')
+        ->expectsOutput('Scenario voting-legal-edge-cases passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-voting-legal-edge-cases')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $scenario = $storage->readJson('scenarios/voting-legal-edge-cases-report.json');
+
+    expect($scenario['scenario'])->toBe('voting-legal-edge-cases')
+        ->and($scenario['passed'])->toBeTrue()
+        ->and($scenario['invalid_open_from_provision'])->toBeTrue()
+        ->and($scenario['invalid_close_from_open_polls'])->toBeTrue()
+        ->and($scenario['invalid_close_from_close_polls'])->toBeTrue()
+        ->and($scenario['stage_after_valid_open'])->toBe(Lifecycle::OpenPolls)
+        ->and($scenario['stage_after_close'])->toBe(Lifecycle::ClosePolls);
+});
+
+test('close polls and counting legal evidence scenario records both evidences', function (): void {
+    $this->artisan('election:scenario close-polls-and-counting-legal-evidence')
+        ->expectsOutput('Scenario close-polls-and-counting-legal-evidence passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-close-polls-and-counting-legal-evidence')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $scenario = $storage->readJson('scenarios/close-polls-and-counting-legal-evidence-report.json');
+    $closeEvidence = $storage->readJson('closing/close-polls-legal-evidence.json');
+    $countingEvidence = $storage->readJson('counting/counting-legal-evidence.json');
+
+    expect($scenario['scenario'])->toBe('close-polls-and-counting-legal-evidence')
+        ->and($scenario['passed'])->toBeTrue()
+        ->and($scenario['accepted_ballots_counted'])->toBe(1)
+        ->and($scenario['rejected_ballots_counted'])->toBe(1)
+        ->and($scenario['run_id'])->toBe($storage->currentRun()['run_id'])
+        ->and($scenario['close_polls_evidence_path'])->toBe($storage->path('closing/close-polls-legal-evidence.json'))
+        ->and($scenario['close_polls_evidence_hash'])->toBe($closeEvidence['evidence_hash'])
+        ->and($scenario['counting_evidence_path'])->toBe($storage->path('counting/counting-legal-evidence.json'))
+        ->and($scenario['counting_evidence_hash'])->toBe($countingEvidence['evidence_hash'])
+        ->and($closeEvidence['schema_version'])->toBe('close-polls-legal-evidence-1')
+        ->and($closeEvidence['stage'])->toBe(Lifecycle::ClosePolls)
+        ->and($countingEvidence['schema_version'])->toBe('counting-legal-evidence-1')
+        ->and($countingEvidence['stage'])->toBe(Lifecycle::Counting)
+        ->and($countingEvidence['accepted_ballots'])->toBe(1)
+        ->and($countingEvidence['rejected_ballots'])->toBe(1)
+        ->and($countingEvidence['passed'])->toBeTrue()
+        ->and(app(LifecycleState::class)->current())->toBe(Lifecycle::Counting)
+        ->and(file_exists($scenario['close_polls_evidence_path']))->toBeTrue()
+        ->and(file_exists($scenario['counting_evidence_path']))->toBeTrue();
+});
+
 test('friday certification scenario includes manual verification report', function (): void {
     $this->artisan('election:scenario friday-certification')
         ->expectsOutput('Scenario friday-certification passed.')

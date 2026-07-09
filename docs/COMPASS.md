@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Election Day Setup and Open Polls Initialization Slice (Slice 11)
-- Next Slice: Official Minutes Baseline Slice (Slice 12)
+- Completed Slice: Close Polls and Counting Legal Evidence Slice (Slice 14)
+- Next Slice: Election Return Legal Artifact Slice (Slice 15)
 
 ## Domains, Waves, and Vertical Slices
 

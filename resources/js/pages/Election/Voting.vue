@@ -19,28 +19,41 @@ const filteredCandidates = (
         return candidates;
     }
 
-        return candidates.filter((candidate) =>
-            [
-                candidate.name,
-                candidate.full_name ?? '',
-                candidate.political_party ?? '',
-                String(candidate.ballot_number ?? candidate.ordinal),
-            ]
-                .join(' ')
-                .toLowerCase()
-                .includes(term),
-        );
-    };
+    return candidates.filter((candidate) =>
+        [
+            candidate.name,
+            candidate.full_name ?? '',
+            candidate.political_party ?? '',
+            String(candidate.ballot_number ?? candidate.ordinal),
+        ]
+            .join(' ')
+            .toLowerCase()
+            .includes(term),
+    );
+};
+
+const canOpenPolls = (stage: string): boolean => stage === 'open_precinct';
+
+const canFinalize = (stage: string): boolean => stage === 'voting';
+
+const canClosePolls = (stage: string): boolean => stage === 'voting';
 </script>
 
 <template>
     <CeremonyLayout :snapshot="snapshot" title="Voting">
         <section class="border border-stone-300 bg-white p-5">
             <div class="flex flex-wrap gap-3">
-                <Form v-bind="openPolls.form()" #default="{ errors }" class="w-full">
+                <Form
+                    v-if="canOpenPolls(snapshot.stage)"
+                    v-bind="openPolls.form()"
+                    #default="{ errors }"
+                    class="w-full"
+                >
                     <div class="flex flex-wrap gap-2">
                         <label class="w-full sm:w-auto">
-                            <span class="text-xs font-semibold">Officer ID</span>
+                            <span class="text-xs font-semibold"
+                                >Officer ID</span
+                            >
                             <input
                                 class="mt-1 block w-full border border-stone-300 px-2 py-2 text-sm"
                                 name="officer_code"
@@ -50,7 +63,9 @@ const filteredCandidates = (
                             />
                         </label>
                         <label class="w-full sm:w-auto">
-                            <span class="text-xs font-semibold">Officer PIN</span>
+                            <span class="text-xs font-semibold"
+                                >Officer PIN</span
+                            >
                             <input
                                 class="mt-1 block w-full border border-stone-300 px-2 py-2 text-sm"
                                 name="officer_pin"
@@ -76,17 +91,37 @@ const filteredCandidates = (
                     >
                         {{ errors.officer_code }}
                     </p>
+                    <p
+                        v-if="errors.lifecycle"
+                        class="mt-2 text-sm font-semibold text-rose-700"
+                    >
+                        {{ errors.lifecycle }}
+                    </p>
                 </Form>
-                <Form v-bind="closePolls.form()">
+                <Form
+                    v-if="canClosePolls(snapshot.stage)"
+                    v-bind="closePolls.form()"
+                    #default="{ errors }"
+                    class="w-full"
+                >
                     <button class="secondary-button" type="submit">
                         Close Polls
                     </button>
+
+                    <p
+                        v-if="errors.lifecycle"
+                        class="mt-2 text-sm font-semibold text-rose-700"
+                    >
+                        {{ errors.lifecycle }}
+                    </p>
                 </Form>
             </div>
         </section>
 
         <Form
+            v-if="canFinalize(snapshot.stage)"
             v-bind="finalize.form()"
+            #default="{ errors }"
             class="space-y-4 border border-stone-300 bg-white p-5"
         >
             <h2 class="text-lg font-semibold">Simulated Voter Ballot</h2>
@@ -147,7 +182,20 @@ const filteredCandidates = (
                 </div>
             </div>
             <button class="primary-button" type="submit">Finalize Vote</button>
+            <p
+                v-if="errors.lifecycle"
+                class="mt-2 text-sm font-semibold text-rose-700"
+            >
+                {{ errors.lifecycle }}
+            </p>
         </Form>
+
+        <p
+            v-else
+            class="mt-3 rounded border border-stone-300 bg-stone-50 p-4 text-sm text-stone-700"
+        >
+            Voting ballot actions are only available while voting is active.
+        </p>
     </CeremonyLayout>
 </template>
 
