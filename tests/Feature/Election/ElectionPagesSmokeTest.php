@@ -117,6 +117,24 @@ test('provision page can generate and display electoral board role baseline', fu
         );
 });
 
+test('provision page can run and display legal scenario suite harness', function (): void {
+    $this->post(route('election.provision.legal-scenario-suite'))
+        ->assertRedirect(route('election.provision'))
+        ->assertSessionHas('legal_scenario_suite_hash');
+
+    $this->get(route('election.provision'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Provision')
+            ->has('legalScenarioSuite')
+            ->where('legalScenarioSuite.exists', true)
+            ->where('legalScenarioSuite.suite', 'legal')
+            ->where('legalScenarioSuite.passed', true)
+            ->where('legalScenarioSuite.sub_scenarios.0', 'friday-certification')
+            ->has('snapshot.stage')
+        );
+});
+
 test('diagnostics page exposes attestation signature evidence bundle', function (): void {
     $this->post(route('election.attestations.store'), [
         'ceremony' => 'Friday Certification',

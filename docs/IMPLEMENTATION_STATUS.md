@@ -3,14 +3,15 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: EB Role Baseline Slice (Slice 5)
-- Next Slice: Legal Scenario Harness Slice (Slice 6)
+- Completed Slice: Legal Scenario Harness Slice (Slice 6)
+- Next Slice: Supply Verification Baseline Slice (Slice 7)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite|eb-role-baseline|electoral board' --compact` (runs but blocked by `socket_create_listen` in this container; command completes with port-binding failure before assertions are collected)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='electoral board baseline' --compact` (runs but blocked by `socket_create_listen` in this container; command completes with port-binding failure before assertions are collected)
+  - `vendor/bin/pint --dirty --format agent`
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite command succeeds|legal scenario suite includes electoral board baseline artifact|legal scenario suite creates an evidence reference baseline artifact|eb-role-baseline scenario writes an electoral board role baseline artifact' --compact`
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='provision page can run and display legal scenario suite harness|electoral board role baseline|provision page can generate and display electoral board baseline report' --compact`
   - `php -l` checks passed for all changed files
-- Known limitations: browser-plugin host socket restrictions in this container prevent running feature tests locally.
+- Known limitations: none identified for this slice.
 - Remaining work for this slice: none after code updates.
 
 ## Completed Waves
@@ -32,6 +33,7 @@
 - Slice 3: Evidence Reference Baseline Slice (implemented)
 - Slice 4: Official Minutes Baseline Slice (implemented)
 - Slice 5: EB Role Baseline Slice (implemented)
+- Slice 6: Legal Scenario Harness Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -173,6 +175,7 @@
   - Diagnostics evidence reference baseline generation, summary projection, and download route
   - Diagnostics official minutes baseline generation, summary projection, and download route
   - Provision page can generate and display electoral board baseline report
+  - Provision page can run and display legal scenario suite harness
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - `tests/Browser/ElectionCeremonyPagesSmokeTest.php`

@@ -4,6 +4,7 @@ import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { activate } from '@/routes/election/provision';
 import { ebRoleBaseline } from '@/routes/election/provision';
+import { legalScenarioSuite as legalScenarioSuiteAction } from '@/routes/election/provision';
 
 type ElectoralBoardBaseline = {
     exists: boolean;
@@ -19,11 +20,62 @@ type ElectoralBoardBaseline = {
     generate_url: string;
 };
 
-defineProps<{ snapshot: ElectionSnapshot; electoralBoardBaseline: ElectoralBoardBaseline }>();
+type LegalScenarioSuite = {
+    exists: boolean;
+    report_path?: string;
+    scenario?: string | null;
+    suite?: string | null;
+    passed?: boolean;
+    run_id?: string | null;
+    precinct_id?: string | null;
+    sub_scenarios?: string[];
+    evidence_reference_baseline?: Record<string, unknown>;
+    official_minutes_baseline?: Record<string, unknown>;
+    electoral_board_baseline?: Record<string, unknown>;
+    harness_stages?: Record<string, string>;
+    generated_at?: string | null;
+    run_suite_url: string;
+};
+
+defineProps<{
+    snapshot: ElectionSnapshot;
+    electoralBoardBaseline: ElectoralBoardBaseline;
+    legalScenarioSuite: LegalScenarioSuite;
+}>();
 </script>
 
 <template>
     <CeremonyLayout :snapshot="snapshot" title="Provision">
+        <section class="mt-6 border border-stone-300 bg-white p-5">
+            <h2 class="text-lg font-semibold">Legal Scenario Harness</h2>
+            <p class="mt-2 text-sm text-stone-700">
+                Run the legal ceremony suite and review baseline artifact
+                status.
+            </p>
+            <Form v-bind="legalScenarioSuiteAction.form()" class="mt-4">
+                <button class="secondary-button" type="submit">
+                    Run Legal Scenario Suite
+                </button>
+            </Form>
+            <dl v-if="legalScenarioSuite.exists" class="mt-5 text-sm">
+                <dt class="font-semibold">Suite</dt>
+                <dd class="text-stone-700">{{ legalScenarioSuite.suite }}</dd>
+                <dt class="mt-2 font-semibold">Status</dt>
+                <dd class="text-stone-700">
+                    {{ legalScenarioSuite.passed ? 'Ready' : 'Not Ready' }}
+                </dd>
+                <dt class="mt-2 font-semibold">Run</dt>
+                <dd class="text-stone-700">{{ legalScenarioSuite.run_id }}</dd>
+                <dt class="mt-2 font-semibold">Sub-scenarios</dt>
+                <dd class="text-stone-700">
+                    {{ legalScenarioSuite.sub_scenarios?.join(', ') || 'n/a' }}
+                </dd>
+            </dl>
+            <p v-else class="mt-3 text-sm text-stone-600">
+                No legal scenario suite has been run yet.
+            </p>
+        </section>
+
         <section class="border border-stone-300 bg-white p-5">
             <h2 class="text-lg font-semibold">Sample Precinct Package</h2>
             <p class="mt-2 text-sm text-stone-700">
@@ -59,10 +111,14 @@ defineProps<{ snapshot: ElectionSnapshot; electoralBoardBaseline: ElectoralBoard
                     {{ electoralBoardBaseline.baseline_hash }}
                 </dd>
                 <dt class="mt-2 font-semibold">Run</dt>
-                <dd class="text-stone-700">{{ electoralBoardBaseline.run_id }}</dd>
+                <dd class="text-stone-700">
+                    {{ electoralBoardBaseline.run_id }}
+                </dd>
                 <dt class="mt-2 font-semibold">Required Roles</dt>
                 <dd class="text-stone-700">
-                    {{ electoralBoardBaseline.required_roles_present }}/{{ electoralBoardBaseline.required_role_count }}
+                    {{ electoralBoardBaseline.required_roles_present }}/{{
+                        electoralBoardBaseline.required_role_count
+                    }}
                     present
                 </dd>
                 <dt class="mt-2 font-semibold">Missing Required Roles</dt>

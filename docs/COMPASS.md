@@ -3,7 +3,7 @@
 ## Implementation Status
 
 - Completed Slice: EB Role Baseline Slice (Slice 5)
-- Next Slice: Legal Scenario Harness Slice (Slice 6)
+- Next Slice: Supply Verification Baseline Slice (Slice 6)
 
 ## Domains, Waves, and Vertical Slices
 
