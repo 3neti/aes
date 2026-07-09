@@ -691,8 +691,8 @@ A wave is complete only when:
 Current implementation status:
 
 - Current wave: Wave 1
-- Completed slice: Lifecycle Legal States Slice (Slice 1)
-- Next recommended slice: Legal Scenario Harness Slice (Slice 2)
+- Completed slice: Legal Scenario Harness Slice (Slice 2)
+- Next recommended slice: Evidence Reference Baseline Slice (Slice 3)
 
 Completed:
 
@@ -705,7 +705,7 @@ Completed:
 
 Next:
 
-Continue Slice 2: Legal Scenario Harness.
+Continue Slice 3: Evidence Reference Baseline Slice.
 
 ---
 

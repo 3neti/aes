@@ -60,6 +60,7 @@ final class ScenarioRunner
             'full-demo' => $this->fullDemo(),
             'evidence-folder-demo' => $this->evidenceFolderDemo(),
             'pop-import-demo' => $this->popImportDemo(),
+            'legal-suite' => $this->legalSuite(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -158,6 +159,28 @@ final class ScenarioRunner
     /**
      * @return array<string, mixed>
      */
+    private function legalSuite(): array
+    {
+        $fullDemo = $this->fullDemo();
+
+        return [
+            ...$fullDemo,
+            'scenario' => 'legal-suite',
+            'suite' => 'legal',
+            'harness_stages' => [
+                'life_cycle' => 'lifecycle+certification+voting+returns+transmission+custody',
+                'scope' => 'legal baseline',
+            ],
+            'sub_scenarios' => [
+                'friday-certification',
+                'full-demo',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function evidenceFolderDemo(): array
     {
         return [
@@ -246,7 +269,7 @@ final class ScenarioRunner
     private function scenarioPrecinct(string $name): string
     {
         return match ($name) {
-            'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo' => $this->popClusteredPrecinct(),
+            'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

@@ -3,8 +3,8 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Lifecycle Legal States Slice (Slice 1)
-- Next Slice: Legal Scenario Harness Slice (Slice 2)
+- Completed Slice: Legal Scenario Harness Slice (Slice 2)
+- Next Slice: Evidence Reference Baseline Slice (Slice 3)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` (failed in this environment: Pest Browser plugin cannot allocate a socket port; test environment blocks `socket_create_listen`)
@@ -28,6 +28,7 @@
 ## Completed Slices
 
 - Slice 1: Lifecycle Legal States Slice (implemented)
+- Slice 2: Legal Scenario Harness Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -103,6 +104,7 @@
 - Artisan scenarios:
   - `php artisan election:scenario friday-certification`
   - `php artisan election:scenario full-demo`
+  - `php artisan election:scenario legal-suite`
   - `php artisan election:scenario evidence-folder-demo`
 
 ## Tests Added
@@ -122,6 +124,7 @@
   - Election Return artifact
   - Election Return PDF artifact
   - full scenario command success
+  - legal scenario suite command success
   - Home Inertia component render
   - simulated device adapter certification report
   - CUPS printer health adapter selection and not-configured behavior

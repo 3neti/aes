@@ -639,6 +639,21 @@ test('full demo scenario command succeeds', function (): void {
         ->and($report['attestation_hashes'])->toHaveCount(2);
 });
 
+test('legal scenario suite command succeeds', function (): void {
+    $this->artisan('election:scenario legal-suite')
+        ->expectsOutput('Scenario legal-suite passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-legal-suite')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $report = app(ElectionStorage::class)->readJson('scenarios/legal-suite-report.json');
+
+    expect($report['scenario'])->toBe('legal-suite')
+        ->and($report['suite'])->toBe('legal')
+        ->and($report['harness_stages']['scope'])->toBe('legal baseline')
+        ->and($report['sub_scenarios'])->toBe(['friday-certification', 'full-demo']);
+});
+
 test('full demo scenario uses configurable pop import defaults', function (): void {
     config()->set('election.pop.source_path', resource_path('election/pop/2025NLE_POP.xlsx'));
     config()->set('election.pop.profile', 'comelec-pop-2025-nle');
