@@ -23,6 +23,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/provision/legal-scenario-suite', [ProvisionController::class, 'runLegalScenarioSuite'])->name('provision.legal-scenario-suite');
     Route::get('/certification', [CertificationController::class, 'show'])->name('certification');
     Route::post('/certification/run', [CertificationController::class, 'run'])->name('certification.run');
+    Route::post('/certification/manual-verification', [CertificationController::class, 'runManualVerification'])->name('certification.manual-verification');
+    Route::get('/certification/manual-verification/download', [CertificationController::class, 'downloadManualVerification'])->name('certification.manual-verification.download');
     Route::get('/voting', [VotingController::class, 'show'])->name('voting');
     Route::post('/voting/open-polls', [VotingController::class, 'openPolls'])->name('voting.open-polls');
     Route::post('/voting/finalize', [VotingController::class, 'finalize'])->name('voting.finalize');
@@ -47,6 +49,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/diagnostics/evidence-reference-baseline/download', [DiagnosticsController::class, 'downloadEvidenceReferenceBaseline'])->name('diagnostics.evidence-reference-baseline.download');
     Route::post('/diagnostics/official-minutes-baseline', [DiagnosticsController::class, 'generateOfficialMinutesBaseline'])->name('diagnostics.official-minutes-baseline.generate');
     Route::get('/diagnostics/official-minutes-baseline/download', [DiagnosticsController::class, 'downloadOfficialMinutesBaseline'])->name('diagnostics.official-minutes-baseline.download');
+    Route::post('/diagnostics/initialization-report', [DiagnosticsController::class, 'generateInitializationReport'])->name('diagnostics.initialization-report.generate');
+    Route::get('/diagnostics/initialization-report/download', [DiagnosticsController::class, 'downloadInitializationReport'])->name('diagnostics.initialization-report.download');
     Route::post('/diagnostics/evidence-bundle-archive', [DiagnosticsController::class, 'buildEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.build');
     Route::get('/diagnostics/evidence-bundle-archive/download', [DiagnosticsController::class, 'downloadEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.download');
     Route::post('/diagnostics/evidence-bundle-archive/verify', [DiagnosticsController::class, 'verifyEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.verify');

@@ -3,15 +3,19 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Supply Verification Baseline Slice (Slice 6)
-- Next Slice: FTS Diagnostics and Initialization Slice (Slice 7)
+- Completed Slice: FTS Test Ballots and Manual Verification Slice (Slice 8)
+- Next Slice: FTS Discrepancy and Minutes Slice (Slice 9)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
-  - `vendor/bin/pint --dirty --format agent`
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite command succeeds|legal scenario suite includes electoral board baseline artifact|legal scenario suite creates an evidence reference baseline artifact|legal scenario suite includes electoral board baseline artifact|eb-role-baseline scenario writes an electoral board role baseline artifact|supply verification baseline scenario command succeeds|supply verification scenario creates supply verification baseline artifact' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='provision page can run and display legal scenario suite harness|provision page can generate and display electoral board role baseline|provision page can generate and display supply verification baseline' --compact`
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual verification passes with matching official return|manual verification fails when manual totals differ|friday certification scenario includes manual verification report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run certification and manual verification' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pint --dirty --format agent`
   - `php -l` checks passed for all changed files
-- Known limitations: none identified for this slice.
+  - `php artisan election:scenario initialization-report` (pass)
+  - `php artisan election:scenario friday-certification` (pass)
+- Known limitations: pest browser socket binding errors prevent targeted feature commands from running in this environment when browser plugin is active.
 - Remaining work for this slice: none after code updates.
 
 ## Completed Waves
@@ -34,6 +38,8 @@
 - Slice 4: Official Minutes Baseline Slice (implemented)
 - Slice 5: EB Role Baseline Slice (implemented)
 - Slice 6: Supply Verification Baseline Slice (implemented)
+- Slice 7: FTS Diagnostics and Initialization Slice (implemented)
+- Slice 8: FTS Test Ballots and Manual Verification Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -154,6 +160,11 @@
   - eb-role-baseline scenario writes electoral board role baseline artifact
   - supply-verification-baseline scenario command success
   - supply-verification-baseline scenario persists its own baseline artifact
+  - initialization report scenario command succeeds
+  - initialization report scenario writes initialization report artifact
+  - manual verification passes with matching official return
+  - manual verification fails when manual totals differ
+  - friday certification scenario includes manual verification report
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -179,6 +190,9 @@
   - Provision page can generate and display electoral board baseline report
   - Provision page can run and display legal scenario suite harness
   - Provision page can generate and display supply verification baseline
+  - Diagnostics can generate and download initialization report
+  - certification page can run certification and manual verification
+  - certification page can download manual verification report artifact
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - `tests/Browser/ElectionCeremonyPagesSmokeTest.php`
@@ -221,6 +235,10 @@
 - `php artisan test --compact tests/Feature/Election/ElectionPagesSmokeTest.php`
 - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`
 - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual verification passes with matching official return|manual verification fails when manual totals differ|friday certification scenario includes manual verification report' --compact` (environment-restricted by Pest browser socket bind)
+- `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run certification and manual verification' --compact` (environment-restricted by Pest browser socket bind)
+- `php artisan election:scenario initialization-report` (pass)
+- `php artisan election:scenario friday-certification` (pass)
 - `vendor/bin/pint --dirty --format agent`
 - `npm run format -- resources/js/pages/Election/Diagnostics.vue`
 - `vendor/bin/pest --compact`

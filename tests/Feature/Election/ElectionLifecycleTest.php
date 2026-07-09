@@ -3,6 +3,7 @@
 use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Attestation\OfficerRegistry;
 use App\Election\Certification\CertificationService;
+use App\Election\Certification\ManualVerificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
 use App\Election\Devices\CameraScannerHealthCheck;
@@ -108,6 +109,69 @@ test('friday certification matches expected result', function (): void {
     expect($report['passed'])->toBeTrue()
         ->and($report['actual_tally'])->toBe($report['expected_tally'])
         ->and(app(ElectionStorage::class)->readJson('certification/friday-certification-report.json')['report_hash'])->toBe($report['report_hash']);
+});
+
+test('manual verification passes with matching official return', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $certification = app(CertificationService::class)->run();
+    $manualReturn = [
+        'schema_version' => 'manual-return-1',
+        'precinct_id' => $certification['precinct_id'],
+        'accepted_ballots' => $certification['accepted_ballots'],
+        'rejected_ballots' => $certification['rejected_ballots'],
+        'tally' => $certification['actual_tally'],
+    ];
+    $verification = app(ManualVerificationService::class)->run($manualReturn);
+    $checks = collect($verification['checks'])->keyBy('name');
+
+    expect($verification['passed'])->toBeTrue()
+        ->and($verification['machine_accepted_ballots'])->toBe($certification['accepted_ballots'])
+        ->and($verification['manual_accepted_ballots'])->toBe($certification['accepted_ballots'])
+        ->and($verification['machine_rejected_ballots'])->toBe($certification['rejected_ballots'])
+        ->and($verification['manual_rejected_ballots'])->toBe($certification['rejected_ballots'])
+        ->and($checks->get('tally_comparison')['passed'] ?? false)->toBeTrue()
+        ->and(file_exists($verification['artifact_path']))->toBeTrue();
+});
+
+test('manual verification fails when manual totals differ', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $certification = app(CertificationService::class)->run();
+    $manualReturn = [
+        'schema_version' => 'manual-return-1',
+        'precinct_id' => $certification['precinct_id'],
+        'accepted_ballots' => $certification['accepted_ballots'] + 1,
+        'rejected_ballots' => $certification['rejected_ballots'],
+        'tally' => $certification['actual_tally'],
+    ];
+    $verification = app(ManualVerificationService::class)->run($manualReturn);
+    $checks = collect($verification['checks'])->keyBy('name');
+
+    expect($verification['passed'])->toBeFalse()
+        ->and($checks->get('tally_comparison')['passed'] ?? false)->toBeFalse();
+});
+
+test('friday certification scenario includes manual verification report', function (): void {
+    $this->artisan('election:scenario friday-certification')
+        ->expectsOutput('Scenario friday-certification passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-friday-certification')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/friday-certification-report.json');
+    $certification = $storage->readJson('certification/friday-certification-report.json');
+    $manualVerification = $storage->readJson('certification/manual-verification-report.json');
+
+    expect($report['scenario'])->toBe('friday-certification')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['manual_verification_passed'])->toBeTrue()
+        ->and($report['manual_verification_report_hash'])->toBe($manualVerification['report_hash'])
+        ->and($report['precinct_id'])->toBe($certification['precinct_id'])
+        ->and($manualVerification['passed'])->toBeTrue()
+        ->and($manualVerification['machine_accepted_ballots'])->toBe($certification['accepted_ballots'])
+        ->and(file_exists($manualVerification['artifact_path']))->toBeTrue();
 });
 
 test('device certification checks simulated printer and scanner adapters', function (): void {
@@ -748,6 +812,40 @@ test('supply verification scenario creates supply verification baseline artifact
     expect($scenarioReport['baseline_hash'])->toBe($baseline['baseline_hash'])
         ->and($scenarioReport['required_supply_count'])->toBe($baseline['required_supply_count'])
         ->and($scenarioReport['required_supply_missing_count'])->toBe($baseline['required_supply_missing_count']);
+});
+
+test('initialization report scenario command succeeds', function (): void {
+    $this->artisan('election:scenario initialization-report')
+        ->expectsOutput('Scenario initialization-report passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-initialization-report')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/initialization-report-report.json');
+
+    expect($report['scenario'])->toBe('initialization-report')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['run_id'])->toBe('20260508-080000-39010001-initialization-report')
+        ->and($report['checks_total'])->toBe(5)
+        ->and($report['checks_passed'])->toBe(5)
+        ->and($report['artifact_path'])->toBeString()
+        ->and(file_exists($report['artifact_path']))->toBeTrue();
+});
+
+test('initialization report scenario writes initialization report artifact', function (): void {
+    $this->artisan('election:scenario initialization-report')
+        ->expectsOutput('Scenario initialization-report passed.')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $scenarioReport = $storage->readJson('scenarios/initialization-report-report.json');
+    $initializationReport = $storage->readJson('diagnostics/initialization-report.json');
+
+    expect($scenarioReport['report_hash'])->toBe($initializationReport['report_hash'])
+        ->and($scenarioReport['precinct_id'])->toBe($initializationReport['precinct_id'])
+        ->and($scenarioReport['checks_total'])->toBe(count($initializationReport['checks']))
+        ->and($scenarioReport['checks_passed'])->toBe(count(collect($initializationReport['checks'])->filter(fn (array $check): bool => (bool) $check['passed'])->all()));
 });
 
 test('eb-role-baseline scenario writes an electoral board role baseline artifact', function (): void {

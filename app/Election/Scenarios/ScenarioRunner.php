@@ -6,6 +6,8 @@ use App\Election\Attestation\ElectoralBoardBaselineService;
 use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Certification\CertificationDeckBuilder;
 use App\Election\Certification\CertificationService;
+use App\Election\Certification\InitializationReportService;
+use App\Election\Certification\ManualVerificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
 use App\Election\Devices\DeviceCertificationService;
@@ -48,6 +50,8 @@ final class ScenarioRunner
         private readonly ActivateImportedPrecinctPackage $activateImportedPrecinct,
         private readonly ActivatePrecinctBallotPackage $activatePrecinctBallot,
         private readonly CertificationDeckBuilder $deckBuilder,
+        private readonly InitializationReportService $initializationReport,
+        private readonly ManualVerificationService $manualVerification,
         private readonly EvidenceReferenceBaselineService $baseline,
         private readonly OfficialMinutesBaselineService $officialMinutes,
         private readonly ElectoralBoardBaselineService $electoralBoardBaseline,
@@ -70,6 +74,7 @@ final class ScenarioRunner
             'pop-import-demo' => $this->popImportDemo(),
             'supply-verification-baseline' => $this->supplyVerificationBaselineScenario(),
             'eb-role-baseline' => $this->electoralBoardBaselineScenario(),
+            'initialization-report' => $this->initializationReportScenario(),
             'legal-suite' => $this->legalSuite(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
@@ -133,16 +138,25 @@ final class ScenarioRunner
         $this->clock->tick();
         $devices = $this->devices->run();
         $certification = $this->certification->run();
+        $manualVerification = $this->manualVerification->run([
+            'schema_version' => 'manual-return-1',
+            'precinct_id' => $configuration['precinct_id'] ?? null,
+            'accepted_ballots' => $certification['accepted_ballots'] ?? 0,
+            'rejected_ballots' => $certification['rejected_ballots'] ?? 0,
+            'tally' => $certification['actual_tally'] ?? [],
+        ]);
         $attestation = $this->attest('Certification', Lifecycle::Certification, 'Certification officer review complete.');
 
         return [
             'scenario' => 'friday-certification',
-            'passed' => $devices['passed'] && $certification['passed'],
+            'passed' => $devices['passed'] && $certification['passed'] && $manualVerification['passed'],
             'precinct_id' => $configuration['precinct_id'],
             'pop_import' => $activation['pop_import'],
             'ballot_definition' => $activation['ballot_definition'],
             'device_report_hash' => $devices['report_hash'],
             'report_hash' => $certification['report_hash'],
+            'manual_verification_report_hash' => $manualVerification['report_hash'],
+            'manual_verification_passed' => $manualVerification['passed'],
             'attestation_hash' => $attestation['attestation_hash'],
             'journal_entries' => count($this->journal->entries()),
         ];
@@ -250,6 +264,34 @@ final class ScenarioRunner
             'artifact_path' => $baseline['artifact_path'] ?? null,
             'baseline_hash' => $baseline['baseline_hash'] ?? null,
             'device_report_hash' => $devices['report_hash'] ?? null,
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function initializationReportScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+        $initialization = $this->initializationReport->write();
+        $storage = $this->storage->currentRun();
+
+        return [
+            'scenario' => 'initialization-report',
+            'passed' => (bool) ($initialization['passed'] ?? false) && (bool) ($devices['passed'] ?? false),
+            'run_id' => $initialization['run_id'] ?? $storage['run_id'] ?? null,
+            'precinct_id' => $initialization['precinct_id'] ?? $activation['configuration']['precinct_id'] ?? null,
+            'report_hash' => $initialization['report_hash'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'artifact_path' => $initialization['artifact_path'] ?? null,
+            'generated_at' => $initialization['generated_at'] ?? null,
+            'checks_passed' => collect($initialization['checks'] ?? [])
+                ->filter(fn (array $check): bool => (bool) ($check['passed'] ?? false))
+                ->count(),
+            'checks_total' => count($initialization['checks'] ?? []),
             'journal_entries' => count($this->journal->entries()),
         ];
     }
@@ -367,8 +409,7 @@ final class ScenarioRunner
     private function scenarioPrecinct(string $name): string
     {
         return match ($name) {
-            'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline' => $this->popClusteredPrecinct(),
-            'supply-verification-baseline' => $this->popClusteredPrecinct(),
+            'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

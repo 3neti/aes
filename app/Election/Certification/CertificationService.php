@@ -48,6 +48,10 @@ final class CertificationService
             'mapping_hash' => $configuration['mapping_hash'],
             'expected_tally' => $deck['expected_tally'],
             'actual_tally' => $tally['tally'],
+            'expected_ballots' => count($deck['ballots']),
+            'actual_ballots' => $tally['accepted_ballots'],
+            'accepted_ballots' => $tally['accepted_ballots'],
+            'rejected_ballots' => $tally['rejected_ballots'],
             'passed' => $passed,
         ];
         $report['report_hash'] = $this->json->hash($report);

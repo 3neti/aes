@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Supply Verification Baseline Slice (Slice 6)
-- Next Slice: FTS Diagnostics and Initialization Slice (Slice 7)
+- Completed Slice: FTS Test Ballots and Manual Verification Slice (Slice 8)
+- Next Slice: FTS Discrepancy and Minutes Slice (Slice 9)
 
 ## Domains, Waves, and Vertical Slices
 

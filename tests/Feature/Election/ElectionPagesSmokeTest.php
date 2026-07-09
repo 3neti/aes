@@ -36,6 +36,41 @@ test('ceremony page renders :component', function (string $route, string $compon
     'diagnostics' => ['election.diagnostics', 'Election/Diagnostics'],
 ]);
 
+test('certification page can run certification and manual verification', function (): void {
+    $this->from(route('election.certification'));
+
+    $this->post(route('election.certification.run'))
+        ->assertRedirect(route('election.voting'));
+
+    $certification = app(ElectionStorage::class)->readJson('certification/friday-certification-report.json');
+    $manualReturn = [
+        'schema_version' => 'manual-return-1',
+        'precinct_id' => $certification['precinct_id'] ?? null,
+        'accepted_ballots' => $certification['accepted_ballots'] ?? 0,
+        'rejected_ballots' => $certification['rejected_ballots'] ?? 0,
+        'tally' => $certification['actual_tally'] ?? [],
+    ];
+
+    $this->post(route('election.certification.manual-verification'), [
+        'manual_return' => json_encode($manualReturn),
+    ])->assertRedirect(route('election.certification'));
+
+    $manualVerification = app(ElectionStorage::class)->readJson('certification/manual-verification-report.json');
+
+    $this->get(route('election.certification'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Certification')
+            ->where('certificationReport.passed', $certification['passed'])
+            ->where('certificationReport.accepted_ballots', $certification['accepted_ballots'])
+            ->where('manualVerificationReport.passed', $manualVerification['passed'])
+            ->where('manualVerificationReport.report_hash', $manualVerification['report_hash'])
+        );
+
+    $this->get(route('election.certification.manual-verification.download'))
+        ->assertDownload('manual-verification-report.json');
+});
+
 test('printing page exposes finalized ballot qr and artifact state', function (): void {
     app(ActivateSamplePackage::class)->handle();
 
@@ -240,6 +275,42 @@ test('diagnostics can generate and download precinct evidence manifest', functio
 
     $this->get(route('election.diagnostics.evidence-manifest.download'))
         ->assertDownload('evidence-manifest.json');
+
+    app(ElectionClock::class)->unfreeze();
+});
+
+test('diagnostics can generate and download initialization report', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-09 09:45:00');
+    app(ActivateSamplePackage::class)->handle();
+    $this->post(route('election.diagnostics.certify-devices'))->assertRedirect(route('election.diagnostics'));
+
+    $this->post(route('election.diagnostics.initialization-report.generate'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('initialization_report_hash');
+
+    $report = app(ElectionStorage::class)->readJson('diagnostics/initialization-report.json');
+
+    expect($report['schema_version'])->toBe('initialization-report-1')
+        ->and($report['precinct_id'])->toBe('0421-A')
+        ->and($report['passed'])->toBeBool()
+        ->and($report['counts']['accepted_ballots'])->toBeInt()
+        ->and($report['counts']['rejected_ballots'])->toBeInt()
+        ->and($report['checks'])->toBeArray()
+        ->and($report['report_hash'])->toBe($report['report_hash']);
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.initialization_report.exists', true)
+            ->where('diagnostics.initialization_report.schema_version', 'initialization-report-1')
+            ->where('diagnostics.initialization_report.run_id', $report['run_id'])
+            ->where('diagnostics.initialization_report.report_hash', $report['report_hash'])
+            ->where('diagnostics.initialization_report.passed', $report['passed'])
+        );
+
+    $this->get(route('election.diagnostics.initialization-report.download'))
+        ->assertDownload('initialization-report.json');
 
     app(ElectionClock::class)->unfreeze();
 });
