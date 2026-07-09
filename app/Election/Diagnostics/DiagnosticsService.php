@@ -34,6 +34,7 @@ final class DiagnosticsService
             'attestation_artifacts' => $this->attestationArtifacts(),
             'evidence_manifest' => $this->manifestSummary(),
             'evidence_reference_baseline' => $this->referenceBaselineSummary(),
+            'official_minutes_baseline' => $this->officialMinutesSummary(),
             'removable_media_export' => $this->removableMediaExportSummary(),
             'removable_media_readiness' => $this->removableMediaReadinessSummary(),
             'evidence_bundle_archive' => $this->evidenceBundleArchiveSummary(),
@@ -153,6 +154,38 @@ final class DiagnosticsService
             'missing_required_reference_count' => $baseline['missing_required_reference_count'] ?? 0,
             'generate_url' => route('election.diagnostics.evidence-reference-baseline.generate'),
             'download_url' => route('election.diagnostics.evidence-reference-baseline.download'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function officialMinutesSummary(): array
+    {
+        $path = $this->storage->path('diagnostics/official-minutes-baseline.json');
+
+        if (! $this->files->exists($path)) {
+            return [
+                'exists' => false,
+                'generate_url' => route('election.diagnostics.official-minutes-baseline.generate'),
+                'download_url' => route('election.diagnostics.official-minutes-baseline.download'),
+            ];
+        }
+
+        $baseline = $this->storage->readJson('diagnostics/official-minutes-baseline.json');
+
+        return [
+            'exists' => true,
+            'artifact' => basename($path),
+            'run_id' => $baseline['run_id'] ?? null,
+            'precinct_id' => $baseline['precinct_id'] ?? null,
+            'generated_at' => $baseline['generated_at'] ?? null,
+            'official_minute_hash' => $baseline['official_minute_hash'] ?? null,
+            'minute_count' => $baseline['minute_count'] ?? 0,
+            'source_journal_event_count' => $baseline['source_journal_event_count'] ?? 0,
+            'source_attestation_count' => $baseline['source_attestation_count'] ?? 0,
+            'generate_url' => route('election.diagnostics.official-minutes-baseline.generate'),
+            'download_url' => route('election.diagnostics.official-minutes-baseline.download'),
         ];
     }
 

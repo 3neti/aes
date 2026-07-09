@@ -11,6 +11,7 @@ use App\Election\Diagnostics\EvidenceReferenceBaselineService;
 use App\Election\Diagnostics\RemovableMediaExporter;
 use App\Election\Diagnostics\RemovableMediaExportVerifier;
 use App\Election\Diagnostics\RemovableMediaReadinessChecker;
+use App\Election\Minutes\OfficialMinutesBaselineService;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -76,6 +77,28 @@ final class DiagnosticsController extends Controller
         return response()->download(
             $path,
             'evidence-reference-baseline.json',
+            ['Content-Type' => 'application/json'],
+        );
+    }
+
+    public function generateOfficialMinutesBaseline(OfficialMinutesBaselineService $minutes): RedirectResponse
+    {
+        $report = $minutes->write();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('official_minutes_baseline_hash', $report['official_minute_hash'] ?? null);
+    }
+
+    public function downloadOfficialMinutesBaseline(ElectionStorage $storage): BinaryFileResponse
+    {
+        $path = $storage->path('diagnostics/official-minutes-baseline.json');
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download(
+            $path,
+            'official-minutes-baseline.json',
             ['Content-Type' => 'application/json'],
         );
     }

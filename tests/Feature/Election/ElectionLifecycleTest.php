@@ -677,6 +677,20 @@ test('legal scenario suite creates an evidence reference baseline artifact', fun
         ->and($baseline['precinct_id'])->toBe('39010001')
         ->and($baseline['artifact_reference_count'])->toBe(count($baseline['artifact_references']))
         ->and($baseline['missing_required_references'])->toBe([]);
+
+    $minutesPath = $report['official_minutes_baseline']['artifact_path'];
+    $officialMinutes = $storage->readJson('diagnostics/official-minutes-baseline.json');
+
+    expect($officialMinutes['schema_version'])->toBe('official-minutes-baseline-1')
+        ->and($officialMinutes['run_id'])->toBe('20260508-080000-39010001-legal-suite')
+        ->and($officialMinutes['precinct_id'])->toBe('39010001')
+        ->and($officialMinutes['minute_count'])->toBeGreaterThan(0)
+        ->and($officialMinutes['source_journal_event_count'])->toBeGreaterThan(0)
+        ->and($officialMinutes['source_attestation_count'])->toBeGreaterThan(0)
+        ->and(in_array($officialMinutes['minutes'][0]['source_type'], ['attestation', 'activity_journal']))->toBeTrue()
+        ->and($report['official_minutes_baseline']['artifact_path'])->toBe($minutesPath)
+        ->and($report['official_minutes_baseline']['minute_count'])->toBe($officialMinutes['minute_count'])
+        ->and(file_exists($minutesPath))->toBeTrue();
 });
 
 test('full demo scenario uses configurable pop import defaults', function (): void {

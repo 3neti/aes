@@ -12,6 +12,7 @@ use App\Election\Diagnostics\EvidenceReferenceBaselineService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
+use App\Election\Minutes\OfficialMinutesBaselineService;
 use App\Election\Preparation\ActivateImportedPrecinctPackage;
 use App\Election\Preparation\ActivatePrecinctBallotPackage;
 use App\Election\Preparation\ClcCandidateImporter;
@@ -46,6 +47,7 @@ final class ScenarioRunner
         private readonly ActivatePrecinctBallotPackage $activatePrecinctBallot,
         private readonly CertificationDeckBuilder $deckBuilder,
         private readonly EvidenceReferenceBaselineService $baseline,
+        private readonly OfficialMinutesBaselineService $officialMinutes,
     ) {}
 
     /**
@@ -71,6 +73,7 @@ final class ScenarioRunner
 
         if ($name === 'legal-suite') {
             $baseline = $this->baseline->write();
+            $minutesBaseline = $this->officialMinutes->write();
 
             $run['evidence_reference_baseline_path'] = $baseline['artifact_path'];
             $run['evidence_reference_baseline_hash'] = $baseline['baseline_hash'] ?? null;
@@ -79,6 +82,16 @@ final class ScenarioRunner
                 'artifact_reference_count' => $baseline['artifact_reference_count'] ?? 0,
                 'missing_required_reference_count' => $baseline['missing_required_reference_count'] ?? 0,
                 'baseline_hash' => $baseline['baseline_hash'] ?? null,
+            ];
+
+            $run['official_minutes_baseline_path'] = $minutesBaseline['artifact_path'];
+            $run['official_minutes_baseline_hash'] = $minutesBaseline['official_minute_hash'] ?? null;
+            $report['official_minutes_baseline'] = [
+                'artifact_path' => $minutesBaseline['artifact_path'],
+                'minute_count' => $minutesBaseline['minute_count'] ?? 0,
+                'source_journal_event_count' => $minutesBaseline['source_journal_event_count'] ?? 0,
+                'source_attestation_count' => $minutesBaseline['source_attestation_count'] ?? 0,
+                'official_minute_hash' => $minutesBaseline['official_minute_hash'] ?? null,
             ];
         }
 

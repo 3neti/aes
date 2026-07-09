@@ -221,6 +221,46 @@ test('diagnostics can generate and download evidence reference baseline', functi
     app(ElectionClock::class)->unfreeze();
 });
 
+test('diagnostics can generate and download official minutes baseline', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-09 11:00:00');
+    app(ActivateSamplePackage::class)->handle();
+
+    $this->post(route('election.attestations.store'), [
+        'ceremony' => 'Friday Certification',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'signature_data' => pagesTestSignatureDataUri(),
+        'stage' => 'certification',
+        'statement' => 'Certification checkpoint reviewed.',
+    ])->assertRedirect();
+
+    $this->post(route('election.diagnostics.official-minutes-baseline.generate'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('official_minutes_baseline_hash');
+
+    $minutes = app(ElectionStorage::class)->readJson('diagnostics/official-minutes-baseline.json');
+
+    expect($minutes['schema_version'])->toBe('official-minutes-baseline-1')
+        ->and($minutes['minute_count'])->toBeGreaterThan(0)
+        ->and($minutes['source_journal_event_count'])->toBeGreaterThan(0)
+        ->and($minutes['source_attestation_count'])->toBeGreaterThan(0)
+        ->and($minutes['official_minute_hash'])->toBeString();
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.official_minutes_baseline.exists', true)
+            ->where('diagnostics.official_minutes_baseline.official_minute_hash', $minutes['official_minute_hash'])
+            ->where('diagnostics.official_minutes_baseline.minute_count', $minutes['minute_count'])
+        );
+
+    $this->get(route('election.diagnostics.official-minutes-baseline.download'))
+        ->assertDownload('official-minutes-baseline.json');
+
+    app(ElectionClock::class)->unfreeze();
+});
+
 test('diagnostics can build and download evidence bundle archive', function (): void {
     app(ElectionClock::class)->freeze('2026-05-08 18:30:00');
     app(ActivateSamplePackage::class)->handle();

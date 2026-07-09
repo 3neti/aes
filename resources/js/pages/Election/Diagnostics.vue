@@ -45,6 +45,20 @@ type EvidenceReferenceBaseline = {
     download_url: string;
 };
 
+type OfficialMinutesBaseline = {
+    exists: boolean;
+    artifact?: string;
+    run_id?: string | null;
+    precinct_id?: string | null;
+    generated_at?: string | null;
+    official_minute_hash?: string | null;
+    minute_count?: number;
+    source_journal_event_count?: number;
+    source_attestation_count?: number;
+    generate_url: string;
+    download_url: string;
+};
+
 type EvidenceBundleArchive = {
     exists: boolean;
     build_url: string;
@@ -140,6 +154,7 @@ defineProps<{
         attestation_artifacts?: AttestationArtifact[];
         evidence_manifest?: EvidenceManifest;
         evidence_reference_baseline?: EvidenceReferenceBaseline;
+        official_minutes_baseline?: OfficialMinutesBaseline;
         evidence_bundle_archive?: EvidenceBundleArchive;
         evidence_bundle_archive_verification?: EvidenceBundleArchiveVerification;
         removable_media_export?: RemovableMediaExport;
@@ -171,7 +186,8 @@ defineProps<{
                         key !== 'evidence_bundle_archive_verification' &&
                         key !== 'removable_media_export' &&
                         key !== 'removable_media_readiness' &&
-                        key !== 'evidence_export_verification'
+                        key !== 'evidence_export_verification' &&
+                        key !== 'official_minutes_baseline'
                     "
                     class="border border-stone-200 p-3"
                 >
@@ -353,6 +369,112 @@ defineProps<{
             <p v-else class="mt-4 text-sm text-stone-700">
                 Generate the baseline after you have key legal artifacts in
                 place.
+            </p>
+        </section>
+
+        <section
+            v-if="diagnostics.official_minutes_baseline"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">
+                        Official Minutes Baseline
+                    </h2>
+                    <p class="mt-1 text-sm text-stone-700">
+                        {{
+                            diagnostics.official_minutes_baseline.exists
+                                ? `Generated ${diagnostics.official_minutes_baseline.generated_at}`
+                                : 'No official minutes baseline has been generated yet.'
+                        }}
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <Form
+                        :action="
+                            diagnostics.official_minutes_baseline.generate_url
+                        "
+                        method="post"
+                    >
+                        <button class="secondary-button" type="submit">
+                            Generate Official Minutes
+                        </button>
+                    </Form>
+                    <a
+                        class="artifact-link"
+                        :href="
+                            diagnostics.official_minutes_baseline.download_url
+                        "
+                    >
+                        Download Official Minutes
+                    </a>
+                </div>
+            </div>
+            <dl
+                v-if="diagnostics.official_minutes_baseline.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Run</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.official_minutes_baseline.run_id }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Precinct</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.official_minutes_baseline.precinct_id }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Artifact</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.official_minutes_baseline.artifact }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Minutes Entries
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.official_minutes_baseline.minute_count }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Source Journal Events
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.official_minutes_baseline
+                                .source_journal_event_count
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Source Attestations
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.official_minutes_baseline
+                                .source_attestation_count
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Baseline Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.official_minutes_baseline
+                                .official_minute_hash
+                        }}
+                    </dd>
+                </div>
+            </dl>
+            <p v-else class="mt-4 text-sm text-stone-700">
+                Generate the official minutes baseline from the current run
+                records.
             </p>
         </section>
 

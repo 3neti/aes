@@ -3,12 +3,12 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Evidence Reference Baseline Slice (Slice 3)
-- Next Slice: Official Minutes Baseline Slice (Slice 4)
+- Completed Slice: Official Minutes Baseline Slice (Slice 4)
+- Next Slice: Legal Scenario Harness Slice (Slice 5)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` (failed in this environment: Pest Browser plugin cannot allocate a socket port; test environment blocks `socket_create_listen`)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='lifecycle|open_polls|returns_close' --compact` (same environment-limited failure)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='official minutes|evidence reference baseline|legal scenario suite creates' --compact` (failed in this environment: Pest Browser plugin cannot allocate a socket port via `socket_create_listen`)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='official minutes baseline|evidence reference baseline|diagnostics can generate and download official minutes baseline' --compact` (failed in this environment: Pest Browser plugin cannot allocate a socket port via `socket_create_listen`; one prior run also logged `mkdir(): File exists`)
   - `php -l` checks passed for all changed files
 - Known limitations: browser-plugin host socket restrictions in this container prevent running feature tests locally.
 - Remaining work for this slice: none after code updates; awaiting environment with free local port binding to validate feature tests in full.
@@ -30,6 +30,7 @@
 - Slice 1: Lifecycle Legal States Slice (implemented)
 - Slice 2: Legal Scenario Harness Slice (implemented)
 - Slice 3: Evidence Reference Baseline Slice (implemented)
+- Slice 4: Official Minutes Baseline Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -145,6 +146,7 @@
   - evidence folder demo tally sheet text and PDF artifacts
   - evidence folder demo evidence folder content, pointer, hash, and persistence verification
   - evidence reference baseline creation within legal-suite scenario
+  - official minutes baseline creation within legal-suite scenario
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -166,6 +168,7 @@
   - Diagnostics downloadable TAR evidence bundle archive verification action, persisted report projection, and journal event
   - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
   - Diagnostics evidence reference baseline generation, summary projection, and download route
+  - Diagnostics official minutes baseline generation, summary projection, and download route
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - `tests/Browser/ElectionCeremonyPagesSmokeTest.php`
@@ -265,6 +268,8 @@
 - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact`
 - `php artisan election:scenario evidence-folder-demo`
 - `vendor/bin/pest --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='official minutes|evidence reference baseline|legal scenario suite creates' --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='official minutes baseline|evidence reference baseline|diagnostics can generate and download official minutes baseline' --compact`
 
 ## Verification Results
 
@@ -280,6 +285,7 @@
 - Focused Pest browser Diagnostics suite: passed, 1 test and 25 assertions.
 - Pest Browser suite: passed, 1 test and 25 assertions.
 - Focused Pest browser ceremony smoke suite: passed, 8 tests and 24 assertions.
+- Slice 4 focused feature attempts for official minutes baseline: failed in this environment due Pest Browser socket restrictions (`socket_create_listen` / `PortNotFoundException`) during host bind.
 - Pest Browser suite with Diagnostics workflow and ceremony smoke coverage: passed, 9 tests and 49 assertions.
 - Focused Pest browser Counting camera capture workflow suite: passed, 1 test and 12 assertions.
 - Pest Browser suite with Diagnostics workflow, ceremony smoke coverage, and Counting camera capture workflow: passed, 10 tests and 61 assertions.

@@ -42,6 +42,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/diagnostics/evidence-manifest/download', [DiagnosticsController::class, 'downloadEvidenceManifest'])->name('diagnostics.evidence-manifest.download');
     Route::post('/diagnostics/evidence-reference-baseline', [DiagnosticsController::class, 'generateEvidenceReferenceBaseline'])->name('diagnostics.evidence-reference-baseline.generate');
     Route::get('/diagnostics/evidence-reference-baseline/download', [DiagnosticsController::class, 'downloadEvidenceReferenceBaseline'])->name('diagnostics.evidence-reference-baseline.download');
+    Route::post('/diagnostics/official-minutes-baseline', [DiagnosticsController::class, 'generateOfficialMinutesBaseline'])->name('diagnostics.official-minutes-baseline.generate');
+    Route::get('/diagnostics/official-minutes-baseline/download', [DiagnosticsController::class, 'downloadOfficialMinutesBaseline'])->name('diagnostics.official-minutes-baseline.download');
     Route::post('/diagnostics/evidence-bundle-archive', [DiagnosticsController::class, 'buildEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.build');
     Route::get('/diagnostics/evidence-bundle-archive/download', [DiagnosticsController::class, 'downloadEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.download');
     Route::post('/diagnostics/evidence-bundle-archive/verify', [DiagnosticsController::class, 'verifyEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.verify');
