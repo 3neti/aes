@@ -400,24 +400,26 @@ The Election Return workflow shall support signing, posting, copy distribution, 
 
 The appliance shall support transmission as the official handoff of election artifacts from one legally recognized custodian to another.
 
-Manual Handoff shall be the first supported transmission driver.
+Manual Handoff shall be the first supported delivery driver.
 
 Transmission shall:
 
 - occur after Election Return generation;
-- produce or reference an export package;
-- record export package checksum or hash evidence;
-- record recipient information;
+- prepare a Delivery Package containing the official artifacts being handed over;
+- record Delivery Package checksum or hash evidence when digital artifacts are included;
+- record recipient, role, date, time, delivery method, and acknowledgement;
 - record custody transfer facts;
 - support officer acknowledgement;
-- generate a Handoff Receipt or Transmission Report;
-- preserve evidence when a later electronic transport driver is unavailable, deferred, or unsuccessful.
+- generate a Delivery Receipt or Transmission Report;
+- preserve evidence when a later electronic delivery driver is unavailable, deferred, or unsuccessful.
 
 Offline operation shall not prevent voting or counting.
 
 Offline operation shall not prevent official transmission through Manual Handoff.
 
-Future electronic transport mechanisms, including removable media, LTE, REST APIs, government networks, and satellite links, shall be modeled as transport drivers within the Transmission domain rather than as separate election domains.
+Future electronic transport mechanisms, including removable media, LTE, REST APIs, government networks, and satellite links, shall be modeled as delivery drivers within the Transmission domain rather than as separate election domains.
+
+The Official Handoff ceremony shall include Delivery Package preparation, officer verification, recipient verification, custody transfer, and Delivery Receipt production.
 
 ---
 

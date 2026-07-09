@@ -66,7 +66,7 @@ flowchart LR
 
     ManualHandoff["Manual Handoff"]
 
-    FutureTransport["Future Transport Drivers"]
+    FutureTransport["Future Delivery Drivers"]
 
     Tablets <-- Wi-Fi --> RaspberryPi
 
@@ -196,7 +196,7 @@ Counting Journal
 
 Minutes
 
-Handoff Receipts
+Delivery Receipts
 
 Transmission Reports
 
@@ -274,7 +274,7 @@ Journal Entries
 
 Minutes
 
-Handoff Receipt
+Delivery Receipt
 
 Transmission Report
 
@@ -370,6 +370,16 @@ ElectionReturn
 
 Transmission
 
+DeliveryPackage
+
+OfficerVerification
+
+RecipientVerification
+
+OfficialHandoff
+
+DeliveryReceipt
+
 FinalBackup
 
 Custody
@@ -390,7 +400,17 @@ Counting --> ElectionReturn
 
 ElectionReturn --> Transmission
 
-Transmission --> FinalBackup
+Transmission --> DeliveryPackage["Delivery Package"]
+
+DeliveryPackage --> OfficerVerification["Officer Verification"]
+
+OfficerVerification --> RecipientVerification["Recipient Verification"]
+
+RecipientVerification --> OfficialHandoff["Official Handoff"]
+
+OfficialHandoff --> DeliveryReceipt["Delivery Receipt"]
+
+DeliveryReceipt --> FinalBackup
 
 FinalBackup --> Custody
 
@@ -660,34 +680,39 @@ Rejected
 
  Export Package Pending
 
- Custody Acknowledgement Pending
+ Recipient Verification Pending
+
+ Delivery Receipt Pending
 
 ────────────────────────────────────────────────────────
 
- [ Prepare Handoff Package ]
+ [ Prepare Delivery Package ]
 
- [ Record Recipient Acknowledgement ]
+[ Record Recipient Acknowledgement ]
 
 +------------------------------------------------------+
 ```
 
-Transmission is adapter-based:
+Transmission is ceremony-based and driver-executed:
 
 ```mermaid
 flowchart TB
-    Transmission
-    Transmission --> Driver["Transmission Driver"]
+    Transmission --> OfficialHandoff["Official Handoff"]
+    OfficialHandoff --> Driver["Delivery Driver"]
     Driver --> ManualHandoff["Manual Handoff"]
-    Driver -. future .-> RemovableMedia["Removable Media"]
+    Driver -. future .-> SDCard["SD Card"]
+    Driver -. future .-> USBStorage["USB Storage"]
     Driver -. future .-> LTE
     Driver -. future .-> REST["REST API"]
     Driver -. future .-> GovernmentNetwork["Government Network"]
-    Driver -. future .-> SatelliteLink["Satellite Link"]
+    Driver -. future .-> Satellite
 
-    ManualHandoff --> ExportPackage["Export Package"]
-    ManualHandoff --> PrintedReturn["Printed Election Return"]
-    ManualHandoff --> CustodyRecord["Custody Record"]
-    ManualHandoff --> HandoffReceipt["Handoff Receipt"]
+    OfficialHandoff --> DeliveryPackage["Delivery Package"]
+    DeliveryPackage --> PrintedReturn["Printed Election Return"]
+    DeliveryPackage --> ExportPackage["Export Package"]
+    DeliveryPackage --> EvidenceHashes["Evidence Hashes"]
+    OfficialHandoff --> CustodyRecord["Custody Record"]
+    OfficialHandoff --> DeliveryReceipt["Delivery Receipt"]
 ```
 
 ---
@@ -823,7 +848,7 @@ Election Return
 
 ↓
 
-Handoff Receipt
+Delivery Receipt
 
 ↓
 

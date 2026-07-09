@@ -469,9 +469,9 @@ Verify:
 
 Verify:
 
-- export package
+- Delivery Package
 - export checksum or hash
-- Handoff Receipt or Transmission Report
+- Delivery Receipt or Transmission Report
 - custody record
 - recipient acknowledgement
 - electronic transport deferral evidence when applicable
@@ -733,7 +733,7 @@ Perform official handoff of the Election Return and related artifacts.
 
 Expected:
 
-Handoff status is evidenced through export package records, custody records, recipient acknowledgement, and a Handoff Receipt or Transmission Report.
+Handoff status is evidenced through Delivery Package records, custody records, recipient acknowledgement, and a Delivery Receipt or Transmission Report.
 
 ---
 
@@ -807,7 +807,7 @@ Certification Reports
 
 ↓
 
-Handoff Receipts and Transmission Reports
+Delivery Receipts and Transmission Reports
 
 ↓
 
@@ -851,7 +851,7 @@ Verification artifacts include:
 - FTS Certification Reports
 - Diagnostic Reports
 - Initialization Reports
-- Handoff Receipts
+- Delivery Receipts
 - Transmission Reports
 - Custody Records
 - User Acceptance Scripts

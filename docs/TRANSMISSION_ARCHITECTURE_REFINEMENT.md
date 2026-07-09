@@ -17,10 +17,12 @@ Official Handoff
 
 ↓
 
-Transport Driver
+Delivery Driver
 ```
 
-Manual Handoff is the reference implementation and first transmission driver.
+Manual Handoff is the reference implementation and first delivery driver.
+
+The Official Handoff is the ceremony. Delivery drivers perform that ceremony and produce Delivery Receipts as evidence.
 
 ## Documents Updated
 
@@ -44,9 +46,9 @@ Wave 7 should initially implement:
 - Export Package
 - Custody Record
 - Recipient Acknowledgement
-- Handoff Receipt
+- Delivery Receipt
 
-Electronic transport should be implemented later as additional drivers within the same Transmission domain.
+Electronic transport should be implemented later as additional delivery drivers within the same Transmission domain.
 
 ## Impact on Spark
 
@@ -60,7 +62,7 @@ The implementation should keep Transmission, Evidence, and Custody connected:
 
 ## Deferred Future Transport Mechanisms
 
-The following mechanisms remain valid future transport drivers:
+The following mechanisms remain valid future delivery drivers:
 
 - Removable Media
 - LTE
@@ -68,4 +70,4 @@ The following mechanisms remain valid future transport drivers:
 - Government Network
 - Satellite Link
 
-These drivers should implement the same official handoff concept rather than redefining the Transmission domain.
+These drivers should implement the same Official Handoff concept and produce Delivery Receipts rather than redefining the Transmission domain.
