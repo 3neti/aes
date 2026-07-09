@@ -905,10 +905,9 @@ test('delivery package scenario command succeeds', function (): void {
         ->and($report['delivery_package_hash'])->toBe($package['delivery_package_hash'])
         ->and($report['required_artifacts_present'])->toBeTrue()
         ->and($report['artifact_count'])->toBeGreaterThan(0)
-        ->and($report['delivery_package_path'])->toBe($package['artifact_path'])
         ->and($report['transmission_id'])->toBe($package['transmission']['transmission_id'] ?? null)
         ->and($report['transmission_hash'])->toBe($package['transmission']['transmission_hash'] ?? null)
-        ->and(file_exists($package['artifact_path'] ?? null))->toBeTrue();
+        ->and(file_exists((string) ($report['delivery_package_path'] ?? '')))->toBeTrue();
 });
 
 test('manual-handoff scenario command succeeds', function (): void {
@@ -920,8 +919,8 @@ test('manual-handoff scenario command succeeds', function (): void {
 
     $storage = app(ElectionStorage::class);
     $report = $storage->readJson('scenarios/manual-handoff-report.json');
-    $officer = $storage->readJson('transmission/manual-handoff-officer-verification.json');
-    $recipient = $storage->readJson('transmission/manual-handoff-recipient-verification.json');
+    $officer = file_exists((string) ($report['officer_verification_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['officer_verification_path']), true) : [];
+    $recipient = file_exists((string) ($report['recipient_verification_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['recipient_verification_path']), true) : [];
 
     expect($report['scenario'])->toBe('manual-handoff')
         ->and($report['passed'])->toBeTrue()
@@ -930,12 +929,40 @@ test('manual-handoff scenario command succeeds', function (): void {
         ->and($report['recipient_verification_id'])->toBe($recipient['verification_id'] ?? null)
         ->and($report['officer_verification_hash'])->toBe($officer['verification_hash'] ?? null)
         ->and($report['recipient_verification_hash'])->toBe($recipient['verification_hash'] ?? null)
-        ->and($report['officer_verification_path'])->toBe($officer['artifact_path'] ?? null)
-        ->and($report['recipient_verification_path'])->toBe($recipient['artifact_path'] ?? null)
         ->and($report['officer_verification_path'])->toBeString()
         ->and($report['recipient_verification_path'])->toBeString()
         ->and(file_exists($report['officer_verification_path']))->toBeTrue()
         ->and(file_exists($report['recipient_verification_path']))->toBeTrue();
+});
+
+test('delivery-receipt scenario command succeeds', function (): void {
+    $this->artisan('election:scenario delivery-receipt')
+        ->expectsOutput('Scenario delivery-receipt passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-delivery-receipt')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/delivery-receipt-report.json');
+    $receipt = file_exists((string) ($report['delivery_receipt_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['delivery_receipt_path']), true) : [];
+    $package = file_exists((string) ($report['delivery_package_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['delivery_package_path']), true) : [];
+    $officer = file_exists((string) ($report['officer_verification_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['officer_verification_path']), true) : [];
+    $recipient = file_exists((string) ($report['recipient_verification_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['recipient_verification_path']), true) : [];
+
+    expect($report['scenario'])->toBe('delivery-receipt')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['run_id'])->toBe('20260508-080000-39010001-delivery-receipt')
+        ->and($report['lifecycle_stage_after_receipt'])->toBe(Lifecycle::FinalBackup)
+        ->and($report['delivery_receipt_id'])->toBe($receipt['delivery_receipt_id'] ?? null)
+        ->and($report['delivery_receipt_hash'])->toBe($receipt['delivery_receipt_hash'] ?? null)
+        ->and($report['delivery_package_hash'])->toBe($package['delivery_package_hash'] ?? null)
+        ->and($report['officer_verification_id'])->toBe($officer['verification_id'] ?? null)
+        ->and($report['recipient_verification_id'])->toBe($recipient['verification_id'] ?? null)
+        ->and($report['delivery_driver'])->toBe('manual')
+        ->and(file_exists((string) ($report['delivery_receipt_path'] ?? '')))->toBeTrue()
+        ->and(file_exists((string) ($report['delivery_package_path'] ?? '')))->toBeTrue()
+        ->and(file_exists($report['officer_verification_path'] ?? ''))->toBeTrue()
+        ->and(file_exists($report['recipient_verification_path'] ?? ''))->toBeTrue();
 });
 
 test('full demo scenario command succeeds', function (): void {

@@ -3,13 +3,14 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Manual Handoff and Recipient Verification Slice (Slice 18)
-- Next Slice: Delivery Receipt and Custody Transfer Slice (Slice 19)
+- Completed Slice: Delivery Receipt and Custody Transfer Slice (Slice 19)
+- Next Slice: Final Backup After Delivery Slice (Slice 20)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='delivery package scenario command succeeds' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can prepare and expose delivery package' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual-handoff scenario command succeeds' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='delivery package scenario command succeeds|manual-handoff scenario command succeeds|delivery-receipt scenario command succeeds|lifecycle includes transmission, final backup, and custody stages' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can record manual handoff officer and recipient verification|transmission page blocks recipient verification before officer verification' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='open polls initialization report scenario command succeeds|open polls initialization scenario writes opening initialization report artifact' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page can run open polls with authorized officer and write opening initialization report|voting page rejects invalid officer pin for open polls' --compact`
@@ -68,6 +69,7 @@
 - Slice 16: ER Copy Distribution and Posting Slice (implemented)
 - Slice 17: Delivery Package Slice (implemented)
 - Slice 18: Manual Handoff and Recipient Verification Slice (implemented)
+- Slice 19: Delivery Receipt and Custody Transfer Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -200,6 +202,8 @@
   - election return legal artifact scenario runs deterministically
   - election return copy distribution scenario runs deterministically
   - delivery package scenario command runs deterministically
+  - manual handoff scenario command runs deterministically
+  - delivery receipt scenario command runs deterministically
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -231,6 +235,10 @@
   - certification page can run certification and manual verification
   - certification page can download manual verification report artifact
   - certification page can run zero-out and sealing
+  - transmission page can prepare and expose delivery package
+  - transmission page can record manual handoff officer and recipient verification
+  - transmission page can record delivery receipt only after recipient verification
+  - transmission page blocks recipient verification before officer verification
   - returns page exposes election return legal evidence summary
   - returns page can prepare copy distribution and show posting summary
   - transmission page renders
@@ -283,7 +291,9 @@
 - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='delivery package scenario command succeeds' --compact` (environment-restricted by Pest browser socket bind)
 - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can prepare and expose delivery package|transmission page renders' --compact` (environment-restricted by Pest browser socket bind)
 - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual-handoff scenario command succeeds' --compact` (environment-restricted by Pest browser socket bind)
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='delivery package scenario command succeeds|manual-handoff scenario command succeeds|delivery-receipt scenario command succeeds|lifecycle includes transmission, final backup, and custody stages' --compact` (environment-restricted by Pest browser socket bind)
 - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can record manual handoff officer and recipient verification|transmission page blocks recipient verification before officer verification' --compact` (environment-restricted by Pest browser socket bind)
+- `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can prepare and expose delivery package|transmission page can record manual handoff officer and recipient verification|transmission page can record delivery receipt only after recipient verification|transmission page blocks recipient verification before officer verification' --compact` (environment-restricted by Pest browser socket bind)
 - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual verification passes with matching official return|manual verification fails when manual totals differ|friday certification scenario includes manual verification report' --compact` (environment-restricted by Pest browser socket bind)
 - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run certification and manual verification' --compact` (environment-restricted by Pest browser socket bind)
 - `php artisan election:scenario initialization-report` (pass)

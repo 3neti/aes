@@ -168,6 +168,62 @@ custodyForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> =>
 custody.form = custodyForm
 
 /**
+* @see \App\Http\Controllers\Election\TransmissionController::recordReceipt
+* @see app/Http/Controllers/Election/TransmissionController.php:43
+* @route '/election/transmission/receipt'
+*/
+export const receipt = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: receipt.url(options),
+    method: 'post',
+})
+
+receipt.definition = {
+    methods: ["post"],
+    url: '/election/transmission/receipt',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::recordReceipt
+* @see app/Http/Controllers/Election/TransmissionController.php:43
+* @route '/election/transmission/receipt'
+*/
+receipt.url = (options?: RouteQueryOptions) => {
+    return receipt.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::recordReceipt
+* @see app/Http/Controllers/Election/TransmissionController.php:43
+* @route '/election/transmission/receipt'
+*/
+receipt.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: receipt.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::recordReceipt
+* @see app/Http/Controllers/Election/TransmissionController.php:43
+* @route '/election/transmission/receipt'
+*/
+const receiptForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: receipt.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::recordReceipt
+* @see app/Http/Controllers/Election/TransmissionController.php:43
+* @route '/election/transmission/receipt'
+*/
+receiptForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: receipt.url(options),
+    method: 'post',
+})
+
+receipt.form = receiptForm
+
+/**
 * @see \App\Http\Controllers\Election\TransmissionController::verifyOfficer
 * @see app/Http/Controllers/Election/TransmissionController.php:36
 * @route '/election/transmission/officer-verification'
@@ -281,6 +337,7 @@ recipientVerification.form = recipientVerificationForm
 
 const transmission = {
     preparePackage: Object.assign(preparePackage, preparePackage),
+    receipt: Object.assign(receipt, receipt),
     officerVerification: Object.assign(officerVerification, officerVerification),
     recipientVerification: Object.assign(recipientVerification, recipientVerification),
     send: Object.assign(send, send),

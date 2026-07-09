@@ -4,6 +4,7 @@ import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import {
     custody,
+    receipt,
     officerVerification,
     preparePackage,
     recipientVerification,
@@ -15,6 +16,7 @@ defineProps<{
     transmission: Record<string, any>;
     deliveryPackage: Record<string, any>;
     custody: Record<string, any>;
+    deliveryReceipt: Record<string, any>;
     manualOfficerVerification: Record<string, any>;
     manualRecipientVerification: Record<string, any>;
 }>();
@@ -34,6 +36,21 @@ defineProps<{
                 <Form v-bind="send.form()">
                     <button class="secondary-button" type="submit">
                         Prepare Transmission Report
+                    </button>
+                </Form>
+                <Form v-bind="receipt.form()">
+                    <input
+                        type="hidden"
+                        name="stage"
+                        :value="snapshot.stage"
+                    />
+                    <input
+                        type="hidden"
+                        name="delivery_note"
+                        value="Manual handoff custody transition"
+                    />
+                    <button class="secondary-button" type="submit">
+                        Generate Delivery Receipt
                     </button>
                 </Form>
                 <Form v-bind="custody.form()">
@@ -129,6 +146,47 @@ defineProps<{
                         <template v-else>
                             <p class="text-stone-600">
                                 No transmission report prepared yet.
+                            </p>
+                        </template>
+                    </dl>
+                </article>
+
+                <article class="rounded border border-stone-200 p-4">
+                    <h3 class="text-sm font-semibold text-stone-700">
+                        Delivery Receipt
+                    </h3>
+                    <dl class="mt-3 space-y-2 text-sm">
+                        <template v-if="deliveryReceipt.exists">
+                            <div>
+                                <dt class="text-stone-600">Receipt ID</dt>
+                                <dd>
+                                    {{ deliveryReceipt.delivery_receipt_id }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">Recipient</dt>
+                                <dd>
+                                    {{ deliveryReceipt.recipient }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">Driver</dt>
+                                <dd>{{ deliveryReceipt.delivery_driver }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">Status</dt>
+                                <dd>{{ deliveryReceipt.status }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">Receipt Hash</dt>
+                                <dd class="break-all text-stone-700">
+                                    {{ deliveryReceipt.delivery_receipt_hash }}
+                                </dd>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <p class="text-stone-600">
+                                No delivery receipt recorded yet.
                             </p>
                         </template>
                     </dl>

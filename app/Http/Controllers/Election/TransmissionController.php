@@ -7,9 +7,11 @@ use App\Election\Custody\CustodyService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Support\ElectionStorage;
 use App\Election\Transmission\DeliveryPackageService;
+use App\Election\Transmission\DeliveryReceiptService;
 use App\Election\Transmission\ManualHandoffService;
 use App\Election\Transmission\TransmissionService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDeliveryReceiptRequest;
 use App\Http\Requests\StoreManualHandoffOfficerVerificationRequest;
 use App\Http\Requests\StoreManualHandoffRecipientVerificationRequest;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +25,7 @@ final class TransmissionController extends Controller
         ElectionStorage $storage,
         DeliveryPackageService $package,
         ManualHandoffService $handoff,
+        DeliveryReceiptService $receipt,
     ): Response {
         return Inertia::render('Election/Transmission', [
             'snapshot' => $snapshot->get(),
@@ -31,6 +34,7 @@ final class TransmissionController extends Controller
             'custody' => $storage->readJson('custody/custody-record.json'),
             'manualOfficerVerification' => $handoff->officerVerificationSummary(),
             'manualRecipientVerification' => $handoff->recipientVerificationSummary(),
+            'deliveryReceipt' => $receipt->summary(),
         ]);
     }
 
@@ -55,10 +59,16 @@ final class TransmissionController extends Controller
         return redirect()->route('election.transmission');
     }
 
-    public function send(TransmissionService $transmission, CeremonyActions $ceremonies): RedirectResponse
+    public function send(TransmissionService $transmission): RedirectResponse
     {
         $transmission->run();
-        $ceremonies->completeTransmission();
+
+        return redirect()->route('election.transmission');
+    }
+
+    public function recordReceipt(StoreDeliveryReceiptRequest $request, DeliveryReceiptService $receipt): RedirectResponse
+    {
+        $receipt->prepare($request->validated());
 
         return redirect()->route('election.transmission');
     }

@@ -976,11 +976,34 @@ test('transmission page can prepare and expose delivery package', function (): v
         ->post(route('election.returns.close'))
         ->assertRedirect(route('election.transmission'));
 
+    $this->from(route('election.transmission'))->post(route('election.transmission.officer-verification'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'verification_note' => 'Verified handoff for delivery package test.',
+        'stage' => app(LifecycleState::class)->current(),
+    ])->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.recipient-verification'), [
+        'recipient' => 'Election Board Officer',
+        'recipient_role' => 'Election Board',
+        'handoff_date' => '2026-05-08',
+        'handoff_time' => '14:30',
+        'delivery_method' => 'manual',
+        'acknowledged' => true,
+        'acknowledgement_note' => 'Recipient accepted package and will secure it.',
+        'stage' => app(LifecycleState::class)->current(),
+    ])->assertRedirect(route('election.transmission'));
+
     $this->post(route('election.transmission.send'))
         ->assertRedirect(route('election.transmission'));
 
     $this->post(route('election.transmission.prepare'))
         ->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.receipt'), [
+        'stage' => app(LifecycleState::class)->current(),
+        'delivery_note' => 'Generation before custody transfer.',
+    ])->assertRedirect(route('election.transmission'));
 
     $this->post(route('election.transmission.custody'))
         ->assertRedirect(route('election.transmission'));
@@ -989,6 +1012,7 @@ test('transmission page can prepare and expose delivery package', function (): v
     $package = $storage->readJson('transmission/delivery-package.json');
     $transmission = $storage->readJson('transmission/transmission-report.json');
     $custody = $storage->readJson('custody/custody-record.json');
+    $receipt = $storage->readJson('transmission/delivery-receipt.json');
 
     $this->get(route('election.transmission'))
         ->assertSuccessful()
@@ -1002,6 +1026,9 @@ test('transmission page can prepare and expose delivery package', function (): v
             ->where('transmission.transmission_id', $transmission['transmission_id'])
             ->where('custody.custody_id', $custody['custody_id'] ?? null)
             ->where('custody.status', 'sealed')
+            ->where('deliveryReceipt.exists', true)
+            ->where('deliveryReceipt.delivery_receipt_id', $receipt['delivery_receipt_id'])
+            ->where('deliveryReceipt.status', 'accepted')
         );
 });
 
@@ -1017,9 +1044,6 @@ test('transmission page can record manual handoff officer and recipient verifica
         ->assertRedirect(route('election.transmission'));
 
     $this->post(route('election.transmission.prepare'))
-        ->assertRedirect(route('election.transmission'));
-
-    $this->post(route('election.transmission.custody'))
         ->assertRedirect(route('election.transmission'));
 
     $this->from(route('election.transmission'))->post(route('election.transmission.officer-verification'), [
@@ -1054,6 +1078,64 @@ test('transmission page can record manual handoff officer and recipient verifica
             ->where('manualRecipientVerification.verification_id', $recipient['verification_id'] ?? null)
             ->where('manualRecipientVerification.recipient', $recipient['recipient'] ?? null)
             ->where('manualRecipientVerification.recipient_role', $recipient['recipient_role'] ?? null)
+        );
+});
+
+test('transmission page can record delivery receipt only after recipient verification', function (): void {
+    $this->artisan('election:scenario election-return-copy-distribution')
+        ->assertSuccessful();
+
+    $this->from(route('election.returns'))
+        ->post(route('election.returns.close'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.send'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.prepare'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.receipt'), [
+        'stage' => app(LifecycleState::class)->current(),
+        'delivery_note' => 'should fail until verification happens',
+    ])->assertRedirect(route('election.transmission'))
+        ->assertSessionHasErrors('recipient');
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.custody'))
+        ->assertRedirect(route('election.transmission'))
+        ->assertSessionHasErrors('stage');
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.officer-verification'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'verification_note' => 'Verified handoff receipt.',
+        'stage' => app(LifecycleState::class)->current(),
+    ])->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.recipient-verification'), [
+        'recipient' => 'Election Board Officer',
+        'recipient_role' => 'Election Board',
+        'handoff_date' => '2026-05-08',
+        'handoff_time' => '14:30',
+        'delivery_method' => 'manual',
+        'acknowledged' => true,
+        'acknowledgement_note' => 'Recipient accepted package and will secure it.',
+        'stage' => app(LifecycleState::class)->current(),
+    ])->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.receipt'), [
+        'stage' => app(LifecycleState::class)->current(),
+        'delivery_note' => 'Delivery receipt after recipient verification.',
+    ])->assertRedirect(route('election.transmission'));
+
+    $receipt = app(ElectionStorage::class)->readJson('transmission/delivery-receipt.json');
+    $this->get(route('election.transmission'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Transmission')
+            ->where('deliveryReceipt.exists', true)
+            ->where('deliveryReceipt.delivery_receipt_id', $receipt['delivery_receipt_id'] ?? null)
+            ->where('deliveryReceipt.delivery_driver', 'manual')
         );
 });
 

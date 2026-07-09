@@ -4,10 +4,13 @@ namespace App\Election\Custody;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
 use App\Election\Transmission\TransmissionService;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 final class CustodyService
@@ -17,6 +20,7 @@ final class CustodyService
         private readonly ElectionClock $clock,
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
+        private readonly LifecycleState $lifecycle,
         private readonly TransmissionService $transmission,
         private readonly SimplePdf $pdf,
     ) {}
@@ -26,6 +30,12 @@ final class CustodyService
      */
     public function record(): array
     {
+        if ($this->lifecycle->current() !== Lifecycle::FinalBackup) {
+            throw ValidationException::withMessages([
+                'stage' => 'Custody can only be recorded after final backup completes.',
+            ]);
+        }
+
         $transmission = $this->transmission->latestReport();
 
         if ($transmission === []) {
@@ -157,7 +167,7 @@ final class CustodyService
         ];
 
         foreach ($record['seals'] as $seal) {
-            $lines[] = '- '.$seal['seal_number'].' (' . $seal['applied_by'] . ')';
+            $lines[] = '- '.$seal['seal_number'].' ('.$seal['applied_by'].')';
         }
 
         return $lines;
