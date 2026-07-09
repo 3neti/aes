@@ -29,12 +29,14 @@ final class TransmissionController extends Controller
         ManualHandoffService $handoff,
         DeliveryReceiptService $receipt,
         FinalBackupService $finalBackup,
+        CustodyService $custody,
     ): Response {
         return Inertia::render('Election/Transmission', [
             'snapshot' => $snapshot->get(),
             'transmission' => $storage->readJson('transmission/transmission-report.json'),
             'deliveryPackage' => $package->summary(),
             'custody' => $storage->readJson('custody/custody-record.json'),
+            'custodyTurnoverReport' => $custody->turnoverSummary(),
             'manualOfficerVerification' => $handoff->officerVerificationSummary(),
             'manualRecipientVerification' => $handoff->recipientVerificationSummary(),
             'deliveryReceipt' => $receipt->summary(),

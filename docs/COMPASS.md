@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Final Backup After Delivery Slice (Slice 20)
-- Next Slice: Custody Turnover and Custody Report Slice (Slice 21)
+- Completed Slice: Custody Turnover and Custody Report Slice (Slice 21)
+- Next Slice: Audit Reconciliation Baseline Slice (Slice 22)
 
 ## Domains, Waves, and Vertical Slices
 

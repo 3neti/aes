@@ -17,6 +17,7 @@ defineProps<{
     transmission: Record<string, any>;
     deliveryPackage: Record<string, any>;
     custody: Record<string, any>;
+    custodyTurnoverReport: Record<string, any>;
     deliveryReceipt: Record<string, any>;
     finalBackup: Record<string, any>;
     manualOfficerVerification: Record<string, any>;
@@ -82,7 +83,7 @@ defineProps<{
                 </Form>
                 <Form v-bind="custody.form()">
                     <button class="secondary-button" type="submit">
-                        Record Custody
+                        Record Custody Turnover
                     </button>
                 </Form>
             </div>
@@ -243,6 +244,80 @@ defineProps<{
                         <template v-else>
                             <p class="text-stone-600">
                                 Custody not recorded yet.
+                            </p>
+                        </template>
+                    </dl>
+                </article>
+
+                <article class="rounded border border-stone-200 p-4 xl:col-span-3">
+                    <h3 class="text-sm font-semibold text-stone-700">
+                        Custody Turnover Report
+                    </h3>
+                    <dl class="mt-3 space-y-2 text-sm">
+                        <template v-if="custodyTurnoverReport.exists">
+                            <div>
+                                <dt class="text-stone-600">Turnover ID</dt>
+                                <dd>
+                                    {{ custodyTurnoverReport.custody_turnover_id }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">Custody ID</dt>
+                                <dd>
+                                    {{ custodyTurnoverReport.custody_id }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">Stage</dt>
+                                <dd>
+                                    {{ custodyTurnoverReport.turnover_stage }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">
+                                    Recipient
+                                </dt>
+                                <dd>
+                                    {{
+                                        custodyTurnoverReport.recipient
+                                    }}
+                                    /
+                                    {{
+                                        custodyTurnoverReport.recipient_role
+                                    }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">Acknowledged</dt>
+                                <dd>
+                                    {{
+                                        custodyTurnoverReport.acknowledged
+                                            ? 'Yes'
+                                            : 'No'
+                                    }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">Hash</dt>
+                                <dd class="break-all text-stone-700">
+                                    {{
+                                        custodyTurnoverReport.custody_turnover_hash
+                                    }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-600">Artifacts</dt>
+                                <dd>
+                                    {{
+                                        custodyTurnoverReport.artifact_count || 0
+                                    }}
+                                </dd>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <p class="text-stone-600">
+                                Custody turnover report has not been generated
+                                yet.
                             </p>
                         </template>
                     </dl>

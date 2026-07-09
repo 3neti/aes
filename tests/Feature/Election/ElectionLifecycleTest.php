@@ -995,6 +995,39 @@ test('final-backup scenario command succeeds', function (): void {
         ->and(file_exists((string) ($report['final_backup_manifest_path'] ?? '')))->toBeTrue();
 });
 
+test('custody turnover scenario command succeeds', function (): void {
+    $this->artisan('election:scenario custody-turnover')
+        ->expectsOutput('Scenario custody-turnover passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-custody-turnover')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/custody-turnover-report.json');
+    $custodyTurnover = file_exists((string) ($report['custody_turnover_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['custody_turnover_path']), true) : [];
+    $custodyRecord = file_exists((string) $storage->path('custody/custody-record.json')) ? json_decode((string) file_get_contents($storage->path('custody/custody-record.json')), true) : [];
+    $receipt = file_exists((string) ($report['delivery_receipt_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['delivery_receipt_path']), true) : [];
+    $finalBackup = file_exists((string) ($report['final_backup_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['final_backup_path']), true) : [];
+
+    expect($report['scenario'])->toBe('custody-turnover')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['run_id'])->toBe('20260508-080000-39010001-custody-turnover')
+        ->and($report['lifecycle_stage_after_turnover'])->toBe(Lifecycle::Custody)
+        ->and($report['turnover_stage'])->toBe(Lifecycle::FinalBackup)
+        ->and($report['accepted_ballots'])->toBe(1)
+        ->and($report['rejected_ballots'])->toBe(1)
+        ->and($report['custody_id'])->toBe($custodyRecord['custody_id'] ?? null)
+        ->and($report['custody_turnover_id'])->toBe($custodyTurnover['custody_turnover_id'] ?? null)
+        ->and($report['custody_turnover_hash'])->toBe($custodyTurnover['custody_turnover_hash'] ?? null)
+        ->and($report['turnover_artifact_count'])->toBe(5)
+        ->and($report['delivery_receipt_id'])->toBe($receipt['delivery_receipt_id'] ?? null)
+        ->and($report['final_backup_id'])->toBe($finalBackup['backup_id'] ?? null)
+        ->and(file_exists((string) ($report['custody_turnover_path'] ?? '')))->toBeTrue()
+        ->and(file_exists((string) ($report['delivery_package_path'] ?? '')))->toBeTrue()
+        ->and(file_exists((string) ($report['delivery_receipt_path'] ?? '')))->toBeTrue()
+        ->and(file_exists((string) ($report['final_backup_path'] ?? '')))->toBeTrue();
+});
+
 test('full demo scenario command succeeds', function (): void {
     $this->artisan('election:scenario full-demo')
         ->expectsOutput('Scenario full-demo passed.')

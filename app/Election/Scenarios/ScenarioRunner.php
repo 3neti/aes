@@ -14,6 +14,7 @@ use App\Election\Certification\ZeroOutService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingLegalEvidenceService;
 use App\Election\Counting\CountingService;
+use App\Election\Custody\CustodyService;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\EvidenceReferenceBaselineService;
 use App\Election\Lifecycle\CeremonyActions;
@@ -77,6 +78,7 @@ final class ScenarioRunner
         private readonly ManualHandoffService $manualHandoff,
         private readonly DeliveryReceiptService $deliveryReceipt,
         private readonly FinalBackupService $finalBackup,
+        private readonly CustodyService $custody,
     ) {}
 
     /**
@@ -108,6 +110,7 @@ final class ScenarioRunner
             'delivery-receipt' => $this->deliveryReceiptScenario(),
             'manual-handoff' => $this->manualHandoffScenario(),
             'final-backup' => $this->finalBackupScenario(),
+            'custody-turnover' => $this->custodyTurnoverScenario(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -992,6 +995,115 @@ final class ScenarioRunner
     /**
      * @return array<string, mixed>
      */
+    private function custodyTurnoverScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+        $certification = $this->certification->run();
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+
+        $this->ceremonies->openPolls('Scenario Officer');
+        $this->ceremonies->openPolls('Scenario Officer');
+
+        $acceptedPayload = $this->payloads->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'scenario-custody-turnover-accepted');
+
+        $rejectedPayload = $this->payloads->finalize([
+            'president' => ['pres-sarah'],
+            'mayor' => ['mayor-jose'],
+            'council' => ['council-ben'],
+        ], 'scenario-custody-turnover-rejected');
+        $this->spoil->handle($rejectedPayload['payload_hash']);
+
+        $this->ceremonies->closePolls('Scenario Officer');
+        $this->ceremonies->startCounting();
+        $this->counting->accept($acceptedPayload['qr_payload']);
+        $this->counting->accept($rejectedPayload['qr_payload']);
+        $tally = $this->counting->tally();
+
+        $this->ceremonies->moveToReturns();
+        $return = $this->returns->generate($tally);
+        $this->returnCopyDistribution->prepare($return);
+
+        $this->ceremonies->moveToTransmission();
+        $transmission = $this->transmission->run();
+        $package = $this->deliveryPackage->prepare($transmission);
+
+        $officerVerification = $this->manualHandoff->verifyOfficer([
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_pin' => '123456',
+            'verification_note' => 'Manual handoff officer verified for custody turnover.',
+            'stage' => Lifecycle::Transmission,
+        ]);
+
+        $recipientVerification = $this->manualHandoff->verifyRecipient([
+            'recipient' => 'Election Board Officer',
+            'recipient_role' => 'Election Board',
+            'handoff_date' => '2026-05-08',
+            'handoff_time' => '14:40',
+            'delivery_method' => 'manual',
+            'acknowledged' => true,
+            'acknowledgement_note' => 'Custody turnover test handoff acknowledged.',
+            'stage' => Lifecycle::Transmission,
+        ]);
+
+        $deliveryReceipt = $this->deliveryReceipt->prepare([
+            'stage' => Lifecycle::Transmission,
+            'delivery_note' => 'Delivery Receipt for custody turnover scenario.',
+        ]);
+
+        $finalBackup = $this->finalBackup->perform([
+            'stage' => Lifecycle::FinalBackup,
+            'backup_media' => 'local-storage',
+            'backup_type' => 'local-storage',
+            'backup_note' => 'Custody turnover deterministic backup.',
+        ]);
+
+        $custody = $this->custody->record();
+        $this->ceremonies->recordCustody();
+
+        $custodyTurnover = $this->custody->latestTurnoverReport();
+        $custodyTurnoverPath = (string) ($custodyTurnover['artifact_path'] ?? $this->storage->path('custody/custody-turnover-report.json'));
+
+        return [
+            'scenario' => 'custody-turnover',
+            'passed' => true,
+            'run_id' => $this->storage->currentRun()['run_id'] ?? null,
+            'precinct_id' => $activation['configuration']['precinct_id'] ?? $custody['precinct_id'] ?? null,
+            'certification_report_hash' => $certification['report_hash'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'return_hash' => $return['return_hash'] ?? null,
+            'accepted_ballots' => $tally['accepted_ballots'] ?? 0,
+            'rejected_ballots' => $tally['rejected_ballots'] ?? 0,
+            'delivery_package_hash' => $package['delivery_package_hash'] ?? null,
+            'delivery_package_path' => $package['artifact_path'] ?? null,
+            'delivery_receipt_id' => $deliveryReceipt['delivery_receipt_id'] ?? null,
+            'delivery_receipt_path' => $deliveryReceipt['artifact_path'] ?? null,
+            'final_backup_id' => $finalBackup['backup_id'] ?? null,
+            'final_backup_path' => $finalBackup['artifact_path'] ?? null,
+            'custody_id' => $custody['custody_id'] ?? null,
+            'custody_hash' => $custody['custody_hash'] ?? null,
+            'custody_turnover_path' => $custodyTurnoverPath,
+            'custody_turnover_id' => $custodyTurnover['custody_turnover_id'] ?? null,
+            'custody_turnover_hash' => $custodyTurnover['custody_turnover_hash'] ?? null,
+            'turnover_stage' => $custodyTurnover['turnover_stage'] ?? null,
+            'turnover_artifact_count' => $custodyTurnover['artifact_count'] ?? 0,
+            'officer_verification_id' => $officerVerification['verification_id'] ?? null,
+            'recipient_verification_id' => $recipientVerification['verification_id'] ?? null,
+            'transmission_id' => $transmission['transmission_id'] ?? null,
+            'transmission_hash' => $transmission['transmission_hash'] ?? null,
+            'lifecycle_stage_after_turnover' => $this->lifecycle->current(),
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function votingLegalEdgeCasesScenario(): array
     {
         $this->activateConfiguredPrecinctBallot();
@@ -1094,7 +1206,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
-            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'delivery-receipt', 'manual-handoff', 'final-backup' => $this->popClusteredPrecinct(),
+            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'delivery-receipt', 'manual-handoff', 'final-backup', 'custody-turnover' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

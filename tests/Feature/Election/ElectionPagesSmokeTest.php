@@ -1040,6 +1040,25 @@ test('transmission page can prepare and expose delivery package', function (): v
         );
 });
 
+test('transmission page can record custody turnover report', function (): void {
+    $this->artisan('election:scenario custody-turnover')
+        ->assertSuccessful();
+
+    $turnover = app(ElectionStorage::class)->readJson('custody/custody-turnover-report.json');
+    $custody = app(ElectionStorage::class)->readJson('custody/custody-record.json');
+
+    $this->get(route('election.transmission'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Transmission')
+            ->where('custodyTurnoverReport.exists', true)
+            ->where('custodyTurnoverReport.custody_turnover_id', $turnover['custody_turnover_id'] ?? null)
+            ->where('custodyTurnoverReport.custody_id', $custody['custody_id'] ?? null)
+            ->where('custodyTurnoverReport.turnover_stage', Lifecycle::FinalBackup)
+            ->where('custodyTurnoverReport.artifact_count', $turnover['artifact_count'] ?? 0)
+        );
+});
+
 test('transmission page can record manual handoff officer and recipient verification', function (): void {
     $this->artisan('election:scenario election-return-copy-distribution')
         ->assertSuccessful();
