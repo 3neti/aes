@@ -31,6 +31,20 @@ type EvidenceManifest = {
     download_url: string;
 };
 
+type EvidenceReferenceBaseline = {
+    exists: boolean;
+    artifact?: string;
+    run_id?: string | null;
+    precinct_id?: string | null;
+    generated_at?: string | null;
+    baseline_hash?: string | null;
+    artifact_reference_count?: number;
+    required_reference_count?: number;
+    missing_required_reference_count?: number;
+    generate_url: string;
+    download_url: string;
+};
+
 type EvidenceBundleArchive = {
     exists: boolean;
     build_url: string;
@@ -125,6 +139,7 @@ defineProps<{
     diagnostics: {
         attestation_artifacts?: AttestationArtifact[];
         evidence_manifest?: EvidenceManifest;
+        evidence_reference_baseline?: EvidenceReferenceBaseline;
         evidence_bundle_archive?: EvidenceBundleArchive;
         evidence_bundle_archive_verification?: EvidenceBundleArchiveVerification;
         removable_media_export?: RemovableMediaExport;
@@ -151,6 +166,7 @@ defineProps<{
                     v-show="
                         key !== 'attestation_artifacts' &&
                         key !== 'evidence_manifest' &&
+                        key !== 'evidence_reference_baseline' &&
                         key !== 'evidence_bundle_archive' &&
                         key !== 'evidence_bundle_archive_verification' &&
                         key !== 'removable_media_export' &&
@@ -238,6 +254,106 @@ defineProps<{
                     <dd class="mt-1 text-stone-600">{{ count }} files</dd>
                 </div>
             </dl>
+        </section>
+
+        <section
+            v-if="diagnostics.evidence_reference_baseline"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">
+                        Evidence Reference Baseline
+                    </h2>
+                    <p class="mt-1 text-sm text-stone-700">
+                        {{
+                            diagnostics.evidence_reference_baseline.exists
+                                ? `Generated ${diagnostics.evidence_reference_baseline.generated_at}`
+                                : 'No baseline has been generated yet.'
+                        }}
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <Form
+                        :action="
+                            diagnostics.evidence_reference_baseline.generate_url
+                        "
+                        method="post"
+                    >
+                        <button class="secondary-button" type="submit">
+                            Generate Baseline
+                        </button>
+                    </Form>
+                    <a
+                        class="artifact-link"
+                        :href="
+                            diagnostics.evidence_reference_baseline.download_url
+                        "
+                    >
+                        Download Baseline
+                    </a>
+                </div>
+            </div>
+            <dl
+                v-if="diagnostics.evidence_reference_baseline.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Run</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.evidence_reference_baseline.run_id }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Precinct</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_reference_baseline.precinct_id
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Artifact</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.evidence_reference_baseline.artifact }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Artifact References
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_reference_baseline
+                                .artifact_reference_count
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Missing Required
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_reference_baseline
+                                .missing_required_reference_count
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Baseline Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.evidence_reference_baseline
+                                .baseline_hash
+                        }}
+                    </dd>
+                </div>
+            </dl>
+            <p v-else class="mt-4 text-sm text-stone-700">
+                Generate the baseline after you have key legal artifacts in
+                place.
+            </p>
         </section>
 
         <section

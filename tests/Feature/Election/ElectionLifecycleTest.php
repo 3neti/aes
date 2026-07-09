@@ -654,6 +654,31 @@ test('legal scenario suite command succeeds', function (): void {
         ->and($report['sub_scenarios'])->toBe(['friday-certification', 'full-demo']);
 });
 
+test('legal scenario suite creates an evidence reference baseline artifact', function (): void {
+    $this->artisan('election:scenario legal-suite')
+        ->expectsOutput('Scenario legal-suite passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-legal-suite')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/legal-suite-report.json');
+    $baselinePath = $report['evidence_reference_baseline']['artifact_path'];
+
+    expect($report['evidence_reference_baseline']['artifact_path'])->toBe($baselinePath)
+        ->and($report['evidence_reference_baseline']['baseline_hash'])->toBeString()
+        ->and($report['evidence_reference_baseline']['artifact_reference_count'])->toBeGreaterThan(10)
+        ->and($report['evidence_reference_baseline']['missing_required_reference_count'])->toBe(0)
+        ->and(file_exists($baselinePath))->toBeTrue();
+
+    $baseline = $storage->readJson('diagnostics/evidence-reference-baseline.json');
+
+    expect($baseline['schema_version'])->toBe('evidence-reference-baseline-1')
+        ->and($baseline['run_id'])->toBe('20260508-080000-39010001-legal-suite')
+        ->and($baseline['precinct_id'])->toBe('39010001')
+        ->and($baseline['artifact_reference_count'])->toBe(count($baseline['artifact_references']))
+        ->and($baseline['missing_required_references'])->toBe([]);
+});
+
 test('full demo scenario uses configurable pop import defaults', function (): void {
     config()->set('election.pop.source_path', resource_path('election/pop/2025NLE_POP.xlsx'));
     config()->set('election.pop.profile', 'comelec-pop-2025-nle');

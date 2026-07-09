@@ -33,6 +33,7 @@ final class DiagnosticsService
             'attestations' => count($this->storage->files('attestations')),
             'attestation_artifacts' => $this->attestationArtifacts(),
             'evidence_manifest' => $this->manifestSummary(),
+            'evidence_reference_baseline' => $this->referenceBaselineSummary(),
             'removable_media_export' => $this->removableMediaExportSummary(),
             'removable_media_readiness' => $this->removableMediaReadinessSummary(),
             'evidence_bundle_archive' => $this->evidenceBundleArchiveSummary(),
@@ -120,6 +121,38 @@ final class DiagnosticsService
                 ->all(),
             'generate_url' => route('election.diagnostics.evidence-manifest.generate'),
             'download_url' => route('election.diagnostics.evidence-manifest.download'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function referenceBaselineSummary(): array
+    {
+        $path = $this->storage->path('diagnostics/evidence-reference-baseline.json');
+
+        if (! $this->files->exists($path)) {
+            return [
+                'exists' => false,
+                'generate_url' => route('election.diagnostics.evidence-reference-baseline.generate'),
+                'download_url' => route('election.diagnostics.evidence-reference-baseline.download'),
+            ];
+        }
+
+        $baseline = $this->storage->readJson('diagnostics/evidence-reference-baseline.json');
+
+        return [
+            'exists' => true,
+            'artifact' => basename($path),
+            'run_id' => $baseline['run_id'] ?? null,
+            'precinct_id' => $baseline['precinct_id'] ?? null,
+            'generated_at' => $baseline['generated_at'] ?? null,
+            'baseline_hash' => $baseline['baseline_hash'] ?? null,
+            'artifact_reference_count' => $baseline['artifact_reference_count'] ?? 0,
+            'required_reference_count' => $baseline['required_reference_count'] ?? 0,
+            'missing_required_reference_count' => $baseline['missing_required_reference_count'] ?? 0,
+            'generate_url' => route('election.diagnostics.evidence-reference-baseline.generate'),
+            'download_url' => route('election.diagnostics.evidence-reference-baseline.download'),
         ];
     }
 

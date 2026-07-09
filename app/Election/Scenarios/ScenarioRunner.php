@@ -8,6 +8,7 @@ use App\Election\Certification\CertificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
 use App\Election\Devices\DeviceCertificationService;
+use App\Election\Diagnostics\EvidenceReferenceBaselineService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
@@ -44,6 +45,7 @@ final class ScenarioRunner
         private readonly ActivateImportedPrecinctPackage $activateImportedPrecinct,
         private readonly ActivatePrecinctBallotPackage $activatePrecinctBallot,
         private readonly CertificationDeckBuilder $deckBuilder,
+        private readonly EvidenceReferenceBaselineService $baseline,
     ) {}
 
     /**
@@ -64,9 +66,23 @@ final class ScenarioRunner
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
-        $this->storage->writeJson("scenarios/{$name}-report.json", $report);
         $archivePath = $this->storage->writeScenarioReport($name, $report, $this->clock->now()->format('Y-m-d-His'));
         $run = $this->storage->finalizeRun($name, $report);
+
+        if ($name === 'legal-suite') {
+            $baseline = $this->baseline->write();
+
+            $run['evidence_reference_baseline_path'] = $baseline['artifact_path'];
+            $run['evidence_reference_baseline_hash'] = $baseline['baseline_hash'] ?? null;
+            $report['evidence_reference_baseline'] = [
+                'artifact_path' => $baseline['artifact_path'],
+                'artifact_reference_count' => $baseline['artifact_reference_count'] ?? 0,
+                'missing_required_reference_count' => $baseline['missing_required_reference_count'] ?? 0,
+                'baseline_hash' => $baseline['baseline_hash'] ?? null,
+            ];
+        }
+
+        $this->storage->writeJson("scenarios/{$name}-report.json", $report);
         $this->clock->unfreeze();
 
         return [

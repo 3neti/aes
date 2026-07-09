@@ -7,6 +7,7 @@ use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\DiagnosticsService;
 use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
 use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
+use App\Election\Diagnostics\EvidenceReferenceBaselineService;
 use App\Election\Diagnostics\RemovableMediaExporter;
 use App\Election\Diagnostics\RemovableMediaExportVerifier;
 use App\Election\Diagnostics\RemovableMediaReadinessChecker;
@@ -53,6 +54,28 @@ final class DiagnosticsController extends Controller
         return response()->download(
             $manifest['artifact_path'],
             'evidence-manifest.json',
+            ['Content-Type' => 'application/json'],
+        );
+    }
+
+    public function generateEvidenceReferenceBaseline(EvidenceReferenceBaselineService $baseline): RedirectResponse
+    {
+        $report = $baseline->write();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('evidence_reference_baseline_hash', $report['baseline_hash'] ?? null);
+    }
+
+    public function downloadEvidenceReferenceBaseline(ElectionStorage $storage): BinaryFileResponse
+    {
+        $path = $storage->path('diagnostics/evidence-reference-baseline.json');
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download(
+            $path,
+            'evidence-reference-baseline.json',
             ['Content-Type' => 'application/json'],
         );
     }

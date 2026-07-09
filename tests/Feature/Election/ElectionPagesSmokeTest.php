@@ -183,6 +183,44 @@ test('diagnostics can generate and download precinct evidence manifest', functio
     app(ElectionClock::class)->unfreeze();
 });
 
+test('diagnostics can generate and download evidence reference baseline', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-09 10:00:00');
+    app(ActivateSamplePackage::class)->handle();
+
+    $this->post(route('election.attestations.store'), [
+        'ceremony' => 'Friday Certification',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'signature_data' => pagesTestSignatureDataUri(),
+        'stage' => 'certification',
+        'statement' => 'Certification checkpoint reviewed.',
+    ])->assertRedirect();
+
+    $this->post(route('election.diagnostics.evidence-reference-baseline.generate'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('evidence_reference_baseline_hash');
+
+    $baseline = app(ElectionStorage::class)->readJson('diagnostics/evidence-reference-baseline.json');
+
+    expect($baseline['schema_version'])->toBe('evidence-reference-baseline-1')
+        ->and($baseline['artifact_reference_count'])->toBeGreaterThan(0)
+        ->and($baseline['missing_required_reference_count'])->toBeGreaterThanOrEqual(0);
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.evidence_reference_baseline.exists', true)
+            ->where('diagnostics.evidence_reference_baseline.baseline_hash', $baseline['baseline_hash'])
+            ->where('diagnostics.evidence_reference_baseline.artifact_reference_count', $baseline['artifact_reference_count'])
+        );
+
+    $this->get(route('election.diagnostics.evidence-reference-baseline.download'))
+        ->assertDownload('evidence-reference-baseline.json');
+
+    app(ElectionClock::class)->unfreeze();
+});
+
 test('diagnostics can build and download evidence bundle archive', function (): void {
     app(ElectionClock::class)->freeze('2026-05-08 18:30:00');
     app(ActivateSamplePackage::class)->handle();

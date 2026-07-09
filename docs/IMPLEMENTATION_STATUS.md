@@ -3,8 +3,8 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Legal Scenario Harness Slice (Slice 2)
-- Next Slice: Evidence Reference Baseline Slice (Slice 3)
+- Completed Slice: Evidence Reference Baseline Slice (Slice 3)
+- Next Slice: Official Minutes Baseline Slice (Slice 4)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` (failed in this environment: Pest Browser plugin cannot allocate a socket port; test environment blocks `socket_create_listen`)
@@ -29,6 +29,7 @@
 
 - Slice 1: Lifecycle Legal States Slice (implemented)
 - Slice 2: Legal Scenario Harness Slice (implemented)
+- Slice 3: Evidence Reference Baseline Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -143,6 +144,7 @@
   - evidence folder demo summary report output
   - evidence folder demo tally sheet text and PDF artifacts
   - evidence folder demo evidence folder content, pointer, hash, and persistence verification
+  - evidence reference baseline creation within legal-suite scenario
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -163,6 +165,7 @@
   - Diagnostics evidence bundle archive build, TAR content smoke check, download route, and journal event
   - Diagnostics downloadable TAR evidence bundle archive verification action, persisted report projection, and journal event
   - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
+  - Diagnostics evidence reference baseline generation, summary projection, and download route
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - `tests/Browser/ElectionCeremonyPagesSmokeTest.php`
@@ -225,6 +228,8 @@
 - `php artisan election:pop-import resources/election/pop/2025NLE_POP.xlsx`
 - `php artisan election:pop-lookup 7010001`
 - `php artisan election:pop-activate 7010001`
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite creates|EvidenceReferenceBaseline' --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='evidence reference baseline' --compact`
 - `php artisan election:pop-lookup 39010001`
 - `php artisan election:pop-activate 39010001`
 - `php artisan election:scenario pop-import-demo`
