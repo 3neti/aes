@@ -1,5 +1,18 @@
 # Alternative Election System Implementation Status
 
+## Current Implementation
+
+- Current Wave: 1 (Foundation)
+- Completed Slice: Lifecycle Legal States Slice (Slice 1)
+- Next Slice: Legal Scenario Harness Slice (Slice 2)
+- Test status:
+  - `vendor/bin/pint --dirty --format agent` (pass)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --compact` (failed in this environment: Pest Browser plugin cannot allocate a socket port; test environment blocks `socket_create_listen`)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='lifecycle|open_polls|returns_close' --compact` (same environment-limited failure)
+  - `php -l` checks passed for all changed files
+- Known limitations: browser-plugin host socket restrictions in this container prevent running feature tests locally.
+- Remaining work for this slice: none after code updates; awaiting environment with free local port binding to validate feature tests in full.
+
 ## Completed Waves
 
 - Wave 1 Foundation: lifecycle shell, dictionary, append-only activity journal, storage helper, Home UI, diagnostics shell, scenario command.
@@ -13,6 +26,8 @@
 - Wave 9 Hardening: deterministic scenario reset, full-demo scenario, duplicate rejection, spoilage rejection, build/test verification.
 
 ## Completed Slices
+
+- Slice 1: Lifecycle Legal States Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.

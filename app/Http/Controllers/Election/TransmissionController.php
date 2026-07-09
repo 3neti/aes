@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Custody\CustodyService;
-use App\Election\Transmission\TransmissionService;
+use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Support\ElectionStorage;
+use App\Election\Transmission\TransmissionService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -22,16 +23,18 @@ final class TransmissionController extends Controller
         ]);
     }
 
-    public function send(TransmissionService $transmission): RedirectResponse
+    public function send(TransmissionService $transmission, CeremonyActions $ceremonies): RedirectResponse
     {
         $transmission->run();
+        $ceremonies->completeTransmission();
 
         return redirect()->route('election.transmission');
     }
 
-    public function recordCustody(CustodyService $custody): RedirectResponse
+    public function recordCustody(CustodyService $custody, CeremonyActions $ceremonies): RedirectResponse
     {
         $custody->record();
+        $ceremonies->recordCustody();
 
         return redirect()->route('election.transmission');
     }

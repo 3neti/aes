@@ -20,6 +20,12 @@ final class Lifecycle
 
     public const ElectionReturn = 'election_return';
 
+    public const Transmission = 'transmission';
+
+    public const FinalBackup = 'final_backup';
+
+    public const Custody = 'custody';
+
     public const ClosePrecinct = 'close_precinct';
 
     public const Audit = 'audit';
@@ -38,6 +44,9 @@ final class Lifecycle
             self::ClosePolls,
             self::Counting,
             self::ElectionReturn,
+            self::Transmission,
+            self::FinalBackup,
+            self::Custody,
             self::ClosePrecinct,
             self::Audit,
         ];

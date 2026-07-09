@@ -21,9 +21,10 @@ final class CeremonyActions
     {
         if ($this->lifecycle->current() === Lifecycle::OpenPrecinct) {
             $this->lifecycle->advanceTo(Lifecycle::OpenPolls);
+        } else {
+            $this->lifecycle->advanceTo(Lifecycle::Voting);
         }
 
-        $this->lifecycle->advanceTo(Lifecycle::Voting);
         $this->journal->record('polls.opened', ['officer' => $officer]);
     }
 
@@ -42,6 +43,27 @@ final class CeremonyActions
     public function moveToReturns(): void
     {
         $this->lifecycle->advanceTo(Lifecycle::ElectionReturn);
+    }
+
+    public function moveToTransmission(): void
+    {
+        $this->lifecycle->advanceTo(Lifecycle::Transmission);
+        $this->journal->record('returns.closed', [
+            'officer' => 'Simulation Clerk',
+            'stage' => Lifecycle::Transmission,
+        ]);
+    }
+
+    public function completeTransmission(): void
+    {
+        $this->lifecycle->advanceTo(Lifecycle::FinalBackup);
+        $this->journal->record('transmission.completed');
+    }
+
+    public function recordCustody(): void
+    {
+        $this->lifecycle->advanceTo(Lifecycle::Custody);
+        $this->journal->record('custody.recorded');
     }
 
     public function closePrecinct(string $officer = 'simulation officer'): void

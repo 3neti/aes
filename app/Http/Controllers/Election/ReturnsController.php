@@ -31,8 +31,8 @@ final class ReturnsController extends Controller
 
     public function close(CeremonyActions $ceremonies): RedirectResponse
     {
-        $ceremonies->closePrecinct();
+        $ceremonies->moveToTransmission();
 
-        return redirect()->route('election.diagnostics');
+        return redirect()->route('election.transmission');
     }
 }

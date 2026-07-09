@@ -113,6 +113,7 @@ final class ScenarioRunner
         $certificationAttestation = $this->attest('Certification', Lifecycle::Certification, 'Certification officer review complete.');
         $this->lifecycle->set(Lifecycle::OpenPrecinct);
         $this->ceremonies->openPolls();
+        $this->ceremonies->openPolls();
 
         $payload = $this->payloads->finalize($this->deckBuilder->selections($configuration), 'demo-ballot-001');
         $printJob = $this->printer->print($payload);
@@ -129,6 +130,9 @@ final class ScenarioRunner
         $this->ceremonies->moveToReturns();
         $return = $this->returns->generate($tally);
         $returnAttestation = $this->attest('Election Return', Lifecycle::ElectionReturn, 'Return officer review complete.');
+        $this->ceremonies->moveToTransmission();
+        $this->ceremonies->completeTransmission();
+        $this->ceremonies->recordCustody();
         $this->ceremonies->closePrecinct();
 
         return [

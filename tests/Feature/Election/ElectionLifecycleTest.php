@@ -14,6 +14,7 @@ use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
 use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
 use App\Election\Diagnostics\RemovableMediaExporter;
 use App\Election\Diagnostics\RemovableMediaExportVerifier;
+use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
@@ -44,6 +45,49 @@ test('lifecycle transitions reject invalid jumps', function (): void {
 
     expect($lifecycle->current())->toBe(Lifecycle::Certification);
     expect(fn () => $lifecycle->advanceTo(Lifecycle::Voting))->toThrow(RuntimeException::class);
+});
+
+test('open polls follows legal stepwise transition', function (): void {
+    $lifecycle = app(LifecycleState::class);
+    $ceremonies = app(CeremonyActions::class);
+
+    $lifecycle->set(Lifecycle::OpenPrecinct);
+
+    $ceremonies->openPolls();
+    expect($lifecycle->current())->toBe(Lifecycle::OpenPolls);
+
+    $ceremonies->openPolls();
+    expect($lifecycle->current())->toBe(Lifecycle::Voting);
+
+    expect(fn () => $ceremonies->openPolls())->toThrow(RuntimeException::class);
+});
+
+test('lifecycle includes transmission, final backup, and custody stages', function (): void {
+    $lifecycle = app(LifecycleState::class);
+    $ceremonies = app(CeremonyActions::class);
+
+    $lifecycle->set(Lifecycle::ElectionReturn);
+
+    $ceremonies->moveToTransmission();
+    expect($lifecycle->current())->toBe(Lifecycle::Transmission);
+
+    $ceremonies->completeTransmission();
+    expect($lifecycle->current())->toBe(Lifecycle::FinalBackup);
+
+    $ceremonies->recordCustody();
+    expect($lifecycle->current())->toBe(Lifecycle::Custody);
+
+    $ceremonies->closePrecinct();
+    expect($lifecycle->current())->toBe(Lifecycle::ClosePrecinct);
+});
+
+test('returns close action advances lifecycle to transmission ceremony', function (): void {
+    app(LifecycleState::class)->set(Lifecycle::ElectionReturn);
+
+    $this->post(route('election.returns.close'))
+        ->assertRedirect(route('election.transmission'));
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::Transmission);
 });
 
 test('sample package activation derives deterministic mapping', function (): void {
