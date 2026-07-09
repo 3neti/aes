@@ -469,10 +469,12 @@ Verify:
 
 Verify:
 
-- destination status
-- retransmission
-- Transmission Report
-- failure or deferral evidence
+- export package
+- export checksum or hash
+- Handoff Receipt or Transmission Report
+- custody record
+- recipient acknowledgement
+- electronic transport deferral evidence when applicable
 
 ---
 
@@ -727,11 +729,11 @@ Recipient, container, seal, and custody status are recorded.
 
 Operator:
 
-Transmit Election Return.
+Perform official handoff of the Election Return and related artifacts.
 
 Expected:
 
-Transmission status is evidenced, including retry or deferral when needed.
+Handoff status is evidenced through export package records, custody records, recipient acknowledgement, and a Handoff Receipt or Transmission Report.
 
 ---
 
@@ -805,7 +807,7 @@ Certification Reports
 
 ↓
 
-Transmission Reports
+Handoff Receipts and Transmission Reports
 
 ↓
 
@@ -849,6 +851,7 @@ Verification artifacts include:
 - FTS Certification Reports
 - Diagnostic Reports
 - Initialization Reports
+- Handoff Receipts
 - Transmission Reports
 - Custody Records
 - User Acceptance Scripts

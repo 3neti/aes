@@ -64,7 +64,9 @@ flowchart LR
 
     LocalStorage[(Local Files)]
 
-    OptionalLTE
+    ManualHandoff["Manual Handoff"]
+
+    FutureTransport["Future Transport Drivers"]
 
     Tablets <-- Wi-Fi --> RaspberryPi
 
@@ -74,7 +76,9 @@ flowchart LR
 
     RaspberryPi --> LocalStorage
 
-    RaspberryPi --> OptionalLTE
+    RaspberryPi --> ManualHandoff
+
+    RaspberryPi -. optional .-> FutureTransport
 ```
 
 ---
@@ -136,6 +140,8 @@ Counting --> Returns
 
 Returns --> Transmission
 
+Transmission --> Evidence
+
 Transmission --> Custody
 
 Evidence --> Certification
@@ -189,6 +195,8 @@ Activity Journal
 Counting Journal
 
 Minutes
+
+Handoff Receipts
 
 Transmission Reports
 
@@ -265,6 +273,8 @@ Diagnostics Report
 Journal Entries
 
 Minutes
+
+Handoff Receipt
 
 Transmission Report
 
@@ -644,15 +654,40 @@ Rejected
 
  Election Return Ready
 
- Destination Status
+ Official Handoff
 
- Pending
+ Manual Handoff Pending
+
+ Export Package Pending
+
+ Custody Acknowledgement Pending
 
 ────────────────────────────────────────────────────────
 
- [ Start Transmission ]
+ [ Prepare Handoff Package ]
+
+ [ Record Recipient Acknowledgement ]
 
 +------------------------------------------------------+
+```
+
+Transmission is adapter-based:
+
+```mermaid
+flowchart TB
+    Transmission
+    Transmission --> Driver["Transmission Driver"]
+    Driver --> ManualHandoff["Manual Handoff"]
+    Driver -. future .-> RemovableMedia["Removable Media"]
+    Driver -. future .-> LTE
+    Driver -. future .-> REST["REST API"]
+    Driver -. future .-> GovernmentNetwork["Government Network"]
+    Driver -. future .-> SatelliteLink["Satellite Link"]
+
+    ManualHandoff --> ExportPackage["Export Package"]
+    ManualHandoff --> PrintedReturn["Printed Election Return"]
+    ManualHandoff --> CustodyRecord["Custody Record"]
+    ManualHandoff --> HandoffReceipt["Handoff Receipt"]
 ```
 
 ---
@@ -785,6 +820,10 @@ Initialization Report
 ↓
 
 Election Return
+
+↓
+
+Handoff Receipt
 
 ↓
 

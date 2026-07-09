@@ -398,19 +398,26 @@ The Election Return workflow shall support signing, posting, copy distribution, 
 
 # 22. Transmission
 
-The appliance shall support transmission of precinct results when a legally required transmission channel is available.
+The appliance shall support transmission as the official handoff of election artifacts from one legally recognized custodian to another.
+
+Manual Handoff shall be the first supported transmission driver.
 
 Transmission shall:
 
 - occur after Election Return generation;
-- record destination status;
-- support retransmission attempts;
-- generate a Transmission Report;
-- preserve evidence when transmission is unavailable or unsuccessful.
+- produce or reference an export package;
+- record export package checksum or hash evidence;
+- record recipient information;
+- record custody transfer facts;
+- support officer acknowledgement;
+- generate a Handoff Receipt or Transmission Report;
+- preserve evidence when a later electronic transport driver is unavailable, deferred, or unsuccessful.
 
 Offline operation shall not prevent voting or counting.
 
-Offline operation shall require transmission failure or deferral to be evidenced.
+Offline operation shall not prevent official transmission through Manual Handoff.
+
+Future electronic transport mechanisms, including removable media, LTE, REST APIs, government networks, and satellite links, shall be modeled as transport drivers within the Transmission domain rather than as separate election domains.
 
 ---
 

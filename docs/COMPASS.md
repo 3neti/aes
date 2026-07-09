@@ -232,11 +232,13 @@ Responsibilities:
 
 Responsibilities:
 
-- result transmission
-- retransmission
-- destination status
-- transmission reports
-- offline failure evidence
+- official handoff of election artifacts
+- Manual Handoff as the first transmission driver
+- export package generation
+- export checksum or hash evidence
+- recipient acknowledgement
+- handoff receipts and transmission reports
+- future transport drivers such as removable media, LTE, REST APIs, government networks, and satellite links
 
 ---
 
@@ -449,9 +451,12 @@ Official precinct result.
 
 Deliverables
 
-- transmission workflow
-- retransmission workflow
-- transmission report
+- Manual Handoff workflow
+- export package
+- export checksum or hash evidence
+- Handoff Receipt
+- recipient acknowledgement
+- future transport-driver extension point
 - custody records
 - envelopes and seals
 - final backup
@@ -459,7 +464,7 @@ Deliverables
 
 End Result
 
-Results transmitted or transmission failure evidenced; election artifacts secured.
+Official election artifacts handed off with custody evidence; election artifacts secured.
 
 ---
 

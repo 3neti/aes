@@ -144,7 +144,13 @@ The configuration itself is no longer trapped inside electronics.
 
 The Election Return remains an official paper artifact.
 
-Digital representations exist only for convenience and transmission.
+Digital representations exist only for convenience, verification, and artifact handoff.
+
+The first official transmission of election results is the legally recognized transfer of the printed Election Return and related election artifacts from one custodian to another.
+
+Networking is not the architectural center of transmission. LTE, REST APIs, government networks, satellite links, and other electronic paths are future transport drivers that may support the same handoff.
+
+Manual Handoff is the reference transmission driver because it preserves the principle that paper remains the legal source of truth.
 
 ---
 
