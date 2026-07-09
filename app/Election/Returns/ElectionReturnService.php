@@ -16,6 +16,7 @@ final class ElectionReturnService
         private readonly ActivityJournal $journal,
         private readonly SimplePdf $pdf,
         private readonly BallotConfigurationLabels $labels,
+        private readonly ElectionReturnLegalEvidenceService $legalEvidence,
     ) {}
 
     /**
@@ -44,6 +45,7 @@ final class ElectionReturnService
             'precinct_id' => $return['precinct_id'],
             'return_hash' => $return['return_hash'],
         ]);
+        $this->legalEvidence->write($return);
 
         return $return;
     }

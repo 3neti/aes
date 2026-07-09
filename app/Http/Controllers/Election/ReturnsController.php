@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Election;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Counting\CountingService;
 use App\Election\Lifecycle\CeremonyActions;
+use App\Election\Returns\ElectionReturnCopyDistributionService;
+use App\Election\Returns\ElectionReturnLegalEvidenceService;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
@@ -14,11 +16,20 @@ use Inertia\Response;
 
 final class ReturnsController extends Controller
 {
-    public function show(ElectionSnapshot $snapshot, ElectionStorage $storage): Response
-    {
+    public function show(
+        ElectionSnapshot $snapshot,
+        ElectionStorage $storage,
+        ElectionReturnLegalEvidenceService $legalEvidence,
+        ElectionReturnCopyDistributionService $copyDistribution,
+    ): Response {
+        $configuration = $storage->readJson('runtime/active-precinct.json');
+        $precinctId = $configuration['precinct_id'] ?? '0421-A';
+
         return Inertia::render('Election/Returns', [
             'snapshot' => $snapshot->get(),
-            'returnArtifact' => $storage->readJson('returns/0421-A-return.json'),
+            'returnArtifact' => $storage->readJson("returns/{$precinctId}-return.json"),
+            'returnCopyDistribution' => $copyDistribution->summary(),
+            'electionReturnLegalEvidence' => $legalEvidence->summary(),
         ]);
     }
 
@@ -34,5 +45,12 @@ final class ReturnsController extends Controller
         $ceremonies->moveToTransmission();
 
         return redirect()->route('election.transmission');
+    }
+
+    public function copyDistribution(ElectionReturnCopyDistributionService $distribution): RedirectResponse
+    {
+        $distribution->prepare();
+
+        return redirect()->route('election.returns');
     }
 }

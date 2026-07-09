@@ -800,6 +800,90 @@ test('election return artifact is generated from tally', function (): void {
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('1. Ada Santos: 1');
 });
 
+test('election return legal evidence artifact is generated from return', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $acceptedPayload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ], 'test-ballot-legal-evidence-accepted');
+    $rejectedPayload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-grace'],
+        'mayor' => ['mayor-jose'],
+        'council' => ['council-ben'],
+    ], 'test-ballot-legal-evidence-rejected');
+    app(SpoilBallot::class)->handle($rejectedPayload['payload_hash']);
+
+    $ceremonies = app(CeremonyActions::class);
+    $ceremonies->openPrecinct('Scenario Officer');
+    $ceremonies->openPolls('Scenario Officer');
+    $ceremonies->openPolls('Scenario Officer');
+    $ceremonies->closePolls('Scenario Officer');
+    $ceremonies->startCounting();
+
+    app(CountingService::class)->accept($acceptedPayload['qr_payload']);
+    app(CountingService::class)->accept($rejectedPayload['qr_payload']);
+    $tally = app(CountingService::class)->tally();
+
+    $ceremonies->moveToReturns();
+    $return = app(ElectionReturnService::class)->generate($tally);
+    $evidence = app(ElectionStorage::class)->readJson('returns/election-return-legal-evidence.json');
+
+    expect($return['return_hash'])->toBe($evidence['return_hash'])
+        ->and($evidence['schema_version'])->toBe('election-return-legal-evidence-1')
+        ->and($evidence['evidence_profile'])->toBe('legal-election-return-v1')
+        ->and($evidence['passed'])->toBeTrue()
+        ->and($evidence['counts_match'])->toBeTrue()
+        ->and($evidence['accepted_ballots'])->toBe(1)
+        ->and($evidence['rejected_ballots'])->toBe(1)
+        ->and($evidence['tally_hash'])->toBe($return['tally_hash'])
+        ->and($evidence['return_hash'])->toBe($return['return_hash'])
+        ->and(file_get_contents($evidence['artifact_path']))->toContain('"return_hash"');
+});
+
+test('election return legal artifact scenario runs deterministically', function (): void {
+    $this->artisan('election:scenario election-return-legal-artifact')
+        ->expectsOutput('Scenario election-return-legal-artifact passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-election-return-legal-artifact')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $report = app(ElectionStorage::class)->readJson('scenarios/election-return-legal-artifact-report.json');
+    $artifactPath = app(ElectionStorage::class)->path('returns/election-return-legal-evidence.json');
+
+    expect($report['scenario'])->toBe('election-return-legal-artifact')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['precinct_id'])->toBe('39010001')
+        ->and($report['accepted_ballots'])->toBe(1)
+        ->and($report['rejected_ballots'])->toBe(1)
+        ->and($report['election_return_legal_evidence_path'])->toBe($artifactPath)
+        ->and($report['election_return_legal_evidence_hash'])->toBeString()
+        ->and(file_exists($artifactPath))->toBeTrue();
+});
+
+test('election return copy distribution scenario runs deterministically', function (): void {
+    $this->artisan('election:scenario election-return-copy-distribution')
+        ->expectsOutput('Scenario election-return-copy-distribution passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-election-return-copy-distribution')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $report = app(ElectionStorage::class)->readJson('scenarios/election-return-copy-distribution-report.json');
+    $artifactPath = app(ElectionStorage::class)->path('returns/39010001-copy-distribution.json');
+
+    expect($report['scenario'])->toBe('election-return-copy-distribution')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['precinct_id'])->toBe('39010001')
+        ->and($report['copy_count'])->toBe(3)
+        ->and($report['required_copy_count'])->toBe(2)
+        ->and($report['distribution_posting_status'])->toBe('completed')
+        ->and($report['copy_distribution_artifact_path'])->toBe($artifactPath)
+        ->and($report['copy_distribution_hash'])->toBeString()
+        ->and($report['run_id'])->toBeString()
+        ->and(file_exists($artifactPath))->toBeTrue();
+});
+
 test('full demo scenario command succeeds', function (): void {
     $this->artisan('election:scenario full-demo')
         ->expectsOutput('Scenario full-demo passed.')

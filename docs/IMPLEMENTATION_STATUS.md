@@ -3,8 +3,8 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Close Polls and Counting Legal Evidence Slice (Slice 14)
-- Next Slice: Election Return Legal Artifact Slice (Slice 15)
+- Completed Slice: ER Copy Distribution and Posting Slice (Slice 16)
+- Next Slice: Delivery Package Slice (Slice 17)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='open polls initialization report scenario command succeeds|open polls initialization scenario writes opening initialization report artifact' --compact`
@@ -20,14 +20,16 @@
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='discrepancy report detects manual verification mismatch|fts manual verification discrepancy scenario records discrepancy report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run discrepancy analysis' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='fts zero-out and sealing scenario clears counting artifacts' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='election return legal artifact scenario runs deterministically|election return copy distribution scenario runs deterministically' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run zero-out and sealing' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='returns page exposes election return legal evidence summary|returns page can prepare copy distribution and show posting summary' --compact`
   - `vendor/bin/pint --dirty --format agent`
   - `php -l` checks passed for all changed files
   - `php artisan election:scenario voting-legal-edge-cases` (pass)
   - `php artisan election:scenario close-polls-and-counting-legal-evidence` (pass)
   - `php artisan election:scenario initialization-report` (pass)
   - `php artisan election:scenario friday-certification` (pass)
-- Known limitations: pest browser socket binding errors prevent targeted feature commands from running in this environment when browser plugin is active.
+- Known limitations: pest browser socket binding errors prevent some targeted feature commands from running in this environment when browser plugin is active.
 - Remaining work for this slice: none after code updates.
 
 ## Completed Waves
@@ -58,6 +60,8 @@
 - Slice 12: Official Minutes Baseline Slice (implemented)
 - Slice 13: Voting Legal Edge Cases Slice (implemented)
 - Slice 14: Close Polls and Counting Legal Evidence Slice (implemented)
+- Slice 15: Election Return Legal Artifact Slice (implemented)
+- Slice 16: ER Copy Distribution and Posting Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -186,6 +190,9 @@
   - manual verification fails when manual totals differ
   - friday certification scenario includes manual verification report
   - fts zero-out and sealing scenario clears counting artifacts
+  - election return legal evidence artifact is generated from return
+  - election return legal artifact scenario runs deterministically
+  - election return copy distribution scenario runs deterministically
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -217,6 +224,8 @@
   - certification page can run certification and manual verification
   - certification page can download manual verification report artifact
   - certification page can run zero-out and sealing
+  - returns page exposes election return legal evidence summary
+  - returns page can prepare copy distribution and show posting summary
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - `tests/Browser/ElectionCeremonyPagesSmokeTest.php`

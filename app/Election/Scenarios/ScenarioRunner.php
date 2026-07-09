@@ -27,6 +27,7 @@ use App\Election\Preparation\PopWorkbookImporter;
 use App\Election\Preparation\SupplyVerificationBaselineService;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\SpoilBallot;
+use App\Election\Returns\ElectionReturnCopyDistributionService;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
@@ -61,6 +62,7 @@ final class ScenarioRunner
         private readonly DiscrepancyReportService $discrepancy,
         private readonly ZeroOutService $zeroOut,
         private readonly SealingService $sealing,
+        private readonly ElectionReturnCopyDistributionService $returnCopyDistribution,
         private readonly EvidenceReferenceBaselineService $baseline,
         private readonly OfficialMinutesBaselineService $officialMinutes,
         private readonly ElectoralBoardBaselineService $electoralBoardBaseline,
@@ -90,6 +92,8 @@ final class ScenarioRunner
             'fts-zero-out' => $this->zeroOutScenario(),
             'voting-legal-edge-cases' => $this->votingLegalEdgeCasesScenario(),
             'close-polls-and-counting-legal-evidence' => $this->closePollsAndCountingLegalEvidenceScenario(),
+            'election-return-legal-artifact' => $this->electionReturnLegalArtifactScenario(),
+            'election-return-copy-distribution' => $this->electionReturnCopyDistributionScenario(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -535,6 +539,115 @@ final class ScenarioRunner
     /**
      * @return array<string, mixed>
      */
+    private function electionReturnLegalArtifactScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+        $this->ceremonies->openPolls('Scenario Officer');
+        $this->ceremonies->openPolls('Scenario Officer');
+
+        $acceptedPayload = $this->payloads->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'scenario-return-legal-accepted');
+
+        $rejectedPayload = $this->payloads->finalize([
+            'president' => ['pres-sarah'],
+            'mayor' => ['mayor-jose'],
+            'council' => ['council-ben'],
+        ], 'scenario-return-legal-rejected');
+        $this->spoil->handle($rejectedPayload['payload_hash']);
+
+        $this->ceremonies->closePolls('Scenario Officer');
+        $this->ceremonies->startCounting();
+        $this->counting->accept($acceptedPayload['qr_payload']);
+        $this->counting->accept($rejectedPayload['qr_payload']);
+        $tally = $this->counting->tally();
+
+        $this->ceremonies->moveToReturns();
+        $return = $this->returns->generate($tally);
+        $legalEvidence = $this->storage->readJson('returns/election-return-legal-evidence.json');
+
+        return [
+            'scenario' => 'election-return-legal-artifact',
+            'passed' => (bool) ($legalEvidence['evidence_hash'] ?? false) && $return['return_hash'] === ($legalEvidence['return_hash'] ?? null),
+            'run_id' => $legalEvidence['run_id'] ?? null,
+            'precinct_id' => $activation['configuration']['precinct_id'] ?? $legalEvidence['precinct_id'] ?? null,
+            'return_hash' => $return['return_hash'],
+            'return_path' => $legalEvidence['return_path'] ?? null,
+            'election_return_legal_evidence_path' => $legalEvidence['artifact_path'] ?? null,
+            'election_return_legal_evidence_hash' => $legalEvidence['evidence_hash'] ?? null,
+            'election_return_legal_artifact_path' => $legalEvidence['artifact_path'] ?? null,
+            'election_return_legal_artifact_hash' => $legalEvidence['evidence_hash'] ?? null,
+            'counts_match' => $legalEvidence['counts_match'] ?? false,
+            'accepted_ballots' => $legalEvidence['accepted_ballots'] ?? 0,
+            'rejected_ballots' => $legalEvidence['rejected_ballots'] ?? 0,
+            'tally_hash' => $legalEvidence['tally_hash'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function electionReturnCopyDistributionScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+        $this->ceremonies->openPolls('Scenario Officer');
+        $this->ceremonies->openPolls('Scenario Officer');
+
+        $acceptedPayload = $this->payloads->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'scenario-copy-distribution-accepted');
+
+        $rejectedPayload = $this->payloads->finalize([
+            'president' => ['pres-sarah'],
+            'mayor' => ['mayor-jose'],
+            'council' => ['council-ben'],
+        ], 'scenario-copy-distribution-rejected');
+        $this->spoil->handle($rejectedPayload['payload_hash']);
+
+        $this->ceremonies->closePolls('Scenario Officer');
+        $this->ceremonies->startCounting();
+        $this->counting->accept($acceptedPayload['qr_payload']);
+        $this->counting->accept($rejectedPayload['qr_payload']);
+        $tally = $this->counting->tally();
+
+        $this->ceremonies->moveToReturns();
+        $return = $this->returns->generate($tally);
+        $copyDistribution = $this->returnCopyDistribution->prepare($return);
+
+        return [
+            'scenario' => 'election-return-copy-distribution',
+            'passed' => (bool) ($copyDistribution['distribution_hash'] ?? false),
+            'run_id' => $copyDistribution['run_id'] ?? null,
+            'precinct_id' => $activation['configuration']['precinct_id'] ?? $copyDistribution['precinct_id'] ?? null,
+            'return_hash' => $return['return_hash'],
+            'return_hash_in_distribution' => $copyDistribution['return_hash'] ?? null,
+            'copy_distribution_artifact_path' => $copyDistribution['artifact_path'] ?? null,
+            'copy_distribution_hash' => $copyDistribution['distribution_hash'] ?? null,
+            'copy_count' => $copyDistribution['copy_count'] ?? 0,
+            'required_copy_count' => $copyDistribution['required_copy_count'] ?? 0,
+            'distribution_posting_status' => $copyDistribution['posting']['status'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function votingLegalEdgeCasesScenario(): array
     {
         $this->activateConfiguredPrecinctBallot();
@@ -637,7 +750,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
-            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence' => $this->popClusteredPrecinct(),
+            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

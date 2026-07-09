@@ -43,6 +43,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/counting/complete', [CountingController::class, 'complete'])->name('counting.complete');
     Route::get('/returns', [ReturnsController::class, 'show'])->name('returns');
     Route::post('/returns/generate', [ReturnsController::class, 'generate'])->name('returns.generate');
+    Route::post('/returns/copy-distribution', [ReturnsController::class, 'copyDistribution'])->name('returns.copy-distribution');
     Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
     Route::get('/transmission', [TransmissionController::class, 'show'])->name('transmission');
     Route::post('/transmission/send', [TransmissionController::class, 'send'])->name('transmission.send');

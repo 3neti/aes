@@ -924,6 +924,49 @@ test('counting completion writes legal evidence and advances to election return'
     expect(app(LifecycleState::class)->current())->toBe(Lifecycle::ElectionReturn);
 });
 
+test('returns page exposes election return legal evidence summary', function (): void {
+    $this->artisan('election:scenario election-return-legal-artifact')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $returnEvidence = $storage->readJson('returns/election-return-legal-evidence.json');
+    $returnArtifact = $storage->readJson('returns/39010001-return.json');
+
+    $this->get(route('election.returns'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Returns')
+            ->where('returnArtifact.return_hash', $returnArtifact['return_hash'])
+            ->where('returnArtifact.accepted_ballots', 1)
+            ->where('returnArtifact.rejected_ballots', 1)
+            ->where('electionReturnLegalEvidence.exists', true)
+            ->where('electionReturnLegalEvidence.evidence_hash', $returnEvidence['evidence_hash'])
+            ->where('electionReturnLegalEvidence.counts_match', true)
+        );
+});
+
+test('returns page can prepare copy distribution and show posting summary', function (): void {
+    $this->artisan('election:scenario election-return-legal-artifact')
+        ->assertSuccessful();
+
+    $this->from(route('election.returns'))
+        ->post(route('election.returns.copy-distribution'))
+        ->assertRedirect(route('election.returns'));
+
+    $distribution = app(ElectionStorage::class)->readJson('returns/39010001-copy-distribution.json');
+
+    $this->get(route('election.returns'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Returns')
+            ->where('returnCopyDistribution.exists', true)
+            ->where('returnCopyDistribution.distribution_hash', $distribution['distribution_hash'])
+            ->where('returnCopyDistribution.copy_count', 3)
+            ->where('returnCopyDistribution.required_copy_count', 2)
+            ->where('returnCopyDistribution.posting.status', 'completed')
+        );
+});
+
 test('ceremony shell can record officer attestation', function (): void {
     $this->from(route('election.certification'))
         ->post(route('election.attestations.store'), [

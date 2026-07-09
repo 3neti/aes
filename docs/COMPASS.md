@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Close Polls and Counting Legal Evidence Slice (Slice 14)
-- Next Slice: Election Return Legal Artifact Slice (Slice 15)
+- Completed Slice: ER Copy Distribution and Posting Slice (Slice 16)
+- Next Slice: Delivery Package Slice (Slice 17)
 
 ## Domains, Waves, and Vertical Slices
 
