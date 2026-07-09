@@ -965,6 +965,36 @@ test('delivery-receipt scenario command succeeds', function (): void {
         ->and(file_exists($report['recipient_verification_path'] ?? ''))->toBeTrue();
 });
 
+test('final-backup scenario command succeeds', function (): void {
+    $this->artisan('election:scenario final-backup')
+        ->expectsOutput('Scenario final-backup passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-final-backup')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/final-backup-report.json');
+    $finalBackup = file_exists((string) ($report['final_backup_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['final_backup_path']), true) : [];
+    $manifest = file_exists((string) ($report['final_backup_manifest_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['final_backup_manifest_path']), true) : [];
+    $package = file_exists((string) ($report['delivery_package_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['delivery_package_path']), true) : [];
+    $receipt = file_exists((string) ($report['delivery_receipt_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['delivery_receipt_path']), true) : [];
+    $transmission = file_exists((string) ($report['transmission_path'] ?? '')) ? json_decode((string) file_get_contents((string) $report['transmission_path']), true) : [];
+
+    expect($report['scenario'])->toBe('final-backup')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['run_id'])->toBe('20260508-080000-39010001-final-backup')
+        ->and($report['final_backup_stage_after'])->toBe(Lifecycle::FinalBackup)
+        ->and($report['delivery_package_hash'])->toBe($package['delivery_package_hash'] ?? null)
+        ->and($report['delivery_receipt_id'])->toBe($receipt['delivery_receipt_id'] ?? null)
+        ->and($report['delivery_receipt_hash'])->toBe($receipt['delivery_receipt_hash'] ?? null)
+        ->and($report['transmission_id'])->toBe($transmission['transmission_id'] ?? null)
+        ->and($report['final_backup_id'])->toBe($finalBackup['backup_id'] ?? null)
+        ->and($report['final_backup_hash'])->toBe($finalBackup['final_backup_hash'] ?? null)
+        ->and($manifest['schema_version'])->toBe('precinct-evidence-manifest-1')
+        ->and(file_exists((string) ($report['final_backup_path'] ?? '')))->toBeTrue()
+        ->and(file_exists((string) ($report['final_backup_manifest_path'] ?? '')))->toBeTrue();
+});
+
 test('full demo scenario command succeeds', function (): void {
     $this->artisan('election:scenario full-demo')
         ->expectsOutput('Scenario full-demo passed.')

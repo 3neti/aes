@@ -50,6 +50,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/transmission/officer-verification', [TransmissionController::class, 'verifyOfficer'])->name('transmission.officer-verification');
     Route::post('/transmission/recipient-verification', [TransmissionController::class, 'verifyRecipient'])->name('transmission.recipient-verification');
     Route::post('/transmission/receipt', [TransmissionController::class, 'recordReceipt'])->name('transmission.receipt');
+    Route::post('/transmission/final-backup', [TransmissionController::class, 'recordFinalBackup'])->name('transmission.final-backup');
     Route::post('/transmission/send', [TransmissionController::class, 'send'])->name('transmission.send');
     Route::post('/transmission/custody', [TransmissionController::class, 'recordCustody'])->name('transmission.custody');
     Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');

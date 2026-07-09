@@ -3,10 +3,12 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Delivery Receipt and Custody Transfer Slice (Slice 19)
-- Next Slice: Final Backup After Delivery Slice (Slice 20)
+- Completed Slice: Final Backup After Delivery Slice (Slice 20)
+- Next Slice: Custody Turnover and Custody Report Slice (Slice 21)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds|lifecycle includes transmission, final backup, and custody stages' --compact` (pass)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can prepare and expose delivery package|transmission page can record manual handoff officer and recipient verification|transmission page can record delivery receipt only after recipient verification|transmission page requires final backup before custody transfer' --compact` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='delivery package scenario command succeeds' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can prepare and expose delivery package' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual-handoff scenario command succeeds' --compact` (blocked in this environment by Pest Browser socket bind restriction)
@@ -28,6 +30,8 @@
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='election return legal artifact scenario runs deterministically|election return copy distribution scenario runs deterministically' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run zero-out and sealing' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='returns page exposes election return legal evidence summary|returns page can prepare copy distribution and show posting summary' --compact`
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds' --compact` (pass)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page requires final backup before custody transfer' --compact` (pass)
   - `vendor/bin/pint --dirty --format agent`
   - `php -l` checks passed for all changed files
   - `php artisan election:scenario voting-legal-edge-cases` (pass)
@@ -70,6 +74,7 @@
 - Slice 17: Delivery Package Slice (implemented)
 - Slice 18: Manual Handoff and Recipient Verification Slice (implemented)
 - Slice 19: Delivery Receipt and Custody Transfer Slice (implemented)
+- Slice 20: Final Backup After Delivery Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.

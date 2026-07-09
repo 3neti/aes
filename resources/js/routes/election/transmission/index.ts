@@ -224,6 +224,62 @@ receiptForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> =>
 receipt.form = receiptForm
 
 /**
+* @see \App\Http\Controllers\Election\TransmissionController::recordFinalBackup
+* @see app/Http/Controllers/Election/TransmissionController.php:56
+* @route '/election/transmission/final-backup'
+*/
+export const finalBackup = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: finalBackup.url(options),
+    method: 'post',
+})
+
+finalBackup.definition = {
+    methods: ["post"],
+    url: '/election/transmission/final-backup',
+} satisfies RouteDefinition<['post']>
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::recordFinalBackup
+* @see app/Http/Controllers/Election/TransmissionController.php:56
+* @route '/election/transmission/final-backup'
+*/
+finalBackup.url = (options?: RouteQueryOptions) => {
+    return finalBackup.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::recordFinalBackup
+* @see app/Http/Controllers/Election/TransmissionController.php:56
+* @route '/election/transmission/final-backup'
+*/
+finalBackup.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: finalBackup.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::recordFinalBackup
+* @see app/Http/Controllers/Election/TransmissionController.php:56
+* @route '/election/transmission/final-backup'
+*/
+const finalBackupForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: finalBackup.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::recordFinalBackup
+* @see app/Http/Controllers\Election/TransmissionController.php:56
+* @route '/election/transmission/final-backup'
+*/
+finalBackupForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: finalBackup.url(options),
+    method: 'post',
+})
+
+finalBackup.form = finalBackupForm
+
+/**
 * @see \App\Http\Controllers\Election\TransmissionController::verifyOfficer
 * @see app/Http/Controllers/Election/TransmissionController.php:36
 * @route '/election/transmission/officer-verification'
@@ -338,6 +394,7 @@ recipientVerification.form = recipientVerificationForm
 const transmission = {
     preparePackage: Object.assign(preparePackage, preparePackage),
     receipt: Object.assign(receipt, receipt),
+    finalBackup: Object.assign(finalBackup, finalBackup),
     officerVerification: Object.assign(officerVerification, officerVerification),
     recipientVerification: Object.assign(recipientVerification, recipientVerification),
     send: Object.assign(send, send),

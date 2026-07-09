@@ -5,6 +5,7 @@ import type { ElectionSnapshot } from '@/components/election/types';
 import {
     custody,
     receipt,
+    finalBackup,
     officerVerification,
     preparePackage,
     recipientVerification,
@@ -17,6 +18,7 @@ defineProps<{
     deliveryPackage: Record<string, any>;
     custody: Record<string, any>;
     deliveryReceipt: Record<string, any>;
+    finalBackup: Record<string, any>;
     manualOfficerVerification: Record<string, any>;
     manualRecipientVerification: Record<string, any>;
 }>();
@@ -51,6 +53,31 @@ defineProps<{
                     />
                     <button class="secondary-button" type="submit">
                         Generate Delivery Receipt
+                    </button>
+                </Form>
+                <Form v-bind="finalBackup.form()">
+                    <input
+                        type="hidden"
+                        name="stage"
+                        :value="snapshot.stage"
+                    />
+                    <input
+                        type="hidden"
+                        name="backup_type"
+                        value="local-storage"
+                    />
+                    <input
+                        type="hidden"
+                        name="backup_media"
+                        value="local-storage"
+                    />
+                    <input
+                        type="hidden"
+                        name="backup_note"
+                        value="Manual operator final backup completion"
+                    />
+                    <button class="secondary-button" type="submit">
+                        Record Final Backup
                     </button>
                 </Form>
                 <Form v-bind="custody.form()">
@@ -299,6 +326,49 @@ defineProps<{
                         <template v-else>
                             <p class="text-stone-600">
                                 Officer verification not yet recorded.
+                            </p>
+                        </template>
+                    </dl>
+                </article>
+
+                <article
+                    class="rounded border border-stone-200 p-4 xl:col-span-3"
+                >
+                    <h3 class="text-sm font-semibold text-stone-700">
+                        Final Backup
+                    </h3>
+                    <dl class="mt-4 text-xs">
+                        <template v-if="finalBackup.exists">
+                            <div>
+                                <dt>Backup ID</dt>
+                                <dd>{{ finalBackup.backup_id }}</dd>
+                            </div>
+                            <div>
+                                <dt>Backup Hash</dt>
+                                <dd class="break-all text-stone-700">
+                                    {{ finalBackup.backup_hash }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Backup Type</dt>
+                                <dd>
+                                    {{ finalBackup.backup_type }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Backup Media</dt>
+                                <dd>
+                                    {{ finalBackup.backup_media }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Recorded At</dt>
+                                <dd>{{ finalBackup.recorded_at }}</dd>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <p class="text-stone-600">
+                                Final backup not recorded yet.
                             </p>
                         </template>
                     </dl>

@@ -1005,6 +1005,11 @@ test('transmission page can prepare and expose delivery package', function (): v
         'delivery_note' => 'Generation before custody transfer.',
     ])->assertRedirect(route('election.transmission'));
 
+    $this->from(route('election.transmission'))->post(route('election.transmission.final-backup'), [
+        'stage' => app(LifecycleState::class)->current(),
+        'backup_note' => 'Completing final backup before custody transfer.',
+    ])->assertRedirect(route('election.transmission'));
+
     $this->post(route('election.transmission.custody'))
         ->assertRedirect(route('election.transmission'));
 
@@ -1013,6 +1018,7 @@ test('transmission page can prepare and expose delivery package', function (): v
     $transmission = $storage->readJson('transmission/transmission-report.json');
     $custody = $storage->readJson('custody/custody-record.json');
     $receipt = $storage->readJson('transmission/delivery-receipt.json');
+    $finalBackup = $storage->readJson('transmission/final-backup-report.json');
 
     $this->get(route('election.transmission'))
         ->assertSuccessful()
@@ -1029,6 +1035,8 @@ test('transmission page can prepare and expose delivery package', function (): v
             ->where('deliveryReceipt.exists', true)
             ->where('deliveryReceipt.delivery_receipt_id', $receipt['delivery_receipt_id'])
             ->where('deliveryReceipt.status', 'accepted')
+            ->where('finalBackup.exists', true)
+            ->where('finalBackup.backup_id', $finalBackup['backup_id'] ?? null)
         );
 });
 
@@ -1136,6 +1144,69 @@ test('transmission page can record delivery receipt only after recipient verific
             ->where('deliveryReceipt.exists', true)
             ->where('deliveryReceipt.delivery_receipt_id', $receipt['delivery_receipt_id'] ?? null)
             ->where('deliveryReceipt.delivery_driver', 'manual')
+        );
+});
+
+test('transmission page requires final backup before custody transfer', function (): void {
+    $this->artisan('election:scenario election-return-copy-distribution')
+        ->assertSuccessful();
+
+    $this->from(route('election.returns'))
+        ->post(route('election.returns.close'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.send'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.prepare'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.officer-verification'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'verification_note' => 'Verified handoff with custody pre-check.',
+        'stage' => app(LifecycleState::class)->current(),
+    ])->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.recipient-verification'), [
+        'recipient' => 'Election Board Officer',
+        'recipient_role' => 'Election Board',
+        'handoff_date' => '2026-05-08',
+        'handoff_time' => '14:30',
+        'delivery_method' => 'manual',
+        'acknowledged' => true,
+        'acknowledgement_note' => 'Recipient accepted package and will secure it.',
+        'stage' => app(LifecycleState::class)->current(),
+    ])->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.receipt'), [
+        'stage' => app(LifecycleState::class)->current(),
+        'delivery_note' => 'Receipt for pre-custody final backup test.',
+    ])->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.custody'))
+        ->assertRedirect(route('election.transmission'))
+        ->assertSessionHasErrors('stage');
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.final-backup'), [
+        'stage' => app(LifecycleState::class)->current(),
+        'backup_note' => 'Completing final backup before custody transfer.',
+    ])->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.custody'))
+        ->assertRedirect(route('election.transmission'));
+
+    $receipt = app(ElectionStorage::class)->readJson('transmission/delivery-receipt.json');
+    $finalBackup = app(ElectionStorage::class)->readJson('transmission/final-backup-report.json');
+
+    $this->get(route('election.transmission'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Transmission')
+            ->where('deliveryReceipt.exists', true)
+            ->where('deliveryReceipt.delivery_receipt_id', $receipt['delivery_receipt_id'] ?? null)
+            ->where('finalBackup.exists', true)
+            ->where('finalBackup.backup_id', $finalBackup['backup_id'] ?? null)
         );
 });
 

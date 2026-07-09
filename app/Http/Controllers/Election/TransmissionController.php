@@ -8,10 +8,12 @@ use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Support\ElectionStorage;
 use App\Election\Transmission\DeliveryPackageService;
 use App\Election\Transmission\DeliveryReceiptService;
+use App\Election\Transmission\FinalBackupService;
 use App\Election\Transmission\ManualHandoffService;
 use App\Election\Transmission\TransmissionService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDeliveryReceiptRequest;
+use App\Http\Requests\StoreFinalBackupRequest;
 use App\Http\Requests\StoreManualHandoffOfficerVerificationRequest;
 use App\Http\Requests\StoreManualHandoffRecipientVerificationRequest;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +28,7 @@ final class TransmissionController extends Controller
         DeliveryPackageService $package,
         ManualHandoffService $handoff,
         DeliveryReceiptService $receipt,
+        FinalBackupService $finalBackup,
     ): Response {
         return Inertia::render('Election/Transmission', [
             'snapshot' => $snapshot->get(),
@@ -35,6 +38,7 @@ final class TransmissionController extends Controller
             'manualOfficerVerification' => $handoff->officerVerificationSummary(),
             'manualRecipientVerification' => $handoff->recipientVerificationSummary(),
             'deliveryReceipt' => $receipt->summary(),
+            'finalBackup' => $finalBackup->summary(),
         ]);
     }
 
@@ -69,6 +73,13 @@ final class TransmissionController extends Controller
     public function recordReceipt(StoreDeliveryReceiptRequest $request, DeliveryReceiptService $receipt): RedirectResponse
     {
         $receipt->prepare($request->validated());
+
+        return redirect()->route('election.transmission');
+    }
+
+    public function recordFinalBackup(StoreFinalBackupRequest $request, FinalBackupService $finalBackup): RedirectResponse
+    {
+        $finalBackup->perform($request->validated());
 
         return redirect()->route('election.transmission');
     }

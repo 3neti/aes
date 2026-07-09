@@ -42,6 +42,13 @@ final class CustodyService
             throw new RuntimeException('Cannot record custody before transmission exists.');
         }
 
+        $finalBackup = $this->storage->readJson('transmission/final-backup-report.json');
+        if ($finalBackup === []) {
+            throw ValidationException::withMessages([
+                'stage' => 'Cannot record custody before final backup report is complete.',
+            ]);
+        }
+
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
         $precinct = (string) ($configuration['precinct_id'] ?? '0421-A');
 
