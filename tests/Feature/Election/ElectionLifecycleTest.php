@@ -884,6 +884,33 @@ test('election return copy distribution scenario runs deterministically', functi
         ->and(file_exists($artifactPath))->toBeTrue();
 });
 
+test('delivery package scenario command succeeds', function (): void {
+    $this->artisan('election:scenario delivery-package')
+        ->expectsOutput('Scenario delivery-package passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-delivery-package')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $report = app(ElectionStorage::class)->readJson('scenarios/delivery-package-report.json');
+    $package = app(ElectionStorage::class)->readJson('transmission/delivery-package.json');
+    $distribution = app(ElectionStorage::class)->readJson('returns/39010001-copy-distribution.json');
+
+    expect($report['scenario'])->toBe('delivery-package')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['run_id'])->toBeString()
+        ->and($report['precinct_id'])->toBe('39010001')
+        ->and($report['accepted_ballots'])->toBe(1)
+        ->and($report['rejected_ballots'])->toBe(1)
+        ->and($report['distribution_hash'])->toBe($distribution['distribution_hash'])
+        ->and($report['delivery_package_hash'])->toBe($package['delivery_package_hash'])
+        ->and($report['required_artifacts_present'])->toBeTrue()
+        ->and($report['artifact_count'])->toBeGreaterThan(0)
+        ->and($report['delivery_package_path'])->toBe($package['artifact_path'])
+        ->and($report['transmission_id'])->toBe($package['transmission']['transmission_id'] ?? null)
+        ->and($report['transmission_hash'])->toBe($package['transmission']['transmission_hash'] ?? null)
+        ->and(file_exists($package['artifact_path'] ?? null))->toBeTrue();
+});
+
 test('full demo scenario command succeeds', function (): void {
     $this->artisan('election:scenario full-demo')
         ->expectsOutput('Scenario full-demo passed.')

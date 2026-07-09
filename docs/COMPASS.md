@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: ER Copy Distribution and Posting Slice (Slice 16)
-- Next Slice: Delivery Package Slice (Slice 17)
+- Completed Slice: Delivery Package Slice (Slice 17)
+- Next Slice: Manual Handoff and Recipient Verification Slice (Slice 18)
 
 ## Domains, Waves, and Vertical Slices
 

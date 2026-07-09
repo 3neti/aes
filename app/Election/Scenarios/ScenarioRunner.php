@@ -31,6 +31,8 @@ use App\Election\Returns\ElectionReturnCopyDistributionService;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Transmission\DeliveryPackageService;
+use App\Election\Transmission\TransmissionService;
 use App\Election\Voting\BallotPayloadService;
 use InvalidArgumentException;
 use RuntimeException;
@@ -67,6 +69,8 @@ final class ScenarioRunner
         private readonly OfficialMinutesBaselineService $officialMinutes,
         private readonly ElectoralBoardBaselineService $electoralBoardBaseline,
         private readonly SupplyVerificationBaselineService $supplyVerificationBaseline,
+        private readonly TransmissionService $transmission,
+        private readonly DeliveryPackageService $deliveryPackage,
     ) {}
 
     /**
@@ -94,6 +98,7 @@ final class ScenarioRunner
             'close-polls-and-counting-legal-evidence' => $this->closePollsAndCountingLegalEvidenceScenario(),
             'election-return-legal-artifact' => $this->electionReturnLegalArtifactScenario(),
             'election-return-copy-distribution' => $this->electionReturnCopyDistributionScenario(),
+            'delivery-package' => $this->deliveryPackageScenario(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -648,6 +653,70 @@ final class ScenarioRunner
     /**
      * @return array<string, mixed>
      */
+    private function deliveryPackageScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+        $certification = $this->certification->run();
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+
+        $this->ceremonies->openPolls('Scenario Officer');
+        $this->ceremonies->openPolls('Scenario Officer');
+
+        $acceptedPayload = $this->payloads->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'scenario-delivery-accepted');
+
+        $rejectedPayload = $this->payloads->finalize([
+            'president' => ['pres-sarah'],
+            'mayor' => ['mayor-jose'],
+            'council' => ['council-ben'],
+        ], 'scenario-delivery-rejected');
+        $this->spoil->handle($rejectedPayload['payload_hash']);
+
+        $this->ceremonies->closePolls('Scenario Officer');
+        $this->ceremonies->startCounting();
+        $this->counting->accept($acceptedPayload['qr_payload']);
+        $this->counting->accept($rejectedPayload['qr_payload']);
+        $tally = $this->counting->tally();
+
+        $this->ceremonies->moveToReturns();
+        $return = $this->returns->generate($tally);
+        $copyDistribution = $this->returnCopyDistribution->prepare($return);
+        $this->ceremonies->moveToTransmission();
+        $transmission = $this->transmission->run();
+        $this->ceremonies->completeTransmission();
+        $package = $this->deliveryPackage->prepare($transmission);
+
+        return [
+            'scenario' => 'delivery-package',
+            'passed' => (bool) ($package['required_artifacts_present'] ?? false),
+            'run_id' => $this->storage->currentRun()['run_id'] ?? null,
+            'precinct_id' => $activation['configuration']['precinct_id'] ?? $package['precinct_id'] ?? null,
+            'certification_report_hash' => $certification['report_hash'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'return_hash' => $return['return_hash'] ?? null,
+            'accepted_ballots' => $tally['accepted_ballots'] ?? 0,
+            'rejected_ballots' => $tally['rejected_ballots'] ?? 0,
+            'distribution_hash' => $copyDistribution['distribution_hash'] ?? null,
+            'transmission_id' => $transmission['transmission_id'] ?? null,
+            'transmission_hash' => $transmission['transmission_hash'] ?? null,
+            'delivery_package_path' => $package['artifact_path'] ?? null,
+            'delivery_package_hash' => $package['delivery_package_hash'] ?? null,
+            'required_artifacts_present' => $package['required_artifacts_present'] ?? false,
+            'artifact_count' => $package['artifact_count'] ?? 0,
+            'package_id' => $package['package_id'] ?? null,
+            'stage_after_transmission' => $this->lifecycle->current(),
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function votingLegalEdgeCasesScenario(): array
     {
         $this->activateConfiguredPrecinctBallot();
@@ -750,7 +819,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
-            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution' => $this->popClusteredPrecinct(),
+            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

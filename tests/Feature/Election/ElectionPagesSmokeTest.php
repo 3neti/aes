@@ -35,6 +35,7 @@ test('ceremony page renders :component', function (string $route, string $compon
     'printing' => ['election.printing', 'Election/Printing'],
     'counting' => ['election.counting', 'Election/Counting'],
     'returns' => ['election.returns', 'Election/Returns'],
+    'transmission' => ['election.transmission', 'Election/Transmission'],
     'diagnostics' => ['election.diagnostics', 'Election/Diagnostics'],
 ]);
 
@@ -964,6 +965,43 @@ test('returns page can prepare copy distribution and show posting summary', func
             ->where('returnCopyDistribution.copy_count', 3)
             ->where('returnCopyDistribution.required_copy_count', 2)
             ->where('returnCopyDistribution.posting.status', 'completed')
+        );
+});
+
+test('transmission page can prepare and expose delivery package', function (): void {
+    $this->artisan('election:scenario election-return-copy-distribution')
+        ->assertSuccessful();
+
+    $this->from(route('election.returns'))
+        ->post(route('election.returns.close'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.send'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.prepare'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.custody'))
+        ->assertRedirect(route('election.transmission'));
+
+    $storage = app(ElectionStorage::class);
+    $package = $storage->readJson('transmission/delivery-package.json');
+    $transmission = $storage->readJson('transmission/transmission-report.json');
+    $custody = $storage->readJson('custody/custody-record.json');
+
+    $this->get(route('election.transmission'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Transmission')
+            ->where('deliveryPackage.exists', true)
+            ->where('deliveryPackage.package_id', $package['package_id'])
+            ->where('deliveryPackage.package_hash', $package['delivery_package_hash'])
+            ->where('deliveryPackage.artifact_count', 6)
+            ->where('deliveryPackage.required_artifacts_present', true)
+            ->where('transmission.transmission_id', $transmission['transmission_id'])
+            ->where('custody.custody_id', $custody['custody_id'] ?? null)
+            ->where('custody.status', 'sealed')
         );
 });
 

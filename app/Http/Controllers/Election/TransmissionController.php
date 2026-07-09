@@ -6,6 +6,7 @@ use App\Election\Core\ElectionSnapshot;
 use App\Election\Custody\CustodyService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Support\ElectionStorage;
+use App\Election\Transmission\DeliveryPackageService;
 use App\Election\Transmission\TransmissionService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -14,13 +15,21 @@ use Inertia\Response;
 
 final class TransmissionController extends Controller
 {
-    public function show(ElectionSnapshot $snapshot, ElectionStorage $storage): Response
+    public function show(ElectionSnapshot $snapshot, ElectionStorage $storage, DeliveryPackageService $package): Response
     {
         return Inertia::render('Election/Transmission', [
             'snapshot' => $snapshot->get(),
             'transmission' => $storage->readJson('transmission/transmission-report.json'),
+            'deliveryPackage' => $package->summary(),
             'custody' => $storage->readJson('custody/custody-record.json'),
         ]);
+    }
+
+    public function preparePackage(DeliveryPackageService $package): RedirectResponse
+    {
+        $package->prepare();
+
+        return redirect()->route('election.transmission');
     }
 
     public function send(TransmissionService $transmission, CeremonyActions $ceremonies): RedirectResponse

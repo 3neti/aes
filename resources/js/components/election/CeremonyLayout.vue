@@ -7,6 +7,7 @@ import { counting } from '@/routes/election';
 import { diagnostics } from '@/routes/election';
 import { provision } from '@/routes/election';
 import { returns } from '@/routes/election';
+import { transmission } from '@/routes/election';
 import { voting } from '@/routes/election';
 import { store as storeAttestation } from '@/routes/election/attestations';
 import type { ElectionSnapshot } from './types';
@@ -153,6 +154,9 @@ onBeforeUnmount(() => {
                         >
                         <Link class="nav-link" :href="returns.url()"
                             >Returns</Link
+                        >
+                        <Link class="nav-link" :href="transmission.url()"
+                            >Transmission</Link
                         >
                         <Link class="nav-link" :href="diagnostics.url()"
                             >Diagnostics</Link
