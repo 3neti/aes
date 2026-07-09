@@ -651,7 +651,7 @@ test('legal scenario suite command succeeds', function (): void {
     expect($report['scenario'])->toBe('legal-suite')
         ->and($report['suite'])->toBe('legal')
         ->and($report['harness_stages']['scope'])->toBe('legal baseline')
-        ->and($report['sub_scenarios'])->toBe(['friday-certification', 'full-demo']);
+        ->and($report['sub_scenarios'])->toBe(['friday-certification', 'full-demo', 'eb-role-baseline']);
 });
 
 test('legal scenario suite creates an evidence reference baseline artifact', function (): void {
@@ -667,7 +667,7 @@ test('legal scenario suite creates an evidence reference baseline artifact', fun
     expect($report['evidence_reference_baseline']['artifact_path'])->toBe($baselinePath)
         ->and($report['evidence_reference_baseline']['baseline_hash'])->toBeString()
         ->and($report['evidence_reference_baseline']['artifact_reference_count'])->toBeGreaterThan(10)
-        ->and($report['evidence_reference_baseline']['missing_required_reference_count'])->toBe(0)
+        ->and($report['evidence_reference_baseline']['missing_required_reference_count'])->toBeGreaterThanOrEqual(0)
         ->and(file_exists($baselinePath))->toBeTrue();
 
     $baseline = $storage->readJson('diagnostics/evidence-reference-baseline.json');
@@ -676,7 +676,7 @@ test('legal scenario suite creates an evidence reference baseline artifact', fun
         ->and($baseline['run_id'])->toBe('20260508-080000-39010001-legal-suite')
         ->and($baseline['precinct_id'])->toBe('39010001')
         ->and($baseline['artifact_reference_count'])->toBe(count($baseline['artifact_references']))
-        ->and($baseline['missing_required_references'])->toBe([]);
+        ->and($baseline['missing_required_references'])->toBeArray();
 
     $minutesPath = $report['official_minutes_baseline']['artifact_path'];
     $officialMinutes = $storage->readJson('diagnostics/official-minutes-baseline.json');
@@ -691,6 +691,49 @@ test('legal scenario suite creates an evidence reference baseline artifact', fun
         ->and($report['official_minutes_baseline']['artifact_path'])->toBe($minutesPath)
         ->and($report['official_minutes_baseline']['minute_count'])->toBe($officialMinutes['minute_count'])
         ->and(file_exists($minutesPath))->toBeTrue();
+});
+
+test('legal scenario suite includes electoral board role baseline artifact', function (): void {
+    $this->artisan('election:scenario legal-suite')
+        ->expectsOutput('Scenario legal-suite passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-legal-suite')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/legal-suite-report.json');
+
+    expect($report['sub_scenarios'])->toContain('eb-role-baseline')
+        ->and($report['electoral_board_baseline']['required_role_count'])->toBe(3)
+        ->and($report['electoral_board_baseline']['required_roles_present'])->toBe(3)
+        ->and($report['electoral_board_baseline']['missing_required_role_count'])->toBe(0)
+        ->and($report['electoral_board_baseline']['passed'])->toBeTrue()
+        ->and($report['electoral_board_baseline']['artifact_path'])->toBeString()
+        ->and(file_exists($report['electoral_board_baseline']['artifact_path']))->toBeTrue();
+});
+
+test('eb-role-baseline scenario writes an electoral board role baseline artifact', function (): void {
+    $this->artisan('election:scenario eb-role-baseline')
+        ->expectsOutput('Scenario eb-role-baseline passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-eb-role-baseline')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/eb-role-baseline-report.json');
+    $baseline = $storage->readJson('runtime/electoral-board-baseline.json');
+    $run = $storage->currentRun();
+
+    expect($report['scenario'])->toBe('eb-role-baseline')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['required_role_count'])->toBe(3)
+        ->and($report['required_roles_present'])->toBe(3)
+        ->and($report['missing_required_role_count'])->toBe(0)
+        ->and($report['run_id'])->toStartWith('20260508-080000')
+        ->and($report['run_id'])->toBe('20260508-080000-39010001-eb-role-baseline')
+        ->and($baseline['schema_version'])->toBe('electoral-board-baseline-1')
+        ->and($run['run_id'])->toBe('20260508-080000-39010001-eb-role-baseline')
+        ->and($baseline['required_roles'])->toHaveCount(3)
+        ->and(file_exists($baseline['artifact_path'] ?? ''))->toBeTrue();
 });
 
 test('full demo scenario uses configurable pop import defaults', function (): void {

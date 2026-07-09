@@ -48,8 +48,46 @@ return [
         [
             'code' => 'SIM-OFFICER-001',
             'name' => 'Simulation Officer',
-            'role' => 'Precinct Chair',
+            'role' => 'Election Board Chairperson',
             'pin_hash' => '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+        ],
+        [
+            'code' => 'SIM-OFFICER-002',
+            'name' => 'Simulation Poll Clerk',
+            'role' => 'Poll Clerk',
+            'pin_hash' => '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+        ],
+        [
+            'code' => 'SIM-OFFICER-003',
+            'name' => 'Simulation EB Member',
+            'role' => 'Third Member',
+            'pin_hash' => '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+        ],
+    ],
+    'electoral_board_roles' => [
+        'required' => [
+            [
+                'code' => 'chairperson',
+                'name' => 'Election Board Chairperson',
+                'officer_roles' => ['Election Board Chairperson'],
+            ],
+            [
+                'code' => 'poll_clerk',
+                'name' => 'Poll Clerk',
+                'officer_roles' => ['Poll Clerk'],
+            ],
+            [
+                'code' => 'third_member',
+                'name' => 'Third Member',
+                'officer_roles' => ['Third Member'],
+            ],
+        ],
+        'optional' => [
+            [
+                'code' => 'support_staff',
+                'name' => 'Electoral Board Support Staff',
+                'officer_roles' => ['Support Staff'],
+            ],
         ],
     ],
     'devices' => [

@@ -45,6 +45,14 @@ final class OfficerRegistry
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function all(): array
+    {
+        return $this->officers();
+    }
+
+    /**
      * @return array<int, array{code_hash: string, name: string, role: string}>
      */
     public function summaries(): array

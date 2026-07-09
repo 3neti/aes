@@ -2,6 +2,7 @@
 
 namespace App\Election\Scenarios;
 
+use App\Election\Attestation\ElectoralBoardBaselineService;
 use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Certification\CertificationDeckBuilder;
 use App\Election\Certification\CertificationService;
@@ -48,6 +49,7 @@ final class ScenarioRunner
         private readonly CertificationDeckBuilder $deckBuilder,
         private readonly EvidenceReferenceBaselineService $baseline,
         private readonly OfficialMinutesBaselineService $officialMinutes,
+        private readonly ElectoralBoardBaselineService $electoralBoardBaseline,
     ) {}
 
     /**
@@ -64,16 +66,15 @@ final class ScenarioRunner
             'full-demo' => $this->fullDemo(),
             'evidence-folder-demo' => $this->evidenceFolderDemo(),
             'pop-import-demo' => $this->popImportDemo(),
+            'eb-role-baseline' => $this->electoralBoardBaselineScenario(),
             'legal-suite' => $this->legalSuite(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
-        $archivePath = $this->storage->writeScenarioReport($name, $report, $this->clock->now()->format('Y-m-d-His'));
-        $run = $this->storage->finalizeRun($name, $report);
-
         if ($name === 'legal-suite') {
             $baseline = $this->baseline->write();
             $minutesBaseline = $this->officialMinutes->write();
+            $roleBaseline = $this->electoralBoardBaseline->write();
 
             $run['evidence_reference_baseline_path'] = $baseline['artifact_path'];
             $run['evidence_reference_baseline_hash'] = $baseline['baseline_hash'] ?? null;
@@ -93,7 +94,21 @@ final class ScenarioRunner
                 'source_attestation_count' => $minutesBaseline['source_attestation_count'] ?? 0,
                 'official_minute_hash' => $minutesBaseline['official_minute_hash'] ?? null,
             ];
+
+            $run['electoral_board_baseline_path'] = $roleBaseline['artifact_path'];
+            $run['electoral_board_baseline_hash'] = $roleBaseline['baseline_hash'] ?? null;
+            $report['electoral_board_baseline'] = [
+                'artifact_path' => $roleBaseline['artifact_path'],
+                'required_role_count' => $roleBaseline['required_role_count'] ?? 0,
+                'required_roles_present' => $roleBaseline['required_roles_present'] ?? 0,
+                'missing_required_role_count' => $roleBaseline['missing_required_role_count'] ?? 0,
+                'passed' => $roleBaseline['passed'] ?? false,
+                'baseline_hash' => $roleBaseline['baseline_hash'] ?? null,
+            ];
         }
+
+        $archivePath = $this->storage->writeScenarioReport($name, $report, $this->clock->now()->format('Y-m-d-His'));
+        $run = $this->storage->finalizeRun($name, $report);
 
         $this->storage->writeJson("scenarios/{$name}-report.json", $report);
         $this->clock->unfreeze();
@@ -203,7 +218,30 @@ final class ScenarioRunner
             'sub_scenarios' => [
                 'friday-certification',
                 'full-demo',
+                'eb-role-baseline',
             ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function electoralBoardBaselineScenario(): array
+    {
+        $baseline = $this->electoralBoardBaseline->write();
+
+        return [
+            'scenario' => 'eb-role-baseline',
+            'passed' => (bool) ($baseline['passed'] ?? false),
+            'run_id' => $baseline['run_id'] ?? null,
+            'precinct_id' => $baseline['precinct_id'] ?? null,
+            'required_role_count' => $baseline['required_role_count'] ?? 0,
+            'required_roles_present' => $baseline['required_roles_present'] ?? 0,
+            'missing_required_role_count' => $baseline['missing_required_role_count'] ?? 0,
+            'required_roles' => $baseline['required_roles'] ?? [],
+            'baseline_hash' => $baseline['baseline_hash'] ?? null,
+            'artifact_path' => $baseline['artifact_path'] ?? null,
+            'journal_entries' => count($this->journal->entries()),
         ];
     }
 
@@ -298,7 +336,7 @@ final class ScenarioRunner
     private function scenarioPrecinct(string $name): string
     {
         return match ($name) {
-            'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite' => $this->popClusteredPrecinct(),
+            'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

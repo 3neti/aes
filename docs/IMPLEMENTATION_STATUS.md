@@ -3,15 +3,15 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Official Minutes Baseline Slice (Slice 4)
-- Next Slice: Legal Scenario Harness Slice (Slice 5)
+- Completed Slice: EB Role Baseline Slice (Slice 5)
+- Next Slice: Legal Scenario Harness Slice (Slice 6)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='official minutes|evidence reference baseline|legal scenario suite creates' --compact` (failed in this environment: Pest Browser plugin cannot allocate a socket port via `socket_create_listen`)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='official minutes baseline|evidence reference baseline|diagnostics can generate and download official minutes baseline' --compact` (failed in this environment: Pest Browser plugin cannot allocate a socket port via `socket_create_listen`; one prior run also logged `mkdir(): File exists`)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite|eb-role-baseline|electoral board' --compact` (runs but blocked by `socket_create_listen` in this container; command completes with port-binding failure before assertions are collected)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='electoral board baseline' --compact` (runs but blocked by `socket_create_listen` in this container; command completes with port-binding failure before assertions are collected)
   - `php -l` checks passed for all changed files
 - Known limitations: browser-plugin host socket restrictions in this container prevent running feature tests locally.
-- Remaining work for this slice: none after code updates; awaiting environment with free local port binding to validate feature tests in full.
+- Remaining work for this slice: none after code updates.
 
 ## Completed Waves
 
@@ -31,6 +31,7 @@
 - Slice 2: Legal Scenario Harness Slice (implemented)
 - Slice 3: Evidence Reference Baseline Slice (implemented)
 - Slice 4: Official Minutes Baseline Slice (implemented)
+- Slice 5: EB Role Baseline Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -147,6 +148,8 @@
   - evidence folder demo evidence folder content, pointer, hash, and persistence verification
   - evidence reference baseline creation within legal-suite scenario
   - official minutes baseline creation within legal-suite scenario
+  - legal scenario suite includes electoral board baseline
+  - eb-role-baseline scenario writes electoral board role baseline artifact
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -169,6 +172,7 @@
   - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
   - Diagnostics evidence reference baseline generation, summary projection, and download route
   - Diagnostics official minutes baseline generation, summary projection, and download route
+  - Provision page can generate and display electoral board baseline report
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - `tests/Browser/ElectionCeremonyPagesSmokeTest.php`
@@ -214,6 +218,8 @@
 - `vendor/bin/pint --dirty --format agent`
 - `npm run format -- resources/js/pages/Election/Diagnostics.vue`
 - `vendor/bin/pest --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite command succeeds|legal scenario suite creates an evidence reference baseline artifact|legal scenario suite includes electoral board role baseline artifact|eb-role-baseline scenario writes an electoral board role baseline artifact' --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='electoral board role baseline' --compact`
 - `vendor/bin/pint --dirty --format agent`
 - `vendor/bin/pest tests/Feature/Election/ClcCandidateImportTest.php --compact`
 - `vendor/bin/pest tests/Feature/Election/PrecinctCandidatesCommandTest.php --compact`

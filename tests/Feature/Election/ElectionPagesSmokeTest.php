@@ -97,6 +97,26 @@ test('diagnostics page can run device adapter certification', function (): void 
         );
 });
 
+test('provision page can generate and display electoral board role baseline', function (): void {
+    $this->post(route('election.provision.eb-role-baseline'))
+        ->assertRedirect(route('election.provision'))
+        ->assertSessionHas('electoral_board_baseline_hash');
+
+    $this->get(route('election.provision'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Provision')
+            ->has('electoralBoardBaseline')
+            ->where('electoralBoardBaseline.exists', true)
+            ->where('electoralBoardBaseline.required_role_count', 3)
+            ->where('electoralBoardBaseline.required_roles_present', 3)
+            ->where('electoralBoardBaseline.missing_required_role_count', 0)
+            ->where('electoralBoardBaseline.passed', true)
+            ->where('electoralBoardBaseline.baseline_hash', fn (string $hash): bool => $hash !== '')
+            ->has('snapshot.stage')
+        );
+});
+
 test('diagnostics page exposes attestation signature evidence bundle', function (): void {
     $this->post(route('election.attestations.store'), [
         'ceremony' => 'Friday Certification',
