@@ -3,8 +3,8 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Audit Reconciliation Baseline Slice (Slice 22)
-- Next Slice: Special Polling Intake Slice (Slice 23)
+- Completed Slice: Special Polling Intake Slice (Slice 23)
+- Next Slice: Future Delivery Drivers Slice (Slice 24) is deferred
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds|lifecycle includes transmission, final backup, and custody stages' --compact` (pass)
@@ -33,6 +33,8 @@
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds' --compact` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='custody turnover scenario command succeeds' --compact` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='audit reconciliation baseline scenario command succeeds' --compact` (pass)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='special polling intake scenario records deterministic entries and hashes' --compact`
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page can record special polling intake during voting and close-polls' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='diagnostics can generate and download audit reconciliation baseline' --compact` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page requires final backup before custody transfer' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can record custody turnover report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
@@ -81,6 +83,7 @@
 - Slice 20: Final Backup After Delivery Slice (implemented)
 - Slice 21: Custody Turnover and Custody Report Slice (implemented)
 - Slice 22: Audit Reconciliation Baseline Slice (implemented)
+- Slice 23: Special Polling Intake Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.

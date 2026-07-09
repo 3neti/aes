@@ -35,6 +35,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/voting/open-polls', [VotingController::class, 'openPolls'])->name('voting.open-polls');
     Route::post('/voting/finalize', [VotingController::class, 'finalize'])->name('voting.finalize');
     Route::post('/voting/close-polls', [VotingController::class, 'closePolls'])->name('voting.close-polls');
+    Route::post('/voting/special-polling-intake', [VotingController::class, 'recordSpecialPollingIntake'])->name('voting.special-polling-intake');
     Route::get('/printing/{ballot?}', [PrintingController::class, 'show'])->name('printing');
     Route::post('/printing/{ballot}/print', [PrintingController::class, 'print'])->name('printing.print');
     Route::post('/printing/{ballot}/spoil', [PrintingController::class, 'spoil'])->name('printing.spoil');

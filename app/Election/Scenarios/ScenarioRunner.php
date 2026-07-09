@@ -39,6 +39,7 @@ use App\Election\Transmission\FinalBackupService;
 use App\Election\Transmission\ManualHandoffService;
 use App\Election\Transmission\TransmissionService;
 use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\SpecialPollingIntakeService;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -81,6 +82,7 @@ final class ScenarioRunner
         private readonly DeliveryReceiptService $deliveryReceipt,
         private readonly FinalBackupService $finalBackup,
         private readonly CustodyService $custody,
+        private readonly SpecialPollingIntakeService $specialPollingIntake,
     ) {}
 
     /**
@@ -105,6 +107,7 @@ final class ScenarioRunner
             'fts-manual-verification-discrepancy' => $this->manualVerificationDiscrepancyScenario(),
             'fts-zero-out' => $this->zeroOutScenario(),
             'voting-legal-edge-cases' => $this->votingLegalEdgeCasesScenario(),
+            'special-polling-intake' => $this->specialPollingIntakeScenario(),
             'close-polls-and-counting-legal-evidence' => $this->closePollsAndCountingLegalEvidenceScenario(),
             'election-return-legal-artifact' => $this->electionReturnLegalArtifactScenario(),
             'election-return-copy-distribution' => $this->electionReturnCopyDistributionScenario(),
@@ -1195,6 +1198,77 @@ final class ScenarioRunner
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function specialPollingIntakeScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $devices = $this->devices->run();
+        $this->clock->tick();
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+
+        $this->ceremonies->openPolls('Scenario Officer');
+        $this->ceremonies->openPolls('Scenario Officer');
+
+        $first = $this->specialPollingIntake->record([
+            'stage' => $this->lifecycle->current(),
+            'intake_type' => 'ppp',
+            'ballot_count' => 7,
+            'received_from' => 'City Clerk',
+            'received_by' => 'Scenario Officer',
+            'notes' => 'S-PPP bundle 1.',
+        ]);
+
+        $this->clock->tick();
+        $second = $this->specialPollingIntake->record([
+            'stage' => $this->lifecycle->current(),
+            'intake_type' => 'ip',
+            'ballot_count' => 4,
+            'received_from' => 'Barangay Social Welfare Officer',
+            'received_by' => 'Scenario Officer',
+            'notes' => 'Indigenous peoples packet.',
+        ]);
+
+        $this->ceremonies->closePolls('Scenario Officer');
+
+        $this->clock->tick();
+        $third = $this->specialPollingIntake->record([
+            'stage' => $this->lifecycle->current(),
+            'intake_type' => 'pdl',
+            'ballot_count' => 3,
+            'received_from' => 'Social Worker',
+            'received_by' => 'Scenario Officer',
+            'notes' => 'Accessible voting bundle.',
+        ]);
+
+        $summary = $this->storage->readJson('voting/special-polling-intake.json');
+
+        return [
+            'scenario' => 'special-polling-intake',
+            'passed' => (bool) (($summary['special_polling_intake_hash'] ?? null) !== null)
+                && (($summary['entry_count'] ?? 0) === 3),
+            'run_id' => $summary['run_id'] ?? null,
+            'precinct_id' => $activation['configuration']['precinct_id'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'special_polling_intake_path' => $this->storage->path('voting/special-polling-intake.json'),
+            'special_polling_intake_hash' => $summary['special_polling_intake_hash'] ?? null,
+            'entry_count' => $summary['entry_count'] ?? 0,
+            'total_ballots' => $summary['total_ballots'] ?? 0,
+            'totals_by_type' => $summary['totals_by_type'] ?? [],
+            'entry_paths' => $summary['entry_paths'] ?? [],
+            'latest_entry_hash' => $third['entry_hash'] ?? null,
+            'first_entry_id' => $first['intake_id'] ?? null,
+            'second_entry_id' => $second['intake_id'] ?? null,
+            'third_entry_id' => $third['intake_id'] ?? null,
+            'first_entry_path' => $first['entry_path'] ?? null,
+            'second_entry_path' => $second['entry_path'] ?? null,
+            'third_entry_path' => $third['entry_path'] ?? null,
+            'journal_entries' => count($this->journal->entries()),
+            'stage_after_special_intake' => $this->lifecycle->current(),
+        ];
+    }
+
+    /**
      * @return array{configuration: array<string, mixed>, pop_import: array<string, mixed>, ballot_definition: array<string, mixed>}
      */
     private function activateConfiguredPrecinctBallot(): array
@@ -1243,7 +1317,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
-            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'delivery-receipt', 'manual-handoff', 'final-backup', 'custody-turnover', 'audit-reconciliation-baseline' => $this->popClusteredPrecinct(),
+            'open-polls-initialization-report', 'voting-legal-edge-cases', 'special-polling-intake', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'delivery-receipt', 'manual-handoff', 'final-backup', 'custody-turnover', 'audit-reconciliation-baseline' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

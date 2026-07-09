@@ -231,6 +231,35 @@ test('voting legal edge cases scenario blocks invalid lifecycle transitions', fu
         ->and($scenario['stage_after_close'])->toBe(Lifecycle::ClosePolls);
 });
 
+test('special polling intake scenario records deterministic entries and hashes', function (): void {
+    $this->artisan('election:scenario special-polling-intake')
+        ->expectsOutput('Scenario special-polling-intake passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-special-polling-intake')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $scenario = $storage->readJson('scenarios/special-polling-intake-report.json');
+    $summary = $storage->readJson('voting/special-polling-intake.json');
+    $entryPaths = $scenario['entry_paths'] ?? [];
+
+    expect($scenario['scenario'])->toBe('special-polling-intake')
+        ->and($scenario['passed'])->toBeTrue()
+        ->and($scenario['entry_count'])->toBe(3)
+        ->and($scenario['total_ballots'])->toBe(14)
+        ->and($scenario['totals_by_type']['ppp'])->toBe(7)
+        ->and($scenario['totals_by_type']['ip'])->toBe(4)
+        ->and($scenario['totals_by_type']['pdl'])->toBe(3)
+        ->and($scenario['special_polling_intake_hash'])->toBe($summary['special_polling_intake_hash'])
+        ->and($scenario['entry_paths'])->toHaveCount(3)
+        ->and($scenario['stage_after_special_intake'])->toBe(Lifecycle::ClosePolls)
+        ->and(file_exists($scenario['special_polling_intake_path']))->toBeTrue()
+        ->and(collect($entryPaths)->every(
+            fn (string $path): bool => file_exists($storage->path($path)),
+        ))->toBeTrue()
+        ->and($summary['run_id'] ?? null)->toBe($scenario['run_id']);
+});
+
 test('close polls and counting legal evidence scenario records both evidences', function (): void {
     $this->artisan('election:scenario close-polls-and-counting-legal-evidence')
         ->expectsOutput('Scenario close-polls-and-counting-legal-evidence passed.')

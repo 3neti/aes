@@ -10,8 +10,10 @@ use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\SpecialPollingIntakeService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OpenPollsRequest;
+use App\Http\Requests\StoreSpecialPollingIntakeRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +25,10 @@ final class VotingController extends Controller
 {
     public function show(ElectionSnapshot $snapshot): Response
     {
-        return Inertia::render('Election/Voting', ['snapshot' => $snapshot->get()]);
+        return Inertia::render('Election/Voting', [
+            'snapshot' => $snapshot->get(),
+            'specialPollingIntake' => app(SpecialPollingIntakeService::class)->summary(),
+        ]);
     }
 
     public function openPolls(
@@ -99,5 +104,14 @@ final class VotingController extends Controller
         }
 
         return redirect()->route('election.counting');
+    }
+
+    public function recordSpecialPollingIntake(
+        StoreSpecialPollingIntakeRequest $request,
+        SpecialPollingIntakeService $intake,
+    ): RedirectResponse {
+        $intake->record($request->validated());
+
+        return redirect()->route('election.voting');
     }
 }

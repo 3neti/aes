@@ -3,9 +3,17 @@ import { Form } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { Candidate, ElectionSnapshot } from '@/components/election/types';
-import { closePolls, finalize, openPolls } from '@/routes/election/voting';
+import {
+    closePolls,
+    finalize,
+    openPolls,
+    specialPollingIntake as specialPollingIntakeRoute,
+} from '@/routes/election/voting';
 
-defineProps<{ snapshot: ElectionSnapshot }>();
+defineProps<{
+    snapshot: ElectionSnapshot;
+    specialPollingIntake: Record<string, unknown>;
+}>();
 
 const filters = ref<Record<string, string>>({});
 
@@ -37,6 +45,15 @@ const canOpenPolls = (stage: string): boolean => stage === 'open_precinct';
 const canFinalize = (stage: string): boolean => stage === 'voting';
 
 const canClosePolls = (stage: string): boolean => stage === 'voting';
+
+const canRecordSpecialPolling = (stage: string): boolean =>
+    stage === 'voting' || stage === 'close_polls';
+
+const specialPollingTypes = [
+    { value: 'ppp', label: 'PPP / S-PPP' },
+    { value: 'pdl', label: 'PDL / PPD' },
+    { value: 'ip', label: 'Indigenous Peoples' },
+];
 </script>
 
 <template>
@@ -116,6 +133,130 @@ const canClosePolls = (stage: string): boolean => stage === 'voting';
                     </p>
                 </Form>
             </div>
+        </section>
+
+        <section
+            v-if="canRecordSpecialPolling(snapshot.stage)"
+            class="mt-4 border border-stone-300 bg-white p-5"
+        >
+            <h2 class="text-lg font-semibold">Special Polling Intake</h2>
+            <Form
+                v-bind="specialPollingIntakeRoute.form()"
+                #default="{ errors }"
+                class="mt-4 space-y-3"
+            >
+                <input
+                    name="stage"
+                    :value="snapshot.stage"
+                    type="hidden"
+                />
+                <label class="block">
+                    <span class="text-xs font-semibold">Polling Type</span>
+                    <select
+                        class="mt-1 block w-full border border-stone-300 px-2 py-2 text-sm"
+                        name="intake_type"
+                        required
+                    >
+                        <option value="" disabled selected>Choose polling type</option>
+                        <option
+                            v-for="type in specialPollingTypes"
+                            :key="type.value"
+                            :value="type.value"
+                        >
+                            {{ type.label }}
+                        </option>
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="text-xs font-semibold">Ballot Count</span>
+                    <input
+                        class="mt-1 block w-full border border-stone-300 px-2 py-2 text-sm"
+                        name="ballot_count"
+                        required
+                        type="number"
+                        min="1"
+                        max="2000"
+                    />
+                </label>
+                <label class="block">
+                    <span class="text-xs font-semibold">Received From</span>
+                    <input
+                        class="mt-1 block w-full border border-stone-300 px-2 py-2 text-sm"
+                        name="received_from"
+                        required
+                        type="text"
+                        autocomplete="off"
+                    />
+                </label>
+                <label class="block">
+                    <span class="text-xs font-semibold">Received By</span>
+                    <input
+                        class="mt-1 block w-full border border-stone-300 px-2 py-2 text-sm"
+                        name="received_by"
+                        type="text"
+                        autocomplete="off"
+                    />
+                </label>
+                <label class="block">
+                    <span class="text-xs font-semibold">Notes</span>
+                    <input
+                        class="mt-1 block w-full border border-stone-300 px-2 py-2 text-sm"
+                        name="notes"
+                        type="text"
+                        autocomplete="off"
+                    />
+                </label>
+                <button class="secondary-button" type="submit">
+                    Record Special Polling
+                </button>
+                <p v-if="errors.intake_type" class="text-sm font-semibold text-rose-700">
+                    {{ errors.intake_type }}
+                </p>
+                <p v-if="errors.ballot_count" class="text-sm font-semibold text-rose-700">
+                    {{ errors.ballot_count }}
+                </p>
+                <p
+                    v-if="errors.received_from"
+                    class="text-sm font-semibold text-rose-700"
+                >
+                    {{ errors.received_from }}
+                </p>
+                <p v-if="errors.stage" class="text-sm font-semibold text-rose-700">
+                    {{ errors.stage }}
+                </p>
+            </Form>
+        </section>
+
+        <section
+            v-if="specialPollingIntake.exists"
+            class="mt-4 border border-stone-300 bg-white p-5"
+        >
+            <h2 class="text-lg font-semibold">Special Polling Summary</h2>
+            <dl class="mt-3 text-sm">
+                <dt class="font-semibold">Total Intake Entries</dt>
+                <dd>{{ specialPollingIntake.entry_count }}</dd>
+                <dt class="mt-3 font-semibold">Total Special Ballots</dt>
+                <dd>{{ specialPollingIntake.total_ballots }}</dd>
+                <dt class="mt-3 font-semibold">Latest Record Hash</dt>
+                <dd class="break-all text-stone-700">
+                    {{ specialPollingIntake.latest_entry_hash }}
+                </dd>
+                <dt class="mt-3 font-semibold">Intake Artifact</dt>
+                <dd class="break-all text-stone-700">
+                    {{ specialPollingIntake.artifact }}
+                </dd>
+                <dt class="mt-3 font-semibold">By Type</dt>
+                <dd v-if="Object.keys(specialPollingIntake.totals_by_type).length">
+                    <ul class="list-disc pl-5">
+                        <li
+                            v-for="(count, type) in specialPollingIntake.totals_by_type"
+                            :key="type"
+                        >
+                            {{ type.toUpperCase() }}: {{ count }}
+                        </li>
+                    </ul>
+                </dd>
+            </dl>
         </section>
 
         <Form

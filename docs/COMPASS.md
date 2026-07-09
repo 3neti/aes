@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Audit Reconciliation Baseline Slice (Slice 22)
-- Next Slice: Special Polling Intake Slice (Slice 23)
+- Completed Slice: Special Polling Intake Slice (Slice 23)
+- Next Slice: Future Delivery Drivers Slice (Slice 24) is deferred
 
 ## Domains, Waves, and Vertical Slices
 

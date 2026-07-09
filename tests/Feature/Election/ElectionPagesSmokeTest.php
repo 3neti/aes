@@ -1335,6 +1335,69 @@ test('voting page can run open polls with authorized officer and write opening i
         ->and(is_bool($report['passed']))->toBeTrue();
 });
 
+test('voting page can record special polling intake during voting and close-polls', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::OpenPrecinct);
+
+    $this->post(route('election.voting.open-polls'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ])->assertRedirect(route('election.voting'));
+
+    $this->post(route('election.voting.special-polling-intake'), [
+        'stage' => Lifecycle::Voting,
+        'intake_type' => 'ppp',
+        'ballot_count' => 7,
+        'received_from' => 'City Clerk',
+        'received_by' => 'Scenario Officer',
+        'notes' => 'Scenario PPP intake.',
+    ])->assertRedirect(route('election.voting'));
+
+    $this->post(route('election.voting.special-polling-intake'), [
+        'stage' => Lifecycle::Voting,
+        'intake_type' => 'ip',
+        'ballot_count' => 4,
+        'received_from' => 'Barangay Assistant',
+        'received_by' => 'Scenario Officer',
+        'notes' => 'Scenario IP intake.',
+    ])->assertRedirect(route('election.voting'));
+
+    $this->post(route('election.voting.close-polls'))->assertRedirect(route('election.counting'));
+
+    $this->post(route('election.voting.special-polling-intake'), [
+        'stage' => Lifecycle::ClosePolls,
+        'intake_type' => 'pdl',
+        'ballot_count' => 3,
+        'received_from' => 'City Health Office',
+        'received_by' => 'Scenario Officer',
+        'notes' => 'Scenario PDL intake.',
+    ])->assertRedirect(route('election.voting'));
+
+    $intake = app(ElectionStorage::class)->readJson('voting/special-polling-intake.json');
+    $entryFiles = app(ElectionStorage::class)->files('voting/special-polling-intake-records');
+
+    expect($intake['entry_count'])->toBe(3)
+        ->and($intake['total_ballots'])->toBe(14)
+        ->and($intake['totals_by_type']['ppp'])->toBe(7)
+        ->and($intake['totals_by_type']['ip'])->toBe(4)
+        ->and($intake['totals_by_type']['pdl'])->toBe(3)
+        ->and($entryFiles)->toHaveCount(3)
+        ->and(file_exists($intake['artifact_path']))->toBeTrue();
+
+    $this->get(route('election.voting'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Voting')
+            ->where('specialPollingIntake.exists', true)
+            ->where('specialPollingIntake.entry_count', 3)
+            ->where('specialPollingIntake.total_ballots', 14)
+            ->where('specialPollingIntake.totals_by_type.ppp', 7)
+            ->where('specialPollingIntake.totals_by_type.ip', 4)
+            ->where('specialPollingIntake.totals_by_type.pdl', 3)
+            ->where('snapshot.stage', Lifecycle::ClosePolls)
+        );
+});
+
 test('voting page rejects open polls from an invalid lifecycle stage', function (): void {
     app(ActivateSamplePackage::class)->handle();
     app(LifecycleState::class)->set(Lifecycle::Provision);
