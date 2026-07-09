@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Certification\InitializationReportService;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\DiagnosticsService;
@@ -99,6 +100,28 @@ final class DiagnosticsController extends Controller
         return response()->download(
             $path,
             'official-minutes-baseline.json',
+            ['Content-Type' => 'application/json'],
+        );
+    }
+
+    public function generateInitializationReport(InitializationReportService $reportService): RedirectResponse
+    {
+        $report = $reportService->write();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('initialization_report_hash', $report['report_hash'] ?? null);
+    }
+
+    public function downloadInitializationReport(ElectionStorage $storage): BinaryFileResponse
+    {
+        $path = $storage->path('diagnostics/initialization-report.json');
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download(
+            $path,
+            'initialization-report.json',
             ['Content-Type' => 'application/json'],
         );
     }

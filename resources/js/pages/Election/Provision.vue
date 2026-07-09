@@ -160,7 +160,8 @@ defineProps<{
         <section class="mt-6 border border-stone-300 bg-white p-5">
             <h2 class="text-lg font-semibold">Supply Verification Baseline</h2>
             <p class="mt-2 text-sm text-stone-700">
-                Verify required supply artifacts are present before voting ceremonies begin.
+                Verify required supply artifacts are present before voting
+                ceremonies begin.
             </p>
             <Form v-bind="supplyVerificationBaselineAction.form()" class="mt-4">
                 <button class="secondary-button" type="submit">
@@ -174,13 +175,16 @@ defineProps<{
                 </dd>
                 <dt class="mt-2 font-semibold">Required Supplies</dt>
                 <dd class="text-stone-700">
-                    {{ supplyVerificationBaseline.required_supplies_present }}/{{
-                        supplyVerificationBaseline.required_supply_count
-                    }} present
+                    {{
+                        supplyVerificationBaseline.required_supplies_present
+                    }}/{{ supplyVerificationBaseline.required_supply_count }}
+                    present
                 </dd>
                 <dt class="mt-2 font-semibold">Missing Required Supplies</dt>
                 <dd class="text-stone-700">
-                    {{ supplyVerificationBaseline.required_supply_missing_count }}
+                    {{
+                        supplyVerificationBaseline.required_supply_missing_count
+                    }}
                 </dd>
                 <dt class="mt-2 font-semibold">Optional Supplies</dt>
                 <dd class="text-stone-700">
@@ -188,11 +192,16 @@ defineProps<{
                 </dd>
                 <dt class="mt-2 font-semibold">Status</dt>
                 <dd class="text-stone-700">
-                    {{ supplyVerificationBaseline.passed ? 'Ready' : 'Not Ready' }}
+                    {{
+                        supplyVerificationBaseline.passed
+                            ? 'Ready'
+                            : 'Not Ready'
+                    }}
                 </dd>
             </dl>
             <p v-else class="mt-3 text-sm text-stone-600">
-                No supply verification baseline has been generated in this run yet.
+                No supply verification baseline has been generated in this run
+                yet.
             </p>
         </section>
     </CeremonyLayout>

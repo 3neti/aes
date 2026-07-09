@@ -2,12 +2,18 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Attestation\OfficerRegistry;
+use App\Election\Certification\InitializationReportService;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Lifecycle\CeremonyActions;
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
 use App\Election\Voting\BallotPayloadService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\OpenPollsRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,9 +24,28 @@ final class VotingController extends Controller
         return Inertia::render('Election/Voting', ['snapshot' => $snapshot->get()]);
     }
 
-    public function openPolls(CeremonyActions $ceremonies): RedirectResponse
-    {
-        $ceremonies->openPolls();
+    public function openPolls(
+        OpenPollsRequest $request,
+        OfficerRegistry $officers,
+        LifecycleState $lifecycle,
+        InitializationReportService $initializationReport,
+        CeremonyActions $ceremonies,
+    ): RedirectResponse {
+        $officerCode = $request->validated('officer_code');
+        $officerPin = $request->validated('officer_pin');
+        $officer = $officers->verify($officerCode, $officerPin);
+
+        if ($officer === null) {
+            throw ValidationException::withMessages([
+                'officer_pin' => 'The officer code or PIN is invalid.',
+            ]);
+        }
+
+        if ($lifecycle->current() === Lifecycle::OpenPrecinct) {
+            $initializationReport->write('opening/initialization-report.json');
+        }
+
+        $ceremonies->openPolls($officer['name']);
 
         return redirect()->route('election.voting');
     }

@@ -31,6 +31,31 @@ type EvidenceManifest = {
     download_url: string;
 };
 
+type InitializationCheck = {
+    name: string;
+    passed: boolean;
+    message: string;
+    details?: Record<string, unknown>;
+};
+
+type InitializationReport = {
+    exists: boolean;
+    artifact?: string;
+    run_id?: string | null;
+    precinct_id?: string | null;
+    generated_at?: string | null;
+    passed?: boolean;
+    report_hash?: string | null;
+    schema_version?: string | null;
+    artifact_profile?: string | null;
+    counts?: Record<string, number>;
+    checks?: InitializationCheck[];
+    package_artifact?: Record<string, unknown>;
+    configuration_artifact?: Record<string, unknown>;
+    generate_url: string;
+    download_url: string;
+};
+
 type EvidenceReferenceBaseline = {
     exists: boolean;
     artifact?: string;
@@ -152,6 +177,7 @@ defineProps<{
     snapshot: ElectionSnapshot;
     diagnostics: {
         attestation_artifacts?: AttestationArtifact[];
+        initialization_report?: InitializationReport;
         evidence_manifest?: EvidenceManifest;
         evidence_reference_baseline?: EvidenceReferenceBaseline;
         official_minutes_baseline?: OfficialMinutesBaseline;
@@ -180,6 +206,7 @@ defineProps<{
                     :key="key"
                     v-show="
                         key !== 'attestation_artifacts' &&
+                        key !== 'initialization_report' &&
                         key !== 'evidence_manifest' &&
                         key !== 'evidence_reference_baseline' &&
                         key !== 'evidence_bundle_archive' &&
@@ -270,6 +297,122 @@ defineProps<{
                     <dd class="mt-1 text-stone-600">{{ count }} files</dd>
                 </div>
             </dl>
+        </section>
+
+        <section
+            v-if="diagnostics.initialization_report"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Initialization Report</h2>
+                    <p class="mt-1 text-sm text-stone-700">
+                        {{
+                            diagnostics.initialization_report.exists
+                                ? `Generated ${diagnostics.initialization_report.generated_at}`
+                                : 'No initialization report has been generated yet.'
+                        }}
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <Form
+                        :action="diagnostics.initialization_report.generate_url"
+                        method="post"
+                    >
+                        <button class="secondary-button" type="submit">
+                            Generate Initialization Report
+                        </button>
+                    </Form>
+                    <a
+                        class="artifact-link"
+                        :href="diagnostics.initialization_report.download_url"
+                    >
+                        Download Initialization Report
+                    </a>
+                </div>
+            </div>
+            <dl
+                v-if="diagnostics.initialization_report.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Passed</dt>
+                    <dd class="mt-1 text-stone-600">
+                        {{ diagnostics.initialization_report.passed }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Run ID</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.initialization_report.run_id }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Precinct</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.initialization_report.precinct_id }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Report Hash</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.initialization_report.report_hash }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Artifact</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.initialization_report.artifact }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Accepted Ballots
+                    </dt>
+                    <dd class="mt-1 text-stone-600">
+                        {{
+                            diagnostics.initialization_report.counts
+                                ?.accepted_ballots
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Rejected Ballots
+                    </dt>
+                    <dd class="mt-1 text-stone-600">
+                        {{
+                            diagnostics.initialization_report.counts
+                                ?.rejected_ballots
+                        }}
+                    </dd>
+                </div>
+            </dl>
+            <ul
+                v-if="
+                    diagnostics.initialization_report.exists &&
+                    diagnostics.initialization_report.checks?.length
+                "
+                class="mt-4 list-disc pl-5 text-xs text-stone-700"
+            >
+                <li
+                    v-for="check in diagnostics.initialization_report.checks"
+                    :key="check.name"
+                    class="mb-2"
+                >
+                    <span
+                        :class="
+                            check.passed ? 'text-emerald-700' : 'text-rose-700'
+                        "
+                    >
+                        {{ check.name }}:
+                    </span>
+                    {{ check.message }}
+                </li>
+            </ul>
+            <p v-else class="mt-4 text-sm text-stone-700">
+                Generate the initialization report while running diagnostics.
+            </p>
         </section>
 
         <section

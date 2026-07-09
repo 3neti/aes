@@ -81,6 +81,7 @@ final class ScenarioRunner
             'supply-verification-baseline' => $this->supplyVerificationBaselineScenario(),
             'eb-role-baseline' => $this->electoralBoardBaselineScenario(),
             'initialization-report' => $this->initializationReportScenario(),
+            'open-polls-initialization-report' => $this->openPollsInitializationScenario(),
             'legal-suite' => $this->legalSuite(),
             'fts-manual-verification-discrepancy' => $this->manualVerificationDiscrepancyScenario(),
             'fts-zero-out' => $this->zeroOutScenario(),
@@ -272,6 +273,35 @@ final class ScenarioRunner
             'artifact_path' => $baseline['artifact_path'] ?? null,
             'baseline_hash' => $baseline['baseline_hash'] ?? null,
             'device_report_hash' => $devices['report_hash'] ?? null,
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function openPollsInitializationScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $this->devices->run();
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+        $initialization = $this->initializationReport->write('opening/initialization-report.json');
+
+        $this->ceremonies->openPolls();
+
+        return [
+            'scenario' => 'open-polls-initialization-report',
+            'passed' => (bool) ($initialization['passed'] ?? false),
+            'run_id' => $initialization['run_id'] ?? $this->storage->currentRun()['run_id'] ?? null,
+            'precinct_id' => $initialization['precinct_id'] ?? $activation['configuration']['precinct_id'] ?? null,
+            'checks_passed' => collect($initialization['checks'] ?? [])
+                ->filter(fn (array $check): bool => (bool) ($check['passed'] ?? false))
+                ->count(),
+            'checks_total' => count($initialization['checks'] ?? []),
+            'stage_after_open' => $this->lifecycle->current(),
+            'artifact_path' => $initialization['artifact_path'] ?? null,
+            'report_hash' => $initialization['report_hash'] ?? null,
             'journal_entries' => count($this->journal->entries()),
         ];
     }
@@ -494,6 +524,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
+            'open-polls-initialization-report' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

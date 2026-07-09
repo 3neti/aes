@@ -926,6 +926,44 @@ test('initialization report scenario writes initialization report artifact', fun
         ->and($scenarioReport['checks_passed'])->toBe(count(collect($initializationReport['checks'])->filter(fn (array $check): bool => (bool) $check['passed'])->all()));
 });
 
+test('open polls initialization report scenario command succeeds', function (): void {
+    $this->artisan('election:scenario open-polls-initialization-report')
+        ->expectsOutput('Scenario open-polls-initialization-report passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-open-polls-initialization-report')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/open-polls-initialization-report-report.json');
+    $openingInitialization = $storage->readJson('opening/initialization-report.json');
+    $openingInitializationPath = $storage->path('opening/initialization-report.json');
+
+    expect($report['scenario'])->toBe('open-polls-initialization-report')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['run_id'])->toBe('20260508-080000-39010001-open-polls-initialization-report')
+        ->and($report['checks_total'])->toBe(5)
+        ->and($report['checks_passed'])->toBe(5)
+        ->and($report['artifact_path'])->toBe($openingInitializationPath)
+        ->and($report['stage_after_open'])->toBe('open_polls')
+        ->and(file_exists($report['artifact_path']))->toBeTrue();
+});
+
+test('open polls initialization scenario writes opening initialization report artifact', function (): void {
+    $this->artisan('election:scenario open-polls-initialization-report')
+        ->expectsOutput('Scenario open-polls-initialization-report passed.')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $scenarioReport = $storage->readJson('scenarios/open-polls-initialization-report-report.json');
+    $openingInitialization = $storage->readJson('opening/initialization-report.json');
+    $openingInitializationPath = $storage->path('opening/initialization-report.json');
+
+    expect($scenarioReport['artifact_path'])->toBe($openingInitializationPath)
+        ->and($scenarioReport['report_hash'])->toBe($openingInitialization['report_hash'])
+        ->and($scenarioReport['checks_passed'])->toBe(count(collect($openingInitialization['checks'])->filter(fn (array $check): bool => (bool) $check['passed'])->all()))
+        ->and(file_exists($openingInitializationPath))->toBeTrue();
+});
+
 test('eb-role-baseline scenario writes an electoral board role baseline artifact', function (): void {
     $this->artisan('election:scenario eb-role-baseline')
         ->expectsOutput('Scenario eb-role-baseline passed.')

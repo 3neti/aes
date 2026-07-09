@@ -19,28 +19,63 @@ const filteredCandidates = (
         return candidates;
     }
 
-    return candidates.filter((candidate) =>
-        [
-            candidate.name,
-            candidate.full_name ?? '',
-            candidate.political_party ?? '',
-            String(candidate.ballot_number ?? candidate.ordinal),
-        ]
-            .join(' ')
-            .toLowerCase()
-            .includes(term),
-    );
-};
+        return candidates.filter((candidate) =>
+            [
+                candidate.name,
+                candidate.full_name ?? '',
+                candidate.political_party ?? '',
+                String(candidate.ballot_number ?? candidate.ordinal),
+            ]
+                .join(' ')
+                .toLowerCase()
+                .includes(term),
+        );
+    };
 </script>
 
 <template>
     <CeremonyLayout :snapshot="snapshot" title="Voting">
         <section class="border border-stone-300 bg-white p-5">
             <div class="flex flex-wrap gap-3">
-                <Form v-bind="openPolls.form()">
-                    <button class="secondary-button" type="submit">
-                        Open Polls
-                    </button>
+                <Form v-bind="openPolls.form()" #default="{ errors }" class="w-full">
+                    <div class="flex flex-wrap gap-2">
+                        <label class="w-full sm:w-auto">
+                            <span class="text-xs font-semibold">Officer ID</span>
+                            <input
+                                class="mt-1 block w-full border border-stone-300 px-2 py-2 text-sm"
+                                name="officer_code"
+                                required
+                                type="text"
+                                autocomplete="off"
+                            />
+                        </label>
+                        <label class="w-full sm:w-auto">
+                            <span class="text-xs font-semibold">Officer PIN</span>
+                            <input
+                                class="mt-1 block w-full border border-stone-300 px-2 py-2 text-sm"
+                                name="officer_pin"
+                                required
+                                type="password"
+                                inputmode="numeric"
+                                autocomplete="off"
+                            />
+                        </label>
+                        <button class="secondary-button h-fit" type="submit">
+                            Open Polls
+                        </button>
+                    </div>
+                    <p
+                        v-if="errors.officer_pin"
+                        class="mt-2 text-sm font-semibold text-rose-700"
+                    >
+                        {{ errors.officer_pin }}
+                    </p>
+                    <p
+                        v-if="errors.officer_code"
+                        class="mt-2 text-sm font-semibold text-rose-700"
+                    >
+                        {{ errors.officer_code }}
+                    </p>
                 </Form>
                 <Form v-bind="closePolls.form()">
                     <button class="secondary-button" type="submit">
@@ -98,7 +133,8 @@ const filteredCandidates = (
                         <span class="min-w-0">
                             <span class="block font-medium"
                                 >{{
-                                    candidate.ballot_number ?? candidate.ordinal
+                                    candidate.ballot_number ??
+                                    candidate.ordinal
                                 }}. {{ candidate.name }}</span
                             >
                             <span

@@ -1,6 +1,8 @@
 <?php
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Support\ElectionClock;
@@ -899,6 +901,52 @@ test('ceremony shell can record officer attestation', function (): void {
             ->where('snapshot.counts.attestations', 1)
             ->has('snapshot.journal')
         );
+});
+
+test('voting page can run open polls with authorized officer and write opening initialization report', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::OpenPrecinct);
+
+    $this->post(route('election.voting.open-polls'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ])->assertRedirect(route('election.voting'));
+
+    $report = app(ElectionStorage::class)->readJson('opening/initialization-report.json');
+    $artifactPath = app(ElectionStorage::class)->path('opening/initialization-report.json');
+    $state = app(LifecycleState::class)->current();
+
+    $this->get(route('election.voting'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Voting')
+            ->where('snapshot.stage', Lifecycle::OpenPolls)
+        );
+
+    expect($state)->toBe(Lifecycle::OpenPolls)
+        ->and(file_exists($artifactPath))->toBeTrue()
+        ->and($report)->toHaveKeys(['passed', 'report_hash', 'precinct_id', 'checks'])
+        ->and(is_bool($report['passed']))->toBeTrue();
+});
+
+test('voting page rejects invalid officer pin for open polls', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::OpenPrecinct);
+    $artifactPath = app(ElectionStorage::class)->path('opening/initialization-report.json');
+
+    if (file_exists($artifactPath)) {
+        unlink($artifactPath);
+    }
+
+    $this->from(route('election.voting'))
+        ->post(route('election.voting.open-polls'), [
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_pin' => '000000',
+        ])->assertRedirect(route('election.voting'))
+        ->assertSessionHasErrors('officer_pin');
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::OpenPrecinct)
+        ->and(file_exists($artifactPath))->toBeFalse();
 });
 
 test('ceremony shell rejects invalid officer pin', function (): void {

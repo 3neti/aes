@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 final class ElectionScenarioCommand extends Command
 {
-    protected $signature = 'election:scenario {scenario : legal-suite, supply-verification-baseline, initialization-report, fts-manual-verification-discrepancy, fts-zero-out, friday-certification, full-demo, evidence-folder-demo, pop-import-demo, or eb-role-baseline}';
+    protected $signature = 'election:scenario {scenario : legal-suite, supply-verification-baseline, initialization-report, open-polls-initialization-report, fts-manual-verification-discrepancy, fts-zero-out, friday-certification, full-demo, evidence-folder-demo, pop-import-demo, or eb-role-baseline}';
 
     protected $description = 'Run a deterministic Alternative Election System scenario.';
 

@@ -40,6 +40,7 @@ final class DiagnosticsService
             'evidence_bundle_archive' => $this->evidenceBundleArchiveSummary(),
             'evidence_bundle_archive_verification' => $this->evidenceBundleArchiveVerificationSummary(),
             'evidence_export_verification' => $this->evidenceExportVerificationSummary(),
+            'initialization_report' => $this->initializationReportSummary(),
             'printer' => config('election.devices.printer.adapter', 'simulated'),
             'scanner' => config('election.devices.scanner.adapter', 'simulated'),
             'device_certification' => $this->storage->readJson('certification/device-certification-report.json'),
@@ -326,6 +327,42 @@ final class DiagnosticsService
             'uploaded_at' => $report['uploaded_at'] ?? null,
             'verification_hash' => $report['verification_hash'] ?? null,
             'verified_at' => $report['verified_at'] ?? null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function initializationReportSummary(): array
+    {
+        $path = $this->storage->path('diagnostics/initialization-report.json');
+
+        if (! $this->files->exists($path)) {
+            return [
+                'exists' => false,
+                'generate_url' => route('election.diagnostics.initialization-report.generate'),
+                'download_url' => route('election.diagnostics.initialization-report.download'),
+            ];
+        }
+
+        $report = $this->storage->readJson('diagnostics/initialization-report.json');
+
+        return [
+            'exists' => true,
+            'artifact' => basename($path),
+            'run_id' => $report['run_id'] ?? null,
+            'precinct_id' => $report['precinct_id'] ?? null,
+            'generated_at' => $report['generated_at'] ?? null,
+            'passed' => $report['passed'] ?? false,
+            'report_hash' => $report['report_hash'] ?? null,
+            'schema_version' => $report['schema_version'] ?? null,
+            'artifact_profile' => $report['report_profile'] ?? null,
+            'counts' => $report['counts'] ?? [],
+            'checks' => $report['checks'] ?? [],
+            'package_artifact' => $report['package_artifact'] ?? [],
+            'configuration_artifact' => $report['configuration_artifact'] ?? [],
+            'generate_url' => route('election.diagnostics.initialization-report.generate'),
+            'download_url' => route('election.diagnostics.initialization-report.download'),
         ];
     }
 

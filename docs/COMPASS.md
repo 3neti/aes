@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Zero-Out and Sealing Slice (Slice 10)
-- Next Slice: Election Day Setup and Open Polls Initialization Slice (Slice 11)
+- Completed Slice: Election Day Setup and Open Polls Initialization Slice (Slice 11)
+- Next Slice: Official Minutes Baseline Slice (Slice 12)
 
 ## Domains, Waves, and Vertical Slices
 

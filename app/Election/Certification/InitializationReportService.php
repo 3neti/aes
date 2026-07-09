@@ -24,13 +24,14 @@ final class InitializationReportService
     /**
      * @return array<string, mixed>
      */
-    public function write(): array
+    public function write(?string $artifactPath = null): array
     {
         $runPath = $this->storage->activeRunPath();
         $runPathTail = basename($runPath);
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
         $package = $this->storage->readJson('packages/active-package.json');
         $registries = $this->storage->readJson('registries/sample.json');
+        $artifactPath = $artifactPath ?? 'diagnostics/initialization-report.json';
 
         $precinct = (string) ($configuration['precinct_id'] ?? 'unknown');
         $checks = [
@@ -76,7 +77,7 @@ final class InitializationReportService
 
         $report['passed'] = collect($checks)->every(fn (array $check): bool => $check['passed'] === true);
         $report['report_hash'] = $this->json->hash($report);
-        $report['artifact_path'] = $this->storage->writeJson('diagnostics/initialization-report.json', $report);
+        $report['artifact_path'] = $this->storage->writeJson($artifactPath, $report);
 
         $this->journal->record('initialization_report.generated', [
             'run_id' => $runPathTail,

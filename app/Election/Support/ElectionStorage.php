@@ -380,6 +380,8 @@ final class ElectionStorage
             str_starts_with($relative, 'attestations/') => self::CeremonyDirectories['opening'].'/attestations/'.$basename,
             $relative === 'attestation-signatures' => self::CeremonyDirectories['opening'].'/signatures',
             str_starts_with($relative, 'attestation-signatures/') => self::CeremonyDirectories['opening'].'/signatures/'.$basename,
+            $relative === 'opening' => self::CeremonyDirectories['opening'],
+            str_starts_with($relative, 'opening/') => self::CeremonyDirectories['opening'].'/'.$basename,
             str_starts_with($relative, 'ballots/cert-') => self::CeremonyDirectories['certification'].'/scan-documents/'.$basename,
             $relative === 'ballots' => self::CeremonyDirectories['voting'].'/ballots',
             str_starts_with($relative, 'ballots/') => self::CeremonyDirectories['voting'].'/ballots/'.$basename,
