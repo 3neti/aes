@@ -35,6 +35,7 @@ final class DiagnosticsService
             'evidence_manifest' => $this->manifestSummary(),
             'evidence_reference_baseline' => $this->referenceBaselineSummary(),
             'official_minutes_baseline' => $this->officialMinutesSummary(),
+            'audit_reconciliation_baseline' => $this->auditReconciliationBaselineSummary(),
             'removable_media_export' => $this->removableMediaExportSummary(),
             'removable_media_readiness' => $this->removableMediaReadinessSummary(),
             'evidence_bundle_archive' => $this->evidenceBundleArchiveSummary(),
@@ -187,6 +188,47 @@ final class DiagnosticsService
             'source_attestation_count' => $baseline['source_attestation_count'] ?? 0,
             'generate_url' => route('election.diagnostics.official-minutes-baseline.generate'),
             'download_url' => route('election.diagnostics.official-minutes-baseline.download'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function auditReconciliationBaselineSummary(): array
+    {
+        $path = $this->storage->path('diagnostics/audit-reconciliation-baseline.json');
+
+        if (! $this->files->exists($path)) {
+            return [
+                'exists' => false,
+                'generate_url' => route('election.diagnostics.audit-reconciliation-baseline.generate'),
+                'download_url' => route('election.diagnostics.audit-reconciliation-baseline.download'),
+            ];
+        }
+
+        $report = $this->storage->readJson('diagnostics/audit-reconciliation-baseline.json');
+
+        return [
+            'exists' => true,
+            'artifact' => basename($path),
+            'run_id' => $report['run_id'] ?? null,
+            'precinct_id' => $report['precinct_id'] ?? null,
+            'generated_at' => $report['generated_at'] ?? null,
+            'audit_reconciliation_hash' => $report['audit_reconciliation_hash'] ?? null,
+            'checks_total' => $report['checks_total'] ?? 0,
+            'checks_passed' => $report['checks_passed'] ?? 0,
+            'checks' => $report['checks'] ?? [],
+            'reconciliation_complete' => $report['reconciliation_complete'] ?? false,
+            'reconciliation_ready' => $report['reconciliation_ready'] ?? false,
+            'artifacts_found' => $report['artifacts_found'] ?? 0,
+            'artifacts_expected' => $report['artifacts_expected'] ?? 0,
+            'artifact_catalog_count' => $report['artifact_catalog_count'] ?? 0,
+            'artifact_count' => $report['artifact_catalog_count'] ?? 0,
+            'run_summary_hash' => $report['run_summary_hash'] ?? null,
+            'run_artifact_index_hash' => $report['run_artifact_index_hash'] ?? null,
+            'journal_sequence' => $report['journal_sequence'] ?? null,
+            'generate_url' => route('election.diagnostics.audit-reconciliation-baseline.generate'),
+            'download_url' => route('election.diagnostics.audit-reconciliation-baseline.download'),
         ];
     }
 

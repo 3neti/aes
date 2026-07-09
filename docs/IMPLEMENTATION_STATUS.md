@@ -3,8 +3,8 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: Custody Turnover and Custody Report Slice (Slice 21)
-- Next Slice: Audit Reconciliation Baseline Slice (Slice 22)
+- Completed Slice: Audit Reconciliation Baseline Slice (Slice 22)
+- Next Slice: Special Polling Intake Slice (Slice 23)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds|lifecycle includes transmission, final backup, and custody stages' --compact` (pass)
@@ -32,6 +32,8 @@
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='returns page exposes election return legal evidence summary|returns page can prepare copy distribution and show posting summary' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds' --compact` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='custody turnover scenario command succeeds' --compact` (pass)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='audit reconciliation baseline scenario command succeeds' --compact` (pass)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='diagnostics can generate and download audit reconciliation baseline' --compact` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page requires final backup before custody transfer' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can record custody turnover report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pint --dirty --format agent`
@@ -78,6 +80,7 @@
 - Slice 19: Delivery Receipt and Custody Transfer Slice (implemented)
 - Slice 20: Final Backup After Delivery Slice (implemented)
 - Slice 21: Custody Turnover and Custody Report Slice (implemented)
+- Slice 22: Audit Reconciliation Baseline Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -212,6 +215,9 @@
   - delivery package scenario command runs deterministically
   - manual handoff scenario command runs deterministically
   - delivery receipt scenario command runs deterministically
+  - final-backup scenario command succeeds
+  - custody turnover scenario command succeeds
+  - audit reconciliation baseline scenario command succeeds
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -234,6 +240,7 @@
   - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
   - Diagnostics evidence reference baseline generation, summary projection, and download route
   - Diagnostics official minutes baseline generation, summary projection, and download route
+  - Diagnostics audit reconciliation baseline generation, summary projection, and download route
   - Provision page can generate and display electoral board baseline report
   - Provision page can run and display legal scenario suite harness
   - Provision page can generate and display supply verification baseline

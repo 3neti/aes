@@ -1028,6 +1028,39 @@ test('custody turnover scenario command succeeds', function (): void {
         ->and(file_exists((string) ($report['final_backup_path'] ?? '')))->toBeTrue();
 });
 
+test('audit reconciliation baseline scenario command succeeds', function (): void {
+    $this->artisan('election:scenario audit-reconciliation-baseline')
+        ->expectsOutput('Scenario audit-reconciliation-baseline passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-audit-reconciliation-baseline')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/audit-reconciliation-baseline-report.json');
+    $reconciliation = $storage->readJson('diagnostics/audit-reconciliation-baseline.json');
+    $runSummary = $storage->readJson('run-summary.json');
+    $runArtifactIndex = $storage->readJson('artifact-index.json');
+
+    expect($report['scenario'])->toBe('audit-reconciliation-baseline')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['run_id'])->toBe('20260508-080000-39010001-audit-reconciliation-baseline')
+        ->and($report['precinct_id'])->toBe('39010001')
+        ->and($report['reconciliation_complete'])->toBeTrue()
+        ->and($report['reconciliation_ready'])->toBeTrue()
+        ->and($report['checks_total'])->toBeGreaterThan(0)
+        ->and($report['checks_passed'])->toBe($report['checks_total'])
+        ->and($report['artifacts_expected'])->toBe(8)
+        ->and($report['artifacts_found'])->toBe(8)
+        ->and($report['artifact_catalog_count'])->toBe(8)
+        ->and($report['run_summary_hash'])->toBe($runSummary['run_hash'] ?? null)
+        ->and($report['run_artifact_index_hash'])->toBe($runArtifactIndex['artifact_index_hash'] ?? null)
+        ->and($report['journal_sequence'])->toBeGreaterThan(0)
+        ->and($report['audit_reconciliation_hash'])->toBe($reconciliation['audit_reconciliation_hash'] ?? null)
+        ->and($report['artifact_path'])->toBe($storage->path('diagnostics/audit-reconciliation-baseline.json'))
+        ->and(file_exists($report['artifact_path']))->toBeTrue()
+        ->and(collect($report['checks'])->every('passed'))->toBeTrue();
+});
+
 test('full demo scenario command succeeds', function (): void {
     $this->artisan('election:scenario full-demo')
         ->expectsOutput('Scenario full-demo passed.')

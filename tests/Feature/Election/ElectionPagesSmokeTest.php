@@ -484,6 +484,44 @@ test('diagnostics can generate and download official minutes baseline', function
     app(ElectionClock::class)->unfreeze();
 });
 
+test('diagnostics can generate and download audit reconciliation baseline', function (): void {
+    $this->artisan('election:scenario custody-turnover')
+        ->expectsOutput('Scenario custody-turnover passed.')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $this->post(route('election.diagnostics.audit-reconciliation-baseline.generate'))
+        ->assertRedirect(route('election.diagnostics'))
+        ->assertSessionHas('audit_reconciliation_baseline_hash');
+
+    $reconciliation = app(ElectionStorage::class)->readJson('diagnostics/audit-reconciliation-baseline.json');
+
+    expect($reconciliation['schema_version'])->toBe('audit-reconciliation-baseline-1')
+        ->and($reconciliation['precinct_id'])->toBe('39010001')
+        ->and($reconciliation['reconciliation_complete'])->toBeTrue()
+        ->and($reconciliation['checks_passed'])->toBe($reconciliation['checks_total'])
+        ->and($reconciliation['artifacts_expected'])->toBe(8)
+        ->and($reconciliation['artifacts_found'])->toBe(8)
+        ->and($reconciliation['audit_reconciliation_hash'])->toBeString();
+
+    $this->get(route('election.diagnostics'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Diagnostics')
+            ->where('diagnostics.audit_reconciliation_baseline.exists', true)
+            ->where('diagnostics.audit_reconciliation_baseline.precinct_id', '39010001')
+            ->where('diagnostics.audit_reconciliation_baseline.reconciliation_complete', true)
+            ->where('diagnostics.audit_reconciliation_baseline.checks_total', $reconciliation['checks_total'])
+            ->where('diagnostics.audit_reconciliation_baseline.checks_passed', $reconciliation['checks_passed'])
+            ->where('diagnostics.audit_reconciliation_baseline.audit_reconciliation_hash', $reconciliation['audit_reconciliation_hash'])
+            ->where('diagnostics.audit_reconciliation_baseline.artifacts_found', $reconciliation['artifacts_found'])
+            ->where('diagnostics.audit_reconciliation_baseline.artifacts_expected', $reconciliation['artifacts_expected'])
+        );
+
+    $this->get(route('election.diagnostics.audit-reconciliation-baseline.download'))
+        ->assertDownload('audit-reconciliation-baseline.json');
+});
+
 test('diagnostics can build and download evidence bundle archive', function (): void {
     app(ElectionClock::class)->freeze('2026-05-08 18:30:00');
     app(ActivateSamplePackage::class)->handle();

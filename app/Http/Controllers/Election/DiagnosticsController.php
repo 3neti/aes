@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Audit\AuditReconciliationBaselineService;
 use App\Election\Certification\InitializationReportService;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Devices\DeviceCertificationService;
@@ -100,6 +101,28 @@ final class DiagnosticsController extends Controller
         return response()->download(
             $path,
             'official-minutes-baseline.json',
+            ['Content-Type' => 'application/json'],
+        );
+    }
+
+    public function generateAuditReconciliationBaseline(AuditReconciliationBaselineService $reconciliation): RedirectResponse
+    {
+        $report = $reconciliation->write();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('audit_reconciliation_baseline_hash', $report['audit_reconciliation_hash'] ?? null);
+    }
+
+    public function downloadAuditReconciliationBaseline(ElectionStorage $storage): BinaryFileResponse
+    {
+        $path = $storage->path('diagnostics/audit-reconciliation-baseline.json');
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download(
+            $path,
+            'audit-reconciliation-baseline.json',
             ['Content-Type' => 'application/json'],
         );
     }

@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Custody Turnover and Custody Report Slice (Slice 21)
-- Next Slice: Audit Reconciliation Baseline Slice (Slice 22)
+- Completed Slice: Audit Reconciliation Baseline Slice (Slice 22)
+- Next Slice: Special Polling Intake Slice (Slice 23)
 
 ## Domains, Waves, and Vertical Slices
 

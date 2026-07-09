@@ -4,6 +4,7 @@ namespace App\Election\Scenarios;
 
 use App\Election\Attestation\ElectoralBoardBaselineService;
 use App\Election\Attestation\OfficerAttestationService;
+use App\Election\Audit\AuditReconciliationBaselineService;
 use App\Election\Certification\CertificationDeckBuilder;
 use App\Election\Certification\CertificationService;
 use App\Election\Certification\DiscrepancyReportService;
@@ -71,6 +72,7 @@ final class ScenarioRunner
         private readonly ElectionReturnCopyDistributionService $returnCopyDistribution,
         private readonly EvidenceReferenceBaselineService $baseline,
         private readonly OfficialMinutesBaselineService $officialMinutes,
+        private readonly AuditReconciliationBaselineService $auditReconciliation,
         private readonly ElectoralBoardBaselineService $electoralBoardBaseline,
         private readonly SupplyVerificationBaselineService $supplyVerificationBaseline,
         private readonly TransmissionService $transmission,
@@ -111,6 +113,7 @@ final class ScenarioRunner
             'manual-handoff' => $this->manualHandoffScenario(),
             'final-backup' => $this->finalBackupScenario(),
             'custody-turnover' => $this->custodyTurnoverScenario(),
+            'audit-reconciliation-baseline' => $this->auditReconciliationBaselineScenario(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -1104,6 +1107,40 @@ final class ScenarioRunner
     /**
      * @return array<string, mixed>
      */
+    private function auditReconciliationBaselineScenario(): array
+    {
+        $custodyTurnover = $this->custodyTurnoverScenario();
+        $reconciliation = $this->auditReconciliation->write();
+
+        return [
+            'scenario' => 'audit-reconciliation-baseline',
+            'passed' => (bool) ($reconciliation['reconciliation_complete'] ?? false),
+            'run_id' => $reconciliation['run_id'] ?? null,
+            'precinct_id' => $reconciliation['precinct_id'] ?? null,
+            'run_summary_hash' => $reconciliation['run_summary_hash'] ?? null,
+            'run_artifact_index_hash' => $reconciliation['run_artifact_index_hash'] ?? null,
+            'journal_sequence' => $reconciliation['journal_sequence'] ?? 0,
+            'journal_entries_after_reconciliation' => count($this->journal->entries()),
+            'checks' => $reconciliation['checks'] ?? [],
+            'checks_total' => $reconciliation['checks_total'] ?? 0,
+            'checks_passed' => $reconciliation['checks_passed'] ?? 0,
+            'reconciliation_ready' => $reconciliation['reconciliation_ready'] ?? false,
+            'reconciliation_complete' => $reconciliation['reconciliation_complete'] ?? false,
+            'artifacts_found' => $reconciliation['artifacts_found'] ?? 0,
+            'artifacts_expected' => $reconciliation['artifacts_expected'] ?? 0,
+            'artifact_catalog_count' => $reconciliation['artifact_catalog_count'] ?? 0,
+            'custody_turnover_path' => $custodyTurnover['custody_turnover_path'] ?? null,
+            'delivery_package_path' => $custodyTurnover['delivery_package_path'] ?? null,
+            'delivery_receipt_path' => $custodyTurnover['delivery_receipt_path'] ?? null,
+            'final_backup_path' => $custodyTurnover['final_backup_path'] ?? null,
+            'audit_reconciliation_hash' => $reconciliation['audit_reconciliation_hash'] ?? null,
+            'artifact_path' => $reconciliation['artifact_path'] ?? null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function votingLegalEdgeCasesScenario(): array
     {
         $this->activateConfiguredPrecinctBallot();
@@ -1206,7 +1243,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
-            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'delivery-receipt', 'manual-handoff', 'final-backup', 'custody-turnover' => $this->popClusteredPrecinct(),
+            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'delivery-receipt', 'manual-handoff', 'final-backup', 'custody-turnover', 'audit-reconciliation-baseline' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

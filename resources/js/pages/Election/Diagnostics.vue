@@ -31,6 +31,35 @@ type EvidenceManifest = {
     download_url: string;
 };
 
+type ReconciliationCheck = {
+    check_name: string;
+    passed: boolean;
+    expected: string | null;
+    actual: string | null;
+};
+
+type AuditReconciliationBaseline = {
+    exists: boolean;
+    artifact?: string;
+    run_id?: string | null;
+    precinct_id?: string | null;
+    generated_at?: string | null;
+    audit_reconciliation_hash?: string | null;
+    checks_total?: number;
+    checks_passed?: number;
+    checks?: ReconciliationCheck[];
+    reconciliation_complete?: boolean;
+    reconciliation_ready?: boolean;
+    artifacts_found?: number;
+    artifacts_expected?: number;
+    artifact_catalog_count?: number;
+    run_summary_hash?: string | null;
+    run_artifact_index_hash?: string | null;
+    journal_sequence?: number | null;
+    generate_url: string;
+    download_url: string;
+};
+
 type InitializationCheck = {
     name: string;
     passed: boolean;
@@ -180,6 +209,7 @@ defineProps<{
         initialization_report?: InitializationReport;
         evidence_manifest?: EvidenceManifest;
         evidence_reference_baseline?: EvidenceReferenceBaseline;
+        audit_reconciliation_baseline?: AuditReconciliationBaseline;
         official_minutes_baseline?: OfficialMinutesBaseline;
         evidence_bundle_archive?: EvidenceBundleArchive;
         evidence_bundle_archive_verification?: EvidenceBundleArchiveVerification;
@@ -209,6 +239,7 @@ defineProps<{
                         key !== 'initialization_report' &&
                         key !== 'evidence_manifest' &&
                         key !== 'evidence_reference_baseline' &&
+                        key !== 'audit_reconciliation_baseline' &&
                         key !== 'evidence_bundle_archive' &&
                         key !== 'evidence_bundle_archive_verification' &&
                         key !== 'removable_media_export' &&
@@ -617,6 +648,196 @@ defineProps<{
             </dl>
             <p v-else class="mt-4 text-sm text-stone-700">
                 Generate the official minutes baseline from the current run
+                records.
+            </p>
+        </section>
+
+        <section
+            v-if="diagnostics.audit_reconciliation_baseline"
+            class="border border-stone-300 bg-white p-5"
+        >
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">
+                        Audit Reconciliation Baseline
+                    </h2>
+                    <p class="mt-1 text-sm text-stone-700">
+                        {{
+                            diagnostics.audit_reconciliation_baseline.exists
+                                ? `Generated ${diagnostics.audit_reconciliation_baseline.generated_at}`
+                                : 'No audit reconciliation baseline has been generated yet.'
+                        }}
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <Form
+                        :action="
+                            diagnostics.audit_reconciliation_baseline
+                                .generate_url
+                        "
+                        method="post"
+                    >
+                        <button class="secondary-button" type="submit">
+                            Generate Reconciliation
+                        </button>
+                    </Form>
+                    <a
+                        class="artifact-link"
+                        :href="
+                            diagnostics.audit_reconciliation_baseline
+                                .download_url
+                        "
+                    >
+                        Download Reconciliation
+                    </a>
+                </div>
+            </div>
+
+            <dl
+                v-if="diagnostics.audit_reconciliation_baseline.exists"
+                class="mt-4 grid gap-3 text-xs sm:grid-cols-2"
+            >
+                <div>
+                    <dt class="font-semibold text-stone-700">Run ID</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.audit_reconciliation_baseline.run_id }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Precinct</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .precinct_id
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Reconciliation</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .reconciliation_complete
+                                ? 'Complete'
+                                : 'Incomplete'
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Checks</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .checks_passed
+                        }}
+                        /
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .checks_total
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Artifacts</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .artifacts_found
+                        }}
+                        /
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .artifacts_expected
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Artifact Count</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .artifact_catalog_count
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Artifact</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{ diagnostics.audit_reconciliation_baseline.artifact }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Reconciliation Hash
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .audit_reconciliation_hash
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Run Summary Hash
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .run_summary_hash
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">
+                        Run Artifact Index Hash
+                    </dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .run_artifact_index_hash
+                        }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-semibold text-stone-700">Journal Seq</dt>
+                    <dd class="mt-1 break-all text-stone-600">
+                        {{
+                            diagnostics.audit_reconciliation_baseline
+                                .journal_sequence
+                        }}
+                    </dd>
+                </div>
+            </dl>
+            <ul
+                v-if="
+                    diagnostics.audit_reconciliation_baseline.exists &&
+                    diagnostics.audit_reconciliation_baseline.checks?.length
+                "
+                class="mt-4 list-disc pl-5 text-xs text-stone-700"
+            >
+                <li
+                    v-for="check in diagnostics.audit_reconciliation_baseline
+                        .checks"
+                    :key="check.check_name"
+                    class="mb-2"
+                >
+                    <span
+                        :class="
+                            check.passed ? 'text-emerald-700' : 'text-rose-700'
+                        "
+                    >
+                        {{ check.check_name }}:
+                    </span>
+                    {{
+                        check.passed
+                            ? 'passed'
+                            : `expected ${check.expected} ; actual ${check.actual}`
+                    }}
+                </li>
+            </ul>
+            <p v-else class="mt-4 text-sm text-stone-700">
+                Generate the audit reconciliation baseline from the current run
                 records.
             </p>
         </section>
