@@ -18,6 +18,7 @@ use App\Election\Preparation\ActivateImportedPrecinctPackage;
 use App\Election\Preparation\ActivatePrecinctBallotPackage;
 use App\Election\Preparation\ClcCandidateImporter;
 use App\Election\Preparation\PopWorkbookImporter;
+use App\Election\Preparation\SupplyVerificationBaselineService;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\SpoilBallot;
 use App\Election\Returns\ElectionReturnService;
@@ -50,6 +51,7 @@ final class ScenarioRunner
         private readonly EvidenceReferenceBaselineService $baseline,
         private readonly OfficialMinutesBaselineService $officialMinutes,
         private readonly ElectoralBoardBaselineService $electoralBoardBaseline,
+        private readonly SupplyVerificationBaselineService $supplyVerificationBaseline,
     ) {}
 
     /**
@@ -66,6 +68,7 @@ final class ScenarioRunner
             'full-demo' => $this->fullDemo(),
             'evidence-folder-demo' => $this->evidenceFolderDemo(),
             'pop-import-demo' => $this->popImportDemo(),
+            'supply-verification-baseline' => $this->supplyVerificationBaselineScenario(),
             'eb-role-baseline' => $this->electoralBoardBaselineScenario(),
             'legal-suite' => $this->legalSuite(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
@@ -226,6 +229,34 @@ final class ScenarioRunner
     /**
      * @return array<string, mixed>
      */
+    private function supplyVerificationBaselineScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+        $baseline = $this->supplyVerificationBaseline->write();
+
+        return [
+            'scenario' => 'supply-verification-baseline',
+            'passed' => (bool) ($baseline['passed'] ?? false),
+            'run_id' => $baseline['run_id'] ?? null,
+            'precinct_id' => $baseline['precinct_id'] ?? $activation['configuration']['precinct_id'] ?? null,
+            'required_supply_count' => $baseline['required_supply_count'] ?? 0,
+            'required_supplies_present' => $baseline['required_supplies_present'] ?? 0,
+            'required_supply_missing_count' => $baseline['required_supply_missing_count'] ?? 0,
+            'optional_supply_count' => $baseline['optional_supply_count'] ?? 0,
+            'supplies' => $baseline['supplies'] ?? [],
+            'ballot_definition' => $activation['ballot_definition'] ?? null,
+            'artifact_path' => $baseline['artifact_path'] ?? null,
+            'baseline_hash' => $baseline['baseline_hash'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function electoralBoardBaselineScenario(): array
     {
         $baseline = $this->electoralBoardBaseline->write();
@@ -337,6 +368,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline' => $this->popClusteredPrecinct(),
+            'supply-verification-baseline' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

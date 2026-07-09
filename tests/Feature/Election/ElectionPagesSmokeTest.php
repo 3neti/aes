@@ -135,6 +135,29 @@ test('provision page can run and display legal scenario suite harness', function
         );
 });
 
+test('provision page can generate and display supply verification baseline', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    $this->post(route('election.diagnostics.certify-devices'))->assertRedirect(route('election.diagnostics'));
+
+    $this->post(route('election.provision.supply-verification-baseline'))
+        ->assertRedirect(route('election.provision'))
+        ->assertSessionHas('supply_verification_baseline_hash');
+
+    $this->get(route('election.provision'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Provision')
+            ->has('supplyVerificationBaseline')
+            ->where('supplyVerificationBaseline.exists', true)
+            ->where('supplyVerificationBaseline.required_supply_count', fn (int $count): bool => $count >= 3)
+            ->where('supplyVerificationBaseline.required_supplies_present', fn (int $count): bool => $count === 3)
+            ->where('supplyVerificationBaseline.required_supply_missing_count', 0)
+            ->where('supplyVerificationBaseline.passed', true)
+            ->where('supplyVerificationBaseline.baseline_hash', fn (string $hash): bool => $hash !== '')
+            ->has('snapshot.stage')
+        );
+});
+
 test('diagnostics page exposes attestation signature evidence bundle', function (): void {
     $this->post(route('election.attestations.store'), [
         'ceremony' => 'Friday Certification',

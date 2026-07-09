@@ -5,6 +5,7 @@ import type { ElectionSnapshot } from '@/components/election/types';
 import { activate } from '@/routes/election/provision';
 import { ebRoleBaseline } from '@/routes/election/provision';
 import { legalScenarioSuite as legalScenarioSuiteAction } from '@/routes/election/provision';
+import { supplyVerificationBaseline as supplyVerificationBaselineAction } from '@/routes/election/provision';
 
 type ElectoralBoardBaseline = {
     exists: boolean;
@@ -37,10 +38,31 @@ type LegalScenarioSuite = {
     run_suite_url: string;
 };
 
+type SupplyVerificationBaseline = {
+    exists: boolean;
+    artifact?: string;
+    baseline_hash?: string | null;
+    required_supply_count?: number;
+    required_supplies_present?: number;
+    required_supply_missing_count?: number;
+    optional_supply_count?: number;
+    total_supply_count?: number;
+    passed?: boolean;
+    generated_at?: string | null;
+    supplies?: Array<{
+        supply_code: string;
+        label: string;
+        required: boolean;
+        found: boolean;
+    }>;
+    generate_url: string;
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
     electoralBoardBaseline: ElectoralBoardBaseline;
     legalScenarioSuite: LegalScenarioSuite;
+    supplyVerificationBaseline: SupplyVerificationBaseline;
 }>();
 </script>
 
@@ -132,6 +154,45 @@ defineProps<{
             </dl>
             <p v-else class="mt-3 text-sm text-stone-600">
                 No EB role baseline has been generated in this run yet.
+            </p>
+        </section>
+
+        <section class="mt-6 border border-stone-300 bg-white p-5">
+            <h2 class="text-lg font-semibold">Supply Verification Baseline</h2>
+            <p class="mt-2 text-sm text-stone-700">
+                Verify required supply artifacts are present before voting ceremonies begin.
+            </p>
+            <Form v-bind="supplyVerificationBaselineAction.form()" class="mt-4">
+                <button class="secondary-button" type="submit">
+                    Generate Supply Verification Baseline
+                </button>
+            </Form>
+            <dl v-if="supplyVerificationBaseline.exists" class="mt-5 text-sm">
+                <dt class="font-semibold">Baseline Hash</dt>
+                <dd class="break-all text-stone-700">
+                    {{ supplyVerificationBaseline.baseline_hash }}
+                </dd>
+                <dt class="mt-2 font-semibold">Required Supplies</dt>
+                <dd class="text-stone-700">
+                    {{ supplyVerificationBaseline.required_supplies_present }}/{{
+                        supplyVerificationBaseline.required_supply_count
+                    }} present
+                </dd>
+                <dt class="mt-2 font-semibold">Missing Required Supplies</dt>
+                <dd class="text-stone-700">
+                    {{ supplyVerificationBaseline.required_supply_missing_count }}
+                </dd>
+                <dt class="mt-2 font-semibold">Optional Supplies</dt>
+                <dd class="text-stone-700">
+                    {{ supplyVerificationBaseline.optional_supply_count }}
+                </dd>
+                <dt class="mt-2 font-semibold">Status</dt>
+                <dd class="text-stone-700">
+                    {{ supplyVerificationBaseline.passed ? 'Ready' : 'Not Ready' }}
+                </dd>
+            </dl>
+            <p v-else class="mt-3 text-sm text-stone-600">
+                No supply verification baseline has been generated in this run yet.
             </p>
         </section>
     </CeremonyLayout>

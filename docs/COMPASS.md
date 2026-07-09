@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: EB Role Baseline Slice (Slice 5)
-- Next Slice: Supply Verification Baseline Slice (Slice 6)
+- Completed Slice: Supply Verification Baseline Slice (Slice 6)
+- Next Slice: FTS Diagnostics and Initialization Slice (Slice 7)
 
 ## Domains, Waves, and Vertical Slices
 

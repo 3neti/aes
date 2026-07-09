@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Election;
 use App\Election\Attestation\ElectoralBoardBaselineService;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Preparation\ActivateSamplePackage;
+use App\Election\Preparation\SupplyVerificationBaselineService;
 use App\Election\Scenarios\LegalScenarioHarnessService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -13,12 +14,17 @@ use Inertia\Response;
 
 final class ProvisionController extends Controller
 {
-    public function show(ElectionSnapshot $snapshot, ElectoralBoardBaselineService $baseline, LegalScenarioHarnessService $harness): Response
-    {
+    public function show(
+        ElectionSnapshot $snapshot,
+        ElectoralBoardBaselineService $baseline,
+        LegalScenarioHarnessService $harness,
+        SupplyVerificationBaselineService $supplyBaseline,
+    ): Response {
         return Inertia::render('Election/Provision', [
             'snapshot' => $snapshot->get(),
             'electoralBoardBaseline' => $baseline->summary(),
             'legalScenarioSuite' => $harness->summary(),
+            'supplyVerificationBaseline' => $supplyBaseline->summary(),
         ]);
     }
 
@@ -43,5 +49,13 @@ final class ProvisionController extends Controller
 
         return redirect()->route('election.provision')
             ->with('legal_scenario_suite_hash', $report['archived_report_path'] ?? null);
+    }
+
+    public function writeSupplyVerificationBaseline(SupplyVerificationBaselineService $supply): RedirectResponse
+    {
+        $report = $supply->write();
+
+        return redirect()->route('election.provision')
+            ->with('supply_verification_baseline_hash', $report['baseline_hash'] ?? null);
     }
 }

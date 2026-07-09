@@ -711,6 +711,45 @@ test('legal scenario suite includes electoral board role baseline artifact', fun
         ->and(file_exists($report['electoral_board_baseline']['artifact_path']))->toBeTrue();
 });
 
+test('supply verification baseline scenario command succeeds', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(DeviceCertificationService::class)->run();
+
+    $this->artisan('election:scenario supply-verification-baseline')
+        ->expectsOutput('Scenario supply-verification-baseline passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-supply-verification-baseline')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/supply-verification-baseline-report.json');
+
+    expect($report['scenario'])->toBe('supply-verification-baseline')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['required_supply_count'])->toBe(3)
+        ->and($report['required_supplies_present'])->toBe(3)
+        ->and($report['required_supply_missing_count'])->toBe(0)
+        ->and($report['artifact_path'])->toBeString()
+        ->and(file_exists($report['artifact_path']))->toBeTrue();
+});
+
+test('supply verification scenario creates supply verification baseline artifact', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(DeviceCertificationService::class)->run();
+
+    $this->artisan('election:scenario supply-verification-baseline')
+        ->expectsOutput('Scenario supply-verification-baseline passed.')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $scenarioReport = $storage->readJson('scenarios/supply-verification-baseline-report.json');
+    $baseline = $storage->readJson('runtime/supply-verification-baseline.json');
+
+    expect($scenarioReport['baseline_hash'])->toBe($baseline['baseline_hash'])
+        ->and($scenarioReport['required_supply_count'])->toBe($baseline['required_supply_count'])
+        ->and($scenarioReport['required_supply_missing_count'])->toBe($baseline['required_supply_missing_count']);
+});
+
 test('eb-role-baseline scenario writes an electoral board role baseline artifact', function (): void {
     $this->artisan('election:scenario eb-role-baseline')
         ->expectsOutput('Scenario eb-role-baseline passed.')
