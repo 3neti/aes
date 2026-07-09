@@ -25,6 +25,12 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/certification/run', [CertificationController::class, 'run'])->name('certification.run');
     Route::post('/certification/manual-verification', [CertificationController::class, 'runManualVerification'])->name('certification.manual-verification');
     Route::get('/certification/manual-verification/download', [CertificationController::class, 'downloadManualVerification'])->name('certification.manual-verification.download');
+    Route::post('/certification/discrepancy', [CertificationController::class, 'runDiscrepancy'])->name('certification.discrepancy');
+    Route::get('/certification/discrepancy-report/download', [CertificationController::class, 'downloadDiscrepancy'])->name('certification.discrepancy.download');
+    Route::post('/certification/zero-out', [CertificationController::class, 'runZeroOut'])->name('certification.zero-out');
+    Route::get('/certification/zero-out-report/download', [CertificationController::class, 'downloadZeroOut'])->name('certification.zero-out.download');
+    Route::post('/certification/seal', [CertificationController::class, 'runSealing'])->name('certification.seal');
+    Route::get('/certification/sealing-report/download', [CertificationController::class, 'downloadSealing'])->name('certification.sealing-report.download');
     Route::get('/voting', [VotingController::class, 'show'])->name('voting');
     Route::post('/voting/open-polls', [VotingController::class, 'openPolls'])->name('voting.open-polls');
     Route::post('/voting/finalize', [VotingController::class, 'finalize'])->name('voting.finalize');

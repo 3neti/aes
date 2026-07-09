@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: FTS Test Ballots and Manual Verification Slice (Slice 8)
-- Next Slice: FTS Discrepancy and Minutes Slice (Slice 9)
+- Completed Slice: Zero-Out and Sealing Slice (Slice 10)
+- Next Slice: Election Day Setup and Open Polls Initialization Slice (Slice 11)
 
 ## Domains, Waves, and Vertical Slices
 

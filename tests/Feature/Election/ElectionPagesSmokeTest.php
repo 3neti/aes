@@ -71,6 +71,94 @@ test('certification page can run certification and manual verification', functio
         ->assertDownload('manual-verification-report.json');
 });
 
+test('certification page can run discrepancy analysis', function (): void {
+    $this->from(route('election.certification'));
+
+    $this->post(route('election.certification.run'))
+        ->assertRedirect(route('election.voting'));
+
+    $certification = app(ElectionStorage::class)->readJson('certification/friday-certification-report.json');
+    $manualReturn = [
+        'schema_version' => 'manual-return-1',
+        'precinct_id' => $certification['precinct_id'] ?? null,
+        'accepted_ballots' => ($certification['accepted_ballots'] ?? 0) + 1,
+        'rejected_ballots' => $certification['rejected_ballots'] ?? 0,
+        'tally' => $certification['actual_tally'] ?? [],
+    ];
+
+    $this->post(route('election.certification.manual-verification'), [
+        'manual_return' => json_encode($manualReturn),
+    ])->assertRedirect(route('election.certification'));
+
+    $this->post(route('election.certification.discrepancy'))
+        ->assertRedirect(route('election.certification'));
+
+    $discrepancyReport = app(ElectionStorage::class)->readJson('certification/fts-discrepancy-report.json');
+
+    $this->get(route('election.certification'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Certification')
+            ->where('discrepancyReport.discrepancy_detected', true)
+            ->where('discrepancyReport.report_hash', $discrepancyReport['report_hash'])
+        );
+
+    $this->get(route('election.certification.discrepancy.download'))
+        ->assertDownload('fts-discrepancy-report.json');
+});
+
+test('certification page can run zero-out and sealing', function (): void {
+    $this->from(route('election.certification'));
+
+    $this->post(route('election.certification.run'))
+        ->assertRedirect(route('election.voting'));
+
+    $certification = app(ElectionStorage::class)->readJson('certification/friday-certification-report.json');
+    $manualReturn = [
+        'schema_version' => 'manual-return-1',
+        'precinct_id' => $certification['precinct_id'] ?? null,
+        'accepted_ballots' => $certification['accepted_ballots'] ?? 0,
+        'rejected_ballots' => $certification['rejected_ballots'] ?? 0,
+        'tally' => $certification['actual_tally'] ?? [],
+    ];
+
+    $this->post(route('election.certification.manual-verification'), [
+        'manual_return' => json_encode($manualReturn),
+    ])->assertRedirect(route('election.certification'));
+
+    $this->post(route('election.certification.discrepancy'))
+        ->assertRedirect(route('election.certification'));
+
+    $this->post(route('election.certification.zero-out'))
+        ->assertRedirect(route('election.certification'));
+
+    $this->post(route('election.certification.seal'))
+        ->assertRedirect(route('election.certification'));
+
+    $zeroOut = app(ElectionStorage::class)->readJson('certification/zero-out-report.json');
+    $sealing = app(ElectionStorage::class)->readJson('certification/sealing-report.json');
+
+    $this->get(route('election.certification'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Certification')
+            ->where('zeroOutReport.passed', $zeroOut['passed'])
+            ->where('zeroOutReport.report_hash', $zeroOut['report_hash'])
+            ->where('zeroOutReport.counts_after.accepted_ballots', 0)
+            ->where('zeroOutReport.counts_after.rejected_ballots', 0)
+            ->where('zeroOutReport.counts_after.spoiled_ballots', 0)
+            ->where('sealingReport.status', $sealing['status'])
+            ->where('sealingReport.passed', $sealing['passed'])
+            ->where('sealingReport.report_hash', $sealing['report_hash'])
+        );
+
+    $this->get(route('election.certification.zero-out.download'))
+        ->assertDownload('zero-out-report.json');
+
+    $this->get(route('election.certification.sealing-report.download'))
+        ->assertDownload('sealing-report.json');
+});
+
 test('printing page exposes finalized ballot qr and artifact state', function (): void {
     app(ActivateSamplePackage::class)->handle();
 

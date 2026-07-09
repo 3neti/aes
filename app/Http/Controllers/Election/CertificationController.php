@@ -3,18 +3,21 @@
 namespace App\Http\Controllers\Election;
 
 use App\Election\Certification\CertificationService;
+use App\Election\Certification\DiscrepancyReportService;
 use App\Election\Certification\ManualVerificationService;
+use App\Election\Certification\SealingService;
+use App\Election\Certification\ZeroOutService;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\BinaryFileResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use JsonException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class CertificationController extends Controller
 {
@@ -24,6 +27,9 @@ final class CertificationController extends Controller
             'snapshot' => $snapshot->get(),
             'certificationReport' => $storage->readJson('certification/friday-certification-report.json'),
             'manualVerificationReport' => $storage->readJson('certification/manual-verification-report.json'),
+            'discrepancyReport' => $storage->readJson('certification/fts-discrepancy-report.json'),
+            'zeroOutReport' => $storage->readJson('certification/zero-out-report.json'),
+            'sealingReport' => $storage->readJson('certification/sealing-report.json'),
             'manualReturnTemplate' => $this->manualReturnTemplate($storage),
         ]);
     }
@@ -62,6 +68,58 @@ final class CertificationController extends Controller
         abort_unless(file_exists($path), 404);
 
         return response()->download($path, 'manual-verification-report.json');
+    }
+
+    public function runDiscrepancy(DiscrepancyReportService $discrepancy): RedirectResponse
+    {
+        $report = $discrepancy->run();
+
+        return redirect()->route('election.certification')->with('discrepancy_report_hash', $report['report_hash'] ?? null);
+    }
+
+    public function downloadDiscrepancy(ElectionStorage $storage): BinaryFileResponse
+    {
+        $path = $storage->path('certification/fts-discrepancy-report.json');
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download($path, 'fts-discrepancy-report.json');
+    }
+
+    public function runZeroOut(ZeroOutService $zeroOut): RedirectResponse
+    {
+        $report = $zeroOut->run();
+
+        return redirect()
+            ->route('election.certification')
+            ->with('zero_out_report_hash', $report['report_hash'] ?? null);
+    }
+
+    public function downloadZeroOut(ElectionStorage $storage): BinaryFileResponse
+    {
+        $path = $storage->path('certification/zero-out-report.json');
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download($path, 'zero-out-report.json');
+    }
+
+    public function runSealing(SealingService $sealing): RedirectResponse
+    {
+        $report = $sealing->run();
+
+        return redirect()
+            ->route('election.certification')
+            ->with('sealing_report_hash', $report['report_hash'] ?? null);
+    }
+
+    public function downloadSealing(ElectionStorage $storage): BinaryFileResponse
+    {
+        $path = $storage->path('certification/sealing-report.json');
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download($path, 'sealing-report.json');
     }
 
     /**

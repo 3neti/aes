@@ -6,8 +6,11 @@ use App\Election\Attestation\ElectoralBoardBaselineService;
 use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Certification\CertificationDeckBuilder;
 use App\Election\Certification\CertificationService;
+use App\Election\Certification\DiscrepancyReportService;
 use App\Election\Certification\InitializationReportService;
 use App\Election\Certification\ManualVerificationService;
+use App\Election\Certification\SealingService;
+use App\Election\Certification\ZeroOutService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
 use App\Election\Devices\DeviceCertificationService;
@@ -52,6 +55,9 @@ final class ScenarioRunner
         private readonly CertificationDeckBuilder $deckBuilder,
         private readonly InitializationReportService $initializationReport,
         private readonly ManualVerificationService $manualVerification,
+        private readonly DiscrepancyReportService $discrepancy,
+        private readonly ZeroOutService $zeroOut,
+        private readonly SealingService $sealing,
         private readonly EvidenceReferenceBaselineService $baseline,
         private readonly OfficialMinutesBaselineService $officialMinutes,
         private readonly ElectoralBoardBaselineService $electoralBoardBaseline,
@@ -76,6 +82,8 @@ final class ScenarioRunner
             'eb-role-baseline' => $this->electoralBoardBaselineScenario(),
             'initialization-report' => $this->initializationReportScenario(),
             'legal-suite' => $this->legalSuite(),
+            'fts-manual-verification-discrepancy' => $this->manualVerificationDiscrepancyScenario(),
+            'fts-zero-out' => $this->zeroOutScenario(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -362,6 +370,82 @@ final class ScenarioRunner
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function manualVerificationDiscrepancyScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+        $certification = $this->certification->run();
+
+        $manualReturn = [
+            'schema_version' => 'manual-return-1',
+            'precinct_id' => $certification['precinct_id'] ?? null,
+            'accepted_ballots' => ((int) ($certification['accepted_ballots'] ?? 0)) + 1,
+            'rejected_ballots' => (int) ($certification['rejected_ballots'] ?? 0),
+            'tally' => $certification['actual_tally'] ?? [],
+        ];
+
+        $manualVerification = $this->manualVerification->run($manualReturn);
+        $discrepancy = $this->discrepancy->run();
+
+        return [
+            'scenario' => 'fts-manual-verification-discrepancy',
+            'passed' => (bool) ($discrepancy['passed'] ?? false),
+            'run_id' => $discrepancy['run_id'] ?? null,
+            'precinct_id' => $discrepancy['precinct_id'] ?? $activation['configuration']['precinct_id'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'certification_report_hash' => $certification['report_hash'] ?? null,
+            'manual_verification_report_hash' => $manualVerification['report_hash'] ?? null,
+            'discrepancy_report_hash' => $discrepancy['report_hash'] ?? null,
+            'discrepancy_detected' => $discrepancy['discrepancy_detected'] ?? false,
+            'official_minutes_path' => $discrepancy['official_minutes_path'] ?? null,
+            'official_minutes_hash' => $discrepancy['official_minutes_hash'] ?? null,
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function zeroOutScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+        $certification = $this->certification->run();
+
+        $manualVerification = $this->manualVerification->run([
+            'schema_version' => 'manual-return-1',
+            'precinct_id' => $certification['precinct_id'] ?? null,
+            'accepted_ballots' => $certification['accepted_ballots'] ?? 0,
+            'rejected_ballots' => $certification['rejected_ballots'] ?? 0,
+            'tally' => $certification['actual_tally'] ?? [],
+        ]);
+        $discrepancy = $this->discrepancy->run();
+        $zeroOut = $this->zeroOut->run();
+        $sealing = $this->sealing->run();
+
+        return [
+            'scenario' => 'fts-zero-out',
+            'passed' => (bool) ($discrepancy['passed'] ?? false) && (bool) ($zeroOut['passed'] ?? false) && (bool) ($sealing['passed'] ?? false),
+            'run_id' => $sealing['run_id'] ?? null,
+            'precinct_id' => $sealing['precinct_id'] ?? $activation['configuration']['precinct_id'] ?? null,
+            'device_report_hash' => $devices['report_hash'] ?? null,
+            'certification_report_hash' => $certification['report_hash'] ?? null,
+            'manual_verification_report_hash' => $manualVerification['report_hash'] ?? null,
+            'discrepancy_report_hash' => $discrepancy['report_hash'] ?? null,
+            'zero_out_report_hash' => $zeroOut['report_hash'] ?? null,
+            'sealing_report_hash' => $sealing['report_hash'] ?? null,
+            'discrepancy_detected' => $discrepancy['discrepancy_detected'] ?? null,
+            'zero_out_passed' => $zeroOut['passed'] ?? false,
+            'sealing_passed' => $sealing['passed'] ?? false,
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
      * @return array{configuration: array<string, mixed>, pop_import: array<string, mixed>, ballot_definition: array<string, mixed>}
      */
     private function activateConfiguredPrecinctBallot(): array
@@ -409,7 +493,7 @@ final class ScenarioRunner
     private function scenarioPrecinct(string $name): string
     {
         return match ($name) {
-            'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline' => $this->popClusteredPrecinct(),
+            'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

@@ -3,6 +3,7 @@
 use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Attestation\OfficerRegistry;
 use App\Election\Certification\CertificationService;
+use App\Election\Certification\DiscrepancyReportService;
 use App\Election\Certification\ManualVerificationService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
@@ -152,6 +153,65 @@ test('manual verification fails when manual totals differ', function (): void {
         ->and($checks->get('tally_comparison')['passed'] ?? false)->toBeFalse();
 });
 
+test('discrepancy report detects manual verification mismatch', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $certification = app(CertificationService::class)->run();
+    $manualReturn = [
+        'schema_version' => 'manual-return-1',
+        'precinct_id' => $certification['precinct_id'],
+        'accepted_ballots' => $certification['accepted_ballots'] + 1,
+        'rejected_ballots' => $certification['rejected_ballots'],
+        'tally' => $certification['actual_tally'],
+    ];
+    app(ManualVerificationService::class)->run($manualReturn);
+
+    $discrepancy = app(DiscrepancyReportService::class)->run();
+
+    expect($discrepancy['discrepancy_detected'])->toBeTrue()
+        ->and($discrepancy['status'])->toBe('discrepancy')
+        ->and((bool) ($discrepancy['passed'] ?? false))->toBeFalse()
+        ->and($discrepancy['manual_verification_report_hash'])->toBeString()
+        ->and($discrepancy['official_minutes_hash'])->toBeString()
+        ->and(file_exists($discrepancy['artifact_path']))->toBeTrue();
+});
+
+test('fts zero-out and sealing scenario clears counting artifacts', function (): void {
+    $this->artisan('election:scenario fts-zero-out')
+        ->expectsOutput('Scenario fts-zero-out passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-fts-zero-out')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $scenario = $storage->readJson('scenarios/fts-zero-out-report.json');
+    $certification = $storage->readJson('certification/friday-certification-report.json');
+    $zeroOut = $storage->readJson('certification/zero-out-report.json');
+    $sealing = $storage->readJson('certification/sealing-report.json');
+    $discrepancy = $storage->readJson('certification/fts-discrepancy-report.json');
+
+    expect($scenario['scenario'])->toBe('fts-zero-out')
+        ->and($scenario['passed'])->toBeTrue()
+        ->and($scenario['discrepancy_detected'])->toBeFalse()
+        ->and($scenario['discrepancy_report_hash'])->toBe($discrepancy['report_hash'])
+        ->and($scenario['zero_out_report_hash'])->toBe($zeroOut['report_hash'])
+        ->and($scenario['sealing_report_hash'])->toBe($sealing['report_hash'])
+        ->and($scenario['zero_out_passed'])->toBeTrue()
+        ->and($scenario['sealing_passed'])->toBeTrue()
+        ->and($zeroOut['counts_after']['accepted_ballots'])->toBe(0)
+        ->and($zeroOut['counts_after']['rejected_ballots'])->toBe(0)
+        ->and($zeroOut['counts_after']['spoiled_ballots'])->toBe(0)
+        ->and($zeroOut['passed'])->toBeTrue()
+        ->and($sealing['status'])->toBe('sealed')
+        ->and($sealing['passed'])->toBeTrue()
+        ->and($zeroOut['certification_report_hash'] ?? null)->toBe($certification['report_hash'])
+        ->and(file_exists($zeroOut['artifact_path']))->toBeTrue()
+        ->and(file_exists($sealing['artifact_path']))->toBeTrue()
+        ->and($storage->files('counting/accepted'))->toHaveCount(0)
+        ->and($storage->files('counting/rejected'))->toHaveCount(0)
+        ->and($storage->files('runtime/spoiled-ballots'))->toHaveCount(0);
+});
+
 test('friday certification scenario includes manual verification report', function (): void {
     $this->artisan('election:scenario friday-certification')
         ->expectsOutput('Scenario friday-certification passed.')
@@ -172,6 +232,24 @@ test('friday certification scenario includes manual verification report', functi
         ->and($manualVerification['passed'])->toBeTrue()
         ->and($manualVerification['machine_accepted_ballots'])->toBe($certification['accepted_ballots'])
         ->and(file_exists($manualVerification['artifact_path']))->toBeTrue();
+});
+
+test('fts manual verification discrepancy scenario records discrepancy report', function (): void {
+    $this->artisan('election:scenario fts-manual-verification-discrepancy')
+        ->expectsOutput('Scenario fts-manual-verification-discrepancy passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-fts-manual-verification-discrepancy')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/fts-manual-verification-discrepancy-report.json');
+    $discrepancy = $storage->readJson('certification/fts-discrepancy-report.json');
+
+    expect($report['scenario'])->toBe('fts-manual-verification-discrepancy')
+        ->and($report['discrepancy_detected'])->toBeTrue()
+        ->and($report['discrepancy_report_hash'])->toBe($discrepancy['report_hash'])
+        ->and(file_exists($discrepancy['artifact_path']))->toBeTrue()
+        ->and(file_exists((string) $report['official_minutes_path']))->toBeTrue();
 });
 
 test('device certification checks simulated printer and scanner adapters', function (): void {

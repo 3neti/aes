@@ -3,14 +3,18 @@
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)
-- Completed Slice: FTS Test Ballots and Manual Verification Slice (Slice 8)
-- Next Slice: FTS Discrepancy and Minutes Slice (Slice 9)
+- Completed Slice: Zero-Out and Sealing Slice (Slice 10)
+- Next Slice: Election Day Setup and Open Polls Initialization Slice (Slice 11)
 - Test status:
   - `vendor/bin/pint --dirty --format agent` (pass)
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite command succeeds|legal scenario suite includes electoral board baseline artifact|legal scenario suite creates an evidence reference baseline artifact|legal scenario suite includes electoral board baseline artifact|eb-role-baseline scenario writes an electoral board role baseline artifact|supply verification baseline scenario command succeeds|supply verification scenario creates supply verification baseline artifact' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='provision page can run and display legal scenario suite harness|provision page can generate and display electoral board role baseline|provision page can generate and display supply verification baseline' --compact`
   - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual verification passes with matching official return|manual verification fails when manual totals differ|friday certification scenario includes manual verification report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run certification and manual verification' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='discrepancy report detects manual verification mismatch|fts manual verification discrepancy scenario records discrepancy report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run discrepancy analysis' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='fts zero-out and sealing scenario clears counting artifacts' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run zero-out and sealing' --compact` (blocked in this environment by Pest Browser socket bind restriction)
   - `vendor/bin/pint --dirty --format agent`
   - `php -l` checks passed for all changed files
   - `php artisan election:scenario initialization-report` (pass)
@@ -40,6 +44,8 @@
 - Slice 6: Supply Verification Baseline Slice (implemented)
 - Slice 7: FTS Diagnostics and Initialization Slice (implemented)
 - Slice 8: FTS Test Ballots and Manual Verification Slice (implemented)
+- Slice 9: FTS Discrepancy and Minutes Slice (implemented)
+- Slice 10: Zero-Out and Sealing Slice (implemented)
 
 - Domain services under `app/Election` for Core, Lifecycle, Preparation, Certification, Voting, Printing, Counting, Returns, Diagnostics, Scenarios, and Support.
 - Ceremony routes/controllers under `/election/*`.
@@ -165,6 +171,7 @@
   - manual verification passes with matching official return
   - manual verification fails when manual totals differ
   - friday certification scenario includes manual verification report
+  - fts zero-out and sealing scenario clears counting artifacts
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
   - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
   - finalized ballot Printing page QR image data URI smoke coverage
@@ -193,6 +200,7 @@
   - Diagnostics can generate and download initialization report
   - certification page can run certification and manual verification
   - certification page can download manual verification report artifact
+  - certification page can run zero-out and sealing
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
   - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - `tests/Browser/ElectionCeremonyPagesSmokeTest.php`
@@ -300,6 +308,8 @@
 - `vendor/bin/pest --compact`
 - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='official minutes|evidence reference baseline|legal scenario suite creates' --compact`
 - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='official minutes baseline|evidence reference baseline|diagnostics can generate and download official minutes baseline' --compact`
+- `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='fts zero-out and sealing scenario clears counting artifacts' --compact` (environment-restricted by Pest browser socket bind)
+- `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run zero-out and sealing' --compact` (environment-restricted by Pest browser socket bind)
 
 ## Verification Results
 
@@ -316,6 +326,7 @@
 - Pest Browser suite: passed, 1 test and 25 assertions.
 - Focused Pest browser ceremony smoke suite: passed, 8 tests and 24 assertions.
 - Slice 4 focused feature attempts for official minutes baseline: failed in this environment due Pest Browser socket restrictions (`socket_create_listen` / `PortNotFoundException`) during host bind.
+- Slice 10 focused lifecycle and certification smoke coverage: blocked in this environment due Pest Browser `PortNotFoundException` while binding test socket.
 - Pest Browser suite with Diagnostics workflow and ceremony smoke coverage: passed, 9 tests and 49 assertions.
 - Focused Pest browser Counting camera capture workflow suite: passed, 1 test and 12 assertions.
 - Pest Browser suite with Diagnostics workflow, ceremony smoke coverage, and Counting camera capture workflow: passed, 10 tests and 61 assertions.
