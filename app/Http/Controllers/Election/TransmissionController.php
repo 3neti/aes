@@ -7,27 +7,50 @@ use App\Election\Custody\CustodyService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Support\ElectionStorage;
 use App\Election\Transmission\DeliveryPackageService;
+use App\Election\Transmission\ManualHandoffService;
 use App\Election\Transmission\TransmissionService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreManualHandoffOfficerVerificationRequest;
+use App\Http\Requests\StoreManualHandoffRecipientVerificationRequest;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class TransmissionController extends Controller
 {
-    public function show(ElectionSnapshot $snapshot, ElectionStorage $storage, DeliveryPackageService $package): Response
-    {
+    public function show(
+        ElectionSnapshot $snapshot,
+        ElectionStorage $storage,
+        DeliveryPackageService $package,
+        ManualHandoffService $handoff,
+    ): Response {
         return Inertia::render('Election/Transmission', [
             'snapshot' => $snapshot->get(),
             'transmission' => $storage->readJson('transmission/transmission-report.json'),
             'deliveryPackage' => $package->summary(),
             'custody' => $storage->readJson('custody/custody-record.json'),
+            'manualOfficerVerification' => $handoff->officerVerificationSummary(),
+            'manualRecipientVerification' => $handoff->recipientVerificationSummary(),
         ]);
     }
 
     public function preparePackage(DeliveryPackageService $package): RedirectResponse
     {
         $package->prepare();
+
+        return redirect()->route('election.transmission');
+    }
+
+    public function verifyOfficer(StoreManualHandoffOfficerVerificationRequest $request, ManualHandoffService $handoff): RedirectResponse
+    {
+        $handoff->verifyOfficer($request->validated());
+
+        return redirect()->route('election.transmission');
+    }
+
+    public function verifyRecipient(StoreManualHandoffRecipientVerificationRequest $request, ManualHandoffService $handoff): RedirectResponse
+    {
+        $handoff->verifyRecipient($request->validated());
 
         return redirect()->route('election.transmission');
     }

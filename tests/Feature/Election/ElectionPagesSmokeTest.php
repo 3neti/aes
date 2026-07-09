@@ -1005,6 +1005,79 @@ test('transmission page can prepare and expose delivery package', function (): v
         );
 });
 
+test('transmission page can record manual handoff officer and recipient verification', function (): void {
+    $this->artisan('election:scenario election-return-copy-distribution')
+        ->assertSuccessful();
+
+    $this->from(route('election.returns'))
+        ->post(route('election.returns.close'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.send'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.prepare'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->post(route('election.transmission.custody'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.officer-verification'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+        'verification_note' => 'Verified handoff receipt.',
+        'stage' => app(LifecycleState::class)->current(),
+    ])->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.recipient-verification'), [
+        'recipient' => 'Election Board Officer',
+        'recipient_role' => 'Election Board',
+        'handoff_date' => '2026-05-08',
+        'handoff_time' => '14:30',
+        'delivery_method' => 'manual',
+        'acknowledged' => true,
+        'acknowledgement_note' => 'Recipient accepted package and will secure it.',
+        'stage' => app(LifecycleState::class)->current(),
+    ])->assertRedirect(route('election.transmission'));
+
+    $officer = app(ElectionStorage::class)->readJson('transmission/manual-handoff-officer-verification.json');
+    $recipient = app(ElectionStorage::class)->readJson('transmission/manual-handoff-recipient-verification.json');
+
+    $this->get(route('election.transmission'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Transmission')
+            ->where('manualOfficerVerification.verified', true)
+            ->where('manualOfficerVerification.verification_id', $officer['verification_id'] ?? null)
+            ->where('manualOfficerVerification.officer_name', $officer['officer_name'] ?? null)
+            ->where('manualRecipientVerification.verified', true)
+            ->where('manualRecipientVerification.verification_id', $recipient['verification_id'] ?? null)
+            ->where('manualRecipientVerification.recipient', $recipient['recipient'] ?? null)
+            ->where('manualRecipientVerification.recipient_role', $recipient['recipient_role'] ?? null)
+        );
+});
+
+test('transmission page blocks recipient verification before officer verification', function (): void {
+    $this->artisan('election:scenario election-return-copy-distribution')
+        ->assertSuccessful();
+
+    $this->from(route('election.returns'))
+        ->post(route('election.returns.close'))
+        ->assertRedirect(route('election.transmission'));
+
+    $this->from(route('election.transmission'))->post(route('election.transmission.recipient-verification'), [
+        'recipient' => 'Election Board Officer',
+        'recipient_role' => 'Election Board',
+        'handoff_date' => '2026-05-08',
+        'handoff_time' => '14:30',
+        'delivery_method' => 'manual',
+        'acknowledged' => true,
+        'acknowledgement_note' => 'Recipient accepted package and will secure it.',
+        'stage' => app(LifecycleState::class)->current(),
+    ])->assertRedirect(route('election.transmission'))
+        ->assertSessionHasErrors('recipient');
+});
+
 test('ceremony shell can record officer attestation', function (): void {
     $this->from(route('election.certification'))
         ->post(route('election.attestations.store'), [

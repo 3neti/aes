@@ -47,6 +47,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
     Route::get('/transmission', [TransmissionController::class, 'show'])->name('transmission');
     Route::post('/transmission/package', [TransmissionController::class, 'preparePackage'])->name('transmission.prepare');
+    Route::post('/transmission/officer-verification', [TransmissionController::class, 'verifyOfficer'])->name('transmission.officer-verification');
+    Route::post('/transmission/recipient-verification', [TransmissionController::class, 'verifyRecipient'])->name('transmission.recipient-verification');
     Route::post('/transmission/send', [TransmissionController::class, 'send'])->name('transmission.send');
     Route::post('/transmission/custody', [TransmissionController::class, 'recordCustody'])->name('transmission.custody');
     Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');

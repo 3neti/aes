@@ -2,13 +2,21 @@
 import { Form } from '@inertiajs/vue3';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
-import { custody, preparePackage, send } from '@/routes/election/transmission';
+import {
+    custody,
+    officerVerification,
+    preparePackage,
+    recipientVerification,
+    send,
+} from '@/routes/election/transmission';
 
 defineProps<{
     snapshot: ElectionSnapshot;
     transmission: Record<string, any>;
     deliveryPackage: Record<string, any>;
     custody: Record<string, any>;
+    manualOfficerVerification: Record<string, any>;
+    manualRecipientVerification: Record<string, any>;
 }>();
 </script>
 
@@ -57,8 +65,15 @@ defineProps<{
                             <div>
                                 <dt class="text-stone-600">Artifacts</dt>
                                 <dd>
-                                    {{ deliveryPackage.artifact_count }} required artifacts complete:
-                                    {{ deliveryPackage.required_artifacts_present ? 'Yes' : 'No' }}
+                                    {{
+                                        deliveryPackage.artifact_count
+                                    }}
+                                    required artifacts complete:
+                                    {{
+                                        deliveryPackage.required_artifacts_present
+                                            ? 'Yes'
+                                            : 'No'
+                                    }}
                                 </dd>
                             </div>
                             <div>
@@ -73,13 +88,17 @@ defineProps<{
                             </div>
                         </template>
                         <template v-else>
-                            <p class="text-stone-600">No package prepared yet.</p>
+                            <p class="text-stone-600">
+                                No package prepared yet.
+                            </p>
                         </template>
                     </dl>
                 </article>
 
                 <article class="rounded border border-stone-200 p-4">
-                    <h3 class="text-sm font-semibold text-stone-700">Transmission Report</h3>
+                    <h3 class="text-sm font-semibold text-stone-700">
+                        Transmission Report
+                    </h3>
                     <dl class="mt-3 space-y-2 text-sm">
                         <template v-if="transmission.transmission_id">
                             <div>
@@ -95,7 +114,9 @@ defineProps<{
                                 </dd>
                             </div>
                             <div>
-                                <dt class="text-stone-600">Transmission Hash</dt>
+                                <dt class="text-stone-600">
+                                    Transmission Hash
+                                </dt>
                                 <dd class="break-all text-stone-700">
                                     {{ transmission.transmission_hash }}
                                 </dd>
@@ -106,13 +127,17 @@ defineProps<{
                             </div>
                         </template>
                         <template v-else>
-                            <p class="text-stone-600">No transmission report prepared yet.</p>
+                            <p class="text-stone-600">
+                                No transmission report prepared yet.
+                            </p>
                         </template>
                     </dl>
                 </article>
 
                 <article class="rounded border border-stone-200 p-4">
-                    <h3 class="text-sm font-semibold text-stone-700">Custody Record</h3>
+                    <h3 class="text-sm font-semibold text-stone-700">
+                        Custody Record
+                    </h3>
                     <dl class="mt-3 space-y-2 text-sm">
                         <template v-if="custody.custody_id">
                             <div>
@@ -131,7 +156,233 @@ defineProps<{
                             </div>
                         </template>
                         <template v-else>
-                            <p class="text-stone-600">Custody not recorded yet.</p>
+                            <p class="text-stone-600">
+                                Custody not recorded yet.
+                            </p>
+                        </template>
+                    </dl>
+                </article>
+
+                <article
+                    class="rounded border border-stone-200 p-4 xl:col-span-3"
+                >
+                    <h3 class="text-sm font-semibold text-stone-700">
+                        Officer Verification
+                    </h3>
+                    <Form
+                        v-bind="officerVerification.form()"
+                        class="mt-4 grid gap-3 sm:grid-cols-3"
+                    >
+                        <input
+                            type="hidden"
+                            name="stage"
+                            :value="snapshot.stage"
+                        />
+                        <label class="text-xs text-stone-700">
+                            Officer Code
+                            <input
+                                required
+                                name="officer_code"
+                                class="mt-1 w-full border border-stone-300 p-2"
+                                placeholder="SIM-OFFICER-001"
+                            />
+                        </label>
+                        <label class="text-xs text-stone-700">
+                            Officer PIN
+                            <input
+                                required
+                                name="officer_pin"
+                                class="mt-1 w-full border border-stone-300 p-2"
+                                type="password"
+                                placeholder="123456"
+                            />
+                        </label>
+                        <label class="text-xs text-stone-700 sm:col-span-3">
+                            Note
+                            <input
+                                name="verification_note"
+                                class="mt-1 w-full border border-stone-300 p-2"
+                                placeholder="Verified by election board officer"
+                            />
+                        </label>
+                        <div class="sm:col-span-3">
+                            <button class="primary-button" type="submit">
+                                Record Officer Verification
+                            </button>
+                        </div>
+                    </Form>
+                    <dl class="mt-4 text-xs">
+                        <template v-if="manualOfficerVerification.verified">
+                            <div>
+                                <dt>Officer</dt>
+                                <dd>
+                                    {{ manualOfficerVerification.officer_name }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Role</dt>
+                                <dd>
+                                    {{ manualOfficerVerification.officer_role }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Result</dt>
+                                <dd>{{ manualOfficerVerification.status }}</dd>
+                            </div>
+                            <div>
+                                <dt>Hash</dt>
+                                <dd class="break-all text-stone-700">
+                                    {{
+                                        manualOfficerVerification.verification_hash
+                                    }}
+                                </dd>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <p class="text-stone-600">
+                                Officer verification not yet recorded.
+                            </p>
+                        </template>
+                    </dl>
+                </article>
+
+                <article
+                    class="rounded border border-stone-200 p-4 xl:col-span-3"
+                >
+                    <h3 class="text-sm font-semibold text-stone-700">
+                        Recipient Verification
+                    </h3>
+                    <Form
+                        v-bind="recipientVerification.form()"
+                        class="mt-4 grid gap-3 sm:grid-cols-3"
+                    >
+                        <input
+                            type="hidden"
+                            name="stage"
+                            :value="snapshot.stage"
+                        />
+                        <label class="text-xs text-stone-700">
+                            Recipient
+                            <input
+                                required
+                                name="recipient"
+                                class="mt-1 w-full border border-stone-300 p-2"
+                                placeholder="Election Board Officer"
+                            />
+                        </label>
+                        <label class="text-xs text-stone-700">
+                            Recipient Role
+                            <input
+                                required
+                                name="recipient_role"
+                                class="mt-1 w-full border border-stone-300 p-2"
+                                placeholder="Chairperson"
+                            />
+                        </label>
+                        <label class="text-xs text-stone-700">
+                            Delivery Method
+                            <select
+                                required
+                                name="delivery_method"
+                                class="mt-1 w-full border border-stone-300 p-2"
+                            >
+                                <option value="manual">Manual Handoff</option>
+                                <option value="sd-card">SD Card</option>
+                                <option value="usb">USB Storage</option>
+                            </select>
+                        </label>
+                        <label class="text-xs text-stone-700">
+                            Date
+                            <input
+                                required
+                                name="handoff_date"
+                                class="mt-1 w-full border border-stone-300 p-2"
+                                type="date"
+                                :value="new Date().toISOString().slice(0, 10)"
+                            />
+                        </label>
+                        <label class="text-xs text-stone-700">
+                            Time
+                            <input
+                                required
+                                name="handoff_time"
+                                class="mt-1 w-full border border-stone-300 p-2"
+                                type="time"
+                                :value="new Date().toTimeString().slice(0, 5)"
+                            />
+                        </label>
+                        <label class="text-xs text-stone-700">
+                            <span class="inline-flex items-center gap-2">
+                                <input
+                                    name="acknowledged"
+                                    type="checkbox"
+                                    value="1"
+                                    checked
+                                />
+                                Recipient acknowledged
+                            </span>
+                        </label>
+                        <label class="text-xs text-stone-700 sm:col-span-3">
+                            Acknowledgement Note
+                            <input
+                                name="acknowledgement_note"
+                                class="mt-1 w-full border border-stone-300 p-2"
+                                placeholder="Recipient accepted custody"
+                            />
+                        </label>
+                        <div class="sm:col-span-3">
+                            <button class="secondary-button" type="submit">
+                                Record Recipient Verification
+                            </button>
+                        </div>
+                    </Form>
+                    <dl class="mt-4 text-xs">
+                        <template v-if="manualRecipientVerification.verified">
+                            <div>
+                                <dt>Recipient</dt>
+                                <dd>
+                                    {{ manualRecipientVerification.recipient }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Role</dt>
+                                <dd>
+                                    {{
+                                        manualRecipientVerification.recipient_role
+                                    }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Delivery Method</dt>
+                                <dd>
+                                    {{
+                                        manualRecipientVerification.delivery_method
+                                    }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Recognized On</dt>
+                                <dd>
+                                    {{
+                                        manualRecipientVerification.recipient_handoff_at
+                                    }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Acknowledged</dt>
+                                <dd>
+                                    {{
+                                        manualRecipientVerification.acknowledged
+                                            ? 'Yes'
+                                            : 'No'
+                                    }}
+                                </dd>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <p class="text-stone-600">
+                                Recipient verification not yet recorded.
+                            </p>
                         </template>
                     </dl>
                 </article>

@@ -32,6 +32,7 @@ use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Transmission\DeliveryPackageService;
+use App\Election\Transmission\ManualHandoffService;
 use App\Election\Transmission\TransmissionService;
 use App\Election\Voting\BallotPayloadService;
 use InvalidArgumentException;
@@ -71,6 +72,7 @@ final class ScenarioRunner
         private readonly SupplyVerificationBaselineService $supplyVerificationBaseline,
         private readonly TransmissionService $transmission,
         private readonly DeliveryPackageService $deliveryPackage,
+        private readonly ManualHandoffService $manualHandoff,
     ) {}
 
     /**
@@ -99,6 +101,7 @@ final class ScenarioRunner
             'election-return-legal-artifact' => $this->electionReturnLegalArtifactScenario(),
             'election-return-copy-distribution' => $this->electionReturnCopyDistributionScenario(),
             'delivery-package' => $this->deliveryPackageScenario(),
+            'manual-handoff' => $this->manualHandoffScenario(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -717,6 +720,84 @@ final class ScenarioRunner
     /**
      * @return array<string, mixed>
      */
+    private function manualHandoffScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $this->clock->tick();
+        $devices = $this->devices->run();
+        $certification = $this->certification->run();
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+
+        $this->ceremonies->openPolls('Simulation Officer');
+        $this->ceremonies->openPolls('Simulation Officer');
+
+        $acceptedPayload = $this->payloads->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'scenario-manual-handoff-accepted');
+
+        $rejectedPayload = $this->payloads->finalize([
+            'president' => ['pres-sarah'],
+            'mayor' => ['mayor-jose'],
+            'council' => ['council-ben'],
+        ], 'scenario-manual-handoff-rejected');
+        $this->spoil->handle($rejectedPayload['payload_hash']);
+
+        $this->ceremonies->closePolls('Simulation Officer');
+        $this->ceremonies->startCounting();
+        $this->counting->accept($acceptedPayload['qr_payload']);
+        $this->counting->accept($rejectedPayload['qr_payload']);
+        $tally = $this->counting->tally();
+
+        $this->ceremonies->moveToReturns();
+        $return = $this->returns->generate($tally);
+        $this->returnCopyDistribution->prepare($return);
+        $this->ceremonies->moveToTransmission();
+        $transmission = $this->transmission->run();
+        $package = $this->deliveryPackage->prepare($transmission);
+
+        $officerVerification = $this->manualHandoff->verifyOfficer([
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_pin' => '123456',
+            'verification_note' => 'Manual handoff officer verified.',
+            'stage' => Lifecycle::Transmission,
+        ]);
+
+        $recipientVerification = $this->manualHandoff->verifyRecipient([
+            'recipient' => 'Election Board Officer',
+            'recipient_role' => 'Election Board',
+            'handoff_date' => '2026-05-08',
+            'handoff_time' => '12:15',
+            'delivery_method' => 'manual',
+            'acknowledged' => true,
+            'acknowledgement_note' => 'Received package and will secure it.',
+            'stage' => Lifecycle::Transmission,
+        ]);
+
+        return [
+            'scenario' => 'manual-handoff',
+            'passed' => true,
+            'run_id' => $this->storage->currentRun()['run_id'] ?? null,
+            'precinct_id' => $activation['configuration']['precinct_id'] ?? $package['precinct_id'] ?? null,
+            'certification_report_hash' => $certification['report_hash'] ?? null,
+            'delivery_package_hash' => $package['delivery_package_hash'] ?? null,
+            'transmission_hash' => $package['transmission']['transmission_hash'] ?? null,
+            'officer_verification_id' => $officerVerification['verification_id'] ?? null,
+            'recipient_verification_id' => $recipientVerification['verification_id'] ?? null,
+            'officer_verification_hash' => $officerVerification['verification_hash'] ?? null,
+            'recipient_verification_hash' => $recipientVerification['verification_hash'] ?? null,
+            'officer_verification_path' => $officerVerification['artifact_path'] ?? null,
+            'recipient_verification_path' => $recipientVerification['artifact_path'] ?? null,
+            'accepted_ballots' => $tally['accepted_ballots'] ?? 0,
+            'rejected_ballots' => $tally['rejected_ballots'] ?? 0,
+            'journal_entries' => count($this->journal->entries()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function votingLegalEdgeCasesScenario(): array
     {
         $this->activateConfiguredPrecinctBallot();
@@ -819,7 +900,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
-            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package' => $this->popClusteredPrecinct(),
+            'open-polls-initialization-report', 'voting-legal-edge-cases', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'manual-handoff' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

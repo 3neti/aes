@@ -911,6 +911,33 @@ test('delivery package scenario command succeeds', function (): void {
         ->and(file_exists($package['artifact_path'] ?? null))->toBeTrue();
 });
 
+test('manual-handoff scenario command succeeds', function (): void {
+    $this->artisan('election:scenario manual-handoff')
+        ->expectsOutput('Scenario manual-handoff passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-manual-handoff')
+        ->expectsOutputToContain('Report: ')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/manual-handoff-report.json');
+    $officer = $storage->readJson('transmission/manual-handoff-officer-verification.json');
+    $recipient = $storage->readJson('transmission/manual-handoff-recipient-verification.json');
+
+    expect($report['scenario'])->toBe('manual-handoff')
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['run_id'])->toBe('20260508-080000-39010001-manual-handoff')
+        ->and($report['officer_verification_id'])->toBe($officer['verification_id'] ?? null)
+        ->and($report['recipient_verification_id'])->toBe($recipient['verification_id'] ?? null)
+        ->and($report['officer_verification_hash'])->toBe($officer['verification_hash'] ?? null)
+        ->and($report['recipient_verification_hash'])->toBe($recipient['verification_hash'] ?? null)
+        ->and($report['officer_verification_path'])->toBe($officer['artifact_path'] ?? null)
+        ->and($report['recipient_verification_path'])->toBe($recipient['artifact_path'] ?? null)
+        ->and($report['officer_verification_path'])->toBeString()
+        ->and($report['recipient_verification_path'])->toBeString()
+        ->and(file_exists($report['officer_verification_path']))->toBeTrue()
+        ->and(file_exists($report['recipient_verification_path']))->toBeTrue();
+});
+
 test('full demo scenario command succeeds', function (): void {
     $this->artisan('election:scenario full-demo')
         ->expectsOutput('Scenario full-demo passed.')

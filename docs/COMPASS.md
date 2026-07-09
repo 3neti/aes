@@ -2,8 +2,8 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Delivery Package Slice (Slice 17)
-- Next Slice: Manual Handoff and Recipient Verification Slice (Slice 18)
+- Completed Slice: Manual Handoff and Recipient Verification Slice (Slice 18)
+- Next Slice: Delivery Receipt and Custody Transfer Slice (Slice 19)
 
 ## Domains, Waves, and Vertical Slices
 
