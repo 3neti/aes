@@ -457,15 +457,19 @@ final class DiagnosticsService
     {
         $directories = [
             'start_here' => '00-start-here',
-            'precinct_preparation' => '01-precinct-preparation',
-            'device_certification' => '02-device-certification',
-            'polls_opening' => '03-polls-opening',
-            'voting_and_printing' => '04-voting-and-printing',
-            'polls_closing' => '05-polls-closing',
+            'precinct_package_and_configuration' => '01-precinct-package-and-configuration',
+            'final_testing_and_sealing' => '02-final-testing-and-sealing',
+            'opening_of_polls' => '03-opening-of-polls',
+            'voting' => '04-voting',
+            'closing_of_polls' => '05-closing-of-polls',
             'counting_and_tally' => '06-counting-and-tally',
             'election_return' => '07-election-return',
-            'precinct_closing' => '08-precinct-closing',
-            'journal' => '10-journal',
+            'transmission_or_official_handoff' => '08-transmission-or-official-handoff',
+            'final_backup' => '09-final-backup',
+            'custody_turnover' => '10-custody-turnover',
+            'close_precinct' => '11-close-precinct',
+            'audit_and_reconciliation' => '12-audit-and-reconciliation',
+            'journal' => '13-journal',
         ];
 
         return collect($directories)

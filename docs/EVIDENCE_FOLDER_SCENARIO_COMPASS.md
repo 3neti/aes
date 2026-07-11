@@ -10,7 +10,7 @@ Keep scenario and operator evidence under one intuitive run folder with numbered
 | --- | --- | --- |
 | Legacy artifact cleanup | Complete | `ElectionStorage::reset()` removes old `election-scenario-*` roots and recreates only the new skeleton. |
 | Run context | Complete | Scenarios write `current-run.json`, `LATEST_RUN.txt`, and `runs/{run_id}`. |
-| Numbered ceremony folders | Complete | Artifacts are routed to `00-start-here` through `10-journal`. |
+| Numbered ceremony folders | Complete | Artifacts are routed to `00-start-here` through `13-journal` using General Instructions ceremony names. |
 | Source data separation | Complete | POP/CLC imports and imported package skeletons live under `source-data`. |
 | Scenario command output | Complete | Commands print run id, run folder, start-here path, report, summary, and artifact index. |
 | Diagnostics/export integration | Complete | Evidence manifests, TAR archives, removable-media exports, and verification reports use the active run. |
@@ -21,16 +21,19 @@ Keep scenario and operator evidence under one intuitive run folder with numbered
 ```text
 storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo/
   00-start-here/
-  01-precinct-preparation/
-  02-device-certification/
-  03-polls-opening/
-  04-voting-and-printing/
-  05-polls-closing/
+  01-precinct-package-and-configuration/
+  02-final-testing-and-sealing/
+  03-opening-of-polls/
+  04-voting/
+  05-closing-of-polls/
   06-counting-and-tally/
   07-election-return/
-  08-precinct-closing/
-  09-exports-and-verification/
-  10-journal/
+  08-transmission-or-official-handoff/
+  09-final-backup/
+  10-custody-turnover/
+  11-close-precinct/
+  12-audit-and-reconciliation/
+  13-journal/
 ```
 
 ## Verified Commands

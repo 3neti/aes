@@ -12,16 +12,19 @@ final class ElectionStorage
      */
     private const CeremonyDirectories = [
         'start' => '00-start-here',
-        'preparation' => '01-precinct-preparation',
-        'certification' => '02-device-certification',
-        'opening' => '03-polls-opening',
-        'voting' => '04-voting-and-printing',
-        'closing' => '05-polls-closing',
+        'preparation' => '01-precinct-package-and-configuration',
+        'certification' => '02-final-testing-and-sealing',
+        'opening' => '03-opening-of-polls',
+        'voting' => '04-voting',
+        'closing' => '05-closing-of-polls',
         'counting' => '06-counting-and-tally',
         'returns' => '07-election-return',
-        'precinct_closing' => '08-precinct-closing',
-        'exports' => '09-exports-and-verification',
-        'journal' => '10-journal',
+        'transmission' => '08-transmission-or-official-handoff',
+        'final_backup' => '09-final-backup',
+        'custody' => '10-custody-turnover',
+        'precinct_closing' => '11-close-precinct',
+        'audit' => '12-audit-and-reconciliation',
+        'journal' => '13-journal',
     ];
 
     public function __construct(
@@ -71,6 +74,12 @@ final class ElectionStorage
 
         if (! $this->files->exists($readme)) {
             $this->files->put($readme, $this->rootReadme());
+        }
+
+        $markdownReadme = $this->root().'/README.md';
+
+        if (! $this->files->exists($markdownReadme)) {
+            $this->files->put($markdownReadme, $this->rootReadmeMarkdown());
         }
     }
 
@@ -124,7 +133,9 @@ final class ElectionStorage
         ];
 
         $this->files->put($runPath.'/README.txt', $this->runReadme($context));
+        $this->files->put($runPath.'/README.md', $this->runReadmeMarkdown($context));
         $this->files->put($runPath.'/'.self::CeremonyDirectories['start'].'/README.txt', $this->startHereReadme($context));
+        $this->files->put($runPath.'/'.self::CeremonyDirectories['start'].'/README.md', $this->startHereReadmeMarkdown($context));
         $this->files->put($this->root().'/LATEST_RUN.txt', $runPath.PHP_EOL);
         $this->files->put($this->root().'/current-run.json', $this->json->encode($context));
 
@@ -285,12 +296,18 @@ final class ElectionStorage
             'artifact_count' => count($artifacts),
             'important_paths' => [
                 'start_here' => $runPath.'/'.self::CeremonyDirectories['start'],
+                'precinct_package_and_configuration' => $runPath.'/'.self::CeremonyDirectories['preparation'],
+                'final_testing_and_sealing' => $runPath.'/'.self::CeremonyDirectories['certification'],
+                'opening_of_polls' => $runPath.'/'.self::CeremonyDirectories['opening'],
                 'ballots' => $runPath.'/'.self::CeremonyDirectories['voting'],
+                'closing_of_polls' => $runPath.'/'.self::CeremonyDirectories['closing'],
                 'counting_and_tally' => $runPath.'/'.self::CeremonyDirectories['counting'],
                 'election_return' => $runPath.'/'.self::CeremonyDirectories['returns'],
-                'transmission' => $runPath.'/'.self::CeremonyDirectories['exports'].'/transmission',
-                'custody' => $runPath.'/'.self::CeremonyDirectories['exports'].'/custody',
-                'exports_and_verification' => $runPath.'/'.self::CeremonyDirectories['exports'],
+                'transmission_or_official_handoff' => $runPath.'/'.self::CeremonyDirectories['transmission'],
+                'final_backup' => $runPath.'/'.self::CeremonyDirectories['final_backup'],
+                'custody_turnover' => $runPath.'/'.self::CeremonyDirectories['custody'],
+                'close_precinct' => $runPath.'/'.self::CeremonyDirectories['precinct_closing'],
+                'audit_and_reconciliation' => $runPath.'/'.self::CeremonyDirectories['audit'],
                 'journal' => $runPath.'/'.self::CeremonyDirectories['journal'],
             ],
         ];
@@ -393,15 +410,17 @@ final class ElectionStorage
             str_starts_with($relative, 'counting/rejected/') => self::CeremonyDirectories['counting'].'/rejected/'.$basename,
             $relative === 'returns' => self::CeremonyDirectories['returns'],
             str_starts_with($relative, 'returns/') => self::CeremonyDirectories['returns'].'/'.$basename,
-            $relative === 'diagnostics' => self::CeremonyDirectories['exports'],
-            str_starts_with($relative, 'diagnostics/uploaded-archives/') => self::CeremonyDirectories['exports'].'/uploaded-archives/'.$basename,
-            str_starts_with($relative, 'diagnostics/') => self::CeremonyDirectories['exports'].'/'.$basename,
-            $relative === 'transmission' => self::CeremonyDirectories['exports'].'/transmission',
-            str_starts_with($relative, 'transmission/') => self::CeremonyDirectories['exports'].'/transmission/'.$basename,
-            $relative === 'custody' => self::CeremonyDirectories['exports'].'/custody',
-            str_starts_with($relative, 'custody/') => self::CeremonyDirectories['exports'].'/custody/'.$basename,
-            str_starts_with($relative, 'removable-media/') => self::CeremonyDirectories['exports'].'/removable-media/'.substr($relative, strlen('removable-media/')),
-            $relative === 'removable-media' => self::CeremonyDirectories['exports'].'/removable-media',
+            $relative === 'diagnostics' => self::CeremonyDirectories['audit'],
+            str_starts_with($relative, 'diagnostics/uploaded-archives/') => self::CeremonyDirectories['audit'].'/uploaded-archives/'.$basename,
+            str_starts_with($relative, 'diagnostics/') => self::CeremonyDirectories['audit'].'/'.$basename,
+            $relative === 'transmission' => self::CeremonyDirectories['transmission'],
+            str_starts_with($relative, 'transmission/final-backup') => self::CeremonyDirectories['final_backup'].'/'.$basename,
+            str_starts_with($relative, 'transmission/backup-') => self::CeremonyDirectories['final_backup'].'/'.$basename,
+            str_starts_with($relative, 'transmission/') => self::CeremonyDirectories['transmission'].'/'.$basename,
+            $relative === 'custody' => self::CeremonyDirectories['custody'],
+            str_starts_with($relative, 'custody/') => self::CeremonyDirectories['custody'].'/'.$basename,
+            str_starts_with($relative, 'removable-media/') => self::CeremonyDirectories['audit'].'/removable-media/'.substr($relative, strlen('removable-media/')),
+            $relative === 'removable-media' => self::CeremonyDirectories['audit'].'/removable-media',
             $relative === 'scenarios' => self::CeremonyDirectories['start'],
             str_starts_with($relative, 'scenarios/') => self::CeremonyDirectories['start'].'/'.$basename,
             $relative === 'precinct-candidates' => self::CeremonyDirectories['preparation'].'/candidate-previews',
@@ -451,6 +470,25 @@ final class ElectionStorage
         ]);
     }
 
+    private function rootReadmeMarkdown(): string
+    {
+        return implode(PHP_EOL, [
+            '# Alternative Election System Evidence Storage',
+            '',
+            'Open `LATEST_RUN.txt` to find the newest run folder.',
+            '',
+            'Each run folder is organized in numbered ceremony order so election workers can browse the evidence bundle as a legal sequence. Source imports used by the runs live under `source-data` and are separated from run evidence.',
+            '',
+            'Typical folders:',
+            '',
+            '- `runs/`: generated lifecycle scenario and operator evidence bundles.',
+            '- `source-data/pop/`: imported Project of Precincts source copies and registries.',
+            '- `source-data/clc/`: imported Certified List of Candidates source copies and registries.',
+            '- `source-data/imported-packages/`: package skeletons created from imported precinct records.',
+            '',
+        ]);
+    }
+
     /**
      * @param  array<string, mixed>  $context
      */
@@ -471,6 +509,47 @@ final class ElectionStorage
     /**
      * @param  array<string, mixed>  $context
      */
+    private function runReadmeMarkdown(array $context): string
+    {
+        return implode(PHP_EOL, [
+            '# Alternative Election System Run Folder',
+            '',
+            '- Run ID: `'.$context['run_id'].'`',
+            '- Precinct: `'.$context['precinct_id'].'`',
+            '- Scenario: `'.$context['scenario'].'`',
+            '',
+            'Browse the folders in number order. The names follow the election ceremony sequence in the General Instructions. Paper ballots and printed artifacts remain the legal source of truth; files in this bundle are supporting evidence and reproducibility records.',
+            '',
+            '## Directory Guide',
+            '',
+            '| Folder | Purpose | Common files |',
+            '| --- | --- | --- |',
+            '| `00-start-here` | Entry point for the run. | Scenario report, lifecycle state, quick README. |',
+            '| `01-precinct-package-and-configuration` | Precinct package, ballot style, candidates, EB/officer setup. | Active package, active precinct, ballot definition, candidate preview, officer registry. |',
+            '| `02-final-testing-and-sealing` | Device certification, final testing, zero/known-result evidence. | Device certification report, certification ballots, FTS reports. |',
+            '| `03-opening-of-polls` | Poll opening and officer attestations. | Opening reports, attestations, signature artifacts. |',
+            '| `04-voting` | Ballot finalization and printing evidence. | Ballot payloads, QR artifacts, printable ballots, print jobs, spoiled ballots, special polling intake. |',
+            '| `05-closing-of-polls` | Close polls ceremony evidence. | Closing reports and unused/spoiled ballot summaries when present. |',
+            '| `06-counting-and-tally` | Accepted/rejected ballot payloads and tally. | Accepted records, rejected records, tally JSON, tally sheet text/PDF. |',
+            '| `07-election-return` | Election Return generation. | Election Return JSON, text, PDF, attestations. |',
+            '| `08-transmission-or-official-handoff` | Transmission as official handoff. | Transmission report, delivery package, manual handoff verifications, delivery receipt. |',
+            '| `09-final-backup` | Final backup after transmission/handoff evidence. | Final backup report and backup manifests. |',
+            '| `10-custody-turnover` | Chain-of-custody and turnover evidence. | Custody record, custody turnover report, custody PDFs. |',
+            '| `11-close-precinct` | Final precinct closure checkpoint. | Closure reports when generated. |',
+            '| `12-audit-and-reconciliation` | Audit, evidence manifests, exports, and verification. | Evidence manifests, archive reports, removable-media reports, verification reports. |',
+            '| `13-journal` | Append-only event history. | Activity journal entries and summaries. |',
+            '',
+            '## Index Files',
+            '',
+            '- `run-summary.json` and `run-summary.txt` summarize the run and important folders.',
+            '- `artifact-index.json` lists every evidence file with size and SHA-256 hash.',
+            '',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
     private function startHereReadme(array $context): string
     {
         return implode(PHP_EOL, [
@@ -479,6 +558,23 @@ final class ElectionStorage
             'Run ID: '.$context['run_id'],
             'Review run-summary.txt for the plain-language summary.',
             'Review artifact-index.json for file hashes and evidence pointers.',
+            '',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function startHereReadmeMarkdown(array $context): string
+    {
+        return implode(PHP_EOL, [
+            '# Start Here',
+            '',
+            '- Run ID: `'.$context['run_id'].'`',
+            '- Precinct: `'.$context['precinct_id'].'`',
+            '- Scenario: `'.$context['scenario'].'`',
+            '',
+            'Read `run-summary.txt` first for a plain-language summary, then use `artifact-index.json` to verify file hashes. Continue through the numbered ceremony folders in order.',
             '',
         ]);
     }

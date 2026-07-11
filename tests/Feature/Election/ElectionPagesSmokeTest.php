@@ -549,7 +549,7 @@ test('diagnostics can build and download evidence bundle archive', function (): 
         ->and($report['archive_sha256'])->toBe(hash_file('sha256', $report['archive_path']))
         ->and($archive)->toContain('evidence-manifest.json')
         ->and($archive)->toContain('archive-index.json')
-        ->and($archive)->toContain('03-polls-opening')
+        ->and($archive)->toContain('03-opening-of-polls')
         ->and($archive)->toContain('attestation-000001');
 
     $this->get(route('election.diagnostics'))
@@ -690,10 +690,10 @@ test('diagnostics can stage removable media evidence export', function (): void 
     expect($report['schema_version'])->toBe('removable-media-export-report-1')
         ->and($report['export_id'])->toBe('evidence-export-20260508-190000')
         ->and($report['artifact_count'])->toBeGreaterThan(2)
-        ->and(collect($report['copied_files'])->contains(fn (array $file): bool => $file['target'] === 'artifacts/03-polls-opening/attestations/'.$attestationArtifact))->toBeTrue()
+        ->and(collect($report['copied_files'])->contains(fn (array $file): bool => $file['target'] === 'artifacts/03-opening-of-polls/attestations/'.$attestationArtifact))->toBeTrue()
         ->and($exportRoot.'/evidence-manifest.json')->toBeReadableFile()
-        ->and($exportRoot.'/artifacts/03-polls-opening/attestations/'.$attestationArtifact)->toBeReadableFile()
-        ->and($exportRoot.'/artifacts/03-polls-opening/signatures/'.$signatureArtifact)->toBeReadableFile();
+        ->and($exportRoot.'/artifacts/03-opening-of-polls/attestations/'.$attestationArtifact)->toBeReadableFile()
+        ->and($exportRoot.'/artifacts/03-opening-of-polls/signatures/'.$signatureArtifact)->toBeReadableFile();
 
     $this->get(route('election.diagnostics'))
         ->assertSuccessful()

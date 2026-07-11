@@ -130,7 +130,7 @@ final class SupplyVerificationBaselineService
             [
                 'supply_code' => 'precinct_bundle',
                 'label' => 'Precinct Evidence Bundle Root',
-                'relative_path' => '10-journal',
+                'relative_path' => 'journals',
                 'required' => false,
             ],
         ])->map(function (array $supply) use ($runId): array {
