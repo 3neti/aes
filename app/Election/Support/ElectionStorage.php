@@ -134,6 +134,10 @@ final class ElectionStorage
 
         $this->files->put($runPath.'/README.txt', $this->runReadme($context));
         $this->files->put($runPath.'/README.md', $this->runReadmeMarkdown($context));
+        foreach (self::CeremonyDirectories as $key => $directory) {
+            $this->files->put($runPath.'/'.$directory.'/README.md', $this->ceremonyDirectoryReadmeMarkdown($key, $directory, $context));
+        }
+
         $this->files->put($runPath.'/'.self::CeremonyDirectories['start'].'/README.txt', $this->startHereReadme($context));
         $this->files->put($runPath.'/'.self::CeremonyDirectories['start'].'/README.md', $this->startHereReadmeMarkdown($context));
         $this->files->put($this->root().'/LATEST_RUN.txt', $runPath.PHP_EOL);
@@ -545,6 +549,133 @@ final class ElectionStorage
             '- `artifact-index.json` lists every evidence file with size and SHA-256 hash.',
             '',
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function ceremonyDirectoryReadmeMarkdown(string $key, string $directory, array $context): string
+    {
+        $guide = $this->ceremonyDirectoryGuide()[$key] ?? [
+            'title' => $directory,
+            'purpose' => 'Supporting evidence for this ceremony step.',
+            'common_files' => 'Evidence files produced by the scenario or operator workflow.',
+            'review' => 'Confirm files listed here appear in `artifact-index.json`.',
+        ];
+
+        return implode(PHP_EOL, [
+            '# '.$guide['title'],
+            '',
+            '- Folder: `'.$directory.'`',
+            '- Run ID: `'.$context['run_id'].'`',
+            '- Precinct: `'.$context['precinct_id'].'`',
+            '',
+            '## Purpose',
+            '',
+            $guide['purpose'],
+            '',
+            '## Common Evidence',
+            '',
+            $guide['common_files'],
+            '',
+            '## Review',
+            '',
+            $guide['review'],
+            '',
+        ]);
+    }
+
+    /**
+     * @return array<string, array{title: string, purpose: string, common_files: string, review: string}>
+     */
+    private function ceremonyDirectoryGuide(): array
+    {
+        return [
+            'start' => [
+                'title' => 'Start Here',
+                'purpose' => 'Entry point for the run evidence bundle.',
+                'common_files' => 'Scenario report, lifecycle state, and quick-start notes.',
+                'review' => 'Read `run-summary.txt`, then use `artifact-index.json` to verify hashes.',
+            ],
+            'preparation' => [
+                'title' => 'Precinct Package and Configuration',
+                'purpose' => 'Records the precinct package, ballot style, candidate set, and operator/officer setup used by the appliance.',
+                'common_files' => 'Active package, active precinct configuration, ballot definition, candidate previews, officer registry, and electoral board baseline records.',
+                'review' => 'Confirm the precinct, ballot style, candidate source hashes, and officer registry are correct before reviewing later ceremonies.',
+            ],
+            'certification' => [
+                'title' => 'Final Testing and Sealing',
+                'purpose' => 'Contains final testing, device certification, zero/known-result checks, and sealing evidence.',
+                'common_files' => 'Device certification reports, certification QR scan documents, final testing reports, zero reports, and sealing attestations.',
+                'review' => 'Confirm certification passed before any opening, voting, or counting evidence is accepted as an election run.',
+            ],
+            'opening' => [
+                'title' => 'Opening of Polls',
+                'purpose' => 'Records the ceremony that opens polls and captures officer attestations.',
+                'common_files' => 'Opening reports, attestation JSON files, and officer signature PNG files.',
+                'review' => 'Confirm required officers attested before voting evidence begins.',
+            ],
+            'voting' => [
+                'title' => 'Voting',
+                'purpose' => 'Contains ballot finalization, ballot printing, spoilage, and special polling intake evidence.',
+                'common_files' => 'Ballot payload JSON files, QR artifacts, printable ballot text/PDF files, print jobs, spoiled ballot records, and special polling intake records.',
+                'review' => 'Remember that paper ballots remain the legal source of truth; these files support reproducibility and audit.',
+            ],
+            'closing' => [
+                'title' => 'Closing of Polls',
+                'purpose' => 'Records the ceremony that closes polls and prepares the precinct for counting.',
+                'common_files' => 'Close-polls reports and closing attestations when generated.',
+                'review' => 'Confirm voting ended before counting and tally evidence begins.',
+            ],
+            'counting' => [
+                'title' => 'Counting and Tally',
+                'purpose' => 'Contains accepted/rejected ballot payload records and the resulting tally evidence.',
+                'common_files' => 'Accepted ballot records, rejected ballot records, tally JSON, tally sheet text, and tally sheet PDF.',
+                'review' => 'Check accepted and rejected counts against the tally sheet and Election Return.',
+            ],
+            'returns' => [
+                'title' => 'Election Return',
+                'purpose' => 'Contains generated Election Return artifacts and related attestations.',
+                'common_files' => 'Election Return JSON, text, PDF, return attestations, and signature artifacts when present.',
+                'review' => 'Confirm the Election Return hash and vote totals match the tally evidence.',
+            ],
+            'transmission' => [
+                'title' => 'Transmission or Official Handoff',
+                'purpose' => 'Records transmission as an official handoff of election artifacts.',
+                'common_files' => 'Transmission report, delivery package, officer verification, recipient verification, and delivery receipt.',
+                'review' => 'Confirm the handoff package references the correct Election Return and recipient verification evidence.',
+            ],
+            'final_backup' => [
+                'title' => 'Final Backup',
+                'purpose' => 'Contains final backup evidence produced after transmission or handoff.',
+                'common_files' => 'Final backup report, backup text/PDF artifacts, and backup manifests when generated.',
+                'review' => 'Confirm final backup hashes are recorded before custody turnover.',
+            ],
+            'custody' => [
+                'title' => 'Custody Turnover',
+                'purpose' => 'Records chain-of-custody and turnover evidence for election artifacts.',
+                'common_files' => 'Custody record JSON/text/PDF and custody turnover report JSON/text/PDF.',
+                'review' => 'Confirm custody records reference transmission, delivery receipt, final backup, and recipient evidence.',
+            ],
+            'precinct_closing' => [
+                'title' => 'Close Precinct',
+                'purpose' => 'Final precinct closure checkpoint after required reports, backup, and custody steps.',
+                'common_files' => 'Close-precinct reports when generated.',
+                'review' => 'Confirm no required ceremony remains pending before treating the run as closed.',
+            ],
+            'audit' => [
+                'title' => 'Audit and Reconciliation',
+                'purpose' => 'Contains audit, reconciliation, evidence manifest, export, archive, and verification records.',
+                'common_files' => 'Evidence manifest, downloadable archive report, archive verification report, removable-media export reports, and reconciliation reports.',
+                'review' => 'Use these files with `artifact-index.json` to verify evidence completeness and hashes.',
+            ],
+            'journal' => [
+                'title' => 'Journal',
+                'purpose' => 'Contains the append-only event history for the run.',
+                'common_files' => 'Activity journal files and journal summaries.',
+                'review' => 'Check journal sequence and hashes when reconstructing the ceremony timeline.',
+            ],
+        ];
     }
 
     /**

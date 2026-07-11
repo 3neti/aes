@@ -494,6 +494,7 @@
 - Slice 11 focused Inertia smoke coverage: passed, 2 tests and 25 assertions.
 - Run folder rationalization now uses General Instructions ceremony names from `00-start-here` through `13-journal`.
 - Generated run folders now include `README.md` at the run root and in `00-start-here`, explaining directory purpose, common files, summary files, and artifact index usage for election workers.
+- Generated run folders now include a ceremony-specific `README.md` in every numbered directory from `00-start-here` through `13-journal`.
 - Transmission/handoff artifacts now route to `08-transmission-or-official-handoff` instead of the old generic exports folder.
 - Final backup artifacts now route to `09-final-backup`.
 - Custody records and custody turnover reports now route to `10-custody-turnover`.
@@ -505,6 +506,8 @@
 - Evidence folder demo scenario after run folder rationalization: passed and wrote `storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo`.
 - Custody turnover scenario after run folder rationalization: passed and wrote `storage/app/election/runs/20260508-080000-39010001-custody-turnover`.
 - Full Pest suite after run folder rationalization was started but did not complete in this sandbox run; it was interrupted after remaining silent for several minutes. Focused storage, export, final-backup, custody, and scenario checks above passed.
+- Per-directory README focused evidence-folder scenario test: passed, 1 test and 316 assertions.
+- Per-directory README evidence folder scenario command: passed and wrote `storage/app/election/runs/20260508-080000-39010001-evidence-folder-demo`.
 
 ## Known Gaps
 
