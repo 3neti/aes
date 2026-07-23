@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
+import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
+import StatusBadge from '@/components/election/StatusBadge.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { certifyDevices } from '@/routes/election/diagnostics';
 
@@ -205,6 +207,18 @@ type EvidenceBundleArchiveVerification = {
 defineProps<{
     snapshot: ElectionSnapshot;
     diagnostics: {
+        storage_root?: string;
+        configuration?: Record<string, unknown>;
+        package?: Record<string, unknown>;
+        journal_entries?: number;
+        accepted_ballots?: number;
+        rejected_ballots?: number;
+        attestations?: number;
+        printer?: string;
+        scanner?: string;
+        device_certification?: {
+            passed?: boolean;
+        };
         attestation_artifacts?: AttestationArtifact[];
         initialization_report?: InitializationReport;
         evidence_manifest?: EvidenceManifest;
@@ -223,45 +237,167 @@ defineProps<{
 
 <template>
     <CeremonyLayout :snapshot="snapshot" title="Diagnostics">
-        <section class="border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Appliance Diagnostics</h2>
-            <Form v-bind="certifyDevices.form()" class="mt-4">
-                <button class="primary-button" type="submit">
-                    Certify Device Adapters
-                </button>
-            </Form>
-            <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                <div
-                    v-for="(value, key) in diagnostics"
-                    :key="key"
-                    v-show="
-                        key !== 'attestation_artifacts' &&
-                        key !== 'initialization_report' &&
-                        key !== 'evidence_manifest' &&
-                        key !== 'evidence_reference_baseline' &&
-                        key !== 'audit_reconciliation_baseline' &&
-                        key !== 'evidence_bundle_archive' &&
-                        key !== 'evidence_bundle_archive_verification' &&
-                        key !== 'removable_media_export' &&
-                        key !== 'removable_media_readiness' &&
-                        key !== 'evidence_export_verification' &&
-                        key !== 'official_minutes_baseline'
-                    "
-                    class="border border-stone-200 p-3"
-                >
-                    <dt class="font-semibold">{{ key }}</dt>
-                    <dd class="mt-1 break-all text-stone-700">
+        <CeremonyActionPanel
+            title="Evidence and appliance readiness"
+            description="Review the precinct evidence bundle, verify its integrity, and check the local printer and scanner adapters."
+            eyebrow="Audit workspace"
+            :status="
+                diagnostics.device_certification?.passed
+                    ? 'Devices certified'
+                    : 'Device check required'
+            "
+            :tone="
+                diagnostics.device_certification?.passed
+                    ? 'complete'
+                    : 'warning'
+            "
+        >
+            <div class="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+                <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                    <div class="border border-stone-200 p-3">
+                        <dt class="text-stone-500">Printer adapter</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{ diagnostics.printer || 'Not configured' }}
+                        </dd>
+                    </div>
+                    <div class="border border-stone-200 p-3">
+                        <dt class="text-stone-500">Scanner adapter</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{ diagnostics.scanner || 'Not configured' }}
+                        </dd>
+                    </div>
+                    <div class="border border-stone-200 p-3">
+                        <dt class="text-stone-500">Journal entries</dt>
+                        <dd class="mt-1 text-2xl font-bold text-stone-950">
+                            {{ diagnostics.journal_entries ?? 0 }}
+                        </dd>
+                    </div>
+                    <div class="border border-stone-200 p-3">
+                        <dt class="text-stone-500">Signed attestations</dt>
+                        <dd class="mt-1 text-2xl font-bold text-stone-950">
+                            {{ diagnostics.attestations ?? 0 }}
+                        </dd>
+                    </div>
+                </dl>
+                <Form v-bind="certifyDevices.form()" #default="{ processing }">
+                    <button
+                        class="primary-button"
+                        type="submit"
+                        :disabled="processing"
+                    >
                         {{
-                            typeof value === 'object'
-                                ? JSON.stringify(value)
-                                : value
+                            processing
+                                ? 'Checking devices...'
+                                : 'Run device readiness check'
                         }}
-                    </dd>
-                </div>
-            </dl>
+                    </button>
+                </Form>
+            </div>
+        </CeremonyActionPanel>
+
+        <section class="border border-stone-300 bg-white">
+            <header class="border-b border-stone-200 px-5 py-4">
+                <h2 class="text-lg font-bold text-stone-950">
+                    Evidence workspace
+                </h2>
+                <p class="mt-1 text-sm text-stone-600">
+                    Open the required evidence task. Each section includes its
+                    current status, artifact hash, and available action.
+                </p>
+            </header>
+            <nav
+                class="grid gap-px bg-stone-200 sm:grid-cols-2 lg:grid-cols-3"
+                aria-label="Evidence workspace sections"
+            >
+                <a class="evidence-nav-link" href="#evidence-manifest">
+                    <span>Evidence manifest</span>
+                    <StatusBadge
+                        :label="
+                            diagnostics.evidence_manifest?.exists
+                                ? 'Generated'
+                                : 'Pending'
+                        "
+                        :tone="
+                            diagnostics.evidence_manifest?.exists
+                                ? 'complete'
+                                : 'warning'
+                        "
+                    />
+                </a>
+                <a class="evidence-nav-link" href="#evidence-archive">
+                    <span>Downloadable archive</span>
+                    <StatusBadge
+                        :label="
+                            diagnostics.evidence_bundle_archive?.exists
+                                ? 'Built'
+                                : 'Pending'
+                        "
+                        :tone="
+                            diagnostics.evidence_bundle_archive?.exists
+                                ? 'complete'
+                                : 'warning'
+                        "
+                    />
+                </a>
+                <a class="evidence-nav-link" href="#archive-verification">
+                    <span>Archive verification</span>
+                    <StatusBadge
+                        :label="
+                            diagnostics.evidence_bundle_archive_verification
+                                ?.exists
+                                ? 'Verified'
+                                : 'Pending'
+                        "
+                        :tone="
+                            diagnostics.evidence_bundle_archive_verification
+                                ?.exists
+                                ? 'complete'
+                                : 'warning'
+                        "
+                    />
+                </a>
+                <a class="evidence-nav-link" href="#removable-media">
+                    <span>Removable media</span>
+                    <StatusBadge
+                        :label="
+                            diagnostics.removable_media_readiness?.ready
+                                ? 'Ready'
+                                : 'Check required'
+                        "
+                        :tone="
+                            diagnostics.removable_media_readiness?.ready
+                                ? 'complete'
+                                : 'warning'
+                        "
+                    />
+                </a>
+                <a class="evidence-nav-link" href="#audit-reconciliation">
+                    <span>Audit reconciliation</span>
+                    <StatusBadge
+                        :label="
+                            diagnostics.audit_reconciliation_baseline?.exists
+                                ? 'Generated'
+                                : 'Pending'
+                        "
+                        :tone="
+                            diagnostics.audit_reconciliation_baseline?.exists
+                                ? 'complete'
+                                : 'warning'
+                        "
+                    />
+                </a>
+                <a class="evidence-nav-link" href="#signed-attestations">
+                    <span>Signed attestations</span>
+                    <StatusBadge
+                        :label="`${diagnostics.attestation_artifacts?.length ?? 0} files`"
+                        tone="neutral"
+                    />
+                </a>
+            </nav>
         </section>
 
         <section
+            id="evidence-manifest"
             v-if="diagnostics.evidence_manifest"
             class="border border-stone-300 bg-white p-5"
         >
@@ -653,6 +789,7 @@ defineProps<{
         </section>
 
         <section
+            id="audit-reconciliation"
             v-if="diagnostics.audit_reconciliation_baseline"
             class="border border-stone-300 bg-white p-5"
         >
@@ -843,6 +980,7 @@ defineProps<{
         </section>
 
         <section
+            id="evidence-archive"
             v-if="diagnostics.evidence_bundle_archive"
             class="border border-stone-300 bg-white p-5"
         >
@@ -935,6 +1073,7 @@ defineProps<{
         </section>
 
         <section
+            id="archive-verification"
             v-if="diagnostics.evidence_bundle_archive_verification"
             class="border border-stone-300 bg-white p-5"
         >
@@ -1169,6 +1308,7 @@ defineProps<{
         </section>
 
         <section
+            id="removable-media"
             v-if="diagnostics.removable_media_readiness"
             class="border border-stone-300 bg-white p-5"
         >
@@ -1496,7 +1636,10 @@ defineProps<{
             </div>
         </section>
 
-        <section class="border border-stone-300 bg-white p-5">
+        <section
+            id="signed-attestations"
+            class="border border-stone-300 bg-white p-5"
+        >
             <div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
                 <div>
                     <h2 class="text-lg font-semibold">
@@ -1616,6 +1759,23 @@ defineProps<{
     color: white;
     padding: 0.7rem 1rem;
     font-weight: 700;
+}
+
+.evidence-nav-link {
+    display: flex;
+    min-height: 4rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: white;
+    padding: 0.9rem 1rem;
+    color: rgb(28 25 23);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.evidence-nav-link:hover {
+    background: rgb(250 250 249);
 }
 
 .artifact-link {
