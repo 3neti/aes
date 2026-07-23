@@ -8,18 +8,22 @@ beforeEach(function (): void {
     app(ActivateSamplePackage::class)->handle();
 });
 
-test('ceremony page has no browser smoke failures: :label', function (string $path, string $label): void {
-    visit($path)
-        ->assertSee($label)
-        ->assertNoJavaScriptErrors()
-        ->assertNoConsoleLogs();
-})->with([
-    'home' => ['/', 'Alternative Election System'],
-    'provision' => ['/election/provision', 'Provision'],
-    'certification' => ['/election/certification', 'Certification'],
-    'voting' => ['/election/voting', 'Voting'],
-    'printing' => ['/election/printing', 'Official Ballot Artifact'],
-    'counting' => ['/election/counting', 'Counting'],
-    'returns' => ['/election/returns', 'Election Return'],
-    'diagnostics' => ['/election/diagnostics', 'Diagnostics'],
-]);
+test('ceremony pages have no browser smoke failures', function (): void {
+    $ceremonies = [
+        ['/', 'Alternative Election System'],
+        ['/election/provision', 'Precinct Setup'],
+        ['/election/certification', 'Certification'],
+        ['/election/voting', 'Voting'],
+        ['/election/printing', 'Official Ballot Artifact'],
+        ['/election/counting', 'Counting'],
+        ['/election/returns', 'Election Return'],
+        ['/election/diagnostics', 'Diagnostics'],
+    ];
+
+    foreach ($ceremonies as [$path, $label]) {
+        visit($path)
+            ->assertSee($label)
+            ->assertNoJavaScriptErrors()
+            ->assertNoConsoleLogs();
+    }
+});

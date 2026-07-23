@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
+import ArtifactLinks from '@/components/election/ArtifactLinks.vue';
+import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
+import StatusBadge from '@/components/election/StatusBadge.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
-import { activate } from '@/routes/election/provision';
-import { ebRoleBaseline } from '@/routes/election/provision';
-import { legalScenarioSuite as legalScenarioSuiteAction } from '@/routes/election/provision';
-import { supplyVerificationBaseline as supplyVerificationBaselineAction } from '@/routes/election/provision';
+import {
+    activate,
+    ebRoleBaseline,
+    legalScenarioSuite as legalScenarioSuiteAction,
+    supplyVerificationBaseline as supplyVerificationBaselineAction,
+} from '@/routes/election/provision';
 
 type ElectoralBoardBaseline = {
     exists: boolean;
@@ -58,160 +63,296 @@ type SupplyVerificationBaseline = {
     generate_url: string;
 };
 
-defineProps<{
+const props = defineProps<{
     snapshot: ElectionSnapshot;
     electoralBoardBaseline: ElectoralBoardBaseline;
     legalScenarioSuite: LegalScenarioSuite;
     supplyVerificationBaseline: SupplyVerificationBaseline;
 }>();
+
+const readinessItems = [
+    {
+        label: 'Precinct package and ballot mapping',
+        ready: () => Boolean(props.snapshot.configuration.mapping_hash),
+    },
+    {
+        label: 'Electoral Board role roster',
+        ready: () =>
+            props.electoralBoardBaseline.exists &&
+            Boolean(props.electoralBoardBaseline.passed),
+    },
+    {
+        label: 'Required election supplies',
+        ready: () =>
+            props.supplyVerificationBaseline.exists &&
+            Boolean(props.supplyVerificationBaseline.passed),
+    },
+    {
+        label: 'Legal lifecycle scenario',
+        ready: () =>
+            props.legalScenarioSuite.exists &&
+            Boolean(props.legalScenarioSuite.passed),
+    },
+];
 </script>
 
 <template>
-    <CeremonyLayout :snapshot="snapshot" title="Provision">
-        <section class="mt-6 border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Legal Scenario Harness</h2>
-            <p class="mt-2 text-sm text-stone-700">
-                Run the legal ceremony suite and review baseline artifact
-                status.
-            </p>
-            <Form v-bind="legalScenarioSuiteAction.form()" class="mt-4">
-                <button class="secondary-button" type="submit">
-                    Run Legal Scenario Suite
-                </button>
-            </Form>
-            <dl v-if="legalScenarioSuite.exists" class="mt-5 text-sm">
-                <dt class="font-semibold">Suite</dt>
-                <dd class="text-stone-700">{{ legalScenarioSuite.suite }}</dd>
-                <dt class="mt-2 font-semibold">Status</dt>
-                <dd class="text-stone-700">
-                    {{ legalScenarioSuite.passed ? 'Ready' : 'Not Ready' }}
-                </dd>
-                <dt class="mt-2 font-semibold">Run</dt>
-                <dd class="text-stone-700">{{ legalScenarioSuite.run_id }}</dd>
-                <dt class="mt-2 font-semibold">Sub-scenarios</dt>
-                <dd class="text-stone-700">
-                    {{ legalScenarioSuite.sub_scenarios?.join(', ') || 'n/a' }}
-                </dd>
-            </dl>
-            <p v-else class="mt-3 text-sm text-stone-600">
-                No legal scenario suite has been run yet.
-            </p>
-        </section>
+    <CeremonyLayout :snapshot="snapshot" title="Precinct Setup">
+        <CeremonyActionPanel
+            title="Load this precinct"
+            description="Activate the embedded precinct package, POP mapping, and candidate configuration assigned to this appliance."
+            eyebrow="Step 1"
+            :status="
+                snapshot.configuration.mapping_hash
+                    ? 'Package active'
+                    : 'Not yet loaded'
+            "
+            :tone="snapshot.configuration.mapping_hash ? 'complete' : 'warning'"
+        >
+            <div class="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
+                <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                        <dt class="text-stone-500">Clustered precinct</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{
+                                snapshot.configuration.precinct_id ||
+                                'Pending activation'
+                            }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-stone-500">Ballot style</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{
+                                snapshot.configuration.ballot_style_id ||
+                                'Pending activation'
+                            }}
+                        </dd>
+                    </div>
+                    <div
+                        v-if="snapshot.configuration.mapping_hash"
+                        class="sm:col-span-2"
+                    >
+                        <dt class="text-stone-500">
+                            Deterministic mapping hash
+                        </dt>
+                        <dd
+                            class="mt-1 font-mono text-xs break-all text-stone-700"
+                        >
+                            {{ snapshot.configuration.mapping_hash }}
+                        </dd>
+                    </div>
+                </dl>
+                <Form v-bind="activate.form()" #default="{ processing }">
+                    <button
+                        class="min-h-11 bg-blue-800 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
+                        type="submit"
+                        :disabled="processing"
+                    >
+                        {{
+                            processing
+                                ? 'Loading precinct...'
+                                : snapshot.configuration.mapping_hash
+                                  ? 'Reload precinct package'
+                                  : 'Load precinct package'
+                        }}
+                    </button>
+                </Form>
+            </div>
+        </CeremonyActionPanel>
 
-        <section class="border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Sample Precinct Package</h2>
-            <p class="mt-2 text-sm text-stone-700">
-                Activate the embedded sample package to derive the local ballot
-                mapping.
-            </p>
-            <Form v-bind="activate.form()" class="mt-5">
-                <button class="primary-button" type="submit">
-                    Activate Package
-                </button>
-            </Form>
-            <dl v-if="snapshot.configuration.mapping_hash" class="mt-5 text-sm">
-                <dt class="font-semibold">Mapping Hash</dt>
-                <dd class="break-all text-stone-700">
-                    {{ snapshot.configuration.mapping_hash }}
-                </dd>
-            </dl>
-        </section>
+        <CeremonyActionPanel
+            title="Opening readiness checklist"
+            description="Complete and preserve each baseline before final testing and sealing."
+            eyebrow="Step 2"
+        >
+            <ol class="divide-y divide-stone-200 border border-stone-200">
+                <li
+                    v-for="(item, index) in readinessItems"
+                    :key="item.label"
+                    class="flex items-center justify-between gap-4 px-4 py-3"
+                >
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span
+                            class="flex h-7 w-7 shrink-0 items-center justify-center border border-stone-300 bg-stone-50 text-xs font-bold"
+                        >
+                            {{ index + 1 }}
+                        </span>
+                        <span class="text-sm font-semibold text-stone-900">
+                            {{ item.label }}
+                        </span>
+                    </div>
+                    <StatusBadge
+                        :label="item.ready() ? 'Ready' : 'Pending'"
+                        :tone="item.ready() ? 'complete' : 'warning'"
+                    />
+                </li>
+            </ol>
+        </CeremonyActionPanel>
 
-        <section class="mt-6 border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">EB Role Baseline</h2>
-            <p class="mt-2 text-sm text-stone-700">
-                Record the Electoral Board role roster baseline for this run.
-            </p>
-            <Form v-bind="ebRoleBaseline.form()" class="mt-4">
-                <button class="secondary-button" type="submit">
-                    Generate EB Role Baseline
-                </button>
-            </Form>
-            <dl v-if="electoralBoardBaseline.exists" class="mt-5 text-sm">
-                <dt class="font-semibold">Baseline Hash</dt>
-                <dd class="break-all text-stone-700">
-                    {{ electoralBoardBaseline.baseline_hash }}
-                </dd>
-                <dt class="mt-2 font-semibold">Run</dt>
-                <dd class="text-stone-700">
-                    {{ electoralBoardBaseline.run_id }}
-                </dd>
-                <dt class="mt-2 font-semibold">Required Roles</dt>
-                <dd class="text-stone-700">
-                    {{ electoralBoardBaseline.required_roles_present }}/{{
-                        electoralBoardBaseline.required_role_count
-                    }}
-                    present
-                </dd>
-                <dt class="mt-2 font-semibold">Missing Required Roles</dt>
-                <dd class="text-stone-700">
-                    {{ electoralBoardBaseline.missing_required_role_count }}
-                </dd>
-                <dt class="mt-2 font-semibold">Status</dt>
-                <dd class="text-stone-700">
-                    {{ electoralBoardBaseline.passed ? 'Ready' : 'Not Ready' }}
-                </dd>
-            </dl>
-            <p v-else class="mt-3 text-sm text-stone-600">
-                No EB role baseline has been generated in this run yet.
-            </p>
-        </section>
-
-        <section class="mt-6 border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Supply Verification Baseline</h2>
-            <p class="mt-2 text-sm text-stone-700">
-                Verify required supply artifacts are present before voting
-                ceremonies begin.
-            </p>
-            <Form v-bind="supplyVerificationBaselineAction.form()" class="mt-4">
-                <button class="secondary-button" type="submit">
-                    Generate Supply Verification Baseline
-                </button>
-            </Form>
-            <dl v-if="supplyVerificationBaseline.exists" class="mt-5 text-sm">
-                <dt class="font-semibold">Baseline Hash</dt>
-                <dd class="break-all text-stone-700">
-                    {{ supplyVerificationBaseline.baseline_hash }}
-                </dd>
-                <dt class="mt-2 font-semibold">Required Supplies</dt>
-                <dd class="text-stone-700">
-                    {{
-                        supplyVerificationBaseline.required_supplies_present
-                    }}/{{ supplyVerificationBaseline.required_supply_count }}
-                    present
-                </dd>
-                <dt class="mt-2 font-semibold">Missing Required Supplies</dt>
-                <dd class="text-stone-700">
-                    {{
-                        supplyVerificationBaseline.required_supply_missing_count
-                    }}
-                </dd>
-                <dt class="mt-2 font-semibold">Optional Supplies</dt>
-                <dd class="text-stone-700">
-                    {{ supplyVerificationBaseline.optional_supply_count }}
-                </dd>
-                <dt class="mt-2 font-semibold">Status</dt>
-                <dd class="text-stone-700">
-                    {{
-                        supplyVerificationBaseline.passed
+        <div class="grid gap-4 lg:grid-cols-2">
+            <CeremonyActionPanel
+                title="Electoral Board roster"
+                description="Record the required Chairperson, Poll Clerk, and Third Member roles."
+                :status="
+                    electoralBoardBaseline.exists
+                        ? electoralBoardBaseline.passed
                             ? 'Ready'
-                            : 'Not Ready'
-                    }}
-                </dd>
-            </dl>
-            <p v-else class="mt-3 text-sm text-stone-600">
-                No supply verification baseline has been generated in this run
-                yet.
-            </p>
-        </section>
+                            : 'Incomplete'
+                        : 'Pending'
+                "
+                :tone="electoralBoardBaseline.passed ? 'complete' : 'warning'"
+            >
+                <Form v-bind="ebRoleBaseline.form()" #default="{ processing }">
+                    <button
+                        class="secondary-button"
+                        type="submit"
+                        :disabled="processing"
+                    >
+                        Record EB roster baseline
+                    </button>
+                </Form>
+                <dl
+                    v-if="electoralBoardBaseline.exists"
+                    class="mt-4 grid grid-cols-2 gap-3 text-sm"
+                >
+                    <div>
+                        <dt class="text-stone-500">Required roles</dt>
+                        <dd class="mt-1 font-bold">
+                            {{
+                                electoralBoardBaseline.required_roles_present
+                            }}/{{ electoralBoardBaseline.required_role_count }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-stone-500">Missing</dt>
+                        <dd class="mt-1 font-bold">
+                            {{
+                                electoralBoardBaseline.missing_required_role_count
+                            }}
+                        </dd>
+                    </div>
+                </dl>
+            </CeremonyActionPanel>
+
+            <CeremonyActionPanel
+                title="Election supplies"
+                description="Check that the required physical and supporting supplies are present."
+                :status="
+                    supplyVerificationBaseline.exists
+                        ? supplyVerificationBaseline.passed
+                            ? 'Ready'
+                            : 'Incomplete'
+                        : 'Pending'
+                "
+                :tone="
+                    supplyVerificationBaseline.passed ? 'complete' : 'warning'
+                "
+            >
+                <Form
+                    v-bind="supplyVerificationBaselineAction.form()"
+                    #default="{ processing }"
+                >
+                    <button
+                        class="secondary-button"
+                        type="submit"
+                        :disabled="processing"
+                    >
+                        Verify election supplies
+                    </button>
+                </Form>
+                <dl
+                    v-if="supplyVerificationBaseline.exists"
+                    class="mt-4 grid grid-cols-2 gap-3 text-sm"
+                >
+                    <div>
+                        <dt class="text-stone-500">Required present</dt>
+                        <dd class="mt-1 font-bold">
+                            {{
+                                supplyVerificationBaseline.required_supplies_present
+                            }}/{{
+                                supplyVerificationBaseline.required_supply_count
+                            }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-stone-500">Missing</dt>
+                        <dd class="mt-1 font-bold">
+                            {{
+                                supplyVerificationBaseline.required_supply_missing_count
+                            }}
+                        </dd>
+                    </div>
+                </dl>
+            </CeremonyActionPanel>
+        </div>
+
+        <CeremonyActionPanel
+            title="Lifecycle rehearsal"
+            description="Run the deterministic legal scenario suite and preserve its report before operational use."
+            :status="
+                legalScenarioSuite.exists
+                    ? legalScenarioSuite.passed
+                        ? 'Passed'
+                        : 'Needs review'
+                    : 'Not run'
+            "
+            :tone="legalScenarioSuite.passed ? 'complete' : 'neutral'"
+        >
+            <div
+                class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+            >
+                <div class="text-sm text-stone-700">
+                    <p v-if="legalScenarioSuite.exists">
+                        Run {{ legalScenarioSuite.run_id }} completed
+                        {{ legalScenarioSuite.sub_scenarios?.length ?? 0 }}
+                        sub-scenarios.
+                    </p>
+                    <p v-else>
+                        No precinct lifecycle rehearsal has been recorded.
+                    </p>
+                </div>
+                <Form
+                    v-bind="legalScenarioSuiteAction.form()"
+                    #default="{ processing }"
+                >
+                    <button
+                        class="secondary-button"
+                        type="submit"
+                        :disabled="processing"
+                    >
+                        Run lifecycle rehearsal
+                    </button>
+                </Form>
+            </div>
+            <ArtifactLinks
+                v-if="legalScenarioSuite.report_path"
+                class="mt-4"
+                :artifacts="[
+                    {
+                        label: 'Lifecycle rehearsal report',
+                        path: legalScenarioSuite.report_path,
+                        detail: legalScenarioSuite.generated_at ?? undefined,
+                    },
+                ]"
+            />
+        </CeremonyActionPanel>
     </CeremonyLayout>
 </template>
 
 <style scoped>
-.primary-button {
-    background: rgb(4 120 87);
-    color: white;
+.secondary-button {
+    min-height: 2.75rem;
+    border: 1px solid rgb(87 83 78);
+    background: white;
     padding: 0.7rem 1rem;
+    color: rgb(28 25 23);
+    font-size: 0.875rem;
     font-weight: 700;
+}
+
+.secondary-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
 </style>
