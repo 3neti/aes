@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
+import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import {
@@ -160,12 +161,25 @@ const manualReturnTemplateJson = JSON.stringify(
 
 <template>
     <CeremonyLayout :snapshot="snapshot" title="Certification">
-        <section class="border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Friday Certification</h2>
-            <p class="mt-2 text-sm text-stone-700">
-                Run known certification ballots and compare the generated tally
-                with the expected result.
-            </p>
+        <CeremonyActionPanel
+            title="Friday Certification"
+            description="Run known certification ballots and compare the generated tally with the expected result."
+            eyebrow="1 of 5"
+            :status="
+                hasCertificationReport
+                    ? certificationReport.passed
+                        ? 'Passed'
+                        : 'Failed'
+                    : 'Not run'
+            "
+            :tone="
+                hasCertificationReport
+                    ? certificationReport.passed
+                        ? 'complete'
+                        : 'danger'
+                    : 'warning'
+            "
+        >
             <Form v-bind="run.form()" class="mt-5">
                 <button class="primary-button" type="submit">
                     Run Certification
@@ -213,14 +227,27 @@ const manualReturnTemplateJson = JSON.stringify(
             <p v-else class="mt-3 text-sm text-stone-600">
                 Certification has not been run in the current run yet.
             </p>
-        </section>
+        </CeremonyActionPanel>
 
-        <section class="mt-6 border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Manual Verification</h2>
-            <p class="mt-2 text-sm text-stone-700">
-                Paste the official manual return summary and compare against the
-                machine certification tally.
-            </p>
+        <CeremonyActionPanel
+            title="Manual Verification"
+            description="Enter the official manual return summary and compare it against the machine certification tally."
+            eyebrow="2 of 5"
+            :status="
+                hasManualVerificationReport
+                    ? manualVerificationReport.passed
+                        ? 'Matched'
+                        : 'Mismatch'
+                    : 'Not run'
+            "
+            :tone="
+                hasManualVerificationReport
+                    ? manualVerificationReport.passed
+                        ? 'complete'
+                        : 'danger'
+                    : 'warning'
+            "
+        >
             <Form v-bind="manualVerification.form()" class="mt-5">
                 <label class="mb-2 block text-sm font-semibold text-stone-700">
                     Manual Return JSON
@@ -313,14 +340,27 @@ const manualReturnTemplateJson = JSON.stringify(
             <p v-else class="mt-3 text-sm text-stone-600">
                 Manual verification has not been run yet.
             </p>
-        </section>
+        </CeremonyActionPanel>
 
-        <section class="mt-6 border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Discrepancy Analysis</h2>
-            <p class="mt-2 text-sm text-stone-700">
-                Compare manual verification with machine certification and
-                generate a legal discrepancy record.
-            </p>
+        <CeremonyActionPanel
+            title="Discrepancy Analysis"
+            description="Compare manual verification with machine certification and generate a legal discrepancy record."
+            eyebrow="3 of 5"
+            :status="
+                hasDiscrepancyReport
+                    ? discrepancyReport.discrepancy_detected
+                        ? 'Discrepancy found'
+                        : 'No discrepancy'
+                    : 'Not run'
+            "
+            :tone="
+                hasDiscrepancyReport
+                    ? discrepancyReport.discrepancy_detected
+                        ? 'danger'
+                        : 'complete'
+                    : 'warning'
+            "
+        >
             <Form v-bind="discrepancy.form()" class="mt-5">
                 <button class="secondary-button" type="submit">
                     Run Discrepancy Analysis
@@ -407,14 +447,27 @@ const manualReturnTemplateJson = JSON.stringify(
                 Run discrepancy analysis to document whether official and manual
                 counts align.
             </p>
-        </section>
+        </CeremonyActionPanel>
 
-        <section class="mt-6 border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Zero-Out</h2>
-            <p class="mt-2 text-sm text-stone-700">
-                Remove FTS counting artifacts and produce a signed zero-out
-                artifact.
-            </p>
+        <CeremonyActionPanel
+            title="Zero-Out"
+            description="Remove final-testing counting artifacts and produce the signed zero-out record."
+            eyebrow="4 of 5"
+            :status="
+                hasZeroOutReport
+                    ? zeroOutReport.passed
+                        ? 'Cleared'
+                        : 'Needs review'
+                    : 'Not run'
+            "
+            :tone="
+                hasZeroOutReport
+                    ? zeroOutReport.passed
+                        ? 'complete'
+                        : 'danger'
+                    : 'warning'
+            "
+        >
             <Form v-bind="zeroOut.form()" class="mt-5">
                 <button class="secondary-button" type="submit">
                     Run Zero-Out
@@ -499,14 +552,27 @@ const manualReturnTemplateJson = JSON.stringify(
                 Run zero-out to clear ephemeral tally files after successful
                 FTS.
             </p>
-        </section>
+        </CeremonyActionPanel>
 
-        <section class="mt-6 border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Sealing Evidence</h2>
-            <p class="mt-2 text-sm text-stone-700">
-                Seal certification evidence for legal continuity and custody
-                handoff.
-            </p>
+        <CeremonyActionPanel
+            title="Sealing Evidence"
+            description="Seal the completed certification evidence for legal continuity and custody handoff."
+            eyebrow="5 of 5"
+            :status="
+                hasSealingReport
+                    ? sealingReport.passed
+                        ? 'Sealed'
+                        : 'Not sealed'
+                    : 'Not run'
+            "
+            :tone="
+                hasSealingReport
+                    ? sealingReport.passed
+                        ? 'complete'
+                        : 'danger'
+                    : 'warning'
+            "
+        >
             <Form v-bind="runSealing.form()" class="mt-5">
                 <button class="secondary-button" type="submit">
                     Record Sealing
@@ -602,15 +668,30 @@ const manualReturnTemplateJson = JSON.stringify(
                 Run sealing to generate the certification sealing summary
                 report.
             </p>
-        </section>
+        </CeremonyActionPanel>
     </CeremonyLayout>
 </template>
 
 <style scoped>
 .primary-button {
-    background: rgb(4 120 87);
+    min-height: 2.75rem;
+    background: rgb(30 64 175);
     color: white;
     padding: 0.7rem 1rem;
+    font-weight: 700;
+}
+
+.secondary-button,
+.artifact-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgb(87 83 78);
+    background: white;
+    padding: 0.7rem 1rem;
+    color: rgb(28 25 23);
+    font-size: 0.875rem;
     font-weight: 700;
 }
 </style>

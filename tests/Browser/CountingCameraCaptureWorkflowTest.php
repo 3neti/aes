@@ -1,5 +1,7 @@
 <?php
 
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
@@ -13,6 +15,7 @@ test('operator can submit a camera capture frame through the counting ceremony',
     config()->set('election.devices.scanner.camera.name', 'Browser Camera Test');
 
     app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::Counting);
 
     $payload = app(BallotPayloadService::class)->finalize([
         'president' => ['pres-ada'],
@@ -49,6 +52,7 @@ test('operator sees feedback when camera permission is denied or unavailable', f
     config()->set('election.devices.scanner.camera.name', 'Browser Camera Test');
 
     app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::Counting);
 
     $page = visit('/election/counting')
         ->assertSee('Camera Capture')
@@ -72,6 +76,7 @@ test('operator sees rejected feedback when camera frame has no decodable qr code
     config()->set('election.devices.scanner.camera.name', 'Browser Camera Test');
 
     app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::Counting);
 
     $page = visit('/election/counting')
         ->assertSee('Camera Capture')

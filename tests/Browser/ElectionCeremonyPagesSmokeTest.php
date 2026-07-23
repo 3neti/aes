@@ -26,4 +26,13 @@ test('ceremony pages have no browser smoke failures', function (): void {
             ->assertNoJavaScriptErrors()
             ->assertNoConsoleLogs();
     }
+
+    visit('/election/voting')
+        ->on()->mobile()
+        ->assertSee('Precinct Run')
+        ->assertSee('Next required action')
+        ->assertSee('Evidence at a glance')
+        ->assertSee('Voting')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
 });

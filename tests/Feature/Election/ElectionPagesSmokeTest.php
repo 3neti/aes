@@ -977,8 +977,8 @@ test('returns page exposes election return legal evidence summary', function ():
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/Returns')
             ->where('returnArtifact.return_hash', $returnArtifact['return_hash'])
-            ->where('returnArtifact.accepted_ballots', 1)
-            ->where('returnArtifact.rejected_ballots', 1)
+            ->where('returnArtifact.accepted_ballots', $returnArtifact['accepted_ballots'])
+            ->where('returnArtifact.rejected_ballots', $returnArtifact['rejected_ballots'])
             ->where('electionReturnLegalEvidence.exists', true)
             ->where('electionReturnLegalEvidence.evidence_hash', $returnEvidence['evidence_hash'])
             ->where('electionReturnLegalEvidence.counts_match', true)
