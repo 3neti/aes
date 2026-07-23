@@ -36,13 +36,22 @@ export type Contest = {
     candidates: Candidate[];
 };
 
+export type WorkflowStep = {
+    id: string;
+    label: string;
+    description: string;
+    stages: string[];
+};
+
 export type ElectionSnapshot = {
     appName: string;
+    operatorLabel: string;
     stage: string;
     stageLabel: string;
     ceremony: string;
     nextAction: string;
     nextStage: string | null;
+    workflow: WorkflowStep[];
     configuration: {
         election_id?: string;
         precinct_id?: string;
@@ -57,5 +66,7 @@ export type ElectionSnapshot = {
         printJobs: number;
         ballots: number;
         attestations: number;
+        transmissions?: number;
+        custody_records?: number;
     };
 };

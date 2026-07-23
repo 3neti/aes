@@ -47,7 +47,11 @@ defineProps<{
                 </dd>
                 <dt class="mt-3 font-semibold">Legal Return Evidence</dt>
                 <dd class="text-stone-700">
-                    {{ electionReturnLegalEvidence.exists ? 'Generated' : 'Not generated' }}
+                    {{
+                        electionReturnLegalEvidence.exists
+                            ? 'Generated'
+                            : 'Not generated'
+                    }}
                 </dd>
                 <template v-if="electionReturnLegalEvidence.exists">
                     <dt class="mt-3 font-semibold">Evidence Hash</dt>
@@ -55,7 +59,13 @@ defineProps<{
                         {{ electionReturnLegalEvidence.evidence_hash }}
                     </dd>
                     <dt class="mt-3 font-semibold">Counts Match</dt>
-                    <dd>{{ electionReturnLegalEvidence.counts_match ? 'Yes' : 'No' }}</dd>
+                    <dd>
+                        {{
+                            electionReturnLegalEvidence.counts_match
+                                ? 'Yes'
+                                : 'No'
+                        }}
+                    </dd>
                     <dt class="mt-3 font-semibold">Evidence Artifact</dt>
                     <dd class="break-all text-stone-700">
                         {{ electionReturnLegalEvidence.artifact }}

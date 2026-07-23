@@ -25,6 +25,7 @@ test('ceremony page renders :component', function (string $route, string $compon
             ->has('snapshot.stage')
             ->has('snapshot.ceremony')
             ->has('snapshot.nextAction')
+            ->has('snapshot.workflow', 9)
             ->has('snapshot.journal')
         );
 })->with([

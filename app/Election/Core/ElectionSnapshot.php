@@ -25,11 +25,13 @@ final class ElectionSnapshot
 
         return [
             'appName' => $this->dictionary->appName(),
+            'operatorLabel' => $this->dictionary->operatorLabel(),
             'stage' => $stage,
             'stageLabel' => $this->dictionary->stageLabel($stage),
             'ceremony' => $this->dictionary->ceremonyLabel($stage),
             'nextAction' => $this->dictionary->actionLabel($stage),
             'nextStage' => Lifecycle::next($stage),
+            'workflow' => $this->dictionary->workflow(),
             'configuration' => $configuration,
             'journal' => $this->journal->latest(),
             'counts' => [

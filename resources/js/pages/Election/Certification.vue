@@ -3,16 +3,16 @@ import { Form } from '@inertiajs/vue3';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import {
-    manualVerification,
-    manualVerificationDownload,
-    zeroOut,
-    zeroOutReportDownload,
-    runSealing,
-    sealingReportDownload,
     discrepancy,
-    discrepancyReportDownload,
+    manualVerification,
     run,
+    seal as runSealing,
+    zeroOut,
 } from '@/routes/election/certification';
+import { download as discrepancyReportDownload } from '@/routes/election/certification/discrepancy';
+import { download as manualVerificationDownload } from '@/routes/election/certification/manual-verification';
+import { download as sealingReportDownload } from '@/routes/election/certification/sealing-report';
+import { download as zeroOutReportDownload } from '@/routes/election/certification/zero-out';
 
 type CertificationReport = {
     schema_version?: string | null;
@@ -351,7 +351,11 @@ const manualReturnTemplateJson = JSON.stringify(
                                 : 'text-red-700',
                         ]"
                     >
-                        {{ discrepancyReport.discrepancy_detected ? 'YES' : 'NO' }}
+                        {{
+                            discrepancyReport.discrepancy_detected
+                                ? 'YES'
+                                : 'NO'
+                        }}
                     </dd>
                 </div>
                 <div>
@@ -383,7 +387,8 @@ const manualReturnTemplateJson = JSON.stringify(
                     <dd class="mt-1 list-disc pl-5 text-stone-700">
                         <ul>
                             <li
-                                v-for="step in discrepancyReport.remediation.requirements"
+                                v-for="step in discrepancyReport.remediation
+                                    .requirements"
                                 :key="step"
                             >
                                 {{ step }}
@@ -453,15 +458,18 @@ const manualReturnTemplateJson = JSON.stringify(
                     <dt class="font-semibold">Counts Before</dt>
                     <dd class="mt-1 text-stone-700">
                         {{
-                            props.zeroOutReport.counts_before?.accepted_ballots ?? 0
+                            props.zeroOutReport.counts_before
+                                ?.accepted_ballots ?? 0
                         }}
                         accepted /
                         {{
-                            props.zeroOutReport.counts_before?.rejected_ballots ?? 0
+                            props.zeroOutReport.counts_before
+                                ?.rejected_ballots ?? 0
                         }}
                         rejected /
                         {{
-                            props.zeroOutReport.counts_before?.spoiled_ballots ?? 0
+                            props.zeroOutReport.counts_before
+                                ?.spoiled_ballots ?? 0
                         }}
                         spoiled
                     </dd>
@@ -469,24 +477,35 @@ const manualReturnTemplateJson = JSON.stringify(
                 <div>
                     <dt class="font-semibold">Counts After</dt>
                     <dd class="mt-1 text-stone-700">
-                        {{ props.zeroOutReport.counts_after?.accepted_ballots ?? 0 }}
+                        {{
+                            props.zeroOutReport.counts_after
+                                ?.accepted_ballots ?? 0
+                        }}
                         accepted /
-                        {{ props.zeroOutReport.counts_after?.rejected_ballots ?? 0 }}
+                        {{
+                            props.zeroOutReport.counts_after
+                                ?.rejected_ballots ?? 0
+                        }}
                         rejected /
-                        {{ props.zeroOutReport.counts_after?.spoiled_ballots ?? 0 }}
+                        {{
+                            props.zeroOutReport.counts_after?.spoiled_ballots ??
+                            0
+                        }}
                         spoiled
                     </dd>
                 </div>
             </dl>
             <p v-else class="mt-3 text-sm text-stone-600">
-                Run zero-out to clear ephemeral tally files after successful FTS.
+                Run zero-out to clear ephemeral tally files after successful
+                FTS.
             </p>
         </section>
 
         <section class="mt-6 border border-stone-300 bg-white p-5">
             <h2 class="text-lg font-semibold">Sealing Evidence</h2>
             <p class="mt-2 text-sm text-stone-700">
-                Seal certification evidence for legal continuity and custody handoff.
+                Seal certification evidence for legal continuity and custody
+                handoff.
             </p>
             <Form v-bind="runSealing.form()" class="mt-5">
                 <button class="secondary-button" type="submit">
@@ -553,18 +572,35 @@ const manualReturnTemplateJson = JSON.stringify(
                     <dt class="font-semibold">Evidence</dt>
                     <dd class="mt-1 text-stone-700">
                         Certification:
-                        {{ props.sealingReport.certification_report_hash ? 'present' : 'missing'
-                        }} · Manual:
-                        {{ props.sealingReport.manual_verification_report_hash ? 'present' : 'missing'
-                        }} · Discrepancy:
-                        {{ props.sealingReport.discrepancy_report_hash ? 'present' : 'missing'
-                        }} · Zero-Out:
-                        {{ props.sealingReport.zero_out_report_hash ? 'present' : 'missing' }}
+                        {{
+                            props.sealingReport.certification_report_hash
+                                ? 'present'
+                                : 'missing'
+                        }}
+                        · Manual:
+                        {{
+                            props.sealingReport.manual_verification_report_hash
+                                ? 'present'
+                                : 'missing'
+                        }}
+                        · Discrepancy:
+                        {{
+                            props.sealingReport.discrepancy_report_hash
+                                ? 'present'
+                                : 'missing'
+                        }}
+                        · Zero-Out:
+                        {{
+                            props.sealingReport.zero_out_report_hash
+                                ? 'present'
+                                : 'missing'
+                        }}
                     </dd>
                 </div>
             </dl>
             <p v-else class="mt-3 text-sm text-stone-600">
-                Run sealing to generate the certification sealing summary report.
+                Run sealing to generate the certification sealing summary
+                report.
             </p>
         </section>
     </CeremonyLayout>

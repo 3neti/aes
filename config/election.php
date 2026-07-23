@@ -115,6 +115,63 @@ return [
     ],
     'dictionary' => [
         'app_name' => 'Alternative Election System',
+        'operator_label' => 'Precinct Election Operations',
+        'workflow' => [
+            [
+                'id' => 'setup',
+                'label' => 'Precinct Setup',
+                'description' => 'Load the precinct package and verify the local configuration.',
+                'stages' => ['provision'],
+            ],
+            [
+                'id' => 'certification',
+                'label' => 'Final Testing and Sealing',
+                'description' => 'Prove the device is ready, zero the test records, and seal it.',
+                'stages' => ['certification'],
+            ],
+            [
+                'id' => 'opening',
+                'label' => 'Opening of Polls',
+                'description' => 'Initialize the precinct and record the opening ceremony.',
+                'stages' => ['open_precinct', 'open_polls'],
+            ],
+            [
+                'id' => 'voting',
+                'label' => 'Voting',
+                'description' => 'Prepare and print voter ballots while polls are open.',
+                'stages' => ['voting'],
+            ],
+            [
+                'id' => 'closing',
+                'label' => 'Closing of Polls',
+                'description' => 'Close voting and preserve the closing evidence.',
+                'stages' => ['close_polls'],
+            ],
+            [
+                'id' => 'counting',
+                'label' => 'Counting and Tally',
+                'description' => 'Scan paper ballots and reconcile the precinct tally.',
+                'stages' => ['counting'],
+            ],
+            [
+                'id' => 'return',
+                'label' => 'Election Return',
+                'description' => 'Generate, print, and distribute the Election Return.',
+                'stages' => ['election_return'],
+            ],
+            [
+                'id' => 'handoff',
+                'label' => 'Official Handoff',
+                'description' => 'Prepare the official handoff, backup, and custody records.',
+                'stages' => ['transmission', 'final_backup', 'custody', 'close_precinct'],
+            ],
+            [
+                'id' => 'audit',
+                'label' => 'Audit and Reconciliation',
+                'description' => 'Review the evidence bundle and reconcile the completed run.',
+                'stages' => ['audit'],
+            ],
+        ],
         'stage' => [
             'provision' => 'Precinct Package and Configuration',
             'certification' => 'Final Testing and Sealing',

@@ -10,9 +10,18 @@ import {
     specialPollingIntake as specialPollingIntakeRoute,
 } from '@/routes/election/voting';
 
+type SpecialPollingIntake = {
+    exists?: boolean;
+    entry_count?: number;
+    total_ballots?: number;
+    latest_entry_hash?: string;
+    artifact?: string;
+    totals_by_type?: Record<string, number>;
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
-    specialPollingIntake: Record<string, unknown>;
+    specialPollingIntake: SpecialPollingIntake;
 }>();
 
 const filters = ref<Record<string, string>>({});
@@ -145,11 +154,7 @@ const specialPollingTypes = [
                 #default="{ errors }"
                 class="mt-4 space-y-3"
             >
-                <input
-                    name="stage"
-                    :value="snapshot.stage"
-                    type="hidden"
-                />
+                <input name="stage" :value="snapshot.stage" type="hidden" />
                 <label class="block">
                     <span class="text-xs font-semibold">Polling Type</span>
                     <select
@@ -157,7 +162,9 @@ const specialPollingTypes = [
                         name="intake_type"
                         required
                     >
-                        <option value="" disabled selected>Choose polling type</option>
+                        <option value="" disabled selected>
+                            Choose polling type
+                        </option>
                         <option
                             v-for="type in specialPollingTypes"
                             :key="type.value"
@@ -209,10 +216,16 @@ const specialPollingTypes = [
                 <button class="secondary-button" type="submit">
                     Record Special Polling
                 </button>
-                <p v-if="errors.intake_type" class="text-sm font-semibold text-rose-700">
+                <p
+                    v-if="errors.intake_type"
+                    class="text-sm font-semibold text-rose-700"
+                >
                     {{ errors.intake_type }}
                 </p>
-                <p v-if="errors.ballot_count" class="text-sm font-semibold text-rose-700">
+                <p
+                    v-if="errors.ballot_count"
+                    class="text-sm font-semibold text-rose-700"
+                >
                     {{ errors.ballot_count }}
                 </p>
                 <p
@@ -221,7 +234,10 @@ const specialPollingTypes = [
                 >
                     {{ errors.received_from }}
                 </p>
-                <p v-if="errors.stage" class="text-sm font-semibold text-rose-700">
+                <p
+                    v-if="errors.stage"
+                    class="text-sm font-semibold text-rose-700"
+                >
                     {{ errors.stage }}
                 </p>
             </Form>
@@ -246,10 +262,18 @@ const specialPollingTypes = [
                     {{ specialPollingIntake.artifact }}
                 </dd>
                 <dt class="mt-3 font-semibold">By Type</dt>
-                <dd v-if="Object.keys(specialPollingIntake.totals_by_type).length">
+                <dd
+                    v-if="
+                        Object.keys(
+                            specialPollingIntake.totals_by_type ?? {},
+                        ).length
+                    "
+                >
                     <ul class="list-disc pl-5">
                         <li
-                            v-for="(count, type) in specialPollingIntake.totals_by_type"
+                            v-for="(
+                                count, type
+                            ) in specialPollingIntake.totals_by_type ?? {}"
                             :key="type"
                         >
                             {{ type.toUpperCase() }}: {{ count }}

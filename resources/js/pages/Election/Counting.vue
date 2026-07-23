@@ -334,8 +334,13 @@ onBeforeUnmount(() => stopCamera(false));
                         <p>{{ closePollsLegalEvidence.evidence_hash }}</p>
                         <p class="mt-1">
                             Before-counting ballots:
-                            {{ closePollsLegalEvidence.accepted_ballots_before_counting }} /
-                            rejected {{ closePollsLegalEvidence.rejected_ballots_before_counting }}
+                            {{
+                                closePollsLegalEvidence.accepted_ballots_before_counting
+                            }}
+                            / rejected
+                            {{
+                                closePollsLegalEvidence.rejected_ballots_before_counting
+                            }}
                         </p>
                     </dd>
                     <dd v-else class="text-stone-500">Not available yet.</dd>

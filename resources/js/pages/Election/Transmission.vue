@@ -3,11 +3,11 @@ import { Form } from '@inertiajs/vue3';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import {
-    custody,
+    custody as custodyAction,
+    finalBackup as finalBackupAction,
     receipt,
-    finalBackup,
     officerVerification,
-    preparePackage,
+    prepare as preparePackage,
     recipientVerification,
     send,
 } from '@/routes/election/transmission';
@@ -42,11 +42,7 @@ defineProps<{
                     </button>
                 </Form>
                 <Form v-bind="receipt.form()">
-                    <input
-                        type="hidden"
-                        name="stage"
-                        :value="snapshot.stage"
-                    />
+                    <input type="hidden" name="stage" :value="snapshot.stage" />
                     <input
                         type="hidden"
                         name="delivery_note"
@@ -56,12 +52,8 @@ defineProps<{
                         Generate Delivery Receipt
                     </button>
                 </Form>
-                <Form v-bind="finalBackup.form()">
-                    <input
-                        type="hidden"
-                        name="stage"
-                        :value="snapshot.stage"
-                    />
+                <Form v-bind="finalBackupAction.form()">
+                    <input type="hidden" name="stage" :value="snapshot.stage" />
                     <input
                         type="hidden"
                         name="backup_type"
@@ -81,7 +73,7 @@ defineProps<{
                         Record Final Backup
                     </button>
                 </Form>
-                <Form v-bind="custody.form()">
+                <Form v-bind="custodyAction.form()">
                     <button class="secondary-button" type="submit">
                         Record Custody Turnover
                     </button>
@@ -110,9 +102,7 @@ defineProps<{
                             <div>
                                 <dt class="text-stone-600">Artifacts</dt>
                                 <dd>
-                                    {{
-                                        deliveryPackage.artifact_count
-                                    }}
+                                    {{ deliveryPackage.artifact_count }}
                                     required artifacts complete:
                                     {{
                                         deliveryPackage.required_artifacts_present
@@ -249,7 +239,9 @@ defineProps<{
                     </dl>
                 </article>
 
-                <article class="rounded border border-stone-200 p-4 xl:col-span-3">
+                <article
+                    class="rounded border border-stone-200 p-4 xl:col-span-3"
+                >
                     <h3 class="text-sm font-semibold text-stone-700">
                         Custody Turnover Report
                     </h3>
@@ -258,7 +250,9 @@ defineProps<{
                             <div>
                                 <dt class="text-stone-600">Turnover ID</dt>
                                 <dd>
-                                    {{ custodyTurnoverReport.custody_turnover_id }}
+                                    {{
+                                        custodyTurnoverReport.custody_turnover_id
+                                    }}
                                 </dd>
                             </div>
                             <div>
@@ -274,17 +268,11 @@ defineProps<{
                                 </dd>
                             </div>
                             <div>
-                                <dt class="text-stone-600">
-                                    Recipient
-                                </dt>
+                                <dt class="text-stone-600">Recipient</dt>
                                 <dd>
-                                    {{
-                                        custodyTurnoverReport.recipient
-                                    }}
+                                    {{ custodyTurnoverReport.recipient }}
                                     /
-                                    {{
-                                        custodyTurnoverReport.recipient_role
-                                    }}
+                                    {{ custodyTurnoverReport.recipient_role }}
                                 </dd>
                             </div>
                             <div>
@@ -309,7 +297,8 @@ defineProps<{
                                 <dt class="text-stone-600">Artifacts</dt>
                                 <dd>
                                     {{
-                                        custodyTurnoverReport.artifact_count || 0
+                                        custodyTurnoverReport.artifact_count ||
+                                        0
                                     }}
                                 </dd>
                             </div>
