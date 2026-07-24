@@ -17,6 +17,7 @@ final class CountingLegalEvidenceService
         private readonly CanonicalJson $json,
         private readonly LifecycleState $lifecycle,
         private readonly ActivityJournal $journal,
+        private readonly CountingReconciliationService $reconciliation,
     ) {}
 
     public function writeForClosePolls(): array
@@ -61,6 +62,7 @@ final class CountingLegalEvidenceService
         $artifactPath = 'counting/counting-legal-evidence.json';
         $acceptedBallots = (int) ($tally['accepted_ballots'] ?? count($this->storage->files('counting/accepted')));
         $rejectedBallots = (int) ($tally['rejected_ballots'] ?? count($this->storage->files('counting/rejected')));
+        $reconciliation = $this->reconciliation->summary();
 
         $report = [
             'schema_version' => 'counting-legal-evidence-1',
@@ -75,7 +77,8 @@ final class CountingLegalEvidenceService
             'rejected_ballots' => $rejectedBallots,
             'tally_hash' => $tally['tally_hash'] ?? null,
             'tally' => $tally['tally'] ?? [],
-            'passed' => $this->lifecycle->current() === Lifecycle::Counting,
+            'reconciliation' => $reconciliation,
+            'passed' => $this->lifecycle->current() === Lifecycle::Counting && $reconciliation['passed'],
         ];
 
         $report['evidence_hash'] = $this->json->hash($this->reportForHash($report));
@@ -130,6 +133,9 @@ final class CountingLegalEvidenceService
             'accepted_ballots' => $artifact['accepted_ballots'] ?? null,
             'rejected_ballots' => $artifact['rejected_ballots'] ?? null,
             'tally_hash' => $artifact['tally_hash'] ?? null,
+            'reconciliation_passed' => $artifact['reconciliation']['passed'] ?? false,
+            'physical_ballots' => $artifact['reconciliation']['physical_ballots'] ?? null,
+            'unresolved_rejections' => $artifact['reconciliation']['unresolved_rejections'] ?? null,
             'artifact' => $path,
         ];
     }

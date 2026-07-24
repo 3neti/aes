@@ -46,6 +46,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/printing/{ballot}/spoil', [PrintingController::class, 'spoil'])->name('printing.spoil');
     Route::get('/counting', [CountingController::class, 'show'])->name('counting');
     Route::post('/counting/scan', [CountingController::class, 'scan'])->name('counting.scan');
+    Route::post('/counting/physical-count', [CountingController::class, 'recordPhysicalCount'])->name('counting.physical-count');
+    Route::post('/counting/adjudicate', [CountingController::class, 'adjudicate'])->name('counting.adjudicate');
     Route::post('/counting/complete', [CountingController::class, 'complete'])->name('counting.complete');
     Route::get('/returns', [ReturnsController::class, 'show'])->name('returns');
     Route::post('/returns/generate', [ReturnsController::class, 'generate'])->name('returns.generate');

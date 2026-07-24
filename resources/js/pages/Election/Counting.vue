@@ -7,7 +7,12 @@ import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import StatusBadge from '@/components/election/StatusBadge.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { returns } from '@/routes/election';
-import { complete, scan } from '@/routes/election/counting';
+import {
+    adjudicate,
+    complete,
+    physicalCount,
+    scan,
+} from '@/routes/election/counting';
 
 type ScanFeedback = {
     status: 'accepted' | 'rejected';
@@ -43,6 +48,24 @@ const props = defineProps<{
     closePollsLegalEvidence: LegalEvidence;
     countingLegalEvidence: LegalEvidence;
     scanFeedback?: ScanFeedback | null;
+    reconciliation: {
+        physical_count_recorded: boolean;
+        physical_ballots: number | null;
+        accepted_ballots: number;
+        rejected_scans: number;
+        adjudicated_rejections: number;
+        excluded_paper_ballots: number;
+        represented_paper_ballots: number;
+        unresolved_rejections: number;
+        difference: number | null;
+        passed: boolean;
+        rejected_records: Array<{
+            sequence: number;
+            reason: string;
+            raw_payload_hash: string;
+        }>;
+        adjudications: Array<{ sequence: number }>;
+    };
 }>();
 
 const video = ref<HTMLVideoElement | null>(null);
@@ -354,6 +377,64 @@ onBeforeUnmount(() => stopCamera(false));
                     Complete the preceding ceremony or continue to the Election
                     Return if counting is already complete.
                 </p>
+            </div>
+        </CeremonyActionPanel>
+
+        <CeremonyActionPanel
+            title="Physical reconciliation"
+            description="Declare the paper ballots removed from the box and resolve every rejected scan in public before completing the tally."
+            eyebrow="Election Board control"
+            :status="reconciliation.passed ? 'Reconciled' : 'Action required'"
+            :tone="reconciliation.passed ? 'complete' : 'warning'"
+        >
+            <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                <Form
+                    v-bind="physicalCount.form()"
+                    #default="{ processing, errors }"
+                    class="grid content-start gap-3 border border-stone-300 p-4"
+                >
+                    <label class="text-sm font-bold">
+                        Paper ballots removed from box
+                        <input name="physical_count" type="number" min="0" class="mt-1 min-h-11 w-full border border-stone-300 px-3" :value="reconciliation.physical_ballots ?? ''" />
+                    </label>
+                    <label class="text-sm font-bold">Officer code<input name="officer_code" class="mt-1 min-h-11 w-full border border-stone-300 px-3" value="SIM-OFFICER-001" /></label>
+                    <label class="text-sm font-bold">Officer PIN<input name="officer_pin" type="password" inputmode="numeric" class="mt-1 min-h-11 w-full border border-stone-300 px-3" /></label>
+                    <p v-if="Object.keys(errors).length" class="text-sm font-bold text-red-700">Check the physical count and officer credentials.</p>
+                    <button class="primary-button" type="submit" :disabled="processing">Record physical control</button>
+                </Form>
+
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div class="border border-stone-200 p-3"><span class="text-xs text-stone-500">Physical</span><strong class="block text-2xl">{{ reconciliation.physical_ballots ?? '-' }}</strong></div>
+                        <div class="border border-stone-200 p-3"><span class="text-xs text-stone-500">Represented</span><strong class="block text-2xl">{{ reconciliation.represented_paper_ballots }}</strong></div>
+                        <div class="border border-stone-200 p-3"><span class="text-xs text-stone-500">Unresolved</span><strong class="block text-2xl">{{ reconciliation.unresolved_rejections }}</strong></div>
+                        <div class="border border-stone-200 p-3"><span class="text-xs text-stone-500">Difference</span><strong class="block text-2xl">{{ reconciliation.difference ?? '-' }}</strong></div>
+                    </div>
+
+                    <Form
+                        v-for="record in reconciliation.rejected_records.filter(
+                            (rejected) =>
+                                !reconciliation.adjudications.some(
+                                    (item) => item.sequence === rejected.sequence,
+                                ),
+                        )"
+                        :key="record.sequence"
+                        v-bind="adjudicate.form()"
+                        #default="{ processing }"
+                        class="grid gap-3 border-l-4 border-red-700 bg-red-50 p-4 sm:grid-cols-2"
+                    >
+                        <input type="hidden" name="sequence" :value="record.sequence" />
+                        <div class="sm:col-span-2">
+                            <p class="font-bold">Rejected scan {{ record.sequence }}</p>
+                            <p class="text-sm text-red-900">{{ record.reason }}</p>
+                        </div>
+                        <label class="text-sm font-bold">Disposition<select name="disposition" class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"><option value="excluded-paper-ballot">Excluded physical ballot</option><option value="duplicate-scan">Duplicate scan only</option><option value="not-a-paper-ballot">Not a paper ballot</option></select></label>
+                        <label class="text-sm font-bold">Reason<input name="reason" class="mt-1 min-h-11 w-full border border-stone-300 px-3" required /></label>
+                        <label class="text-sm font-bold">Officer code<input name="officer_code" class="mt-1 min-h-11 w-full border border-stone-300 px-3" value="SIM-OFFICER-001" /></label>
+                        <label class="text-sm font-bold">Officer PIN<input name="officer_pin" type="password" inputmode="numeric" class="mt-1 min-h-11 w-full border border-stone-300 px-3" /></label>
+                        <button class="secondary-button sm:col-span-2" type="submit" :disabled="processing">Record adjudication</button>
+                    </Form>
+                </div>
             </div>
         </CeremonyActionPanel>
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Counting\CountingService;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
@@ -1095,6 +1096,33 @@ test('counting completion is blocked outside counting stage', function (): void 
         ->assertSessionHasErrors('lifecycle');
 
     expect(app(LifecycleState::class)->current())->toBe(Lifecycle::ClosePolls);
+});
+
+test('counting completion requires a matching physical paper control', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(PrecinctSetupService::class)->record(config('election.simulation.precinct_setup'));
+    app(LifecycleState::class)->set(Lifecycle::Counting);
+
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ], 'reconciliation-ballot-001');
+    app(CountingService::class)->accept($payload['qr_payload']);
+
+    $this->post(route('election.counting.complete'))
+        ->assertSessionHasErrors('reconciliation');
+
+    $this->post(route('election.counting.physical-count'), [
+        'physical_count' => 1,
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ])->assertRedirect(route('election.counting'));
+
+    $this->post(route('election.counting.complete'))
+        ->assertRedirect(route('election.returns'));
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::ElectionReturn);
 });
 
 test('counting completion writes legal evidence and advances to election return', function (): void {

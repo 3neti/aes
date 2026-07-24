@@ -5,9 +5,9 @@
 - Status: In progress
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Voter Station Separation
-- Current slice: Public Counting and Adjudication
-- Next slice: Return, Posting, and Custody
+- Completed slice: Public Counting and Adjudication
+- Current slice: Return, Posting, and Custody
+- Next slice: Appliance Hardening
 - Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
 
 ### Operational Run Isolation
@@ -87,6 +87,19 @@
 - The operator Voting page detects the pending unprinted ballot and links separately to the printing ceremony.
 - Voter isolation and operator handoff test: 1 passed, 40 assertions.
 - Production frontend build: passed; voter pages compile as separate lightweight chunks without the ceremony layout.
+
+### Public Counting and Adjudication
+
+- Added an officer-authorized physical control count for paper ballots removed from the ballot box.
+- Added one adjudication artifact per rejected scan with explicit dispositions for excluded paper ballots, duplicate scans, and non-ballot input.
+- Counting reconciliation requires every rejected scan to be adjudicated.
+- Tally completion is blocked until accepted ballots plus excluded physical ballots equal the declared box count.
+- Counting legal evidence now embeds the reconciliation result, physical count, and unresolved rejection count.
+- Counting page displays physical, represented, unresolved, and difference totals with operator forms for control count and adjudication.
+- The deterministic legal counting scenario now records two physical ballots and adjudicates its spoiled ballot before completion.
+- Reconciliation gate and scenario tests: 2 passed, 11 assertions.
+- Counting feedback and legal-evidence regressions: 3 passed, 58 assertions.
+- Production frontend build: passed.
 
 ## Current Implementation
 

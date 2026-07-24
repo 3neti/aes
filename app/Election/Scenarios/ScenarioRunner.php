@@ -14,6 +14,7 @@ use App\Election\Certification\SealingService;
 use App\Election\Certification\ZeroOutService;
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingLegalEvidenceService;
+use App\Election\Counting\CountingReconciliationService;
 use App\Election\Counting\CountingService;
 use App\Election\Custody\CustodyService;
 use App\Election\Devices\DeviceCertificationService;
@@ -88,6 +89,7 @@ final class ScenarioRunner
         private readonly CustodyService $custody,
         private readonly SpecialPollingIntakeService $specialPollingIntake,
         private readonly PrecinctSetupService $precinctSetup,
+        private readonly CountingReconciliationService $countingReconciliation,
     ) {}
 
     /**
@@ -553,6 +555,14 @@ final class ScenarioRunner
 
         $this->counting->accept($acceptedPayload['qr_payload']);
         $this->counting->accept($rejectedPayload['qr_payload']);
+        $this->countingReconciliation->recordPhysicalCount(2, 'SIM-OFFICER-001', '123456');
+        $this->countingReconciliation->adjudicate(
+            1,
+            'excluded-paper-ballot',
+            'Spoiled paper ballot excluded by the Election Board.',
+            'SIM-OFFICER-001',
+            '123456',
+        );
         $tally = $this->counting->tally();
         $countingEvidence = $this->countingLegalEvidence->writeForCompletion($tally);
 

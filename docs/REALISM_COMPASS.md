@@ -19,7 +19,7 @@ The browser lifecycle reaches Audit and Reconciliation and produces a verified e
 | Electoral Board and inventory | Complete | Three officers, dual approval, serialized devices, ballot stock, seals, and custody containers are bound to the run. |
 | Paper ballot lifecycle | Complete | Serialized stock events link issuance, printing, spoilage, and accepted counting to paper disposition. |
 | Voter station | Complete | Dedicated voter routes receive ballot data only and hand finalized stock back to the operator console. |
-| Public counting and adjudication | Pending | Physical and digital ballot counts reconcile before tally completion. |
+| Public counting and adjudication | Complete | Physical box count, accepted records, and every rejected-scan disposition must reconcile before completion. |
 | Return, posting, and custody | Pending | Ordered handoff and all cross-references pass first time. |
 | Appliance hardening | Pending | Failure and recovery scenarios are deterministic. |
 | 50-ballot field simulation | Pending | Full field scenario and archive verification pass. |
@@ -41,4 +41,4 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Public Counting and Adjudication.
+Return, Posting, and Custody.
