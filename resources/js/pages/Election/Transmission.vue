@@ -58,8 +58,8 @@ defineProps<{
                         type="submit"
                         :disabled="
                             !deliveryPackage.exists ||
-                            !manualOfficerVerification.exists ||
-                            !manualRecipientVerification.exists
+                            !manualOfficerVerification.verified ||
+                            !manualRecipientVerification.verified
                         "
                     >
                         Generate Delivery Receipt
