@@ -497,8 +497,88 @@ const checkpointDefinitions = {
 
 const dynamicDefinitions = [
     {
+        pattern: /^16-voter-ballot-(\d+)-opened\.png$/,
+        build: ([ballotNumber]) => ({
+            ceremony: 'Private Voter Ballot',
+            title: `Voter ballot ${ballotNumber} opened`,
+            operator:
+                'After the Election Board admits the voter, the voter enters the anonymous one-use code and receives the official precinct ballot.',
+            control:
+                'The tablet shows only the voter ballot. It does not expose operator controls, journal records, diagnostics, or live candidate totals.',
+            verify: 'Confirm the precinct identifier, fixed contest order, candidate order, and maximum selections before any choice is made.',
+            evidence: [
+                '04-voting/voter-authorizations',
+                '13-journal/activity.jsonl',
+            ],
+        }),
+    },
+    {
+        pattern: /^16-voter-ballot-(\d+)-selection-(\d+)\.png$/,
+        build: ([ballotNumber, selectionNumber], details) => ({
+            ceremony: 'Private Voter Ballot',
+            title: `Voter ballot ${ballotNumber}: selection ${selectionNumber}`,
+            operator: `The voter selects ${details.candidate ?? 'a candidate'} for ${details.contest ?? 'the displayed contest'}. This is selection ${details.contest_selection ?? '?'} of the permitted ${details.contest_maximum ?? '?'}.`,
+            control:
+                'The tablet updates the local draft and selection counter immediately. Choices remain in the browser session and are not written to server-side election evidence at this checkpoint.',
+            verify: `Confirm ${details.candidate ?? 'the intended candidate'} is visibly marked, the contest counter is correct, and candidates become unavailable only when the legal maximum is reached.`,
+            evidence: [
+                '12-audit-and-reconciliation/browser-recordings/action-log.jsonl',
+            ],
+        }),
+    },
+    {
+        pattern: /^16-voter-ballot-(\d+)-review\.png$/,
+        build: ([ballotNumber], details) => ({
+            ceremony: 'Private Voter Ballot',
+            title: `Voter ballot ${ballotNumber} reviewed before finalization`,
+            operator:
+                'The voter reviews every contest, including any undervote, before choosing whether to return and change selections or finalize.',
+            control:
+                'The appliance keeps finalization separate from selection. No print release or count record exists until the voter confirms this review screen.',
+            verify: `Compare all ${details.total_selections ?? 'recorded'} displayed selections with the preceding one-by-one checkpoints and confirm no contest exceeds its maximum.`,
+            evidence: [
+                '12-audit-and-reconciliation/browser-recordings/action-log.jsonl',
+            ],
+        }),
+    },
+    {
+        pattern: /^16-voter-ballot-(\d+)-finalized\.png$/,
+        build: ([ballotNumber]) => ({
+            ceremony: 'Private Voter Ballot',
+            title: `Voter ballot ${ballotNumber} finalized privately`,
+            operator:
+                'The voter confirms the reviewed ballot and receives an opaque one-time QR and manual code for the private print station.',
+            control:
+                'The appliance encrypts the ballot choices in a short-lived print release. The release code does not disclose candidate selections.',
+            verify: 'Confirm the tablet shows the print-release instructions and paper stock serial but does not display operator evidence or a live tally.',
+            evidence: [
+                '04-voting/private-print-releases',
+                '04-voting/paper-ballot-ledger',
+                '13-journal/activity.jsonl',
+            ],
+        }),
+    },
+    {
+        pattern: /^17-voter-ballot-(\d+)-deposited\.png$/,
+        build: ([ballotNumber]) => ({
+            ceremony: 'Private Printing and Deposit',
+            title: `Voter ballot ${ballotNumber} printed, verified, and deposited`,
+            operator:
+                'At the private print station, the voter releases the print job, privately verifies the printed candidate names, and deposits the paper ballot.',
+            control:
+                'The print station never displays candidate choices. The deposited QR payload remains encrypted in the sealed ballot box until polls close.',
+            verify: 'Confirm the paper serial, print-job record, deposited ledger event, and sealed record agree while candidate totals remain unavailable.',
+            evidence: [
+                '04-voting/ballots',
+                '04-voting/print-jobs',
+                '04-voting/paper-ballot-ledger',
+                '04-voting/sealed-ballot-box',
+            ],
+        }),
+    },
+    {
         pattern: /^19-voter-ballot-(\d+)-finalized\.png$/,
-        build: (ballotNumber) => ({
+        build: ([ballotNumber]) => ({
             ceremony: 'Voting and Ballot Printing',
             title: `Valid voter ballot ${ballotNumber} finalized`,
             operator:
@@ -511,7 +591,7 @@ const dynamicDefinitions = [
     },
     {
         pattern: /^20-voter-ballot-(\d+)-printed\.png$/,
-        build: (ballotNumber) => ({
+        build: ([ballotNumber]) => ({
             ceremony: 'Voting and Ballot Printing',
             title: `Valid voter ballot ${ballotNumber} printed`,
             operator:
@@ -528,7 +608,7 @@ const dynamicDefinitions = [
     },
     {
         pattern: /^23-valid-ballot-(\d+)-accepted\.png$/,
-        build: (ballotNumber) => ({
+        build: ([ballotNumber]) => ({
             ceremony: 'Closing, Counting, and Tally',
             title: `Valid paper ballot ${ballotNumber} accepted`,
             operator:
@@ -541,7 +621,7 @@ const dynamicDefinitions = [
     },
 ];
 
-function checkpointDefinition(filename) {
+function checkpointDefinition(filename, details = {}) {
     if (checkpointDefinitions[filename]) {
         return checkpointDefinitions[filename];
     }
@@ -550,7 +630,7 @@ function checkpointDefinition(filename) {
         const match = filename.match(definition.pattern);
 
         if (match) {
-            return definition.build(match[1]);
+            return definition.build(match.slice(1), details);
         }
     }
 
@@ -857,7 +937,7 @@ export async function generateWalkthroughStoryboard({
         const screenshotStat = await stat(screenshotPath);
         const storyboardFrameContents = await readFile(storyboardFramePath);
         const storyboardFrameStat = await stat(storyboardFramePath);
-        const definition = checkpointDefinition(filename);
+        const definition = checkpointDefinition(filename, action.details);
 
         checkpoints.push({
             sequence: index + 1,

@@ -43,6 +43,7 @@ const walkthroughStatistics = {
     ballots_accepted: 0,
     scans_rejected: 0,
     scans_adjudicated: 0,
+    voter_selection_checkpoints: 0,
     return_generated: false,
     return_approved: false,
     handoff_completed: false,
@@ -91,6 +92,22 @@ async function capture(name) {
     await page.screenshot({
         path: screenshot,
         fullPage: true,
+    });
+    await page.screenshot({
+        path: storyboardFrame,
+        fullPage: false,
+    });
+
+    return { screenshot, storyboardFrame };
+}
+
+async function captureViewport(name) {
+    const screenshot = path.join(artifactDirectory, name);
+    const storyboardFrame = path.join(storyboardFrameDirectory, name);
+
+    await page.screenshot({
+        path: screenshot,
+        fullPage: false,
     });
     await page.screenshot({
         path: storyboardFrame,
@@ -245,8 +262,25 @@ async function finalizeVoterBallot(ballotNumber) {
         throw new Error('The voter ballot contains no contests.');
     }
 
+    const openingCapture = await capture(
+        `16-voter-ballot-${ballotNumber}-opened.png`,
+    );
+    recordAction(`voter-ballot-${ballotNumber}-opened`, 'passed', {
+        ballot_number: ballotNumber,
+        contest_count: contestCount,
+        url: page.url(),
+        heading: await page.locator('h1').first().textContent(),
+        screenshot: openingCapture.screenshot,
+        storyboard_frame: openingCapture.storyboardFrame,
+    });
+
+    let selectionSequence = 0;
+
     for (let contestIndex = 0; contestIndex < contestCount; contestIndex++) {
         const contest = contests.nth(contestIndex);
+        const contestTitle = (
+            await contest.locator('legend').textContent()
+        ).trim();
         const instruction = await contest
             .locator('p')
             .filter({ hasText: 'Select up to' })
@@ -258,15 +292,53 @@ async function finalizeVoterBallot(ballotNumber) {
         const selections = Math.min(maximumSelections, candidateCount);
 
         for (let selection = 0; selection < selections; selection++) {
-            await candidates
-                .nth((ballotNumber + selection - 1) % candidateCount)
-                .click();
+            const candidate = candidates.nth(
+                (ballotNumber + selection - 1) % candidateCount,
+            );
+            const candidateName = (
+                await candidate.locator('strong').textContent()
+            ).trim();
+
+            await candidate.click();
+            selectionSequence++;
+            walkthroughStatistics.voter_selection_checkpoints++;
+
+            const selectionCapture = await captureViewport(
+                `16-voter-ballot-${ballotNumber}-selection-${String(selectionSequence).padStart(2, '0')}.png`,
+            );
+            recordAction(
+                `voter-ballot-${ballotNumber}-selection-${selectionSequence}`,
+                'passed',
+                {
+                    ballot_number: ballotNumber,
+                    contest: contestTitle,
+                    candidate: candidateName,
+                    contest_selection: selection + 1,
+                    contest_maximum: maximumSelections,
+                    selection_sequence: selectionSequence,
+                    url: page.url(),
+                    heading: await page.locator('h1').first().textContent(),
+                    screenshot: selectionCapture.screenshot,
+                    storyboard_frame: selectionCapture.storyboardFrame,
+                },
+            );
         }
     }
 
     await page
         .getByRole('button', { name: /^Review \d+ selections?$/ })
         .click();
+    const reviewCapture = await capture(
+        `16-voter-ballot-${ballotNumber}-review.png`,
+    );
+    recordAction(`voter-ballot-${ballotNumber}-reviewed`, 'passed', {
+        ballot_number: ballotNumber,
+        total_selections: selectionSequence,
+        url: page.url(),
+        heading: await page.locator('h1').first().textContent(),
+        screenshot: reviewCapture.screenshot,
+        storyboard_frame: reviewCapture.storyboardFrame,
+    });
     await postButton(
         'Finalize and get print code',
         '/election/voter/ballot',

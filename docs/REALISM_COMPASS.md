@@ -61,3 +61,6 @@ Field Hardware Pilot.
 - Vue production build and browser-recorder syntax checks passed.
 - Recorded one-voter full-election rehearsal passed with 45 completed actions, 40 screenshots, 40 storyboard frames, no browser console messages, and a verified final archive.
 - Persisted private-voter rehearsal: `storage/app/election/runs/20260724-110337-556352-39010001-browser-full-election`.
+- The walkthrough now records the unmarked ballot, each of 22 deterministic candidate selections, the complete review screen, and private finalization as separate storyboard checkpoints.
+- Expanded voter-UI rehearsal passed with 69 completed actions, 64 screenshots, 64 storyboard frames, no browser console messages, and a verified final archive.
+- Persisted expanded voter-UI rehearsal: `storage/app/election/runs/20260724-111946-696359-39010001-browser-full-election`.

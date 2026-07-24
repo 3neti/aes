@@ -794,6 +794,10 @@ Verification:
 - Recorded rehearsal: `storage/app/election/runs/20260724-110337-556352-39010001-browser-full-election`.
 - Browser result: 45 completed actions, 1 finalized/printed/deposited ballot, 40 screenshots, 40 storyboard frames, zero browser messages, approved Election Return, closed precinct, and verified archive.
 - Full election page regression: passed, 67 tests and 1,242 assertions.
+- Expanded the browser walkthrough with an unmarked ballot checkpoint, one focused screenshot for every candidate selection, and a complete voter review checkpoint.
+- Selection storyboard captions now identify the candidate, contest, current selection number, contest maximum, privacy control, reviewer check, and relevant evidence.
+- Expanded voter-UI rehearsal: `storage/app/election/runs/20260724-111946-696359-39010001-browser-full-election`.
+- Expanded browser result: 69 completed actions, 22 candidate-selection checkpoints, 64 screenshots, 64 storyboard frames, zero browser messages, and a verified final archive.
 
 Known limitations:
 

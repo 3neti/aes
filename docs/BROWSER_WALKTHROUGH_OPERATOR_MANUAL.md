@@ -43,12 +43,12 @@ php artisan election:browser-walkthrough full-election --ballots=1 --slow-mo=0
 
 Options:
 
-| Option              | Meaning                                                                                                         |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `--ballots=1..50`   | Number of valid voter ballots to cast, print, and count. One additional printed ballot is deliberately spoiled. |
-| `--headed`          | Show Chromium while the walkthrough runs. Video is recorded in both headed and headless modes.                  |
-| `--slow-mo=0..2000` | Delay browser actions by the specified milliseconds.                                                            |
-| `--base-url=`       | Override `APP_URL`. Only localhost, loopback, and `.test` URLs are accepted.                                    |
+| Option              | Meaning                                                                                                        |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `--ballots=1..50`   | Number of private voter journeys to record from anonymous admission through paper-ballot deposit and counting. |
+| `--headed`          | Show Chromium while the walkthrough runs. Video is recorded in both headed and headless modes.                 |
+| `--slow-mo=0..2000` | Delay browser actions by the specified milliseconds.                                                           |
+| `--base-url=`       | Override `APP_URL`. Only localhost, loopback, and `.test` URLs are accepted.                                   |
 
 The command uses the configured precinct, currently clustered precinct `39010001` in Tondo, Manila. The configured POP workbook defaults to `resources/election/pop/2025NLE_POP.xlsx`; the configured CLC source supplies the actual contest and candidate registry.
 
@@ -61,8 +61,8 @@ The recorder performs these operator-visible ceremonies:
 3. Device readiness and initialization report.
 4. Friday certification, manual verification, discrepancy review, zero-out, officer signature, and sealing.
 5. Two-step opening of polls with officer signature.
-6. Deliberate spoilage, valid voter ballot selection, finalization, and paper artifact printing.
-7. Closing of polls, QR scanning, rejected spoiled scan, adjudication, physical ballot control, reconciliation, and tally.
+6. Anonymous voter admission, ballot opening, every candidate selection, voter review, private finalization, printing, verification, and sealed paper-ballot deposit.
+7. Closing of polls, opening of the sealed ballot records, physical ballot control, reconciliation, and tally.
 8. Election Return generation, copy/posting record, and dual officer approval.
 9. Official handoff report, delivery package, officer and recipient verification, receipt, final backup, custody turnover, and precinct closure.
 10. Audit baselines, final evidence manifest, TAR creation, and archive verification.
@@ -88,39 +88,39 @@ artifact-index.json
 
 The run folders follow ceremony order:
 
-| Folder                                  | Evidence to inspect                                                                        |
-| --------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `01-precinct-package-and-configuration` | Precinct activation, ballot definition, candidates, officer setup, and source hashes.      |
-| `02-final-testing-and-sealing`          | Certification ballots, verification reports, zero-out, signatures, and sealing.            |
-| `04-voting`                             | QR payloads, printable ballot PDFs, print jobs, spoiled ballot evidence, and paper ledger. |
-| `06-counting-and-tally`                 | Accepted/rejected records, adjudications, physical count, tally JSON, and tally sheet PDF. |
-| `07-election-return`                    | Election Return JSON/PDF, legal evidence, posting distribution, and dual approval.         |
-| `08-transmission-or-official-handoff`   | Transmission report, delivery package, verifications, and receipt.                         |
-| `09-final-backup`                       | Final backup report.                                                                       |
-| `10-custody-turnover`                   | Custody record and turnover report.                                                        |
-| `12-audit-and-reconciliation`           | Baselines, manifest, final TAR, TAR verification, and browser recordings.                  |
-| `13-journal`                            | Append-only ceremony event chain.                                                          |
+| Folder                                  | Evidence to inspect                                                                                                                                               |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `01-precinct-package-and-configuration` | Precinct activation, ballot definition, candidates, officer setup, and source hashes.                                                                             |
+| `02-final-testing-and-sealing`          | Certification ballots, verification reports, zero-out, signatures, and sealing.                                                                                   |
+| `04-voting`                             | Anonymous authorizations, per-selection visual checkpoints, encrypted print releases, printable ballot PDFs, print jobs, sealed ballot records, and paper ledger. |
+| `06-counting-and-tally`                 | Accepted/rejected records, adjudications, physical count, tally JSON, and tally sheet PDF.                                                                        |
+| `07-election-return`                    | Election Return JSON/PDF, legal evidence, posting distribution, and dual approval.                                                                                |
+| `08-transmission-or-official-handoff`   | Transmission report, delivery package, verifications, and receipt.                                                                                                |
+| `09-final-backup`                       | Final backup report.                                                                                                                                              |
+| `10-custody-turnover`                   | Custody record and turnover report.                                                                                                                               |
+| `12-audit-and-reconciliation`           | Baselines, manifest, final TAR, TAR verification, and browser recordings.                                                                                         |
+| `13-journal`                            | Append-only ceremony event chain.                                                                                                                                 |
 
 ## Browser Recording Files
 
 Inside `12-audit-and-reconciliation/browser-recordings`:
 
-| File                                            | Purpose                                                                                             |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `full-election.webm`                            | Complete browser video.                                                                             |
-| `playwright-trace.zip`                          | Playwright trace for replay and element-level debugging.                                            |
-| `01-*.png` through `46-*.png`                   | Full-page ceremony checkpoints.                                                                     |
-| `storyboard-frames/01-*.png` through `46-*.png` | Readable viewport captures from the same checkpoints, used by the storyboard.                       |
-| `action-log.jsonl`                              | Ordered browser action records.                                                                     |
-| `recording-metadata.json`                       | Browser version, viewport, console messages, and recorder artifact hashes.                          |
-| `browser-walkthrough-report.json`               | Browser recorder result and statistics.                                                             |
-| `browser-lifecycle-report.json` / `.txt`        | Plain ceremony flow, completion counts, statistics, and principal file pointers.                    |
-| `browser-artifact-index.json`                   | SHA-256 index of the completed browser recording files.                                             |
-| `browser-walkthrough-completion.json`           | Final coordinator result, including post-recording TAR verification.                                |
-| `browser-walkthrough-recovery.json`             | Present only when a later invocation recovers an interrupted coordinator.                           |
-| `walkthrough-storyboard.html`                   | Offline, full-resolution visual narrative with one precisely captioned checkpoint per screenshot.   |
-| `walkthrough-storyboard.pdf`                    | Print-ready landscape briefing document for independent or remote review.                           |
-| `walkthrough-storyboard.json`                   | Structured captions, ceremony grouping, source identity, statistics, and screenshot SHA-256 values. |
+| File                                            | Purpose                                                                                                           |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `full-election.webm`                            | Complete browser video.                                                                                           |
+| `playwright-trace.zip`                          | Playwright trace for replay and element-level debugging.                                                          |
+| `01-*.png` through `46-*.png`                   | Ceremony checkpoints, including `16-voter-ballot-*-opened`, every `selection-NN`, review, and finalization frame. |
+| `storyboard-frames/01-*.png` through `46-*.png` | Readable viewport captures from the same checkpoints, used by the storyboard.                                     |
+| `action-log.jsonl`                              | Ordered browser action records.                                                                                   |
+| `recording-metadata.json`                       | Browser version, viewport, console messages, and recorder artifact hashes.                                        |
+| `browser-walkthrough-report.json`               | Browser recorder result and statistics.                                                                           |
+| `browser-lifecycle-report.json` / `.txt`        | Plain ceremony flow, completion counts, statistics, and principal file pointers.                                  |
+| `browser-artifact-index.json`                   | SHA-256 index of the completed browser recording files.                                                           |
+| `browser-walkthrough-completion.json`           | Final coordinator result, including post-recording TAR verification.                                              |
+| `browser-walkthrough-recovery.json`             | Present only when a later invocation recovers an interrupted coordinator.                                         |
+| `walkthrough-storyboard.html`                   | Offline, full-resolution visual narrative with one precisely captioned checkpoint per screenshot.                 |
+| `walkthrough-storyboard.pdf`                    | Print-ready landscape briefing document for independent or remote review.                                         |
+| `walkthrough-storyboard.json`                   | Structured captions, ceremony grouping, source identity, statistics, and screenshot SHA-256 values.               |
 
 ## Review the Storyboard
 
@@ -132,6 +132,8 @@ Open `walkthrough-storyboard.html` first when briefing reviewers who were not pr
 4. Which run-relative files contain the underlying evidence.
 
 Each screenshot links to its full-resolution PNG and includes its SHA-256 value. The PDF fixes the same account into one landscape page per checkpoint for printing or circulation. The JSON is the machine-readable source for all captions and hashes.
+
+The voter section is intentionally more granular than the other ceremonies. It begins with the unmarked ballot, records one focused viewport after each candidate is selected, records the complete review screen, and ends with the opaque print-release screen. Each selection caption names the candidate, contest, current contest selection number, and legal maximum. These intermediate choices exist only in the rehearsal browser and its recording artifacts; they are not written as operational election evidence before finalization.
 
 The storyboard is generated before the coordinator builds the final TAR so that all three storyboard files and all referenced screenshots are included in the verified archive. For that reason, the storyboard does not claim its own final archive verification. Confirm that separate final fact in `browser-walkthrough-completion.json`.
 
