@@ -19,6 +19,7 @@ The precinct realism program is complete for simulation mode. The browser and sc
 | Electoral Board and inventory      | Complete | Three officers, dual approval, serialized devices, ballot stock, seals, and custody containers are bound to the run.                                       |
 | Paper ballot lifecycle             | Complete | Serialized stock events link issuance, printing, spoilage, and accepted counting to paper disposition.                                                     |
 | Private voter journey              | Complete | Anonymous one-use admission, client-side ballot review, encrypted print release, private printing, sealed deposit, and post-close disclosure are enforced. |
+| Printed artifact review            | Complete | The storyboard renders actual generated PDF pages with source paths and hashes for independent COMELEC print-form critique.                                |
 | Public counting and adjudication   | Complete | Physical box count, accepted records, and every rejected-scan disposition must reconcile before completion.                                                |
 | Return, posting, and custody       | Complete | Dual approval gates handoff; delivery and custody require the same posted return evidence chain.                                                           |
 | Appliance hardening                | Complete | Restart inspection preserves the ceremony, verifies evidence chains, blocks tampered runs, and reports degraded devices.                                   |
@@ -42,7 +43,7 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Field Hardware Pilot.
+COMELEC Print-Form Redesign, followed by the Field Hardware Pilot.
 
 ## Private Voter Journey
 
@@ -64,3 +65,9 @@ Field Hardware Pilot.
 - The walkthrough now records the unmarked ballot, each of 22 deterministic candidate selections, the complete review screen, and private finalization as separate storyboard checkpoints.
 - Expanded voter-UI rehearsal passed with 69 completed actions, 64 screenshots, 64 storyboard frames, no browser console messages, and a verified final archive.
 - Persisted expanded voter-UI rehearsal: `storage/app/election/runs/20260724-111946-696359-39010001-browser-full-election`.
+- The walkthrough now renders every generated printable PDF page into a final `Printed Artifacts for Review` storyboard ceremony.
+- The ballot, tally sheet, and Election Return are mandatory; supporting handoff, backup, and custody documents are included when present.
+- Each review page records the original PDF path, page count, byte count, source PDF SHA-256, rendered page SHA-256, and a document-specific COMELEC review checklist.
+- Persisted print-review rehearsal: `storage/app/election/runs/20260724-113305-224964-39010001-browser-full-election`.
+- Print-review result: 72 storyboard checkpoints, 8 rendered documents/pages, zero browser messages, and a 236-file final archive verified with zero mismatches.
+- Visual review confirmed that the storyboard layout is readable and unclipped. It also made the current form limitations explicit: the ballot references a QR image path instead of embedding the QR, while the one-page tally and Election Return do not contain the complete multi-contest candidate set.

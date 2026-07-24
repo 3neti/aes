@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { chromium } from 'playwright';
+import { renderPrintedArtifacts } from './election-print-artifact-renderer.mjs';
 import { generateWalkthroughStoryboard } from './election-walkthrough-storyboard.mjs';
 
 const requiredEnvironment = [
@@ -49,6 +50,8 @@ const walkthroughStatistics = {
     handoff_completed: false,
     precinct_closed: false,
     audit_archive_verified: false,
+    printed_artifacts_rendered: 0,
+    printed_artifact_pages: 0,
 };
 let sequence = 0;
 let browser;
@@ -1111,6 +1114,53 @@ if (nativeVideoPath) {
 }
 
 await rm(videoStagingDirectory, { force: true, recursive: true });
+
+if (errorMessage === null) {
+    try {
+        recordAction('render-printed-artifacts', 'started');
+        const runPath = path.resolve(artifactDirectory, '../..');
+        const printedArtifacts = await renderPrintedArtifacts({
+            runPath,
+            artifactDirectory,
+            ghostscriptBinary:
+                process.env.ELECTION_WALKTHROUGH_GHOSTSCRIPT ?? 'gs',
+        });
+
+        for (const document of printedArtifacts) {
+            for (const pageArtifact of document.pages) {
+                recordAction('review-printed-artifact', 'passed', {
+                    screenshot: pageArtifact.imagePath,
+                    printed_artifact: {
+                        type: document.type,
+                        title: document.title,
+                        source_relative_path: document.relativePath,
+                        source_filename: path.basename(document.sourcePath),
+                        source_bytes: document.bytes,
+                        source_sha256: document.sha256,
+                        page: pageArtifact.page,
+                        page_count: pageArtifact.pageCount,
+                    },
+                });
+            }
+        }
+
+        walkthroughStatistics.printed_artifacts_rendered =
+            printedArtifacts.length;
+        walkthroughStatistics.printed_artifact_pages = printedArtifacts.reduce(
+            (total, document) => total + document.pages.length,
+            0,
+        );
+        recordAction('render-printed-artifacts', 'passed', {
+            documents: walkthroughStatistics.printed_artifacts_rendered,
+            pages: walkthroughStatistics.printed_artifact_pages,
+        });
+    } catch (error) {
+        errorMessage = error instanceof Error ? error.message : String(error);
+        recordAction('render-printed-artifacts', 'failed', {
+            error: errorMessage,
+        });
+    }
+}
 
 if (errorMessage === null) {
     try {

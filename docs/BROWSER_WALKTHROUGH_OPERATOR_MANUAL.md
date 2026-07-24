@@ -111,6 +111,7 @@ Inside `12-audit-and-reconciliation/browser-recordings`:
 | `playwright-trace.zip`                          | Playwright trace for replay and element-level debugging.                                                          |
 | `01-*.png` through `46-*.png`                   | Ceremony checkpoints, including `16-voter-ballot-*-opened`, every `selection-NN`, review, and finalization frame. |
 | `storyboard-frames/01-*.png` through `46-*.png` | Readable viewport captures from the same checkpoints, used by the storyboard.                                     |
+| `printed-artifacts/*.png`                       | Page-for-page renderings of generated ballot, tally, Return, handoff, backup, and custody PDFs.                   |
 | `action-log.jsonl`                              | Ordered browser action records.                                                                                   |
 | `recording-metadata.json`                       | Browser version, viewport, console messages, and recorder artifact hashes.                                        |
 | `browser-walkthrough-report.json`               | Browser recorder result and statistics.                                                                           |
@@ -134,6 +135,10 @@ Open `walkthrough-storyboard.html` first when briefing reviewers who were not pr
 Each screenshot links to its full-resolution PNG and includes its SHA-256 value. The PDF fixes the same account into one landscape page per checkpoint for printing or circulation. The JSON is the machine-readable source for all captions and hashes.
 
 The voter section is intentionally more granular than the other ceremonies. It begins with the unmarked ballot, records one focused viewport after each candidate is selected, records the complete review screen, and ends with the opaque print-release screen. Each selection caption names the candidate, contest, current contest selection number, and legal maximum. These intermediate choices exist only in the rehearsal browser and its recording artifacts; they are not written as operational election evidence before finalization.
+
+The final `Printed Artifacts for Review` section renders every page of the actual generated PDFs. It does not reconstruct or restyle their contents. The ballot PDF, tally sheet, and Election Return are required; the transmission report, delivery receipt, final backup report, custody record, and custody turnover report are included when produced. A missing or unrenderable required PDF fails the walkthrough. Every printed-artifact checkpoint records the original run-relative PDF path, byte count, page number, source PDF SHA-256, and rendered-page SHA-256.
+
+Use these pages for print-form critique. In particular, review candidate completeness and ordering, contest limits, precinct identity, QR presence and scan quality, line wrapping, margins, font size, page breaks, signature and annotation space, copy/posting suitability, and chain-of-custody fields. The page image links to its full-resolution PNG for close inspection.
 
 The storyboard is generated before the coordinator builds the final TAR so that all three storyboard files and all referenced screenshots are included in the verified archive. For that reason, the storyboard does not claim its own final archive verification. Confirm that separate final fact in `browser-walkthrough-completion.json`.
 
@@ -188,5 +193,6 @@ A successful rehearsal has all of the following:
 - Handoff completed and precinct closed flags are true.
 - In-browser and post-recording archive verification flags are true.
 - Final verification has zero mismatches.
+- The storyboard includes the `Printed Artifacts for Review` ceremony and its source-document hashes.
 - The rehearsal run context is `locked`.
 - `storage/app/election/current-run.json` still points to the election-day run.

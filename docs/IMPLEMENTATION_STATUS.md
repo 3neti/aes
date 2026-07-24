@@ -805,3 +805,31 @@ Known limitations:
 - The private print station currently models paper QR scanning with a controlled server-side deposit action. Physical scanner confirmation remains an adapter/hardware-pilot task.
 - Candidate photographs remain disabled until COMELEC supplies a complete, approved, consistently cropped image set with provenance.
 - Individual ballot disclosure remains disabled even after close; watcher access is limited to aggregate official evidence.
+
+## Printed Artifact Storyboard Slice
+
+Completed:
+
+- Added deterministic discovery and Ghostscript rendering for generated ballot, tally, Election Return, transmission, receipt, backup, and custody PDFs.
+- Added a final `Printed Artifacts for Review` storyboard ceremony using page images from the actual PDFs rather than reconstructed summaries.
+- Required ballot, tally sheet, and Election Return outputs fail the walkthrough when absent or unrenderable.
+- Every printed page records its original run-relative PDF path, page number, byte count, source PDF SHA-256, and rendered image SHA-256.
+- Added document-specific COMELEC review points covering QR legibility, ballot secrecy, totals, signatures, posting, handoff, backup, and custody.
+- Printed page PNGs and all storyboard formats are included in the final verified evidence TAR.
+
+Verification:
+
+- `node --test tests/Node/election-print-artifact-renderer.test.mjs`: passed, 2 tests.
+- Browser walkthrough recorder and isolation regression: passed, 7 tests and 63 assertions.
+- JavaScript syntax, ESLint, Prettier, and Laravel Pint: passed.
+- `php artisan election:browser-walkthrough full-election --ballots=1 --slow-mo=0 --base-url=http://aes.test`: passed.
+- Persisted rehearsal: `storage/app/election/runs/20260724-113305-224964-39010001-browser-full-election`.
+- Storyboard: 75 PDF pages, 72 checkpoints, 8 generated documents/pages, and zero browser messages.
+- Final evidence archive: 236 checked files, zero mismatches, and SHA-256 `bdb6af33fecef859ece89159a0509f67aa62750debbf72786a365e064641e04f`.
+- Visually inspected the source ballot, tally, and Election Return images and storyboard pages 67-69.
+
+Known gaps exposed for the next slice:
+
+- The current ballot PDF prints the QR artifact filesystem path but does not embed the QR image.
+- The single-page tally sheet and Election Return truncate the multi-contest candidate set.
+- The generic evidence PDF format needs COMELEC-approved typography, pagination, signature blocks, certification language, and printer calibration.

@@ -148,6 +148,7 @@ test('browser walkthrough command records and finalizes an isolated rehearsal', 
         ]
             && is_string($token)
             && strlen($token) === 64
+            && ($process->environment['ELECTION_WALKTHROUGH_GHOSTSCRIPT'] ?? null) === config('election.pdf.ghostscript_binary')
             && ! str_contains(implode(' ', $process->command), $token)
             && $process->timeout === 900;
     });

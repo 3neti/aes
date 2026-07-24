@@ -30,6 +30,7 @@ final class BrowserWalkthroughRecorder
                     'ELECTION_WALKTHROUGH_BALLOTS' => (string) $ballots,
                     'ELECTION_WALKTHROUGH_HEADED' => $headed ? '1' : '0',
                     'ELECTION_WALKTHROUGH_SLOW_MO' => (string) $slowMotion,
+                    'ELECTION_WALKTHROUGH_GHOSTSCRIPT' => (string) config('election.pdf.ghostscript_binary', 'gs'),
                 ])
                 ->run([
                     'node',
