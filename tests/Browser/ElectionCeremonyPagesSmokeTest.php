@@ -1,5 +1,7 @@
 <?php
 
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Support\ElectionStorage;
 
@@ -33,6 +35,20 @@ test('ceremony pages have no browser smoke failures', function (): void {
         ->assertSee('Next required action')
         ->assertSee('Evidence at a glance')
         ->assertSee('Voting')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
+test('opening ceremony exposes the final authorization that begins voting', function (): void {
+    app(LifecycleState::class)->set(Lifecycle::OpenPolls);
+
+    visit('/election/voting')
+        ->assertSee('Begin active voting')
+        ->assertDontSee('Voting actions are unavailable')
+        ->fill('officer_code', 'SIM-OFFICER-001')
+        ->fill('officer_pin', '123456')
+        ->click('Begin voting')
+        ->assertSee('Prepare the voter ballot')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });

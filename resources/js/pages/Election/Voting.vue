@@ -52,7 +52,8 @@ const filteredCandidates = (
     );
 };
 
-const canOpenPolls = (stage: string): boolean => stage === 'open_precinct';
+const canOpenPolls = (stage: string): boolean =>
+    stage === 'open_precinct' || stage === 'open_polls';
 const canFinalize = (stage: string): boolean => stage === 'voting';
 const canClosePolls = (stage: string): boolean => stage === 'voting';
 const canRecordSpecialPolling = (stage: string): boolean =>
@@ -78,10 +79,22 @@ function candidateInitials(candidate: Candidate): string {
     <CeremonyLayout :snapshot="snapshot" title="Voting">
         <CeremonyActionPanel
             v-if="canOpenPolls(snapshot.stage)"
-            title="Open the polls"
-            description="The Election Board Chairperson must confirm the precinct initialization report before voting begins."
+            :title="
+                snapshot.stage === 'open_polls'
+                    ? 'Begin active voting'
+                    : 'Open the polls'
+            "
+            :description="
+                snapshot.stage === 'open_polls'
+                    ? 'The precinct initialization is recorded. The Chairperson must now authorize active voting.'
+                    : 'The Election Board Chairperson must confirm the precinct initialization report before voting begins.'
+            "
             eyebrow="Opening ceremony"
-            status="Officer confirmation required"
+            :status="
+                snapshot.stage === 'open_polls'
+                    ? 'Final authorization required'
+                    : 'Officer confirmation required'
+            "
             tone="warning"
         >
             <Form
@@ -130,15 +143,24 @@ function candidateInitials(candidate: Candidate): string {
                     class="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between"
                 >
                     <p class="text-sm text-stone-600">
-                        This action records the opening officer and advances the
-                        appliance to active voting.
+                        {{
+                            snapshot.stage === 'open_polls'
+                                ? 'This action records final opening authorization and enables ballot preparation.'
+                                : 'This action records the opening officer and prepares the appliance for active voting.'
+                        }}
                     </p>
                     <button
                         class="primary-button shrink-0"
                         type="submit"
                         :disabled="processing"
                     >
-                        {{ processing ? 'Opening polls...' : 'Open polls' }}
+                        {{
+                            processing
+                                ? 'Recording authorization...'
+                                : snapshot.stage === 'open_polls'
+                                  ? 'Begin voting'
+                                  : 'Open polls'
+                        }}
                     </button>
                 </div>
                 <p
