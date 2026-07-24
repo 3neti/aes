@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Full Precinct Realism Verification
-- Active Program: Precinct Realism (Complete)
-- Current Slice: Field Hardware Pilot (Not Started)
-- Next Slice: Transmission Policy and Hardware Pilot
+- Completed Slice: Browser Walkthrough Run Isolation
+- Active Program: Recorded Browser Lifecycle Walkthrough
+- Current Slice: Artisan and Playwright Video Recorder
+- Next Slice: Browser Provisioning Through Opening of Polls
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

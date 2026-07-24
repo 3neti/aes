@@ -507,6 +507,10 @@
 
 ## Verification Results
 
+- Browser walkthrough isolation suite: passed, 3 tests and 10 assertions.
+- Browser walkthrough requests now require a short-lived hashed local token and are bound to the active rehearsal run.
+- Invalid tokens, changed rehearsal pointers, concurrent walkthroughs, and completed tokens fail closed.
+- Walkthrough request configuration is restored after every response so rehearsal context cannot leak into ordinary operator requests.
 - Final PHP feature/unit suite: passed, 160 tests and 2,402 assertions.
 - Final Pest Browser suite: passed, 7 tests and 109 assertions.
 - Final 50-ballot scenario after ceremony storage correction: passed, 1 test and 40 assertions.

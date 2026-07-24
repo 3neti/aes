@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\ElectionScenarioCommand;
+use App\Http\Middleware\BindBrowserWalkthroughRun;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
+            BindBrowserWalkthroughRun::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
