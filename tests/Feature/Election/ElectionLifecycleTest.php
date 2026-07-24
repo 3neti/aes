@@ -400,6 +400,22 @@ test('evidence bundle archive verifier accepts intact tar bundle', function (): 
         ->assertSuccessful();
 });
 
+test('evidence bundle archive excludes a previously generated manifest from its artifact inventory', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(DiagnosticsService::class)->writeEvidenceManifest();
+
+    $archive = app(EvidenceBundleArchiveBuilder::class)->build();
+    $verification = app(EvidenceBundleArchiveVerifier::class)->verify($archive['archive_path']);
+    $manifest = app(ElectionStorage::class)->readJson('diagnostics/evidence-manifest.json');
+    $manifestPaths = collect($manifest['categories'] ?? [])
+        ->flatMap(fn (array $category): array => $category['files'] ?? [])
+        ->pluck('relative_path');
+
+    expect($manifestPaths)->not->toContain('12-audit-and-reconciliation/evidence-manifest.json')
+        ->and($verification['passed'])->toBeTrue()
+        ->and($verification['mismatches'])->toBe([]);
+});
+
 test('evidence bundle archive verifier reports tampered tar artifact mismatch', function (): void {
     app(ActivateSamplePackage::class)->handle();
 

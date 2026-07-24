@@ -391,6 +391,62 @@ custodyForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> =>
 
 custody.form = custodyForm
 
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::closePrecinct
+* @see app/Http/Controllers/Election/TransmissionController.php:97
+* @route '/election/transmission/close-precinct'
+*/
+export const closePrecinct = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: closePrecinct.url(options),
+    method: 'post',
+})
+
+closePrecinct.definition = {
+    methods: ["post"],
+    url: '/election/transmission/close-precinct',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::closePrecinct
+* @see app/Http/Controllers/Election/TransmissionController.php:97
+* @route '/election/transmission/close-precinct'
+*/
+closePrecinct.url = (options?: RouteQueryOptions) => {
+    return closePrecinct.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::closePrecinct
+* @see app/Http/Controllers/Election/TransmissionController.php:97
+* @route '/election/transmission/close-precinct'
+*/
+closePrecinct.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: closePrecinct.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::closePrecinct
+* @see app/Http/Controllers/Election/TransmissionController.php:97
+* @route '/election/transmission/close-precinct'
+*/
+const closePrecinctForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: closePrecinct.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Election\TransmissionController::closePrecinct
+* @see app/Http/Controllers/Election/TransmissionController.php:97
+* @route '/election/transmission/close-precinct'
+*/
+closePrecinctForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: closePrecinct.url(options),
+    method: 'post',
+})
+
+closePrecinct.form = closePrecinctForm
+
 const transmission = {
     prepare: Object.assign(prepare, prepare),
     officerVerification: Object.assign(officerVerification, officerVerification),
@@ -399,6 +455,7 @@ const transmission = {
     finalBackup: Object.assign(finalBackup, finalBackup),
     send: Object.assign(send, send),
     custody: Object.assign(custody, custody),
+    closePrecinct: Object.assign(closePrecinct, closePrecinct),
 }
 
 export default transmission

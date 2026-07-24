@@ -494,6 +494,7 @@ final class DiagnosticsService
         }
 
         return collect($this->files->allFiles($root))
+            ->reject(fn ($file): bool => $file->getPathname() === $this->storage->path('diagnostics/evidence-manifest.json'))
             ->map(function ($file) use ($directory, $root): array {
                 $nested = trim(str_replace($root, '', dirname($file->getPathname())), '/');
                 $artifactDirectory = $nested === '' ? $directory : $directory.'/'.$nested;

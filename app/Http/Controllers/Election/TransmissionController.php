@@ -93,4 +93,11 @@ final class TransmissionController extends Controller
 
         return redirect()->route('election.transmission');
     }
+
+    public function closePrecinct(CeremonyActions $ceremonies): RedirectResponse
+    {
+        $ceremonies->closePrecinct();
+
+        return redirect()->route('election.diagnostics');
+    }
 }

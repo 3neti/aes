@@ -54,6 +54,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/transmission/final-backup', [TransmissionController::class, 'recordFinalBackup'])->name('transmission.final-backup');
     Route::post('/transmission/send', [TransmissionController::class, 'send'])->name('transmission.send');
     Route::post('/transmission/custody', [TransmissionController::class, 'recordCustody'])->name('transmission.custody');
+    Route::post('/transmission/close-precinct', [TransmissionController::class, 'closePrecinct'])->name('transmission.close-precinct');
     Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');
     Route::post('/diagnostics/certify-devices', [DiagnosticsController::class, 'certifyDevices'])->name('diagnostics.certify-devices');
     Route::post('/diagnostics/evidence-manifest', [DiagnosticsController::class, 'generateEvidenceManifest'])->name('diagnostics.evidence-manifest.generate');

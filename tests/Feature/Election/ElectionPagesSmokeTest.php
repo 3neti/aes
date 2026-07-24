@@ -1336,6 +1336,16 @@ test('voting page can run open polls with authorized officer and write opening i
         ->and(is_bool($report['passed']))->toBeTrue();
 });
 
+test('official handoff can close the precinct after custody turnover', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::Custody);
+
+    $this->post(route('election.transmission.close-precinct'))
+        ->assertRedirect(route('election.diagnostics'));
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::ClosePrecinct);
+});
+
 test('voting page can record special polling intake during voting and close-polls', function (): void {
     app(ActivateSamplePackage::class)->handle();
     app(LifecycleState::class)->set(Lifecycle::OpenPrecinct);

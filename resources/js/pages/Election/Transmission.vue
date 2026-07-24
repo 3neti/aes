@@ -3,6 +3,7 @@ import { Form } from '@inertiajs/vue3';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import {
+    closePrecinct,
     custody as custodyAction,
     finalBackup as finalBackupAction,
     receipt,
@@ -31,14 +32,18 @@ defineProps<{
             <h2 class="text-lg font-semibold">Official Handoff</h2>
 
             <div class="mt-4 flex flex-wrap gap-3">
-                <Form v-bind="preparePackage.form()">
+                <Form v-bind="send.form()">
                     <button class="primary-button" type="submit">
-                        Prepare Delivery Package
+                        Prepare Transmission Report
                     </button>
                 </Form>
-                <Form v-bind="send.form()">
-                    <button class="secondary-button" type="submit">
-                        Prepare Transmission Report
+                <Form v-bind="preparePackage.form()">
+                    <button
+                        class="secondary-button"
+                        type="submit"
+                        :disabled="!transmission.transmission_id"
+                    >
+                        Prepare Delivery Package
                     </button>
                 </Form>
                 <Form v-bind="receipt.form()">
@@ -48,7 +53,15 @@ defineProps<{
                         name="delivery_note"
                         value="Manual handoff custody transition"
                     />
-                    <button class="secondary-button" type="submit">
+                    <button
+                        class="secondary-button"
+                        type="submit"
+                        :disabled="
+                            !deliveryPackage.exists ||
+                            !manualOfficerVerification.exists ||
+                            !manualRecipientVerification.exists
+                        "
+                    >
                         Generate Delivery Receipt
                     </button>
                 </Form>
@@ -69,13 +82,29 @@ defineProps<{
                         name="backup_note"
                         value="Manual operator final backup completion"
                     />
-                    <button class="secondary-button" type="submit">
+                    <button
+                        class="secondary-button"
+                        type="submit"
+                        :disabled="!deliveryReceipt.exists"
+                    >
                         Record Final Backup
                     </button>
                 </Form>
                 <Form v-bind="custodyAction.form()">
-                    <button class="secondary-button" type="submit">
+                    <button
+                        class="secondary-button"
+                        type="submit"
+                        :disabled="!finalBackup.exists"
+                    >
                         Record Custody Turnover
+                    </button>
+                </Form>
+                <Form
+                    v-if="snapshot.stage === 'custody'"
+                    v-bind="closePrecinct.form()"
+                >
+                    <button class="danger-button" type="submit">
+                        Close Precinct
                     </button>
                 </Form>
             </div>
