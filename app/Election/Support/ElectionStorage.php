@@ -516,6 +516,8 @@ final class ElectionStorage
             str_starts_with($relative, 'ballots/') => self::CeremonyDirectories['voting'].'/ballots/'.$basename,
             $relative === 'print-jobs' => self::CeremonyDirectories['voting'].'/print-jobs',
             str_starts_with($relative, 'print-jobs/') => self::CeremonyDirectories['voting'].'/print-jobs/'.$basename,
+            $relative === 'paper-ballot-ledger' => self::CeremonyDirectories['voting'].'/paper-ballot-ledger',
+            str_starts_with($relative, 'paper-ballot-ledger/') => self::CeremonyDirectories['voting'].'/paper-ballot-ledger/'.$basename,
             $relative === 'counting/accepted' => self::CeremonyDirectories['counting'].'/accepted',
             str_starts_with($relative, 'counting/accepted/') => self::CeremonyDirectories['counting'].'/accepted/'.$basename,
             $relative === 'counting/rejected' => self::CeremonyDirectories['counting'].'/rejected',

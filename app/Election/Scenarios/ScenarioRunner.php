@@ -489,7 +489,6 @@ final class ScenarioRunner
         $activation = $this->activateConfiguredPrecinctBallot();
         $this->clock->tick();
         $devices = $this->devices->run();
-        $this->precinctSetup->record((array) config('election.simulation.precinct_setup'));
         $this->initializationReport->write();
         $certification = $this->certification->run();
 
@@ -1289,6 +1288,7 @@ final class ScenarioRunner
     private function activateConfiguredPrecinctBallot(): array
     {
         $result = $this->activateConfiguredPrecinct->handle();
+        $this->precinctSetup->record((array) config('election.simulation.precinct_setup'));
         $sourcePath = $this->popSourcePath();
         $profile = $this->popProfile();
         $clusteredPrecinct = $this->popClusteredPrecinct();

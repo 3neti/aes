@@ -5,9 +5,9 @@
 - Status: In progress
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Electoral Board and Inventory
-- Current slice: Paper Ballot Lifecycle
-- Next slice: Voter Station Separation
+- Completed slice: Paper Ballot Lifecycle
+- Current slice: Voter Station Separation
+- Next slice: Public Counting and Adjudication
 - Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
 
 ### Operational Run Isolation
@@ -62,6 +62,20 @@
 - Updated the deterministic sealing scenario to generate realistic setup evidence before sealing.
 - Setup pass/rejection tests: 2 passed, 13 assertions.
 - Sealing scenario regression: 1 passed, 24 assertions.
+- Production frontend build: passed.
+
+### Paper Ballot Lifecycle
+
+- Added a hash-chained paper ballot ledger with one immutable event file per issuance, print, spoilage, and deposit.
+- Voter QR payloads now include the serialized paper stock identity before payload hashing.
+- Certification deck ballots remain explicitly unnumbered and do not consume election stock.
+- Printed text and PDF artifacts show the paper ballot serial.
+- Spoilage changes the corresponding stock disposition and accepted counting records the same serial as deposited.
+- Tally output includes the paper ballot accounting summary.
+- Voting and Printing pages expose issued, printed, spoiled, deposited, unused, and current serial information.
+- The scenario activation helper now records the configured setup and stock before lifecycle actions.
+- Ledger and print artifact tests: 2 passed, 22 assertions.
+- Full demo and ledger regression: 2 passed, 14 assertions.
 - Production frontend build: passed.
 
 ## Current Implementation

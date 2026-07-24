@@ -4,12 +4,14 @@ namespace App\Election\Printing;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Support\ElectionStorage;
+use App\Election\Voting\PaperBallotLedger;
 
 final class SpoilBallot
 {
     public function __construct(
         private readonly ElectionStorage $storage,
         private readonly ActivityJournal $journal,
+        private readonly PaperBallotLedger $paperBallots,
     ) {}
 
     /**
@@ -24,6 +26,7 @@ final class SpoilBallot
         ];
 
         $this->storage->writeJson("runtime/spoiled-{$payloadHash}.json", $record);
+        $this->paperBallots->recordSpoiled($payloadHash);
         $this->journal->record('ballot.spoiled', $record);
 
         return $record;

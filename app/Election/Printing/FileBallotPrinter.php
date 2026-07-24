@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
+use App\Election\Voting\PaperBallotLedger;
 
 final class FileBallotPrinter implements BallotPrinter
 {
@@ -14,6 +15,7 @@ final class FileBallotPrinter implements BallotPrinter
         private readonly ActivityJournal $journal,
         private readonly SimplePdf $pdf,
         private readonly BallotConfigurationLabels $labels,
+        private readonly PaperBallotLedger $paperBallots,
     ) {}
 
     public function print(array $payload): array
@@ -23,6 +25,7 @@ final class FileBallotPrinter implements BallotPrinter
         $contents .= "Election: {$payload['election_id']}\n";
         $contents .= "Precinct: {$payload['precinct_id']}\n";
         $contents .= "Ballot: {$ballotId}\n";
+        $contents .= 'Paper Ballot Serial: '.($payload['paper_ballot_serial'] ?? 'CERTIFICATION/UNNUMBERED')."\n";
         $contents .= "Payload Hash: {$payload['payload_hash']}\n\n";
         $contents .= "QR Artifact: {$payload['qr_artifact_path']}\n\n";
 
@@ -37,6 +40,7 @@ final class FileBallotPrinter implements BallotPrinter
             "Election: {$payload['election_id']}",
             "Precinct: {$payload['precinct_id']}",
             "Ballot: {$ballotId}",
+            'Paper Ballot Serial: '.($payload['paper_ballot_serial'] ?? 'CERTIFICATION/UNNUMBERED'),
             "Payload Hash: {$payload['payload_hash']}",
             "QR Artifact: {$payload['qr_artifact_path']}",
             'Selections:',
@@ -46,6 +50,7 @@ final class FileBallotPrinter implements BallotPrinter
             'schema_version' => 'print-job-1',
             'ballot_id' => $ballotId,
             'payload_hash' => $payload['payload_hash'],
+            'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
             'printer' => 'file',
             'status' => 'printed',
             'artifact_path' => $artifactPath,
@@ -53,6 +58,7 @@ final class FileBallotPrinter implements BallotPrinter
         ];
 
         $this->storage->writeJson("print-jobs/{$ballotId}.json", $job);
+        $this->paperBallots->recordPrinted($payload['payload_hash']);
         $this->journal->record('ballot.printed', $job);
 
         return $job;

@@ -8,6 +8,7 @@ use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
 use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\PaperBallotLedger;
 
 final class CountingService
 {
@@ -18,6 +19,7 @@ final class CountingService
         private readonly ActivityJournal $journal,
         private readonly SimplePdf $pdf,
         private readonly BallotConfigurationLabels $labels,
+        private readonly PaperBallotLedger $paperBallots,
     ) {}
 
     /**
@@ -33,11 +35,13 @@ final class CountingService
                 'sequence' => count($this->storage->files('counting/accepted')) + 1,
                 'ballot_id' => $payload['ballot_id'],
                 'payload_hash' => $payload['payload_hash'],
+                'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
                 'selections' => $payload['selections'],
                 'status' => 'accepted',
             ];
 
             $this->storage->writeJson("counting/accepted/{$record['sequence']}-{$payload['payload_hash']}.json", $record);
+            $this->paperBallots->recordDeposited($payload['payload_hash']);
             $this->journal->record('ballot.counted', [
                 'ballot_id' => $payload['ballot_id'],
                 'payload_hash' => $payload['payload_hash'],
@@ -110,6 +114,7 @@ final class CountingService
             'accepted_ballots' => count($this->storage->files('counting/accepted')),
             'rejected_ballots' => count($this->storage->files('counting/rejected')),
             'tally' => $tally,
+            'paper_ballot_accounting' => $this->paperBallots->summary(),
         ];
         $result['tally_hash'] = $this->json->hash($result);
         $this->storage->writeJson('runtime/tally.json', $result);

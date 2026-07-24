@@ -5,6 +5,7 @@ namespace App\Election\Core;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
+use App\Election\Voting\PaperBallotLedger;
 
 final class ElectionSnapshot
 {
@@ -13,6 +14,7 @@ final class ElectionSnapshot
         private readonly DomainDictionary $dictionary,
         private readonly ActivityJournal $journal,
         private readonly ElectionStorage $storage,
+        private readonly PaperBallotLedger $paperBallots,
     ) {}
 
     /**
@@ -43,6 +45,7 @@ final class ElectionSnapshot
                 'transmissions' => count($this->storage->files('transmission')),
                 'custody_records' => count($this->storage->files('custody')),
             ],
+            'paperBallots' => $this->paperBallots->summary(),
         ];
     }
 }

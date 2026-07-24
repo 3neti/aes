@@ -22,6 +22,7 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Preparation\DeterministicMapper;
+use App\Election\Preparation\PrecinctSetupService;
 use App\Election\Preparation\SampleElectionData;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\PrinterCertificationRequired;
@@ -30,6 +31,7 @@ use App\Election\Returns\ElectionReturnService;
 use App\Election\Scanning\BallotScanner;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\PaperBallotLedger;
 use App\Election\Voting\StandardQrCode;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Validation\ValidationException;
@@ -659,6 +661,39 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('Paper ballots remain the legal source of truth.')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('/BaseFont /Courier')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('1. Ada Santos');
+});
+
+test('paper ballot ledger reconciles issuance printing spoilage and deposit', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(PrecinctSetupService::class)->record(config('election.simulation.precinct_setup'));
+
+    $first = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ], 'paper-ballot-001');
+    app(BallotPrinter::class)->print($first);
+    app(SpoilBallot::class)->handle($first['payload_hash'], 'printer streak');
+
+    $second = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-cora'],
+    ], 'paper-ballot-002');
+    app(BallotPrinter::class)->print($second);
+    app(CountingService::class)->accept($second['qr_payload']);
+
+    $summary = app(PaperBallotLedger::class)->summary();
+
+    expect($first['paper_ballot_serial'])->toBe('0421-A-000001')
+        ->and($second['paper_ballot_serial'])->toBe('0421-A-000002')
+        ->and($summary['total_stock'])->toBe(1000)
+        ->and($summary['issued'])->toBe(2)
+        ->and($summary['spoiled'])->toBe(1)
+        ->and($summary['deposited'])->toBe(1)
+        ->and($summary['unused'])->toBe(998)
+        ->and($summary['balanced'])->toBeTrue()
+        ->and(app(ElectionStorage::class)->files('paper-ballot-ledger'))->toHaveCount(6);
 });
 
 test('cups ballot printer submits generated artifact when configured', function (): void {

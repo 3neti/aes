@@ -24,6 +24,7 @@ use App\Election\Support\ElectionStorage;
 use App\Election\Support\GhostscriptPdfTextExtractor;
 use App\Election\Support\PdfTextExtractor;
 use App\Election\Support\SimplePdf;
+use App\Election\Voting\PaperBallotLedger;
 use App\Election\Voting\QrCodeDecoder;
 use App\Election\Voting\StandardQrCode;
 use App\Election\Voting\ZbarPngQrCodeDecoder;
@@ -53,6 +54,7 @@ class AppServiceProvider extends ServiceProvider
                         $app->make(ActivityJournal::class),
                         $app->make(SimplePdf::class),
                         $app->make(BallotConfigurationLabels::class),
+                        $app->make(PaperBallotLedger::class),
                     ),
                     $app->make(ElectionStorage::class),
                     $app->make(ActivityJournal::class),

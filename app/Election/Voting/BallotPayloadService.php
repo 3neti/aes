@@ -14,6 +14,7 @@ final class BallotPayloadService
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
         private readonly StandardQrCode $qrCode,
+        private readonly PaperBallotLedger $paperBallots,
     ) {}
 
     /**
@@ -35,6 +36,12 @@ final class BallotPayloadService
             'selections' => $selections,
         ];
 
+        $paperBallotSerial = $journal ? $this->paperBallots->nextSerial() : null;
+
+        if ($paperBallotSerial !== null) {
+            $payload['paper_ballot_serial'] = $paperBallotSerial;
+        }
+
         $payload['payload_hash'] = $this->json->hash($payload);
         $payload['qr_payload'] = base64_encode($this->json->encode($payload));
         $payload['qr_artifact_path'] = $this->storage->writeText(
@@ -44,9 +51,14 @@ final class BallotPayloadService
         $this->storage->writeJson("ballots/{$payload['ballot_id']}.json", $payload);
 
         if ($journal) {
+            if ($paperBallotSerial !== null) {
+                $this->paperBallots->recordIssued($paperBallotSerial, $payload['ballot_id'], $payload['payload_hash']);
+            }
+
             $this->journal->record('ballot.finalized', [
                 'ballot_id' => $payload['ballot_id'],
                 'payload_hash' => $payload['payload_hash'],
+                'paper_ballot_serial' => $paperBallotSerial,
             ]);
         }
 

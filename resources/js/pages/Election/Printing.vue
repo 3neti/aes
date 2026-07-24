@@ -13,6 +13,7 @@ type BallotPayload = {
     qr_payload?: string;
     precinct_id?: string;
     ballot_style_id?: string;
+    paper_ballot_serial?: string;
 };
 
 defineProps<{
@@ -59,6 +60,15 @@ defineProps<{
                                 {{
                                     payload.precinct_id ||
                                     snapshot.configuration.precinct_id
+                                }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-stone-500">Paper stock serial</dt>
+                            <dd class="mt-1 font-bold text-stone-950">
+                                {{
+                                    payload.paper_ballot_serial ||
+                                    'Certification / unnumbered'
                                 }}
                             </dd>
                         </div>

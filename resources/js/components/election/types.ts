@@ -69,4 +69,14 @@ export type ElectionSnapshot = {
         transmissions?: number;
         custody_records?: number;
     };
+    paperBallots: {
+        total_stock: number;
+        issued: number;
+        printed: number;
+        spoiled: number;
+        deposited: number;
+        unused: number;
+        event_count: number;
+        balanced: boolean;
+    };
 };

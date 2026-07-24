@@ -173,6 +173,51 @@ function candidateInitials(candidate: Candidate): string {
         </CeremonyActionPanel>
 
         <CeremonyActionPanel
+            v-if="snapshot.paperBallots.total_stock > 0"
+            title="Paper ballot stock"
+            description="Physical stock accounting for this precinct run."
+            :status="
+                snapshot.paperBallots.balanced
+                    ? 'Accounted'
+                    : 'Disposition pending'
+            "
+            :tone="snapshot.paperBallots.balanced ? 'complete' : 'warning'"
+        >
+            <dl class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-5">
+                <div>
+                    <dt class="text-stone-500">Issued</dt>
+                    <dd class="mt-1 text-xl font-bold">
+                        {{ snapshot.paperBallots.issued }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-stone-500">Printed</dt>
+                    <dd class="mt-1 text-xl font-bold">
+                        {{ snapshot.paperBallots.printed }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-stone-500">Spoiled</dt>
+                    <dd class="mt-1 text-xl font-bold">
+                        {{ snapshot.paperBallots.spoiled }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-stone-500">Deposited</dt>
+                    <dd class="mt-1 text-xl font-bold">
+                        {{ snapshot.paperBallots.deposited }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-stone-500">Unused</dt>
+                    <dd class="mt-1 text-xl font-bold">
+                        {{ snapshot.paperBallots.unused }}
+                    </dd>
+                </div>
+            </dl>
+        </CeremonyActionPanel>
+
+        <CeremonyActionPanel
             v-if="canFinalize(snapshot.stage)"
             title="Prepare the voter ballot"
             description="Select the voter choices by contest. The voter reviews the printed paper ballot before casting it."

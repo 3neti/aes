@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Electoral Board and Inventory
+- Completed Slice: Paper Ballot Lifecycle
 - Active Program: Precinct Realism
-- Current Slice: Paper Ballot Lifecycle
-- Next Slice: Voter Station Separation
+- Current Slice: Voter Station Separation
+- Next Slice: Public Counting and Adjudication
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
