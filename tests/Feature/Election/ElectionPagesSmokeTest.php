@@ -2,6 +2,7 @@
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
+use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
@@ -497,7 +498,7 @@ test('diagnostics can generate and download precinct evidence manifest', functio
 
     expect($manifest['schema_version'])->toBe('precinct-evidence-manifest-1')
         ->and($manifest['configuration']['precinct_id'])->toBe('0421-A')
-        ->and($manifest['categories']['polls_opening']['files'])->toHaveCount(2)
+        ->and($manifest['categories']['opening_of_polls']['files'])->toHaveCount(3)
         ->and($manifest['manifest_hash'])->toBeString();
 
     $this->get(route('election.diagnostics'))
@@ -506,7 +507,7 @@ test('diagnostics can generate and download precinct evidence manifest', functio
             ->component('Election/Diagnostics')
             ->where('diagnostics.evidence_manifest.exists', true)
             ->where('diagnostics.evidence_manifest.manifest_hash', $manifest['manifest_hash'])
-            ->where('diagnostics.evidence_manifest.categories.polls_opening', 2)
+            ->where('diagnostics.evidence_manifest.categories.opening_of_polls', 3)
         );
 
     $this->get(route('election.diagnostics.evidence-manifest.download'))
@@ -1557,6 +1558,13 @@ test('voting page can record special polling intake during voting and close-poll
         'officer_pin' => '123456',
     ])->assertRedirect(route('election.voting'));
 
+    $this->post(route('election.voting.open-polls'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ])->assertRedirect(route('election.voting'));
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::Voting);
+
     $this->post(route('election.voting.special-polling-intake'), [
         'stage' => Lifecycle::Voting,
         'intake_type' => 'ppp',
@@ -1575,7 +1583,7 @@ test('voting page can record special polling intake during voting and close-poll
         'notes' => 'Scenario IP intake.',
     ])->assertRedirect(route('election.voting'));
 
-    $this->post(route('election.voting.close-polls'))->assertRedirect(route('election.counting'));
+    app(CeremonyActions::class)->closePolls('Scenario Officer');
 
     $this->post(route('election.voting.special-polling-intake'), [
         'stage' => Lifecycle::ClosePolls,
@@ -1585,6 +1593,8 @@ test('voting page can record special polling intake during voting and close-poll
         'received_by' => 'Scenario Officer',
         'notes' => 'Scenario PDL intake.',
     ])->assertRedirect(route('election.voting'));
+
+    app(CeremonyActions::class)->startCounting();
 
     $intake = app(ElectionStorage::class)->readJson('voting/special-polling-intake.json');
     $entryFiles = app(ElectionStorage::class)->files('voting/special-polling-intake-records');
@@ -1607,7 +1617,7 @@ test('voting page can record special polling intake during voting and close-poll
             ->where('specialPollingIntake.totals_by_type.ppp', 7)
             ->where('specialPollingIntake.totals_by_type.ip', 4)
             ->where('specialPollingIntake.totals_by_type.pdl', 3)
-            ->where('snapshot.stage', Lifecycle::ClosePolls)
+            ->where('snapshot.stage', Lifecycle::Counting)
         );
 });
 

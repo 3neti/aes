@@ -92,16 +92,54 @@ function candidateName(contestId: string, candidateId: string): string {
                 #default="{ processing, errors }"
                 class="mb-5 grid gap-3 border border-stone-300 bg-stone-50 p-4 sm:grid-cols-2"
             >
-                <label class="text-sm font-bold">Chairperson code<input name="chairperson_code" class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3" value="SIM-OFFICER-001" /></label>
-                <label class="text-sm font-bold">Chairperson PIN<input name="chairperson_pin" type="password" inputmode="numeric" class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3" /></label>
-                <label class="text-sm font-bold">Poll Clerk code<input name="poll_clerk_code" class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3" value="SIM-OFFICER-002" /></label>
-                <label class="text-sm font-bold">Poll Clerk PIN<input name="poll_clerk_pin" type="password" inputmode="numeric" class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3" /></label>
-                <p v-if="Object.keys(errors).length" class="text-sm font-bold text-red-700 sm:col-span-2">Both authorized officers must approve this exact return.</p>
-                <button class="secondary-button sm:col-span-2" type="submit" :disabled="processing">Approve Election Return</button>
+                <label class="text-sm font-bold"
+                    >Chairperson code<input
+                        name="chairperson_code"
+                        class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"
+                        value="SIM-OFFICER-001"
+                /></label>
+                <label class="text-sm font-bold"
+                    >Chairperson PIN<input
+                        name="chairperson_pin"
+                        type="password"
+                        inputmode="numeric"
+                        class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"
+                /></label>
+                <label class="text-sm font-bold"
+                    >Poll Clerk code<input
+                        name="poll_clerk_code"
+                        class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"
+                        value="SIM-OFFICER-002"
+                /></label>
+                <label class="text-sm font-bold"
+                    >Poll Clerk PIN<input
+                        name="poll_clerk_pin"
+                        type="password"
+                        inputmode="numeric"
+                        class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"
+                /></label>
+                <p
+                    v-if="Object.keys(errors).length"
+                    class="text-sm font-bold text-red-700 sm:col-span-2"
+                >
+                    Both authorized officers must approve this exact return.
+                </p>
+                <button
+                    class="secondary-button sm:col-span-2"
+                    type="submit"
+                    :disabled="processing"
+                >
+                    Approve Election Return
+                </button>
             </Form>
-            <div v-if="returnApproval.passed" class="mb-5 border-l-4 border-emerald-700 bg-emerald-50 p-4 text-sm text-emerald-950">
+            <div
+                v-if="returnApproval.passed"
+                class="mb-5 border-l-4 border-emerald-700 bg-emerald-50 p-4 text-sm text-emerald-950"
+            >
                 <p class="font-bold">Dual-control approval recorded</p>
-                <p class="mt-1 font-mono text-xs break-all">{{ returnApproval.approval_hash }}</p>
+                <p class="mt-1 font-mono text-xs break-all">
+                    {{ returnApproval.approval_hash }}
+                </p>
             </div>
             <div
                 v-if="!returnArtifact.return_hash"
@@ -402,7 +440,8 @@ function candidateName(contestId: string, candidateId: string): string {
                         "
                         class="mt-2 max-w-xs text-xs font-semibold text-amber-800"
                     >
-                        Prepare the required copies and record dual approval first.
+                        Prepare the required copies and record dual approval
+                        first.
                     </p>
                     <p
                         v-if="errors.approval"

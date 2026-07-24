@@ -6,7 +6,7 @@ Evolve the deterministic simulation into a credible offline precinct appliance w
 
 ## Current Position
 
-The browser and scenario lifecycle use the configured Tondo POP + CLC package, preserve isolated election-day and rehearsal evidence, account for serialized paper ballots, require dual-control approvals, and can inspect evidence-chain integrity after an appliance restart. The deterministic 50-ballot field rehearsal passes; the remaining gate is full automated verification and a persisted operator-readable rehearsal run.
+The precinct realism program is complete for simulation mode. The browser and scenario lifecycle use the configured Tondo POP + CLC package, preserve isolated election-day and rehearsal evidence, account for serialized paper ballots, require dual-control approvals, inspect evidence-chain integrity after restart, and pass a persisted 50-ballot rehearsal with full automated verification.
 
 ## Slice Status
 
@@ -23,6 +23,7 @@ The browser and scenario lifecycle use the configured Tondo POP + CLC package, p
 | Return, posting, and custody | Complete | Dual approval gates handoff; delivery and custody require the same posted return evidence chain. |
 | Appliance hardening | Complete | Restart inspection preserves the ceremony, verifies evidence chains, blocks tampered runs, and reports degraded devices. |
 | 50-ballot field simulation | Complete | Fifty accepted ballots, two spoil/reprints, duplicate adjudication, physical reconciliation, custody, audit, and archive verification pass. |
+| Full precinct realism verification | Complete | PHP, browser, frontend, formatting, build, and persisted rehearsal gates pass without changing the election-day pointer. |
 
 ## Non-Negotiable Gates
 
@@ -41,4 +42,4 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Full Precinct Realism Verification.
+Field Hardware Pilot.

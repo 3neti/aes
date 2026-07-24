@@ -411,6 +411,17 @@
 
 ## Commands Run
 
+- `php artisan test --compact`
+- `vendor/bin/pest tests/Browser --compact`
+- `php artisan test --compact --filter='fifty ballot field scenario' tests/Feature/Election/ElectionLifecycleTest.php`
+- `php artisan election:scenario field-50-ballots`
+- `vendor/bin/pint --dirty --format agent`
+- `npm run lint:check`
+- `npm run types:check`
+- `npm run format:check`
+- `npm run build`
+- `composer validate --strict`
+
 - `php artisan wayfinder:generate --with-form --no-interaction`
 - `composer require bacon/bacon-qr-code --no-interaction`
 - `composer require pestphp/pest-plugin-browser --dev --no-interaction`
@@ -496,7 +507,20 @@
 
 ## Verification Results
 
-- Appliance recovery focused suite: passed, 3 tests and 13 assertions.
+- Final PHP feature/unit suite: passed, 160 tests and 2,402 assertions.
+- Final Pest Browser suite: passed, 7 tests and 109 assertions.
+- Final 50-ballot scenario after ceremony storage correction: passed, 1 test and 40 assertions.
+- Frontend ESLint, Vue TypeScript, Prettier, and Vite production build: passed.
+- Composer strict validation and Laravel Pint: passed.
+- Persisted Tondo field rehearsal: `storage/app/election/runs/20260508-080000-39010001-field-50-ballots`.
+- Persisted operator summary: `storage/app/election/runs/20260508-080000-39010001-field-50-ballots/run-summary.txt`.
+- Persisted contextual scenario report: `storage/app/election/runs/20260508-080000-39010001-field-50-ballots/00-start-here/2026-05-08-080051-39010001-field-50-ballots-e049092c3375-report.json`.
+- Persisted rehearsal statistics: 50 voters, 52 issued and printed paper ballots, 2 spoiled ballots, 50 deposited and accepted ballots, 1 rejected duplicate scan, 1 adjudication, 216 journal entries, and 546 archive files verified.
+- The rehearsal contains 558 files and all six summary gates pass: restart recovery, paper accounting, counting reconciliation, return dual approval, audit reconciliation, and archive verification.
+- Closing legal evidence now routes to `05-closing-of-polls`; counting legal evidence now routes to `06-counting-and-tally`.
+- The election-day pointer remains `storage/app/election/runs/20260724-004938-0421-a-operator`; the rehearsal did not replace or reset it.
+- The hidden legacy operator-side ballot form was removed; the Voting ceremony now exposes only the isolated voter-station handoff.
+- Appliance recovery focused suite: passed, 3 tests and 15 assertions.
 - Appliance recovery production frontend build: passed.
 - `election:recover` now verifies the active run, precinct identity, lifecycle stage, append-only activity journal chain, and serialized paper-ballot ledger chain without changing the active ceremony.
 - Diagnostics now shows restart readiness, evidence check results, the recovered run and ceremony, and degraded device status.
@@ -649,14 +673,14 @@
 - Downloaded archive verification currently supports the appliance-generated uncompressed TAR format only.
 - Returned archive upload verification stages uploaded TAR files locally before verification; no malware scanning or external media provenance workflow is implemented yet.
 - Browser tests use Pest Browser and Playwright. The Pest Browser Laravel request bridge does not currently forward multipart file uploads, so the upload verification route also accepts a base64 TAR payload for browser-level workflow coverage.
-- In this sandbox, `php artisan test` can fail after installing Pest Browser because the plugin attempts socket operations under sandbox restrictions; `vendor/bin/pest` is the verified test entry point for this slice.
+- Pest Browser requires a locally installed Chromium runtime and permission to bind its test server socket.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Recovery inspection is implemented on the active appliance, but automated failover to a separately provisioned backup appliance is not implemented.
 
 ## Next Recommended Steps
 
-- Improve PDF visual design and add Poppler-based render checks in an environment with Poppler installed.
-- Add Poppler-based PDF render checks in an environment with `pdftoppm` and `pdfinfo` installed.
-- Add ceremony-safe UI for officer registry inspection/rotation only if election procedures require operator-driven PIN rotation.
-- Add configured removable-media target labels/export checklist if field procedures require multiple named devices.
+- Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
+- Define the legally approved transmission policy before enabling any network transmission path.
+- Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.
+- Exercise backup-appliance recovery with a copied evidence run and documented Election Board custody procedure.

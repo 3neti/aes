@@ -48,7 +48,8 @@ test('opening ceremony exposes the final authorization that begins voting', func
         ->fill('officer_code', 'SIM-OFFICER-001')
         ->fill('officer_pin', '123456')
         ->click('Begin voting')
-        ->assertSee('Prepare the voter ballot')
+        ->assertSee('Voter station')
+        ->assertSee('Open voter ballot')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });

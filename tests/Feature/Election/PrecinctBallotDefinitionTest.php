@@ -63,6 +63,7 @@ test('tondo precinct ballot package activates deterministic configuration', func
 
 test('voting route finalizes dynamic tondo contest selections', function (): void {
     app(ActivatePrecinctBallotPackage::class)->handle('39010001', 'FIRST DIST');
+    app(LifecycleState::class)->set(Lifecycle::Voting);
     $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
     $selections = collect($configuration['contests'])
         ->mapWithKeys(fn (array $contest): array => [

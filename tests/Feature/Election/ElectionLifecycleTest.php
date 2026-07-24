@@ -1580,6 +1580,8 @@ test('fifty ballot field scenario reconciles paper, counting, return, and archiv
         ->and($report['checks']['audit_reconciliation_complete'])->toBeTrue()
         ->and($report['checks']['archive_verification_passed'])->toBeTrue()
         ->and($run['run_path'].'/04-voting/ballots/field-ballot-050.pdf')->toBeReadableFile()
+        ->and($run['run_path'].'/05-closing-of-polls/close-polls-legal-evidence.json')->toBeReadableFile()
+        ->and($run['run_path'].'/06-counting-and-tally/counting-legal-evidence.json')->toBeReadableFile()
         ->and($run['run_path'].'/06-counting-and-tally/accepted')->toBeDirectory()
         ->and(count($storage->files('counting/accepted')))->toBe(50)
         ->and($report['artifacts']['election_return'])->toBeReadableFile()

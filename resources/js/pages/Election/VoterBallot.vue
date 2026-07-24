@@ -39,7 +39,9 @@ function filteredCandidates(contest: Contest): Candidate[] {
                 <p class="text-sm font-bold text-blue-800">
                     Official Voter Ballot
                 </p>
-                <div class="mt-1 flex flex-wrap items-baseline justify-between gap-3">
+                <div
+                    class="mt-1 flex flex-wrap items-baseline justify-between gap-3"
+                >
                     <h1 class="text-2xl font-bold">Select your candidates</h1>
                     <p class="text-sm font-semibold">
                         Precinct {{ ballot.precinct_id }}
@@ -79,18 +81,28 @@ function filteredCandidates(contest: Contest): Candidate[] {
                         class="grid min-h-16 cursor-pointer grid-cols-[24px_1fr] items-center gap-3 border border-stone-300 p-3 has-checked:border-blue-800 has-checked:bg-blue-50"
                     >
                         <input
-                            :type="contest.max_selections === 1 ? 'radio' : 'checkbox'"
+                            :type="
+                                contest.max_selections === 1
+                                    ? 'radio'
+                                    : 'checkbox'
+                            "
                             :name="`selections[${contest.id}][]`"
                             :value="candidate.id"
                             class="h-5 w-5 accent-blue-800"
                         />
                         <span>
                             <strong class="block">
-                                {{ candidate.ballot_number ?? candidate.ordinal }}.
+                                {{
+                                    candidate.ballot_number ??
+                                    candidate.ordinal
+                                }}.
                                 {{ candidate.name }}
                             </strong>
                             <span class="text-xs text-stone-600">
-                                {{ candidate.political_party || 'No party listed' }}
+                                {{
+                                    candidate.political_party ||
+                                    'No party listed'
+                                }}
                             </span>
                         </span>
                     </label>
@@ -100,13 +112,19 @@ function filteredCandidates(contest: Contest): Candidate[] {
             <p v-if="errors.lifecycle" class="font-bold text-red-700">
                 {{ errors.lifecycle }}
             </p>
-            <div class="sticky bottom-0 border-t-4 border-blue-800 bg-white p-4">
+            <div
+                class="sticky bottom-0 border-t-4 border-blue-800 bg-white p-4"
+            >
                 <button
                     class="min-h-12 w-full bg-blue-800 px-6 py-3 text-base font-bold text-white disabled:opacity-50"
                     type="submit"
                     :disabled="processing"
                 >
-                    {{ processing ? 'Finalizing ballot...' : 'Finalize my ballot' }}
+                    {{
+                        processing
+                            ? 'Finalizing ballot...'
+                            : 'Finalize my ballot'
+                    }}
                 </button>
             </div>
         </Form>

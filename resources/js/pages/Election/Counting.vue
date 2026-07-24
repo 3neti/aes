@@ -395,27 +395,79 @@ onBeforeUnmount(() => stopCamera(false));
                 >
                     <label class="text-sm font-bold">
                         Paper ballots removed from box
-                        <input name="physical_count" type="number" min="0" class="mt-1 min-h-11 w-full border border-stone-300 px-3" :value="reconciliation.physical_ballots ?? ''" />
+                        <input
+                            name="physical_count"
+                            type="number"
+                            min="0"
+                            class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                            :value="reconciliation.physical_ballots ?? ''"
+                        />
                     </label>
-                    <label class="text-sm font-bold">Officer code<input name="officer_code" class="mt-1 min-h-11 w-full border border-stone-300 px-3" value="SIM-OFFICER-001" /></label>
-                    <label class="text-sm font-bold">Officer PIN<input name="officer_pin" type="password" inputmode="numeric" class="mt-1 min-h-11 w-full border border-stone-300 px-3" /></label>
-                    <p v-if="Object.keys(errors).length" class="text-sm font-bold text-red-700">Check the physical count and officer credentials.</p>
-                    <button class="primary-button" type="submit" :disabled="processing">Record physical control</button>
+                    <label class="text-sm font-bold"
+                        >Officer code<input
+                            name="officer_code"
+                            class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                            value="SIM-OFFICER-001"
+                    /></label>
+                    <label class="text-sm font-bold"
+                        >Officer PIN<input
+                            name="officer_pin"
+                            type="password"
+                            inputmode="numeric"
+                            class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                    /></label>
+                    <p
+                        v-if="Object.keys(errors).length"
+                        class="text-sm font-bold text-red-700"
+                    >
+                        Check the physical count and officer credentials.
+                    </p>
+                    <button
+                        class="primary-button"
+                        type="submit"
+                        :disabled="processing"
+                    >
+                        Record physical control
+                    </button>
                 </Form>
 
                 <div class="space-y-3">
                     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        <div class="border border-stone-200 p-3"><span class="text-xs text-stone-500">Physical</span><strong class="block text-2xl">{{ reconciliation.physical_ballots ?? '-' }}</strong></div>
-                        <div class="border border-stone-200 p-3"><span class="text-xs text-stone-500">Represented</span><strong class="block text-2xl">{{ reconciliation.represented_paper_ballots }}</strong></div>
-                        <div class="border border-stone-200 p-3"><span class="text-xs text-stone-500">Unresolved</span><strong class="block text-2xl">{{ reconciliation.unresolved_rejections }}</strong></div>
-                        <div class="border border-stone-200 p-3"><span class="text-xs text-stone-500">Difference</span><strong class="block text-2xl">{{ reconciliation.difference ?? '-' }}</strong></div>
+                        <div class="border border-stone-200 p-3">
+                            <span class="text-xs text-stone-500">Physical</span
+                            ><strong class="block text-2xl">{{
+                                reconciliation.physical_ballots ?? '-'
+                            }}</strong>
+                        </div>
+                        <div class="border border-stone-200 p-3">
+                            <span class="text-xs text-stone-500"
+                                >Represented</span
+                            ><strong class="block text-2xl">{{
+                                reconciliation.represented_paper_ballots
+                            }}</strong>
+                        </div>
+                        <div class="border border-stone-200 p-3">
+                            <span class="text-xs text-stone-500"
+                                >Unresolved</span
+                            ><strong class="block text-2xl">{{
+                                reconciliation.unresolved_rejections
+                            }}</strong>
+                        </div>
+                        <div class="border border-stone-200 p-3">
+                            <span class="text-xs text-stone-500"
+                                >Difference</span
+                            ><strong class="block text-2xl">{{
+                                reconciliation.difference ?? '-'
+                            }}</strong>
+                        </div>
                     </div>
 
                     <Form
                         v-for="record in reconciliation.rejected_records.filter(
                             (rejected) =>
                                 !reconciliation.adjudications.some(
-                                    (item) => item.sequence === rejected.sequence,
+                                    (item) =>
+                                        item.sequence === rejected.sequence,
                                 ),
                         )"
                         :key="record.sequence"
@@ -423,16 +475,61 @@ onBeforeUnmount(() => stopCamera(false));
                         #default="{ processing }"
                         class="grid gap-3 border-l-4 border-red-700 bg-red-50 p-4 sm:grid-cols-2"
                     >
-                        <input type="hidden" name="sequence" :value="record.sequence" />
+                        <input
+                            type="hidden"
+                            name="sequence"
+                            :value="record.sequence"
+                        />
                         <div class="sm:col-span-2">
-                            <p class="font-bold">Rejected scan {{ record.sequence }}</p>
-                            <p class="text-sm text-red-900">{{ record.reason }}</p>
+                            <p class="font-bold">
+                                Rejected scan {{ record.sequence }}
+                            </p>
+                            <p class="text-sm text-red-900">
+                                {{ record.reason }}
+                            </p>
                         </div>
-                        <label class="text-sm font-bold">Disposition<select name="disposition" class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"><option value="excluded-paper-ballot">Excluded physical ballot</option><option value="duplicate-scan">Duplicate scan only</option><option value="not-a-paper-ballot">Not a paper ballot</option></select></label>
-                        <label class="text-sm font-bold">Reason<input name="reason" class="mt-1 min-h-11 w-full border border-stone-300 px-3" required /></label>
-                        <label class="text-sm font-bold">Officer code<input name="officer_code" class="mt-1 min-h-11 w-full border border-stone-300 px-3" value="SIM-OFFICER-001" /></label>
-                        <label class="text-sm font-bold">Officer PIN<input name="officer_pin" type="password" inputmode="numeric" class="mt-1 min-h-11 w-full border border-stone-300 px-3" /></label>
-                        <button class="secondary-button sm:col-span-2" type="submit" :disabled="processing">Record adjudication</button>
+                        <label class="text-sm font-bold"
+                            >Disposition<select
+                                name="disposition"
+                                class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"
+                            >
+                                <option value="excluded-paper-ballot">
+                                    Excluded physical ballot
+                                </option>
+                                <option value="duplicate-scan">
+                                    Duplicate scan only
+                                </option>
+                                <option value="not-a-paper-ballot">
+                                    Not a paper ballot
+                                </option>
+                            </select></label
+                        >
+                        <label class="text-sm font-bold"
+                            >Reason<input
+                                name="reason"
+                                class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                required
+                        /></label>
+                        <label class="text-sm font-bold"
+                            >Officer code<input
+                                name="officer_code"
+                                class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                value="SIM-OFFICER-001"
+                        /></label>
+                        <label class="text-sm font-bold"
+                            >Officer PIN<input
+                                name="officer_pin"
+                                type="password"
+                                inputmode="numeric"
+                                class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                        /></label>
+                        <button
+                            class="secondary-button sm:col-span-2"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            Record adjudication
+                        </button>
                     </Form>
                 </div>
             </div>

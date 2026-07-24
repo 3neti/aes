@@ -4,10 +4,7 @@ import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import StatusBadge from '@/components/election/StatusBadge.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
-import {
-    beginAudit,
-    certifyDevices,
-} from '@/routes/election/diagnostics';
+import { beginAudit, certifyDevices } from '@/routes/election/diagnostics';
 import { inspect as inspectRecovery } from '@/routes/election/diagnostics/recovery';
 
 type AttestationArtifact = {
@@ -340,9 +337,7 @@ defineProps<{
             </div>
 
             <div class="mt-5 border-t border-stone-200 pt-5">
-                <div
-                    class="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start"
-                >
+                <div class="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
                     <div>
                         <div class="flex flex-wrap items-center gap-2">
                             <h3 class="font-bold text-stone-950">
@@ -424,10 +419,8 @@ defineProps<{
                                     {{
                                         check.name
                                             .replaceAll('_', ' ')
-                                            .replace(
-                                                /^./,
-                                                (letter) =>
-                                                    letter.toUpperCase(),
+                                            .replace(/^./, (letter) =>
+                                                letter.toUpperCase(),
                                             )
                                     }}
                                 </span>

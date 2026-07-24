@@ -167,16 +167,23 @@ const readinessItems = [
                     <div>
                         <dt class="text-stone-500">District</dt>
                         <dd class="mt-1 font-bold text-stone-950">
-                            {{ activationEvidence.district || configuredPrecinct.district }}
+                            {{
+                                activationEvidence.district ||
+                                configuredPrecinct.district
+                            }}
                         </dd>
                     </div>
                     <div>
                         <dt class="text-stone-500">Source files</dt>
                         <dd class="mt-1 font-bold text-stone-950">
-                            {{ configuredPrecinct.pop_filename }} + {{ configuredPrecinct.clc_source }}
+                            {{ configuredPrecinct.pop_filename }} +
+                            {{ configuredPrecinct.clc_source }}
                         </dd>
                     </div>
-                    <div v-if="activationEvidence.location?.polling_place" class="sm:col-span-2">
+                    <div
+                        v-if="activationEvidence.location?.polling_place"
+                        class="sm:col-span-2"
+                    >
                         <dt class="text-stone-500">Polling place</dt>
                         <dd class="mt-1 font-bold text-stone-950">
                             {{ activationEvidence.location.polling_place }},
@@ -252,34 +259,99 @@ const readinessItems = [
                 <div class="grid gap-4 md:grid-cols-3">
                     <label class="grid gap-1 text-sm font-semibold">
                         Chairperson code
-                        <input name="chairperson_code" class="min-h-11 border border-stone-300 px-3" value="SIM-OFFICER-001" />
+                        <input
+                            name="chairperson_code"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="SIM-OFFICER-001"
+                        />
                     </label>
                     <label class="grid gap-1 text-sm font-semibold">
                         Chairperson PIN
-                        <input name="chairperson_pin" type="password" inputmode="numeric" class="min-h-11 border border-stone-300 px-3" />
+                        <input
+                            name="chairperson_pin"
+                            type="password"
+                            inputmode="numeric"
+                            class="min-h-11 border border-stone-300 px-3"
+                        />
                     </label>
                     <label class="grid gap-1 text-sm font-semibold">
                         Third Member code
-                        <input name="third_member_code" class="min-h-11 border border-stone-300 px-3" value="SIM-OFFICER-003" />
+                        <input
+                            name="third_member_code"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="SIM-OFFICER-003"
+                        />
                     </label>
                     <label class="grid gap-1 text-sm font-semibold">
                         Poll Clerk code
-                        <input name="poll_clerk_code" class="min-h-11 border border-stone-300 px-3" value="SIM-OFFICER-002" />
+                        <input
+                            name="poll_clerk_code"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="SIM-OFFICER-002"
+                        />
                     </label>
                     <label class="grid gap-1 text-sm font-semibold">
                         Poll Clerk PIN
-                        <input name="poll_clerk_pin" type="password" inputmode="numeric" class="min-h-11 border border-stone-300 px-3" />
+                        <input
+                            name="poll_clerk_pin"
+                            type="password"
+                            inputmode="numeric"
+                            class="min-h-11 border border-stone-300 px-3"
+                        />
                     </label>
                 </div>
                 <div class="grid gap-4 md:grid-cols-3">
-                    <label class="grid gap-1 text-sm font-semibold">Device serial<input name="device_serial" class="min-h-11 border border-stone-300 px-3" value="AES-PI-39010001-001" /></label>
-                    <label class="grid gap-1 text-sm font-semibold">Printer serial<input name="printer_serial" class="min-h-11 border border-stone-300 px-3" value="AES-PRINTER-39010001-001" /></label>
-                    <label class="grid gap-1 text-sm font-semibold">Scanner serial<input name="scanner_serial" class="min-h-11 border border-stone-300 px-3" value="AES-SCANNER-39010001-001" /></label>
-                    <label class="grid gap-1 text-sm font-semibold">Ballot stock start<input name="ballot_stock_start" type="number" class="min-h-11 border border-stone-300 px-3" value="1" /></label>
-                    <label class="grid gap-1 text-sm font-semibold">Ballot stock end<input name="ballot_stock_end" type="number" class="min-h-11 border border-stone-300 px-3" value="1000" /></label>
-                    <label class="grid gap-1 text-sm font-semibold">Ballot box ID<input name="ballot_box_id" class="min-h-11 border border-stone-300 px-3" value="AES-BOX-39010001-001" /></label>
-                    <label class="grid gap-1 text-sm font-semibold">Custody envelope ID<input name="custody_envelope_id" class="min-h-11 border border-stone-300 px-3" value="AES-ENV-39010001-001" /></label>
-                    <label class="grid gap-1 text-sm font-semibold md:col-span-2">Seal numbers<input name="seal_numbers" class="min-h-11 border border-stone-300 px-3" value="AES-SEAL-39010001-001,AES-SEAL-39010001-002" /></label>
+                    <label class="grid gap-1 text-sm font-semibold"
+                        >Device serial<input
+                            name="device_serial"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="AES-PI-39010001-001"
+                    /></label>
+                    <label class="grid gap-1 text-sm font-semibold"
+                        >Printer serial<input
+                            name="printer_serial"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="AES-PRINTER-39010001-001"
+                    /></label>
+                    <label class="grid gap-1 text-sm font-semibold"
+                        >Scanner serial<input
+                            name="scanner_serial"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="AES-SCANNER-39010001-001"
+                    /></label>
+                    <label class="grid gap-1 text-sm font-semibold"
+                        >Ballot stock start<input
+                            name="ballot_stock_start"
+                            type="number"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="1"
+                    /></label>
+                    <label class="grid gap-1 text-sm font-semibold"
+                        >Ballot stock end<input
+                            name="ballot_stock_end"
+                            type="number"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="1000"
+                    /></label>
+                    <label class="grid gap-1 text-sm font-semibold"
+                        >Ballot box ID<input
+                            name="ballot_box_id"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="AES-BOX-39010001-001"
+                    /></label>
+                    <label class="grid gap-1 text-sm font-semibold"
+                        >Custody envelope ID<input
+                            name="custody_envelope_id"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="AES-ENV-39010001-001"
+                    /></label>
+                    <label
+                        class="grid gap-1 text-sm font-semibold md:col-span-2"
+                        >Seal numbers<input
+                            name="seal_numbers"
+                            class="min-h-11 border border-stone-300 px-3"
+                            value="AES-SEAL-39010001-001,AES-SEAL-39010001-002"
+                    /></label>
                 </div>
                 <p
                     v-if="Object.keys(errors).length"
