@@ -105,18 +105,35 @@ The run folders follow ceremony order:
 
 Inside `12-audit-and-reconciliation/browser-recordings`:
 
-| File                                     | Purpose                                                                          |
-| ---------------------------------------- | -------------------------------------------------------------------------------- |
-| `full-election.webm`                     | Complete browser video.                                                          |
-| `playwright-trace.zip`                   | Playwright trace for replay and element-level debugging.                         |
-| `01-*.png` through `46-*.png`            | Full-page ceremony checkpoints.                                                  |
-| `action-log.jsonl`                       | Ordered browser action records.                                                  |
-| `recording-metadata.json`                | Browser version, viewport, console messages, and recorder artifact hashes.       |
-| `browser-walkthrough-report.json`        | Browser recorder result and statistics.                                          |
-| `browser-lifecycle-report.json` / `.txt` | Plain ceremony flow, completion counts, statistics, and principal file pointers. |
-| `browser-artifact-index.json`            | SHA-256 index of the completed browser recording files.                          |
-| `browser-walkthrough-completion.json`    | Final coordinator result, including post-recording TAR verification.             |
-| `browser-walkthrough-recovery.json`      | Present only when a later invocation recovers an interrupted coordinator.        |
+| File                                            | Purpose                                                                                             |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `full-election.webm`                            | Complete browser video.                                                                             |
+| `playwright-trace.zip`                          | Playwright trace for replay and element-level debugging.                                            |
+| `01-*.png` through `46-*.png`                   | Full-page ceremony checkpoints.                                                                     |
+| `storyboard-frames/01-*.png` through `46-*.png` | Readable viewport captures from the same checkpoints, used by the storyboard.                       |
+| `action-log.jsonl`                              | Ordered browser action records.                                                                     |
+| `recording-metadata.json`                       | Browser version, viewport, console messages, and recorder artifact hashes.                          |
+| `browser-walkthrough-report.json`               | Browser recorder result and statistics.                                                             |
+| `browser-lifecycle-report.json` / `.txt`        | Plain ceremony flow, completion counts, statistics, and principal file pointers.                    |
+| `browser-artifact-index.json`                   | SHA-256 index of the completed browser recording files.                                             |
+| `browser-walkthrough-completion.json`           | Final coordinator result, including post-recording TAR verification.                                |
+| `browser-walkthrough-recovery.json`             | Present only when a later invocation recovers an interrupted coordinator.                           |
+| `walkthrough-storyboard.html`                   | Offline, full-resolution visual narrative with one precisely captioned checkpoint per screenshot.   |
+| `walkthrough-storyboard.pdf`                    | Print-ready landscape briefing document for independent or remote review.                           |
+| `walkthrough-storyboard.json`                   | Structured captions, ceremony grouping, source identity, statistics, and screenshot SHA-256 values. |
+
+## Review the Storyboard
+
+Open `walkthrough-storyboard.html` first when briefing reviewers who were not present for the rehearsal. It follows the exact recorded browser sequence and distinguishes:
+
+1. What the Electoral Board did.
+2. What the appliance enforced or recorded.
+3. What a COMELEC reviewer should independently verify.
+4. Which run-relative files contain the underlying evidence.
+
+Each screenshot links to its full-resolution PNG and includes its SHA-256 value. The PDF fixes the same account into one landscape page per checkpoint for printing or circulation. The JSON is the machine-readable source for all captions and hashes.
+
+The storyboard is generated before the coordinator builds the final TAR so that all three storyboard files and all referenced screenshots are included in the verified archive. For that reason, the storyboard does not claim its own final archive verification. Confirm that separate final fact in `browser-walkthrough-completion.json`.
 
 ## Verify the Final Archive
 

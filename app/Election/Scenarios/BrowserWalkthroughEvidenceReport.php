@@ -131,6 +131,9 @@ final class BrowserWalkthroughEvidenceReport
             '12-audit-and-reconciliation/browser-recordings/playwright-trace.zip',
             '12-audit-and-reconciliation/browser-recordings/browser-walkthrough-report.json',
             '12-audit-and-reconciliation/browser-recordings/action-log.jsonl',
+            '12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.html',
+            '12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.pdf',
+            '12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.json',
         ];
         $ballots = glob($runPath.'/04-voting/ballots/*.pdf') ?: [];
         $paths = [

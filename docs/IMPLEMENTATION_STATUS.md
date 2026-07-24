@@ -120,44 +120,44 @@
 - Completed Slice: Special Polling Intake Slice (Slice 23)
 - Next Slice: Future Delivery Drivers Slice (Slice 24) is deferred
 - Test status:
-  - `vendor/bin/pint --dirty --format agent` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds|lifecycle includes transmission, final backup, and custody stages' --compact` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can prepare and expose delivery package|transmission page can record manual handoff officer and recipient verification|transmission page can record delivery receipt only after recipient verification|transmission page requires final backup before custody transfer' --compact` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='delivery package scenario command succeeds' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can prepare and expose delivery package' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual-handoff scenario command succeeds' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='delivery package scenario command succeeds|manual-handoff scenario command succeeds|delivery-receipt scenario command succeeds|lifecycle includes transmission, final backup, and custody stages' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can record manual handoff officer and recipient verification|transmission page blocks recipient verification before officer verification' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='open polls initialization report scenario command succeeds|open polls initialization scenario writes opening initialization report artifact' --compact`
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page can run open polls with authorized officer and write opening initialization report|voting page rejects invalid officer pin for open polls' --compact`
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='voting legal edge cases scenario blocks invalid lifecycle transitions' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page rejects open polls from an invalid lifecycle stage|voting page cannot close polls before voting starts|voting page cannot finalize ballots before polls are active' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='close polls and counting legal evidence scenario records both evidences' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='counting page exposes legal evidence summaries|counting completion is blocked outside counting stage|counting completion writes legal evidence and advances to election return' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite command succeeds|legal scenario suite includes electoral board baseline artifact|legal scenario suite creates an evidence reference baseline artifact|legal scenario suite includes electoral board baseline artifact|eb-role-baseline scenario writes an electoral board role baseline artifact|supply verification baseline scenario command succeeds|supply verification scenario creates supply verification baseline artifact' --compact`
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='provision page can run and display legal scenario suite harness|provision page can generate and display electoral board role baseline|provision page can generate and display supply verification baseline' --compact`
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual verification passes with matching official return|manual verification fails when manual totals differ|friday certification scenario includes manual verification report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run certification and manual verification' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='discrepancy report detects manual verification mismatch|fts manual verification discrepancy scenario records discrepancy report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run discrepancy analysis' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='fts zero-out and sealing scenario clears counting artifacts' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='election return legal artifact scenario runs deterministically|election return copy distribution scenario runs deterministically' --compact`
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run zero-out and sealing' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='returns page exposes election return legal evidence summary|returns page can prepare copy distribution and show posting summary' --compact`
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds' --compact` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='custody turnover scenario command succeeds' --compact` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='audit reconciliation baseline scenario command succeeds' --compact` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='special polling intake scenario records deterministic entries and hashes' --compact`
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page can record special polling intake during voting and close-polls' --compact`
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='diagnostics can generate and download audit reconciliation baseline' --compact` (pass)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page requires final backup before custody transfer' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can record custody turnover report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
-  - `vendor/bin/pint --dirty --format agent`
-  - `php -l` checks passed for all changed files
-  - `php artisan election:scenario voting-legal-edge-cases` (pass)
-  - `php artisan election:scenario close-polls-and-counting-legal-evidence` (pass)
-  - `php artisan election:scenario initialization-report` (pass)
-  - `php artisan election:scenario friday-certification` (pass)
+    - `vendor/bin/pint --dirty --format agent` (pass)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds|lifecycle includes transmission, final backup, and custody stages' --compact` (pass)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can prepare and expose delivery package|transmission page can record manual handoff officer and recipient verification|transmission page can record delivery receipt only after recipient verification|transmission page requires final backup before custody transfer' --compact` (pass)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='delivery package scenario command succeeds' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can prepare and expose delivery package' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual-handoff scenario command succeeds' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='delivery package scenario command succeeds|manual-handoff scenario command succeeds|delivery-receipt scenario command succeeds|lifecycle includes transmission, final backup, and custody stages' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can record manual handoff officer and recipient verification|transmission page blocks recipient verification before officer verification' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='open polls initialization report scenario command succeeds|open polls initialization scenario writes opening initialization report artifact' --compact`
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page can run open polls with authorized officer and write opening initialization report|voting page rejects invalid officer pin for open polls' --compact`
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='voting legal edge cases scenario blocks invalid lifecycle transitions' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page rejects open polls from an invalid lifecycle stage|voting page cannot close polls before voting starts|voting page cannot finalize ballots before polls are active' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='close polls and counting legal evidence scenario records both evidences' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='counting page exposes legal evidence summaries|counting completion is blocked outside counting stage|counting completion writes legal evidence and advances to election return' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='legal scenario suite command succeeds|legal scenario suite includes electoral board baseline artifact|legal scenario suite creates an evidence reference baseline artifact|legal scenario suite includes electoral board baseline artifact|eb-role-baseline scenario writes an electoral board role baseline artifact|supply verification baseline scenario command succeeds|supply verification scenario creates supply verification baseline artifact' --compact`
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='provision page can run and display legal scenario suite harness|provision page can generate and display electoral board role baseline|provision page can generate and display supply verification baseline' --compact`
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='manual verification passes with matching official return|manual verification fails when manual totals differ|friday certification scenario includes manual verification report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run certification and manual verification' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='discrepancy report detects manual verification mismatch|fts manual verification discrepancy scenario records discrepancy report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run discrepancy analysis' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='fts zero-out and sealing scenario clears counting artifacts' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='election return legal artifact scenario runs deterministically|election return copy distribution scenario runs deterministically' --compact`
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='certification page can run zero-out and sealing' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='returns page exposes election return legal evidence summary|returns page can prepare copy distribution and show posting summary' --compact`
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='final-backup scenario command succeeds' --compact` (pass)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='custody turnover scenario command succeeds' --compact` (pass)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='audit reconciliation baseline scenario command succeeds' --compact` (pass)
+    - `vendor/bin/pest tests/Feature/Election/ElectionLifecycleTest.php --filter='special polling intake scenario records deterministic entries and hashes' --compact`
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='voting page can record special polling intake during voting and close-polls' --compact`
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='diagnostics can generate and download audit reconciliation baseline' --compact` (pass)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page requires final backup before custody transfer' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pest tests/Feature/Election/ElectionPagesSmokeTest.php --filter='transmission page can record custody turnover report' --compact` (blocked in this environment by Pest Browser socket bind restriction)
+    - `vendor/bin/pint --dirty --format agent`
+    - `php -l` checks passed for all changed files
+    - `php artisan election:scenario voting-legal-edge-cases` (pass)
+    - `php artisan election:scenario close-polls-and-counting-legal-evidence` (pass)
+    - `php artisan election:scenario initialization-report` (pass)
+    - `php artisan election:scenario friday-certification` (pass)
 - Known limitations: pest browser socket binding errors prevent some targeted feature commands from running in this environment when browser plugin is active.
 - Remaining work for this slice: none after code updates.
 
@@ -271,142 +271,142 @@
 - PDF text extraction documentation is available in `docs/PDF_TEXT_EXTRACTION.md`.
 - Run-first storage is now the operator-facing evidence layout, with `LATEST_RUN.txt` pointing to the current run and source imports under `storage/app/election/source-data`.
 - Artisan scenarios:
-  - `php artisan election:scenario friday-certification`
-  - `php artisan election:scenario full-demo`
-  - `php artisan election:scenario legal-suite`
-  - `php artisan election:scenario evidence-folder-demo`
+    - `php artisan election:scenario friday-certification`
+    - `php artisan election:scenario full-demo`
+    - `php artisan election:scenario legal-suite`
+    - `php artisan election:scenario evidence-folder-demo`
 
 ## Tests Added
 
 - `tests/Feature/Election/ElectionLifecycleTest.php`
-  - lifecycle transition guard
-  - package activation
-  - deterministic mapping
-  - Friday certification expected result
-  - ballot finalization and QR payload
-  - rendered QR artifact decode
-  - print job artifact
-  - ballot PDF artifact
-  - accepted counting append file
-  - duplicate rejection
-  - spoilage rejection
-  - Election Return artifact
-  - Election Return PDF artifact
-  - full scenario command success
-  - legal scenario suite command success
-  - Home Inertia component render
-  - simulated device adapter certification report
-  - CUPS printer health adapter selection and not-configured behavior
-  - CUPS ballot printer submission and failed-submission evidence retention
-  - CUPS ballot printer certification gate
-  - handheld scanner health adapter selection and not-configured behavior
-  - manual and handheld scan normalization before counting
-  - camera scanner health adapter selection, not-configured behavior, and QR PNG image data URI decode before counting
-  - officer attestation artifact, signature artifact, journal event, local registry metadata, invalid PIN rejection, and invalid signature rejection
-  - local officer PIN rotation runtime registry artifact and journal event
-  - removable-media evidence export verification success path and tampered artifact mismatch command failure
-  - downloadable TAR evidence bundle archive verification success path and tampered archive mismatch command failure
-  - scenario command durable report archiving outside resettable election runtime
-  - evidence folder demo scenario command registration
-  - evidence folder demo numbered folder and artifact index generation
-  - evidence folder demo summary report output
-  - evidence folder demo tally sheet text and PDF artifacts
-  - evidence folder demo evidence folder content, pointer, hash, and persistence verification
-  - evidence reference baseline creation within legal-suite scenario
-  - official minutes baseline creation within legal-suite scenario
-  - legal scenario suite includes electoral board baseline
-  - eb-role-baseline scenario writes electoral board role baseline artifact
-  - supply-verification-baseline scenario command success
-  - supply-verification-baseline scenario persists its own baseline artifact
-  - initialization report scenario command succeeds
-  - initialization report scenario writes initialization report artifact
-  - open polls initialization report scenario command succeeds
-  - open polls initialization scenario writes opening initialization report artifact
-  - manual verification passes with matching official return
-  - manual verification fails when manual totals differ
-  - friday certification scenario includes manual verification report
-  - fts zero-out and sealing scenario clears counting artifacts
-  - election return legal evidence artifact is generated from return
-  - election return legal artifact scenario runs deterministically
-  - election return copy distribution scenario runs deterministically
-  - delivery package scenario command runs deterministically
-  - manual handoff scenario command runs deterministically
-  - delivery receipt scenario command runs deterministically
-  - final-backup scenario command succeeds
-  - custody turnover scenario command succeeds
-  - audit reconciliation baseline scenario command succeeds
+    - lifecycle transition guard
+    - package activation
+    - deterministic mapping
+    - Friday certification expected result
+    - ballot finalization and QR payload
+    - rendered QR artifact decode
+    - print job artifact
+    - ballot PDF artifact
+    - accepted counting append file
+    - duplicate rejection
+    - spoilage rejection
+    - Election Return artifact
+    - Election Return PDF artifact
+    - full scenario command success
+    - legal scenario suite command success
+    - Home Inertia component render
+    - simulated device adapter certification report
+    - CUPS printer health adapter selection and not-configured behavior
+    - CUPS ballot printer submission and failed-submission evidence retention
+    - CUPS ballot printer certification gate
+    - handheld scanner health adapter selection and not-configured behavior
+    - manual and handheld scan normalization before counting
+    - camera scanner health adapter selection, not-configured behavior, and QR PNG image data URI decode before counting
+    - officer attestation artifact, signature artifact, journal event, local registry metadata, invalid PIN rejection, and invalid signature rejection
+    - local officer PIN rotation runtime registry artifact and journal event
+    - removable-media evidence export verification success path and tampered artifact mismatch command failure
+    - downloadable TAR evidence bundle archive verification success path and tampered archive mismatch command failure
+    - scenario command durable report archiving outside resettable election runtime
+    - evidence folder demo scenario command registration
+    - evidence folder demo numbered folder and artifact index generation
+    - evidence folder demo summary report output
+    - evidence folder demo tally sheet text and PDF artifacts
+    - evidence folder demo evidence folder content, pointer, hash, and persistence verification
+    - evidence reference baseline creation within legal-suite scenario
+    - official minutes baseline creation within legal-suite scenario
+    - legal scenario suite includes electoral board baseline
+    - eb-role-baseline scenario writes electoral board role baseline artifact
+    - supply-verification-baseline scenario command success
+    - supply-verification-baseline scenario persists its own baseline artifact
+    - initialization report scenario command succeeds
+    - initialization report scenario writes initialization report artifact
+    - open polls initialization report scenario command succeeds
+    - open polls initialization scenario writes opening initialization report artifact
+    - manual verification passes with matching official return
+    - manual verification fails when manual totals differ
+    - friday certification scenario includes manual verification report
+    - fts zero-out and sealing scenario clears counting artifacts
+    - election return legal evidence artifact is generated from return
+    - election return legal artifact scenario runs deterministically
+    - election return copy distribution scenario runs deterministically
+    - delivery package scenario command runs deterministically
+    - manual handoff scenario command runs deterministically
+    - delivery receipt scenario command runs deterministically
+    - final-backup scenario command succeeds
+    - custody turnover scenario command succeeds
+    - audit reconciliation baseline scenario command succeeds
 - `tests/Feature/Election/ElectionPagesSmokeTest.php`
-  - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
-  - finalized ballot Printing page QR image data URI smoke coverage
-  - Diagnostics page device adapter certification action
-  - ceremony shell officer attestation action
-  - Printing ceremony certification gate error path for CUPS driver
-  - Counting route scan through configured handheld and camera scanner adapters
-  - Counting route scanner decode failure feedback and rejected evidence file
-  - Counting page operator feedback after accepted and rejected scan attempts
-  - ceremony shell officer PIN validation failure path
-  - ceremony shell officer signature required validation path
-  - Diagnostics attestation evidence bundle projection and artifact view/download routes
-  - Diagnostics precinct evidence manifest generation, summary projection, and download route
-  - Diagnostics removable-media export staging, copied artifact evidence, summary projection, and journal event
-  - Diagnostics evidence export verification action, persisted report projection, and journal event
-  - Diagnostics removable-media readiness action for simulated and missing configured targets
-  - removable-media readiness status/status label projection for simulated and missing targets
-  - Diagnostics evidence bundle archive build, TAR content smoke check, download route, and journal event
-  - Diagnostics downloadable TAR evidence bundle archive verification action, persisted report projection, and journal event
-  - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
-  - Diagnostics evidence reference baseline generation, summary projection, and download route
-  - Diagnostics official minutes baseline generation, summary projection, and download route
-  - Diagnostics audit reconciliation baseline generation, summary projection, and download route
-  - Provision page can generate and display electoral board baseline report
-  - Provision page can run and display legal scenario suite harness
-  - Provision page can generate and display supply verification baseline
-  - Diagnostics can generate and download initialization report
-  - Voting page can run open polls with authorized officer and write opening initialization report
-  - Voting page rejects invalid officer pin for open polls
-  - certification page can run certification and manual verification
-  - certification page can download manual verification report artifact
-  - certification page can run zero-out and sealing
-  - transmission page can prepare and expose delivery package
-  - transmission page can record manual handoff officer and recipient verification
-  - transmission page can record delivery receipt only after recipient verification
-  - transmission page blocks recipient verification before officer verification
-  - returns page exposes election return legal evidence summary
-  - returns page can prepare copy distribution and show posting summary
-  - transmission page renders
-  - transmission page can prepare and expose delivery package
-  - transmission page can record manual handoff officer and recipient verification
-  - transmission page blocks recipient verification before officer verification
-  - election lifecycle includes manual-handoff scenario command success
+    - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics Inertia smoke coverage
+    - finalized ballot Printing page QR image data URI smoke coverage
+    - Diagnostics page device adapter certification action
+    - ceremony shell officer attestation action
+    - Printing ceremony certification gate error path for CUPS driver
+    - Counting route scan through configured handheld and camera scanner adapters
+    - Counting route scanner decode failure feedback and rejected evidence file
+    - Counting page operator feedback after accepted and rejected scan attempts
+    - ceremony shell officer PIN validation failure path
+    - ceremony shell officer signature required validation path
+    - Diagnostics attestation evidence bundle projection and artifact view/download routes
+    - Diagnostics precinct evidence manifest generation, summary projection, and download route
+    - Diagnostics removable-media export staging, copied artifact evidence, summary projection, and journal event
+    - Diagnostics evidence export verification action, persisted report projection, and journal event
+    - Diagnostics removable-media readiness action for simulated and missing configured targets
+    - removable-media readiness status/status label projection for simulated and missing targets
+    - Diagnostics evidence bundle archive build, TAR content smoke check, download route, and journal event
+    - Diagnostics downloadable TAR evidence bundle archive verification action, persisted report projection, and journal event
+    - Diagnostics returned TAR archive upload verification action, staged upload artifact, source metadata projection, and journal event
+    - Diagnostics evidence reference baseline generation, summary projection, and download route
+    - Diagnostics official minutes baseline generation, summary projection, and download route
+    - Diagnostics audit reconciliation baseline generation, summary projection, and download route
+    - Provision page can generate and display electoral board baseline report
+    - Provision page can run and display legal scenario suite harness
+    - Provision page can generate and display supply verification baseline
+    - Diagnostics can generate and download initialization report
+    - Voting page can run open polls with authorized officer and write opening initialization report
+    - Voting page rejects invalid officer pin for open polls
+    - certification page can run certification and manual verification
+    - certification page can download manual verification report artifact
+    - certification page can run zero-out and sealing
+    - transmission page can prepare and expose delivery package
+    - transmission page can record manual handoff officer and recipient verification
+    - transmission page can record delivery receipt only after recipient verification
+    - transmission page blocks recipient verification before officer verification
+    - returns page exposes election return legal evidence summary
+    - returns page can prepare copy distribution and show posting summary
+    - transmission page renders
+    - transmission page can prepare and expose delivery package
+    - transmission page can record manual handoff officer and recipient verification
+    - transmission page blocks recipient verification before officer verification
+    - election lifecycle includes manual-handoff scenario command success
 - `tests/Browser/DiagnosticsEvidenceBundleWorkflowTest.php`
-  - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
+    - Diagnostics evidence bundle archive build, download link interaction, returned archive upload verification, visible verification status, and browser smoke assertions
 - `tests/Browser/ElectionCeremonyPagesSmokeTest.php`
-  - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics browser smoke coverage with `assertNoJavaScriptErrors()` and `assertNoConsoleLogs()`
+    - Home, Provision, Certification, Voting, Printing, Counting, Returns, and Diagnostics browser smoke coverage with `assertNoJavaScriptErrors()` and `assertNoConsoleLogs()`
 - `tests/Browser/CountingCameraCaptureWorkflowTest.php`
-  - Counting ceremony camera controls with mocked `getUserMedia`, deterministic QR canvas capture, camera scanner route submission, accepted scan feedback, and counting append file assertion
-  - Counting ceremony camera permission denied/unavailable feedback with no accepted counting file
-  - Counting ceremony camera frame with no decodable QR code rejected through scanner route feedback and rejected evidence assertion
+    - Counting ceremony camera controls with mocked `getUserMedia`, deterministic QR canvas capture, camera scanner route submission, accepted scan feedback, and counting append file assertion
+    - Counting ceremony camera permission denied/unavailable feedback with no accepted counting file
+    - Counting ceremony camera frame with no decodable QR code rejected through scanner route feedback and rejected evidence assertion
 - `tests/Helpers/BrowserMedia.php`
-  - reusable `browserMediaCaptureShim()` and `browserMediaDeniedShim()` helpers loaded from `tests/Pest.php`
+    - reusable `browserMediaCaptureShim()` and `browserMediaDeniedShim()` helpers loaded from `tests/Pest.php`
 - `.github/workflows/tests.yml`
-  - dedicated browser test job with PHP 8.4, Node 22, `npm ci`, `npx playwright install --with-deps chromium`, asset build, and `vendor/bin/pest tests/Browser --ci`
-  - browser screenshot artifact upload on failed browser-test runs
-  - Laravel backend log artifact upload on failed browser-test runs
-  - manual `workflow_dispatch` controlled browser artifact failure input
+    - dedicated browser test job with PHP 8.4, Node 22, `npm ci`, `npx playwright install --with-deps chromium`, asset build, and `vendor/bin/pest tests/Browser --ci`
+    - browser screenshot artifact upload on failed browser-test runs
+    - Laravel backend log artifact upload on failed browser-test runs
+    - manual `workflow_dispatch` controlled browser artifact failure input
 - `docs/BROWSER_TESTING_WORKFLOW.md`
-  - local Pest Browser setup and run commands
-  - CI browser job shape and screenshot/backend-log artifact inspection workflow
-  - controlled artifact verification workflow for screenshot/log upload checks
-  - troubleshooting notes for Playwright, Inertia/Vite, returned TAR upload verification, and CI backend context
+    - local Pest Browser setup and run commands
+    - CI browser job shape and screenshot/backend-log artifact inspection workflow
+    - controlled artifact verification workflow for screenshot/log upload checks
+    - troubleshooting notes for Playwright, Inertia/Vite, returned TAR upload verification, and CI backend context
 - `docs/CI_OPERATIONS.md`
-  - manual controlled browser artifact check procedure and expected artifact names
-  - missing-artifact troubleshooting checklist
+    - manual controlled browser artifact check procedure and expected artifact names
+    - missing-artifact troubleshooting checklist
 - `docs/QR_DECODER_PORTABILITY.md`
-  - adapter boundary summary, dependency acceptance criteria, and verification checklist for any pure PHP QR decoder candidate
+    - adapter boundary summary, dependency acceptance criteria, and verification checklist for any pure PHP QR decoder candidate
 - `docs/PDF_ARTIFACTS.md`
-  - current PDF layout, structural verification, and pending Poppler render-check procedure
+    - current PDF layout, structural verification, and pending Poppler render-check procedure
 - `app/Election/Diagnostics/EvidenceArtifact.php`
-  - internal value object for deterministic evidence manifest entries without introducing a media package
+    - internal value object for deterministic evidence manifest entries without introducing a media package
 - Updated the starter `tests/Feature/ExampleTest.php` to use `withoutVite()` for server-side test stability.
 
 ## Commands Run
@@ -748,6 +748,18 @@
 - Production Vite build passed with 618 modules transformed.
 - Composer strict validation passed.
 - Browser recorder Node syntax check passed.
+- Browser walkthroughs now generate an offline HTML storyboard, a print-ready landscape PDF, and structured JSON from the exact recorded screenshot sequence.
+- Every storyboard checkpoint separates the Electoral Board act, appliance control, COMELEC review point, and underlying evidence paths, and records the screenshot SHA-256.
+- Storyboard generation is required for a successful recording, and the coordinator includes the storyboard files in the final verified evidence TAR.
+- The recorder also preserves 46 readable viewport frames from the same moments as the 46 full-page captures; the storyboard uses the frames and links to the complete screenshots.
+- Final storyboard rehearsal passed with 51 completed actions, 46 screenshots, 46 storyboard frames, 2 printed ballots, 1 spoiled ballot, 1 accepted ballot, and no browser console messages.
+- Persisted storyboard run: `storage/app/election/runs/20260724-085149-521534-39010001-browser-full-election`.
+- Persisted storyboard PDF: `storage/app/election/runs/20260724-085149-521534-39010001-browser-full-election/12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.pdf`.
+- Persisted final archive: `storage/app/election/runs/20260724-085149-521534-39010001-browser-full-election/12-audit-and-reconciliation/evidence-bundle-20260724-085312.tar`.
+- Final archive verified 201 files with zero mismatches; storyboard evidence-path validation reported no missing references.
+- Representative PDF pages were rendered and visually inspected for setup, ballot printing, counting, Election Return approval, archive verification, cover, and conclusion.
+- Storyboard coordinator regression passed: 3 tests and 43 assertions.
+- Full Laravel/Pest regression passed: 170 tests and 2,510 assertions.
 - Final rehearsal remains locked at `storage/app/election/runs/20260724-045338-420890-39010001-browser-full-election`.
 - Election-day evidence remains unchanged at `storage/app/election/runs/20260724-004938-0421-a-operator`.
 

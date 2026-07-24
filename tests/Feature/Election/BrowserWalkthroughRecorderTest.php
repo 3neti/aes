@@ -26,9 +26,21 @@ test('browser walkthrough command records and finalizes an isolated rehearsal', 
         $artifactDirectory = $process->environment['ELECTION_WALKTHROUGH_ARTIFACT_DIR'];
         $videoPath = $artifactDirectory.'/full-election.webm';
         $tracePath = $artifactDirectory.'/playwright-trace.zip';
+        $storyboardHtmlPath = $artifactDirectory.'/walkthrough-storyboard.html';
+        $storyboardPdfPath = $artifactDirectory.'/walkthrough-storyboard.pdf';
+        $storyboardJsonPath = $artifactDirectory.'/walkthrough-storyboard.json';
+        $storyboardFramePath = $artifactDirectory.'/storyboard-frames/01-home.png';
 
         file_put_contents($videoPath, 'recorded-video');
         file_put_contents($tracePath, 'recorded-trace');
+        mkdir(dirname($storyboardFramePath), recursive: true);
+        file_put_contents($storyboardFramePath, 'storyboard-frame');
+        file_put_contents($storyboardHtmlPath, '<html><body>Walkthrough storyboard</body></html>');
+        file_put_contents($storyboardPdfPath, '%PDF-1.4 storyboard');
+        file_put_contents($storyboardJsonPath, json_encode([
+            'schema_version' => 'browser-walkthrough-storyboard-1',
+            'checkpoints' => [],
+        ], JSON_THROW_ON_ERROR));
 
         return Process::result(output: json_encode([
             'schema_version' => 'browser-walkthrough-recorder-result-1',
@@ -53,6 +65,27 @@ test('browser walkthrough command records and finalizes an isolated rehearsal', 
                     'relative_path' => 'playwright-trace.zip',
                     'bytes' => filesize($tracePath),
                     'sha256' => hash_file('sha256', $tracePath),
+                ],
+                [
+                    'label' => 'Walkthrough storyboard HTML',
+                    'path' => $storyboardHtmlPath,
+                    'relative_path' => 'walkthrough-storyboard.html',
+                    'bytes' => filesize($storyboardHtmlPath),
+                    'sha256' => hash_file('sha256', $storyboardHtmlPath),
+                ],
+                [
+                    'label' => 'Walkthrough storyboard PDF',
+                    'path' => $storyboardPdfPath,
+                    'relative_path' => 'walkthrough-storyboard.pdf',
+                    'bytes' => filesize($storyboardPdfPath),
+                    'sha256' => hash_file('sha256', $storyboardPdfPath),
+                ],
+                [
+                    'label' => 'Walkthrough storyboard data',
+                    'path' => $storyboardJsonPath,
+                    'relative_path' => 'walkthrough-storyboard.json',
+                    'bytes' => filesize($storyboardJsonPath),
+                    'sha256' => hash_file('sha256', $storyboardJsonPath),
                 ],
             ],
         ], JSON_THROW_ON_ERROR));
@@ -89,6 +122,9 @@ test('browser walkthrough command records and finalizes an isolated rehearsal', 
             '12-audit-and-reconciliation/browser-recordings/full-election.webm',
             '12-audit-and-reconciliation/browser-recordings/browser-walkthrough-report.json',
             '12-audit-and-reconciliation/browser-recordings/browser-lifecycle-report.json',
+            '12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.html',
+            '12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.pdf',
+            '12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.json',
         )
         ->and($completion['passed'])->toBeTrue()
         ->and($completion['post_recording']['archive_verified'])->toBeTrue()
@@ -96,6 +132,10 @@ test('browser walkthrough command records and finalizes an isolated rehearsal', 
         ->and($archiveContents)->toContain('browser-recordings/full-election.webm')
         ->and($archiveContents)->toContain('browser-recordings/playwright-trace.zip')
         ->and($archiveContents)->toContain('browser-recordings/browser-artifact-index.json')
+        ->and($archiveContents)->toContain('browser-recordings/walkthrough-storyboard.html')
+        ->and($archiveContents)->toContain('browser-recordings/walkthrough-storyboard.pdf')
+        ->and($archiveContents)->toContain('browser-recordings/walkthrough-storyboard.json')
+        ->and($archiveContents)->toContain('browser-recordings/storyboard-frames/01-home.png')
         ->and($rehearsal['run_path'].'/artifact-index.json')->toBeFile()
         ->and(config('election.runtime.run_type'))->toBe(ElectionRunType::ElectionDay->value);
 

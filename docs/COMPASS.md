@@ -698,9 +698,9 @@ A wave is complete only when:
 
 Current implementation status:
 
-- Current wave: Wave 1
-- Completed slice: Official Minutes Baseline Slice (Slice 4)
-- Next recommended slice: Legal Scenario Harness Slice (Slice 5)
+- Current wave: Wave 9 - Hardening
+- Completed slice: Recorded Browser Walkthrough Storyboard
+- Next recommended slice: Supervised Raspberry Pi hardware pilot and printed-artifact calibration
 
 Completed:
 
@@ -710,10 +710,19 @@ Completed:
 - precinct preparation narrative
 - functional specification
 - architecture compass
+- ceremony-driven browser lifecycle from precinct activation through audit
+- deterministic POP and CLC precinct configuration for clustered precinct 39010001
+- ballot finalization, printing, spoilage, scanning, tally, Election Return, handoff, custody, and archive verification
+- recorded WebM walkthrough, Playwright trace, full-page screenshots, and readable viewport frames
+- offline HTML, 49-page PDF, and structured JSON storyboard with precise COMELEC review notes and screenshot hashes
+- final evidence TAR containing the storyboard and its source captures, re-hashed with zero mismatches
 
 Next:
 
-Continue Slice 5: Legal Scenario Harness Slice.
+Run a supervised field pilot on the intended Raspberry Pi, printer,
+scanner/camera, UPS, and removable media. Calibrate the printed ballot,
+tally sheet, Election Return, and storyboard against the actual field
+equipment while preserving paper as the legal source of truth.
 
 ---
 
