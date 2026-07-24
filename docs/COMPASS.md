@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Browser Provisioning Through Opening of Polls
+- Completed Slice: Browser Voting, Printing, and Spoilage
 - Active Program: Recorded Browser Lifecycle Walkthrough
-- Current Slice: Browser Voting, Printing, and Spoilage
-- Next Slice: Browser Counting, Adjudication, and Tally
+- Current Slice: Browser Counting, Adjudication, and Tally
+- Next Slice: Browser Returns, Handoff, Custody, and Audit
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

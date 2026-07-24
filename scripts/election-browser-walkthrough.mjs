@@ -38,6 +38,13 @@ const videoPath = path.join(artifactDirectory, 'full-election.webm');
 const viewport = { width: 1440, height: 900 };
 const actions = [];
 const browserMessages = [];
+const acceptedQrPayloads = [];
+const spoiledQrPayloads = [];
+const walkthroughStatistics = {
+    ballots_finalized: 0,
+    ballots_printed: 0,
+    ballots_spoiled: 0,
+};
 let sequence = 0;
 let browser;
 let context;
@@ -99,7 +106,12 @@ async function runStep(action, callback, screenshotName) {
     });
 }
 
-async function postButton(buttonName, pathname, timeout = 60_000) {
+async function postButton(
+    buttonName,
+    pathname,
+    timeout = 60_000,
+    reload = true,
+) {
     const button = page.getByRole('button', {
         name: buttonName,
         exact: true,
@@ -116,10 +128,13 @@ async function postButton(buttonName, pathname, timeout = 60_000) {
         button.click(),
     ]);
     await page.waitForLoadState('networkidle');
-    await page.reload({
-        waitUntil: 'networkidle',
-        timeout,
-    });
+
+    if (reload) {
+        await page.reload({
+            waitUntil: 'networkidle',
+            timeout,
+        });
+    }
 }
 
 async function openPath(pathname) {
@@ -174,6 +189,88 @@ async function recordSignedCheckpoint() {
         }
     });
     await postButton('Record signed checkpoint', '/election/attestations');
+}
+
+async function finalizeVoterBallot(ballotNumber) {
+    await openPath('/election/voting');
+    await page.getByRole('link', {
+        name: 'Open voter ballot',
+        exact: true,
+    }).click();
+    await page.waitForURL('**/election/voter/ballot');
+
+    const contests = page.locator('fieldset');
+    const contestCount = await contests.count();
+
+    if (contestCount === 0) {
+        throw new Error('The voter ballot contains no contests.');
+    }
+
+    for (let contestIndex = 0; contestIndex < contestCount; contestIndex++) {
+        const contest = contests.nth(contestIndex);
+        const instruction = await contest
+            .locator('p')
+            .filter({ hasText: 'Select up to' })
+            .first()
+            .textContent();
+        const maximumSelections = Number(instruction?.match(/\d+/)?.[0] ?? 0);
+        const candidates = contest.locator(
+            'input[type="radio"], input[type="checkbox"]',
+        );
+        const candidateCount = await candidates.count();
+        const selections = Math.min(maximumSelections, candidateCount);
+
+        for (let selection = 0; selection < selections; selection++) {
+            await candidates
+                .nth((ballotNumber + selection - 1) % candidateCount)
+                .check();
+        }
+    }
+
+    await postButton(
+        'Finalize my ballot',
+        '/election/voter/ballot',
+        60_000,
+        false,
+    );
+    await page.waitForURL('**/election/voter/complete?ballot=*');
+    await page.getByText('Ballot finalized', { exact: true }).waitFor();
+    walkthroughStatistics.ballots_finalized++;
+}
+
+async function printPreparedBallot(spoil) {
+    await openPath('/election/voting');
+    const printLink = page.getByRole('link', {
+        name: /^Print ballot /,
+    });
+    await printLink.waitFor();
+    await printLink.click();
+    await page.waitForURL('**/election/printing/*');
+
+    const printingPath = new URL(page.url()).pathname;
+    const ballotId = decodeURIComponent(printingPath.split('/').pop());
+    const qrPayload = await page.locator('textarea[readonly]').inputValue();
+
+    await postButton(
+        'Print paper ballot',
+        `${printingPath}/print`,
+    );
+    walkthroughStatistics.ballots_printed++;
+
+    if (spoil) {
+        spoiledQrPayloads.push(qrPayload);
+    } else {
+        acceptedQrPayloads.push(qrPayload);
+    }
+
+    return {
+        ballot_id: ballotId,
+        paper_ballot_serial: await page
+            .getByText('Paper stock serial', { exact: true })
+            .locator('..')
+            .locator('dd')
+            .textContent(),
+    };
 }
 
 try {
@@ -384,8 +481,55 @@ try {
         }).waitFor();
     }, '15-voting-open.png');
 
-    recordAction('provisioning-through-opening', 'passed', {
+    await runStep('finalize-spoiled-ballot', async () => {
+        await finalizeVoterBallot(1);
+    }, '16-spoiled-ballot-finalized.png');
+
+    let spoiledBallot;
+    await runStep('print-spoiled-ballot', async () => {
+        spoiledBallot = await printPreparedBallot(true);
+
+        return spoiledBallot;
+    }, '17-spoiled-ballot-printed.png');
+
+    await runStep('mark-ballot-spoiled', async () => {
+        const printingPath = new URL(page.url()).pathname;
+        await postButton(
+            'Mark spoiled and return',
+            `${printingPath}/spoil`,
+        );
+        await openPath('/election/voting');
+        walkthroughStatistics.ballots_spoiled++;
+
+        return spoiledBallot;
+    }, '18-ballot-spoiled.png');
+
+    const requestedBallots = Number(
+        process.env.ELECTION_WALKTHROUGH_BALLOTS ?? 1,
+    );
+
+    for (let ballotNumber = 1; ballotNumber <= requestedBallots; ballotNumber++) {
+        await runStep(`finalize-voter-ballot-${ballotNumber}`, async () => {
+            await finalizeVoterBallot(ballotNumber + 1);
+        }, `19-voter-ballot-${ballotNumber}-finalized.png`);
+
+        await runStep(`print-voter-ballot-${ballotNumber}`, async () => {
+            return printPreparedBallot(false);
+        }, `20-voter-ballot-${ballotNumber}-printed.png`);
+    }
+
+    await runStep('complete-voting-and-printing-segment', async () => {
+        await openPath('/election/voting');
+
+        return {
+            accepted_ballots_ready_for_counting: acceptedQrPayloads.length,
+            spoiled_ballots: spoiledQrPayloads.length,
+        };
+    }, '21-voting-and-printing-complete.png');
+
+    recordAction('voting-printing-and-spoilage', 'passed', {
         final_url: page.url(),
+        ...walkthroughStatistics,
     });
 } catch (error) {
     errorMessage = error instanceof Error ? error.message : String(error);
@@ -487,6 +631,7 @@ const result = {
         screenshots: artifacts.filter((artifact) =>
             artifact.relative_path.endsWith('.png'),
         ).length,
+        ...walkthroughStatistics,
     },
     artifacts,
 };

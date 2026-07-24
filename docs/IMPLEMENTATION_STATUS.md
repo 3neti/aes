@@ -702,10 +702,15 @@
 - Persisted provisioning-through-opening run: `storage/app/election/runs/20260724-041438-938925-39010001-browser-full-election`.
 - Persisted recording: `storage/app/election/runs/20260724-041438-938925-39010001-browser-full-election/12-audit-and-reconciliation/browser-recordings/full-election.webm`.
 - The lifecycle reached `voting`; the election-day pointer remained unchanged.
+- Browser voting now selects deterministic candidates in every real Tondo contest, finalizes ballots through the isolated voter screen, opens the operator printing ceremony, and produces file/PDF print artifacts.
+- Each walkthrough creates one deliberately spoiled printed ballot before producing the configured number of valid replacement ballots.
+- QR payloads from valid and spoiled printed ballots remain in the recorder session for the counting and rejection segment.
+- Real browser voting/printing/spoilage recording passed with 23 completed actions, 21 screenshots, 2 finalized ballots, 2 print records, 1 spoiled ballot, 5 paper-ledger events, and no browser console errors.
+- Persisted voting/printing checkpoint: `storage/app/election/runs/20260724-041908-002535-39010001-browser-full-election`.
 
 ## Next Recommended Steps
 
-- Automate voter ballot selection, finalization, printing, spoilage, and replacement through the same recorded browser session.
+- Automate close-polls, accepted and rejected QR scans, rejection adjudication, physical ballot reconciliation, and tally completion.
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
 - Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.
