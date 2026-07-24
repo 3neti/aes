@@ -1346,6 +1346,16 @@ test('official handoff can close the precinct after custody turnover', function 
     expect(app(LifecycleState::class)->current())->toBe(Lifecycle::ClosePrecinct);
 });
 
+test('closed precinct can begin the audit and reconciliation ceremony', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::ClosePrecinct);
+
+    $this->post(route('election.diagnostics.begin-audit'))
+        ->assertRedirect(route('election.diagnostics'));
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::Audit);
+});
+
 test('voting page can record special polling intake during voting and close-polls', function (): void {
     app(ActivateSamplePackage::class)->handle();
     app(LifecycleState::class)->set(Lifecycle::OpenPrecinct);

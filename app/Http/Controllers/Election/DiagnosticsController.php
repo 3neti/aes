@@ -13,6 +13,7 @@ use App\Election\Diagnostics\EvidenceReferenceBaselineService;
 use App\Election\Diagnostics\RemovableMediaExporter;
 use App\Election\Diagnostics\RemovableMediaExportVerifier;
 use App\Election\Diagnostics\RemovableMediaReadinessChecker;
+use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Minutes\OfficialMinutesBaselineService;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
@@ -37,6 +38,13 @@ final class DiagnosticsController extends Controller
     public function certifyDevices(DeviceCertificationService $certification): RedirectResponse
     {
         $certification->run();
+
+        return redirect()->route('election.diagnostics');
+    }
+
+    public function beginAudit(CeremonyActions $ceremonies): RedirectResponse
+    {
+        $ceremonies->beginAudit();
 
         return redirect()->route('election.diagnostics');
     }

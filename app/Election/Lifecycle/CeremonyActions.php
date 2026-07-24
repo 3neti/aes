@@ -71,4 +71,10 @@ final class CeremonyActions
         $this->lifecycle->advanceTo(Lifecycle::ClosePrecinct);
         $this->journal->record('precinct.closed', ['officer' => $officer]);
     }
+
+    public function beginAudit(): void
+    {
+        $this->lifecycle->advanceTo(Lifecycle::Audit);
+        $this->journal->record('audit.started');
+    }
 }

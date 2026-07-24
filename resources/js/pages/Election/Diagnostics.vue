@@ -4,7 +4,7 @@ import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import StatusBadge from '@/components/election/StatusBadge.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
-import { certifyDevices } from '@/routes/election/diagnostics';
+import { beginAudit, certifyDevices } from '@/routes/election/diagnostics';
 
 type AttestationArtifact = {
     attestation_id: string;
@@ -237,6 +237,29 @@ defineProps<{
 
 <template>
     <CeremonyLayout :snapshot="snapshot" title="Diagnostics">
+        <CeremonyActionPanel
+            v-if="snapshot.stage === 'close_precinct'"
+            title="Begin Audit and Reconciliation"
+            description="The precinct is closed. Open the final evidence review and reconciliation ceremony."
+            eyebrow="Final ceremony"
+            status="Ready for audit"
+            tone="complete"
+        >
+            <Form v-bind="beginAudit.form()" #default="{ processing }">
+                <button
+                    class="primary-button"
+                    type="submit"
+                    :disabled="processing"
+                >
+                    {{
+                        processing
+                            ? 'Opening audit...'
+                            : 'Begin Audit and Reconciliation'
+                    }}
+                </button>
+            </Form>
+        </CeremonyActionPanel>
+
         <CeremonyActionPanel
             title="Evidence and appliance readiness"
             description="Review the precinct evidence bundle, verify its integrity, and check the local printer and scanner adapters."
