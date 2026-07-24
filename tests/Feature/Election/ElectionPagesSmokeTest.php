@@ -330,6 +330,24 @@ test('voter ballot is isolated from operator evidence and hands finalized ballot
         );
 });
 
+test('voter station never offers certification ballots for printing', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ], 'cert-001', false);
+    app(LifecycleState::class)->set(Lifecycle::Voting);
+
+    $this->get(route('election.voting'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Voting')
+            ->where('readyBallot', [])
+            ->where('snapshot.counts.ballots', 2)
+        );
+});
+
 test('printing ceremony reports certification gate for cups printer driver', function (): void {
     config()->set('election.devices.printer.driver', 'cups');
     config()->set('election.devices.printer.cups.name', 'Precinct_Printer');

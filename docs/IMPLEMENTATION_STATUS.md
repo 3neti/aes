@@ -693,10 +693,19 @@
 - Real smoke recording passed against `http://aes.test`.
 - Persisted smoke run: `storage/app/election/runs/20260724-035446-826147-39010001-browser-full-election`.
 - The election-day pointer remained `storage/app/election/runs/20260724-004938-0421-a-operator`.
+- Browser provisioning-through-opening now drives the real precinct package import, dual-control setup, EB and supply baselines, device readiness, initialization report, certification, manual verification, discrepancy analysis, zero-out, sealing, two officer signatures, and two-step poll opening.
+- Ghostscript executable discovery now checks the configured path and standard appliance/Homebrew binary locations so the web process can import CLC PDFs consistently.
+- The voter printing queue now excludes FTS certification scan documents while evidence counts continue to include them.
+- Focused PDF adapter and walkthrough coordinator coverage passed: 6 tests and 50 assertions.
+- Focused voter isolation and FTS ballot regression coverage passed: 2 tests and 52 assertions.
+- Real browser provisioning-through-opening recording passed with 17 completed actions, 15 screenshots, 2 attestations, 2 signature artifacts, and no browser console errors.
+- Persisted provisioning-through-opening run: `storage/app/election/runs/20260724-041438-938925-39010001-browser-full-election`.
+- Persisted recording: `storage/app/election/runs/20260724-041438-938925-39010001-browser-full-election/12-audit-and-reconciliation/browser-recordings/full-election.webm`.
+- The lifecycle reached `voting`; the election-day pointer remained unchanged.
 
 ## Next Recommended Steps
 
-- Automate the real provisioning, device setup, certification, officer signatures, and opening-of-polls forms inside the recorded walkthrough.
+- Automate voter ballot selection, finalization, printing, spoilage, and replacement through the same recorded browser session.
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
 - Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.

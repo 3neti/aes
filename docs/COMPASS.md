@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Artisan and Playwright Video Recorder
+- Completed Slice: Browser Provisioning Through Opening of Polls
 - Active Program: Recorded Browser Lifecycle Walkthrough
-- Current Slice: Browser Provisioning Through Opening of Polls
-- Next Slice: Browser Voting, Printing, and Spoilage
+- Current Slice: Browser Voting, Printing, and Spoilage
+- Next Slice: Browser Counting, Adjudication, and Tally
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

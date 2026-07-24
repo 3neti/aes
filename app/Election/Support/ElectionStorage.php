@@ -320,6 +320,10 @@ final class ElectionStorage
      */
     public function files(string $relative): array
     {
+        if ($relative === 'voter-ballots') {
+            return $this->filesInRunDirectory(self::CeremonyDirectories['voting'].'/ballots');
+        }
+
         if ($relative === 'ballots') {
             return collect([
                 ...$this->filesInRunDirectory(self::CeremonyDirectories['certification'].'/scan-documents'),

@@ -29,7 +29,7 @@ final class VotingController extends Controller
         ElectionStorage $storage,
         SpecialPollingIntakeService $specialPollingIntake,
     ): Response {
-        $readyBallot = collect($storage->files('ballots'))
+        $readyBallot = collect($storage->files('voter-ballots'))
             ->filter(fn (string $path): bool => str_ends_with($path, '.json'))
             ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
             ->filter(fn (array $payload): bool => ! file_exists($storage->path("print-jobs/{$payload['ballot_id']}.json")))

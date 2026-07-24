@@ -3,6 +3,7 @@
 namespace App\Election\Support;
 
 use RuntimeException;
+use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 final class GhostscriptPdfTextExtractor implements PdfTextExtractor
@@ -12,7 +13,8 @@ final class GhostscriptPdfTextExtractor implements PdfTextExtractor
      */
     public function extract(string $path): array
     {
-        $binary = (string) config('election.pdf.ghostscript_binary', 'gs');
+        $configuredBinary = (string) config('election.pdf.ghostscript_binary', 'gs');
+        $binary = $this->resolveBinary($configuredBinary);
         $process = new Process([
             $binary,
             '-q',
@@ -27,10 +29,28 @@ final class GhostscriptPdfTextExtractor implements PdfTextExtractor
         $process->run();
 
         if (! $process->isSuccessful()) {
-            throw new RuntimeException("Unable to extract PDF text with Ghostscript [{$binary}]: ".$process->getErrorOutput());
+            throw new RuntimeException("Unable to extract PDF text with Ghostscript [{$configuredBinary}]: ".$process->getErrorOutput());
         }
 
         return $this->pages($process->getOutput());
+    }
+
+    private function resolveBinary(string $configuredBinary): string
+    {
+        if (str_contains($configuredBinary, DIRECTORY_SEPARATOR)) {
+            return $configuredBinary;
+        }
+
+        return (new ExecutableFinder)->find(
+            $configuredBinary,
+            $configuredBinary,
+            [
+                dirname(PHP_BINARY),
+                '/opt/homebrew/bin',
+                '/usr/local/bin',
+                '/usr/bin',
+            ],
+        );
     }
 
     /**

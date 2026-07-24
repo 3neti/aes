@@ -2,6 +2,7 @@
 
 use App\Election\Preparation\ClcCandidateImporter;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\GhostscriptPdfTextExtractor;
 
 beforeEach(function (): void {
     app(ElectionStorage::class)->reset();
@@ -48,6 +49,21 @@ test('clc candidate import reports missing ghostscript clearly', function (): vo
     $this->artisan('election:clc-import')
         ->expectsOutputToContain('Unable to extract PDF text with Ghostscript')
         ->assertFailed();
+});
+
+test('pdf extractor accepts an explicitly configured executable path', function (): void {
+    $binary = storage_path('framework/testing/fake-ghostscript');
+    $pdf = storage_path('framework/testing/fake-source.pdf');
+    file_put_contents($binary, "#!/bin/sh\nprintf 'Candidate list fixture'\n");
+    chmod($binary, 0755);
+    file_put_contents($pdf, 'fixture');
+    config()->set('election.pdf.ghostscript_binary', $binary);
+
+    $pages = app(GhostscriptPdfTextExtractor::class)->extract($pdf);
+
+    expect($pages)->toHaveCount(1)
+        ->and($pages[0]->page)->toBe(1)
+        ->and($pages[0]->text)->toBe('Candidate list fixture');
 });
 
 /**
