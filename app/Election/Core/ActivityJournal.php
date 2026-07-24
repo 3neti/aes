@@ -65,4 +65,49 @@ final class ActivityJournal
     {
         return array_slice($this->entries(), -$limit);
     }
+
+    /**
+     * @return array{passed: bool, entry_count: int, first_invalid_sequence: int|null, error?: string}
+     */
+    public function verifyChain(): array
+    {
+        try {
+            $entries = $this->entries();
+        } catch (\Throwable $exception) {
+            return [
+                'passed' => false,
+                'entry_count' => 0,
+                'first_invalid_sequence' => null,
+                'error' => $exception->getMessage(),
+            ];
+        }
+
+        $previousHash = null;
+
+        foreach ($entries as $index => $entry) {
+            $sequence = $index + 1;
+            $recordedHash = $entry['event_hash'] ?? null;
+            $hashableEntry = $entry;
+            unset($hashableEntry['event_hash']);
+
+            if (($entry['sequence'] ?? null) !== $sequence
+                || ($entry['previous_hash'] ?? null) !== $previousHash
+                || ! is_string($recordedHash)
+                || ! hash_equals($recordedHash, $this->json->hash($hashableEntry))) {
+                return [
+                    'passed' => false,
+                    'entry_count' => count($entries),
+                    'first_invalid_sequence' => $sequence,
+                ];
+            }
+
+            $previousHash = $recordedHash;
+        }
+
+        return [
+            'passed' => true,
+            'entry_count' => count($entries),
+            'first_invalid_sequence' => null,
+        ];
+    }
 }

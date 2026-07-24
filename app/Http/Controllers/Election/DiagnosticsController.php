@@ -6,6 +6,7 @@ use App\Election\Audit\AuditReconciliationBaselineService;
 use App\Election\Certification\InitializationReportService;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Devices\DeviceCertificationService;
+use App\Election\Diagnostics\ApplianceRecoveryService;
 use App\Election\Diagnostics\DiagnosticsService;
 use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
 use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
@@ -40,6 +41,15 @@ final class DiagnosticsController extends Controller
         $certification->run();
 
         return redirect()->route('election.diagnostics');
+    }
+
+    public function inspectRecovery(ApplianceRecoveryService $recovery): RedirectResponse
+    {
+        $report = $recovery->inspect();
+
+        return redirect()
+            ->route('election.diagnostics')
+            ->with('appliance_recovery_status', $report['resume_status']);
     }
 
     public function beginAudit(CeremonyActions $ceremonies): RedirectResponse

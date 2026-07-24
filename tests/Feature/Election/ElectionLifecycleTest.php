@@ -11,6 +11,7 @@ use App\Election\Devices\CameraScannerHealthCheck;
 use App\Election\Devices\CupsPrinterHealthCheck;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Devices\HandheldScannerHealthCheck;
+use App\Election\Diagnostics\ApplianceRecoveryService;
 use App\Election\Diagnostics\DiagnosticsService;
 use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
 use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
@@ -138,6 +139,65 @@ test('lifecycle includes transmission, final backup, and custody stages', functi
 
     $ceremonies->closePrecinct();
     expect($lifecycle->current())->toBe(Lifecycle::ClosePrecinct);
+});
+
+test('appliance recovery resumes an intact run at the same ceremony', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(DeviceCertificationService::class)->run();
+    app(LifecycleState::class)->set(Lifecycle::Voting);
+
+    $stageBeforeRecovery = app(LifecycleState::class)->current();
+
+    $this->artisan('election:recover')
+        ->expectsOutputToContain('Resume status: resume-allowed')
+        ->expectsOutputToContain('Device status: ready')
+        ->assertSuccessful();
+
+    $report = app(ElectionStorage::class)->readJson('diagnostics/appliance-recovery-report.json');
+
+    expect($report['critical_checks_passed'])->toBeTrue()
+        ->and($report['resume_status'])->toBe('resume-allowed')
+        ->and($report['lifecycle_stage'])->toBe($stageBeforeRecovery)
+        ->and(app(LifecycleState::class)->current())->toBe($stageBeforeRecovery);
+
+    $this->post(route('election.diagnostics.recovery.inspect'))
+        ->assertRedirect(route('election.diagnostics'));
+});
+
+test('appliance recovery blocks resumption when the activity journal was altered', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+
+    $storage = app(ElectionStorage::class);
+    $journalPath = $storage->path('journals/activity.jsonl');
+    $entries = file($journalPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $firstEntry = json_decode((string) $entries[0], true, flags: JSON_THROW_ON_ERROR);
+    $firstEntry['payload']['precinct_id'] = 'altered-precinct';
+    $entries[0] = json_encode($firstEntry, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    file_put_contents($journalPath, implode(PHP_EOL, $entries).PHP_EOL);
+
+    $report = app(ApplianceRecoveryService::class)->inspect();
+
+    expect($report['critical_checks_passed'])->toBeFalse()
+        ->and($report['resume_status'])->toBe('locked-for-diagnostics')
+        ->and(collect($report['checks'])->firstWhere('name', 'activity_journal_chain')['passed'])->toBeFalse();
+});
+
+test('appliance recovery reports degraded devices without blocking intact evidence', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(ElectionStorage::class)->writeJson('certification/device-certification-report.json', [
+        'schema_version' => 'device-certification-report-1',
+        'passed' => false,
+        'devices' => [
+            'printer' => ['status' => 'unavailable'],
+            'scanner' => ['status' => 'ready'],
+        ],
+    ]);
+
+    $report = app(ApplianceRecoveryService::class)->inspect();
+
+    expect($report['resume_status'])->toBe('resume-allowed')
+        ->and($report['device_status'])->toBe('degraded')
+        ->and($report['degraded_devices'])->toBe(['printer']);
 });
 
 test('returns close action advances lifecycle to transmission ceremony', function (): void {

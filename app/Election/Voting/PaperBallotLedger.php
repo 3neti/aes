@@ -96,6 +96,51 @@ final class PaperBallotLedger
     }
 
     /**
+     * @return array{passed: bool, event_count: int, first_invalid_sequence: int|null, error?: string}
+     */
+    public function verifyChain(): array
+    {
+        try {
+            $events = $this->events();
+        } catch (\Throwable $exception) {
+            return [
+                'passed' => false,
+                'event_count' => 0,
+                'first_invalid_sequence' => null,
+                'error' => $exception->getMessage(),
+            ];
+        }
+
+        $previousHash = str_repeat('0', 64);
+
+        foreach ($events as $index => $event) {
+            $sequence = $index + 1;
+            $recordedHash = $event['event_hash'] ?? null;
+            $hashableEvent = $event;
+            unset($hashableEvent['event_hash']);
+
+            if (($event['sequence'] ?? null) !== $sequence
+                || ($event['previous_hash'] ?? null) !== $previousHash
+                || ! is_string($recordedHash)
+                || ! hash_equals($recordedHash, $this->json->hash($hashableEvent))) {
+                return [
+                    'passed' => false,
+                    'event_count' => count($events),
+                    'first_invalid_sequence' => $sequence,
+                ];
+            }
+
+            $previousHash = $recordedHash;
+        }
+
+        return [
+            'passed' => true,
+            'event_count' => count($events),
+            'first_invalid_sequence' => null,
+        ];
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     private function events(): array

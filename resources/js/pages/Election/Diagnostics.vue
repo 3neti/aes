@@ -4,7 +4,11 @@ import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import StatusBadge from '@/components/election/StatusBadge.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
-import { beginAudit, certifyDevices } from '@/routes/election/diagnostics';
+import {
+    beginAudit,
+    certifyDevices,
+} from '@/routes/election/diagnostics';
+import { inspect as inspectRecovery } from '@/routes/election/diagnostics/recovery';
 
 type AttestationArtifact = {
     attestation_id: string;
@@ -204,6 +208,23 @@ type EvidenceBundleArchiveVerification = {
     verified_at?: string | null;
 };
 
+type ApplianceRecoveryCheck = {
+    name: string;
+    passed: boolean;
+    detail: unknown;
+};
+
+type ApplianceRecovery = {
+    run_id?: string | null;
+    lifecycle_stage?: string;
+    resume_status?: 'resume-allowed' | 'locked-for-diagnostics';
+    critical_checks_passed?: boolean;
+    device_status?: 'ready' | 'degraded';
+    degraded_devices?: string[];
+    checks?: ApplianceRecoveryCheck[];
+    report_hash?: string;
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
     diagnostics: {
@@ -219,6 +240,7 @@ defineProps<{
         device_certification?: {
             passed?: boolean;
         };
+        appliance_recovery?: ApplianceRecovery;
         attestation_artifacts?: AttestationArtifact[];
         initialization_report?: InitializationReport;
         evidence_manifest?: EvidenceManifest;
@@ -315,6 +337,120 @@ defineProps<{
                         }}
                     </button>
                 </Form>
+            </div>
+
+            <div class="mt-5 border-t border-stone-200 pt-5">
+                <div
+                    class="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start"
+                >
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="font-bold text-stone-950">
+                                Restart recovery check
+                            </h3>
+                            <StatusBadge
+                                v-if="diagnostics.appliance_recovery"
+                                :label="
+                                    diagnostics.appliance_recovery
+                                        .resume_status === 'resume-allowed'
+                                        ? 'Safe to resume'
+                                        : 'Stop and inspect'
+                                "
+                                :tone="
+                                    diagnostics.appliance_recovery
+                                        .resume_status === 'resume-allowed'
+                                        ? 'complete'
+                                        : 'warning'
+                                "
+                            />
+                        </div>
+                        <p class="mt-1 max-w-3xl text-sm text-stone-600">
+                            Check the active precinct, current ceremony, and
+                            evidence chains after an appliance restart.
+                        </p>
+                        <dl
+                            v-if="diagnostics.appliance_recovery"
+                            class="mt-3 grid gap-2 text-sm sm:grid-cols-3"
+                        >
+                            <div>
+                                <dt class="text-stone-500">Run</dt>
+                                <dd class="font-semibold text-stone-950">
+                                    {{
+                                        diagnostics.appliance_recovery.run_id ||
+                                        'Not found'
+                                    }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-500">Ceremony</dt>
+                                <dd class="font-semibold text-stone-950">
+                                    {{
+                                        diagnostics.appliance_recovery
+                                            .lifecycle_stage || 'Unknown'
+                                    }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="text-stone-500">Devices</dt>
+                                <dd class="font-semibold text-stone-950">
+                                    {{
+                                        diagnostics.appliance_recovery
+                                            .device_status === 'degraded'
+                                            ? 'Needs attention'
+                                            : 'Ready'
+                                    }}
+                                </dd>
+                            </div>
+                        </dl>
+                        <ul
+                            v-if="diagnostics.appliance_recovery?.checks"
+                            class="mt-3 grid gap-1 text-sm sm:grid-cols-2"
+                        >
+                            <li
+                                v-for="check in diagnostics.appliance_recovery
+                                    .checks"
+                                :key="check.name"
+                                class="flex items-center gap-2"
+                            >
+                                <span
+                                    class="size-2 shrink-0"
+                                    :class="
+                                        check.passed
+                                            ? 'bg-emerald-600'
+                                            : 'bg-red-600'
+                                    "
+                                />
+                                <span class="text-stone-700">
+                                    {{
+                                        check.name
+                                            .replaceAll('_', ' ')
+                                            .replace(
+                                                /^./,
+                                                (letter) =>
+                                                    letter.toUpperCase(),
+                                            )
+                                    }}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                    <Form
+                        v-bind="inspectRecovery.form()"
+                        #default="{ processing }"
+                    >
+                        <button
+                            class="secondary-button"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{
+                                processing
+                                    ? 'Inspecting evidence...'
+                                    : 'Inspect restart readiness'
+                            }}
+                        </button>
+                    </Form>
+                </div>
             </div>
         </CeremonyActionPanel>
 

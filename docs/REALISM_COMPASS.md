@@ -6,7 +6,7 @@ Evolve the deterministic simulation into a credible offline precinct appliance w
 
 ## Current Position
 
-The browser lifecycle reaches Audit and Reconciliation and produces a verified evidence archive. The implementation is not field-ready because browser provisioning still uses sample election data, run namespaces are not isolated, paper accountability is incomplete, and legal transitions do not yet require complete physical and dual-control evidence.
+The browser and scenario lifecycle use the configured Tondo POP + CLC package, preserve isolated election-day and rehearsal evidence, account for serialized paper ballots, require dual-control approvals, and can inspect evidence-chain integrity after an appliance restart. The remaining realism gate is a deterministic 50-ballot field rehearsal followed by full automated verification.
 
 ## Slice Status
 
@@ -21,7 +21,7 @@ The browser lifecycle reaches Audit and Reconciliation and produces a verified e
 | Voter station | Complete | Dedicated voter routes receive ballot data only and hand finalized stock back to the operator console. |
 | Public counting and adjudication | Complete | Physical box count, accepted records, and every rejected-scan disposition must reconcile before completion. |
 | Return, posting, and custody | Complete | Dual approval gates handoff; delivery and custody require the same posted return evidence chain. |
-| Appliance hardening | Pending | Failure and recovery scenarios are deterministic. |
+| Appliance hardening | Complete | Restart inspection preserves the ceremony, verifies evidence chains, blocks tampered runs, and reports degraded devices. |
 | 50-ballot field simulation | Pending | Full field scenario and archive verification pass. |
 
 ## Non-Negotiable Gates
@@ -41,4 +41,4 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Appliance Hardening.
+50-Ballot Field Simulation.

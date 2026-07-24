@@ -496,6 +496,11 @@
 
 ## Verification Results
 
+- Appliance recovery focused suite: passed, 3 tests and 13 assertions.
+- Appliance recovery production frontend build: passed.
+- `election:recover` now verifies the active run, precinct identity, lifecycle stage, append-only activity journal chain, and serialized paper-ballot ledger chain without changing the active ceremony.
+- Diagnostics now shows restart readiness, evidence check results, the recovered run and ceremony, and degraded device status.
+
 - Focused Pest lifecycle suite: passed, 30 tests and 143 assertions.
 - Focused Pest ceremony page suite: passed, 26 tests and 437 assertions.
 - Pest configured feature/unit suite: passed, 58 tests and 582 assertions.
@@ -641,7 +646,7 @@
 - In this sandbox, `php artisan test` can fail after installing Pest Browser because the plugin attempts socket operations under sandbox restrictions; `vendor/bin/pest` is the verified test entry point for this slice.
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
-- Backup appliance support is limited to deterministic re-derivation behavior in services and scenarios.
+- Recovery inspection is implemented on the active appliance, but automated failover to a separately provisioned backup appliance is not implemented.
 
 ## Next Recommended Steps
 

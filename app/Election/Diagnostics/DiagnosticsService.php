@@ -45,6 +45,7 @@ final class DiagnosticsService
             'printer' => config('election.devices.printer.adapter', 'simulated'),
             'scanner' => config('election.devices.scanner.adapter', 'simulated'),
             'device_certification' => $this->storage->readJson('certification/device-certification-report.json'),
+            'appliance_recovery' => $this->storage->readJson('diagnostics/appliance-recovery-report.json'),
         ];
     }
 

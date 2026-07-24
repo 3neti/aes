@@ -65,6 +65,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/transmission/close-precinct', [TransmissionController::class, 'closePrecinct'])->name('transmission.close-precinct');
     Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');
     Route::post('/diagnostics/certify-devices', [DiagnosticsController::class, 'certifyDevices'])->name('diagnostics.certify-devices');
+    Route::post('/diagnostics/recovery', [DiagnosticsController::class, 'inspectRecovery'])->name('diagnostics.recovery.inspect');
     Route::post('/diagnostics/begin-audit', [DiagnosticsController::class, 'beginAudit'])->name('diagnostics.begin-audit');
     Route::post('/diagnostics/evidence-manifest', [DiagnosticsController::class, 'generateEvidenceManifest'])->name('diagnostics.evidence-manifest.generate');
     Route::get('/diagnostics/evidence-manifest/download', [DiagnosticsController::class, 'downloadEvidenceManifest'])->name('diagnostics.evidence-manifest.download');

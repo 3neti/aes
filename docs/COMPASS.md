@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Return, Posting, and Custody
+- Completed Slice: Appliance Hardening
 - Active Program: Precinct Realism
-- Current Slice: Appliance Hardening
-- Next Slice: 50-Ballot Field Simulation
+- Current Slice: 50-Ballot Field Simulation
+- Next Slice: Full Precinct Realism Verification
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
