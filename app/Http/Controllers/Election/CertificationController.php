@@ -26,6 +26,7 @@ final class CertificationController extends Controller
         return Inertia::render('Election/Certification', [
             'snapshot' => $snapshot->get(),
             'certificationReport' => $storage->readJson('certification/friday-certification-report.json'),
+            'packageIntegrityReport' => $storage->readJson('certification/package-integrity-report.json'),
             'manualVerificationReport' => $storage->readJson('certification/manual-verification-report.json'),
             'discrepancyReport' => $storage->readJson('certification/fts-discrepancy-report.json'),
             'zeroOutReport' => $storage->readJson('certification/zero-out-report.json'),
@@ -34,12 +35,16 @@ final class CertificationController extends Controller
         ]);
     }
 
-    public function run(CertificationService $certification, LifecycleState $lifecycle): RedirectResponse
+    public function run(CertificationService $certification): RedirectResponse
     {
-        $certification->run();
-        $lifecycle->set(Lifecycle::OpenPrecinct);
+        $report = $certification->run();
 
-        return redirect()->route('election.voting');
+        if (! ($report['passed'] ?? false)) {
+            return redirect()->route('election.certification')
+                ->withErrors(['certification' => 'Certification failed. Review the package integrity checks before continuing.']);
+        }
+
+        return redirect()->route('election.certification');
     }
 
     public function runManualVerification(Request $request, ManualVerificationService $verification): RedirectResponse
@@ -104,9 +109,13 @@ final class CertificationController extends Controller
         return response()->download($path, 'zero-out-report.json');
     }
 
-    public function runSealing(SealingService $sealing): RedirectResponse
+    public function runSealing(SealingService $sealing, LifecycleState $lifecycle): RedirectResponse
     {
         $report = $sealing->run();
+
+        if ($report['passed'] ?? false) {
+            $lifecycle->set(Lifecycle::OpenPrecinct);
+        }
 
         return redirect()
             ->route('election.certification')

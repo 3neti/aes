@@ -70,11 +70,49 @@ test('provisioning imports configured POP and CLC sources and activates the Tond
         );
 });
 
+test('certification verifies configured package integrity without advancing the lifecycle', function (): void {
+    $this->post(route('election.provision.activate'));
+
+    $this->post(route('election.certification.run'))
+        ->assertRedirect(route('election.certification'))
+        ->assertSessionDoesntHaveErrors();
+
+    $storage = app(ElectionStorage::class);
+    $integrity = $storage->readJson('certification/package-integrity-report.json');
+
+    expect($integrity['passed'])->toBeTrue()
+        ->and($integrity['checks_passed'])->toBe($integrity['checks_total'])
+        ->and($integrity['relevant_clc_review_count'])->toBe(0)
+        ->and($integrity['global_clc_review_count'])->toBe(1)
+        ->and(app(LifecycleState::class)->current())->toBe(Lifecycle::Certification);
+});
+
+test('certification fails closed when the active package is changed', function (): void {
+    $this->post(route('election.provision.activate'));
+
+    $storage = app(ElectionStorage::class);
+    $package = $storage->readJson('packages/active-package.json');
+    $package['ballot_style_id'] = 'TAMPERED-BALLOT-STYLE';
+    $storage->writeJson('packages/active-package.json', $package);
+
+    $this->post(route('election.certification.run'))
+        ->assertRedirect(route('election.certification'))
+        ->assertSessionHasErrors('certification');
+
+    $integrity = $storage->readJson('certification/package-integrity-report.json');
+    $failedChecks = collect($integrity['checks'])->where('passed', false)->pluck('name');
+
+    expect($integrity['passed'])->toBeFalse()
+        ->and($failedChecks)->toContain('package_hash')
+        ->and(app(LifecycleState::class)->current())->toBe(Lifecycle::Certification)
+        ->and($storage->readJson('certification/friday-certification-report.json')['passed'])->toBeFalse();
+});
+
 test('certification page can run certification and manual verification', function (): void {
     $this->from(route('election.certification'));
 
     $this->post(route('election.certification.run'))
-        ->assertRedirect(route('election.voting'));
+        ->assertRedirect(route('election.certification'));
 
     $certification = app(ElectionStorage::class)->readJson('certification/friday-certification-report.json');
     $manualReturn = [
@@ -109,7 +147,7 @@ test('certification page can run discrepancy analysis', function (): void {
     $this->from(route('election.certification'));
 
     $this->post(route('election.certification.run'))
-        ->assertRedirect(route('election.voting'));
+        ->assertRedirect(route('election.certification'));
 
     $certification = app(ElectionStorage::class)->readJson('certification/friday-certification-report.json');
     $manualReturn = [
@@ -145,7 +183,7 @@ test('certification page can run zero-out and sealing', function (): void {
     $this->from(route('election.certification'));
 
     $this->post(route('election.certification.run'))
-        ->assertRedirect(route('election.voting'));
+        ->assertRedirect(route('election.certification'));
 
     $certification = app(ElectionStorage::class)->readJson('certification/friday-certification-report.json');
     $manualReturn = [

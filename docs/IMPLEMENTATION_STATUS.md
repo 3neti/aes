@@ -5,9 +5,9 @@
 - Status: In progress
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Real Precinct Activation
-- Current slice: Strict Package Certification
-- Next slice: Electoral Board and Inventory
+- Completed slice: Strict Package Certification
+- Current slice: Electoral Board and Inventory
+- Next slice: Paper Ballot Lifecycle
 - Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
 
 ### Operational Run Isolation
@@ -34,6 +34,21 @@
 - The Precinct Setup page now displays the configured source files, polling place, district, contest count, and candidate count.
 - Configured provisioning feature test: 1 passed, 29 assertions.
 - Shared Friday certification scenario regression: 1 passed, 12 assertions.
+- Production frontend build: passed.
+
+### Strict Package Certification
+
+- Added a fail-closed package integrity report before certification ballots are generated.
+- Recomputes the configured POP source hash, POP registry hash, CLC registry hash, active ballot registry hash, package hash, deterministic mapping hash, and activation evidence hash.
+- Confirms the active clustered precinct matches the appliance configuration.
+- Blocks certification when unresolved CLC extraction records affect an active ballot geography; the one current review item is reported as unrelated to the Tondo ballot.
+- Restricts embedded sample package certification to automated-test runs.
+- Certification failures stay in the Certification ceremony and record the failed check names.
+- Running known certification ballots no longer advances the lifecycle prematurely.
+- A passed sealing report is now the only controller path from Certification to Precinct Initialization.
+- Package pass/tamper tests: 2 passed, 16 assertions.
+- Certification domain and scenario regressions: 3 passed, 39 assertions.
+- Certification page regressions: 4 passed, 56 assertions.
 - Production frontend build: passed.
 
 ## Current Implementation

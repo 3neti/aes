@@ -5,14 +5,15 @@ namespace App\Election\Certification;
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Counting\CountingService;
-use App\Election\Preparation\ActivateSamplePackage;
+use App\Election\Preparation\ActivateConfiguredPrecinct;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
 
 final class CertificationService
 {
     public function __construct(
-        private readonly ActivateSamplePackage $activate,
+        private readonly ActivateConfiguredPrecinct $activate,
+        private readonly PackageIntegrityService $integrity,
         private readonly CertificationDeckBuilder $deckBuilder,
         private readonly BallotPayloadService $payloads,
         private readonly CountingService $counting,
@@ -29,7 +30,35 @@ final class CertificationService
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
 
         if ($configuration === []) {
-            $configuration = $this->activate->handle();
+            $configuration = $this->activate->handle()['configuration'];
+        }
+
+        $integrity = $this->integrity->verify();
+
+        if (! ($integrity['passed'] ?? false)) {
+            $report = [
+                'schema_version' => 'certification-report-1',
+                'precinct_id' => $configuration['precinct_id'],
+                'mapping_hash' => $configuration['mapping_hash'],
+                'package_integrity_passed' => false,
+                'package_integrity_report_hash' => $integrity['report_hash'] ?? null,
+                'expected_tally' => [],
+                'actual_tally' => [],
+                'expected_ballots' => 0,
+                'actual_ballots' => 0,
+                'accepted_ballots' => 0,
+                'rejected_ballots' => 0,
+                'passed' => false,
+            ];
+            $report['report_hash'] = $this->json->hash($report);
+            $this->storage->writeJson('certification/friday-certification-report.json', $report);
+            $this->journal->record('certification.failed', [
+                'reason' => 'package-integrity',
+                'report_hash' => $report['report_hash'],
+                'package_integrity_report_hash' => $integrity['report_hash'] ?? null,
+            ]);
+
+            return $report;
         }
 
         $deck = $this->deckBuilder->build($configuration);
@@ -46,6 +75,8 @@ final class CertificationService
             'schema_version' => 'certification-report-1',
             'precinct_id' => $configuration['precinct_id'],
             'mapping_hash' => $configuration['mapping_hash'],
+            'package_integrity_passed' => true,
+            'package_integrity_report_hash' => $integrity['report_hash'] ?? null,
             'expected_tally' => $deck['expected_tally'],
             'actual_tally' => $tally['tally'],
             'expected_ballots' => count($deck['ballots']),

@@ -29,6 +29,16 @@ type CertificationReport = {
     actual_tally?: Record<string, Record<string, number>>;
 };
 
+type PackageIntegrityReport = {
+    passed?: boolean;
+    checks_passed?: number;
+    checks_total?: number;
+    global_clc_review_count?: number;
+    relevant_clc_review_count?: number;
+    report_hash?: string;
+    checks?: CheckResult[];
+};
+
 type CheckResult = {
     name: string;
     passed: boolean;
@@ -138,6 +148,7 @@ type ManualReturnTemplate = {
 const props = defineProps<{
     snapshot: ElectionSnapshot;
     certificationReport: CertificationReport;
+    packageIntegrityReport: PackageIntegrityReport;
     manualVerificationReport: ManualVerificationReport;
     discrepancyReport: DiscrepancyReport;
     zeroOutReport: ZeroOutReport;
@@ -147,6 +158,8 @@ const props = defineProps<{
 
 const hasCertificationReport =
     Object.keys(props.certificationReport).length > 0;
+const hasPackageIntegrityReport =
+    Object.keys(props.packageIntegrityReport).length > 0;
 const hasManualVerificationReport =
     Object.keys(props.manualVerificationReport).length > 0;
 const hasDiscrepancyReport = Object.keys(props.discrepancyReport).length > 0;
@@ -163,7 +176,7 @@ const manualReturnTemplateJson = JSON.stringify(
     <CeremonyLayout :snapshot="snapshot" title="Certification">
         <CeremonyActionPanel
             title="Friday Certification"
-            description="Run known certification ballots and compare the generated tally with the expected result."
+            description="Verify package provenance, then run known certification ballots and compare the generated tally with the expected result."
             eyebrow="1 of 5"
             :status="
                 hasCertificationReport
@@ -224,6 +237,47 @@ const manualReturnTemplateJson = JSON.stringify(
                     </dd>
                 </div>
             </dl>
+            <div
+                v-if="hasPackageIntegrityReport"
+                class="mt-5 border border-stone-200 bg-stone-50 p-4"
+            >
+                <div class="flex items-center justify-between gap-4">
+                    <h3 class="text-sm font-bold text-stone-950">
+                        Package integrity
+                    </h3>
+                    <span
+                        class="text-xs font-bold"
+                        :class="
+                            packageIntegrityReport.passed
+                                ? 'text-emerald-700'
+                                : 'text-red-700'
+                        "
+                    >
+                        {{ packageIntegrityReport.checks_passed }}/{{
+                            packageIntegrityReport.checks_total
+                        }}
+                        checks passed
+                    </span>
+                </div>
+                <ul class="mt-3 divide-y divide-stone-200">
+                    <li
+                        v-for="check in packageIntegrityReport.checks"
+                        :key="check.name"
+                        class="flex items-start justify-between gap-4 py-2 text-xs"
+                    >
+                        <span class="text-stone-700">{{ check.message }}</span>
+                        <strong
+                            :class="
+                                check.passed
+                                    ? 'text-emerald-700'
+                                    : 'text-red-700'
+                            "
+                        >
+                            {{ check.passed ? 'PASS' : 'FAIL' }}
+                        </strong>
+                    </li>
+                </ul>
+            </div>
             <p v-else class="mt-3 text-sm text-stone-600">
                 Certification has not been run in the current run yet.
             </p>
