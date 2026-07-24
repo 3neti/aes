@@ -681,9 +681,22 @@
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Recovery inspection is implemented on the active appliance, but automated failover to a separately provisioned backup appliance is not implemented.
+- `election:browser-walkthrough full-election` now records a real isolated browser rehearsal, but this checkpoint covers only appliance launch and the election home page. Ceremony interaction is the active next slice.
+
+## Recorded Browser Walkthrough
+
+- Added `php artisan election:browser-walkthrough full-election` with local-target validation, configurable ballot count, headed mode, and action delay.
+- Browser walkthrough requests use a short-lived token passed through the child-process environment and bind only to the isolated rehearsal run.
+- Successful and failed walkthroughs are locked and finalized with a browser report, run summary, and SHA-256 artifact index.
+- Playwright writes `full-election.webm`, `playwright-trace.zip`, numbered screenshots, `action-log.jsonl`, and `recording-metadata.json` under `12-audit-and-reconciliation/browser-recordings`.
+- Focused coordinator coverage passed: 3 tests and 21 assertions.
+- Real smoke recording passed against `http://aes.test`.
+- Persisted smoke run: `storage/app/election/runs/20260724-035446-826147-39010001-browser-full-election`.
+- The election-day pointer remained `storage/app/election/runs/20260724-004938-0421-a-operator`.
 
 ## Next Recommended Steps
 
+- Automate the real provisioning, device setup, certification, officer signatures, and opening-of-polls forms inside the recorded walkthrough.
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
 - Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.

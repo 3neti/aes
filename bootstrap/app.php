@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\ElectionBrowserWalkthroughCommand;
 use App\Console\Commands\ElectionScenarioCommand;
 use App\Http\Middleware\BindBrowserWalkthroughRun;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
+        ElectionBrowserWalkthroughCommand::class,
         ElectionScenarioCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {

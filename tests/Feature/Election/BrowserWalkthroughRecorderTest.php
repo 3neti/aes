@@ -1,0 +1,160 @@
+<?php
+
+use App\Election\Lifecycle\ElectionRunType;
+use App\Election\Scenarios\BrowserWalkthroughControl;
+use App\Election\Support\ElectionStorage;
+use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Facades\Process;
+
+beforeEach(function (): void {
+    config()->set('election.runtime.run_type', null);
+    app(ElectionStorage::class)->reset();
+});
+
+test('browser walkthrough command records and finalizes an isolated rehearsal', function (): void {
+    $storage = app(ElectionStorage::class);
+    $storage->selectRunType(ElectionRunType::ElectionDay);
+    $electionDay = $storage->startRun(
+        'operator',
+        '39010001',
+        '20260511-050000',
+        ElectionRunType::ElectionDay,
+    );
+    config()->set('election.runtime.run_type', ElectionRunType::ElectionDay->value);
+
+    Process::fake(function (PendingProcess $process) {
+        $artifactDirectory = $process->environment['ELECTION_WALKTHROUGH_ARTIFACT_DIR'];
+        $videoPath = $artifactDirectory.'/full-election.webm';
+        $tracePath = $artifactDirectory.'/playwright-trace.zip';
+
+        file_put_contents($videoPath, 'recorded-video');
+        file_put_contents($tracePath, 'recorded-trace');
+
+        return Process::result(output: json_encode([
+            'schema_version' => 'browser-walkthrough-recorder-result-1',
+            'passed' => true,
+            'statistics' => [
+                'actions_recorded' => 2,
+                'actions_completed' => 2,
+                'browser_messages' => 0,
+                'ballots_requested' => 3,
+            ],
+            'artifacts' => [
+                [
+                    'label' => 'Video',
+                    'path' => $videoPath,
+                    'relative_path' => 'full-election.webm',
+                    'bytes' => filesize($videoPath),
+                    'sha256' => hash_file('sha256', $videoPath),
+                ],
+                [
+                    'label' => 'Playwright trace',
+                    'path' => $tracePath,
+                    'relative_path' => 'playwright-trace.zip',
+                    'bytes' => filesize($tracePath),
+                    'sha256' => hash_file('sha256', $tracePath),
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR));
+    });
+
+    $this->artisan('election:browser-walkthrough', [
+        'scenario' => 'full-election',
+        '--ballots' => 3,
+        '--slow-mo' => 0,
+        '--base-url' => 'http://127.0.0.1:8000',
+    ])
+        ->expectsOutputToContain('Browser walkthrough passed.')
+        ->assertSuccessful();
+
+    $rehearsal = $storage->currentRun(ElectionRunType::Rehearsal);
+    $reportPath = $rehearsal['run_path'].'/12-audit-and-reconciliation/browser-recordings/browser-walkthrough-report.json';
+    $report = json_decode(file_get_contents($reportPath), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($rehearsal['status'])->toBe('locked')
+        ->and($storage->currentRun(ElectionRunType::ElectionDay)['run_id'])->toBe($electionDay['run_id'])
+        ->and($report['passed'])->toBeTrue()
+        ->and($report['statistics']['ballots_requested'])->toBe(3)
+        ->and($rehearsal['run_path'].'/artifact-index.json')->toBeFile()
+        ->and(config('election.runtime.run_type'))->toBe(ElectionRunType::ElectionDay->value);
+
+    Process::assertRan(function (PendingProcess $process): bool {
+        $token = $process->environment['ELECTION_WALKTHROUGH_TOKEN'] ?? '';
+
+        return $process->command === [
+            'node',
+            base_path('scripts/election-browser-walkthrough.mjs'),
+        ]
+            && is_string($token)
+            && strlen($token) === 64
+            && ! str_contains(implode(' ', $process->command), $token)
+            && $process->timeout === 900;
+    });
+});
+
+test('browser walkthrough command preserves and locks failed recorder evidence', function (): void {
+    Process::fake(function (PendingProcess $process) {
+        $artifactDirectory = $process->environment['ELECTION_WALKTHROUGH_ARTIFACT_DIR'];
+
+        file_put_contents($artifactDirectory.'/failure.png', 'failure-screenshot');
+
+        return Process::result(
+            output: json_encode([
+                'schema_version' => 'browser-walkthrough-recorder-result-1',
+                'passed' => false,
+                'error' => 'The election home page did not load.',
+                'statistics' => [
+                    'actions_recorded' => 2,
+                    'actions_completed' => 1,
+                ],
+                'artifacts' => [
+                    [
+                        'label' => 'Failure screenshot',
+                        'path' => $artifactDirectory.'/failure.png',
+                        'relative_path' => 'failure.png',
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR),
+            errorOutput: 'walkthrough failed',
+            exitCode: 1,
+        );
+    });
+
+    $this->artisan('election:browser-walkthrough', [
+        'scenario' => 'full-election',
+        '--slow-mo' => 0,
+        '--base-url' => 'http://localhost:8000',
+    ])
+        ->expectsOutputToContain('Browser walkthrough failed.')
+        ->assertFailed();
+
+    $storage = app(ElectionStorage::class);
+    $rehearsal = $storage->currentRun(ElectionRunType::Rehearsal);
+    $reportPath = $rehearsal['run_path'].'/12-audit-and-reconciliation/browser-recordings/browser-walkthrough-report.json';
+    $report = json_decode(file_get_contents($reportPath), true, flags: JSON_THROW_ON_ERROR);
+    $control = app(BrowserWalkthroughControl::class)->read();
+
+    expect($rehearsal['status'])->toBe('locked')
+        ->and($report['passed'])->toBeFalse()
+        ->and($report['error'])->toBe('The election home page did not load.')
+        ->and($report['process_error_output'])->toBe('walkthrough failed')
+        ->and($control['status'])->toBe('failed')
+        ->and($rehearsal['run_path'].'/artifact-index.json')->toBeFile()
+        ->and($rehearsal['run_path'].'/12-audit-and-reconciliation/browser-recordings/failure.png')->toBeFile();
+});
+
+test('browser walkthrough command rejects remote targets and invalid limits', function (): void {
+    Process::fake();
+
+    $this->artisan('election:browser-walkthrough', [
+        'scenario' => 'full-election',
+        '--base-url' => 'https://example.com',
+    ])->assertExitCode(2);
+
+    $this->artisan('election:browser-walkthrough', [
+        'scenario' => 'full-election',
+        '--ballots' => 51,
+    ])->assertExitCode(2);
+
+    Process::assertNothingRan();
+});
