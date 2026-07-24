@@ -733,12 +733,16 @@
 - Persisted lifecycle report: `storage/app/election/runs/20260724-045338-420890-39010001-browser-full-election/12-audit-and-reconciliation/browser-recordings/browser-lifecycle-report.txt`.
 - Persisted final evidence archive: `storage/app/election/runs/20260724-045338-420890-39010001-browser-full-election/12-audit-and-reconciliation/evidence-bundle-20260724-045458.tar`.
 - The election-day pointer remains `storage/app/election/runs/20260724-004938-0421-a-operator`.
+- Browser walkthrough controls now record the coordinator process ID and lease start.
+- A second invocation still refuses to overlap a live local coordinator.
+- When the prior coordinator process is dead or its lease expired, the next invocation writes an interruption completion record and recovery report, locks and finalizes the interrupted rehearsal, and only then creates the replacement run.
+- Recovery preserves an already completed result when interruption happened after completion, while a run without completion evidence fails closed.
+- Interruption recovery, isolation, and coordinator coverage passed: 7 tests and 56 assertions.
 
 ## Next Recommended Steps
 
-- Add controlled coordinator interruption handling so a fatal child/coordinator exit can be marked failed and locked automatically on the next invocation.
-- Exercise the ordinary recorder failure fixture with the final evidence pipeline, then run the full PHP, browser, type, lint, and production build regression suites.
 - Add an operator manual for running the recorded walkthrough and locating the video, lifecycle report, paper artifacts, final TAR, and verification evidence.
+- Exercise the ordinary recorder failure fixture with the final evidence pipeline, then run the full PHP, browser, type, lint, and production build regression suites.
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
 - Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.

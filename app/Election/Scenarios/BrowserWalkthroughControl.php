@@ -18,6 +18,7 @@ final class BrowserWalkthroughControl
         private readonly ElectionClock $clock,
         private readonly CanonicalJson $json,
         private readonly Filesystem $files,
+        private readonly BrowserWalkthroughRecovery $recovery,
     ) {}
 
     /**
@@ -27,8 +28,21 @@ final class BrowserWalkthroughControl
     {
         $existing = $this->read();
 
-        if (($existing['status'] ?? null) === 'active' && ! $this->isExpired($existing)) {
-            throw new RuntimeException('A browser walkthrough is already active.');
+        if (($existing['status'] ?? null) === 'active') {
+            if (! $this->isExpired($existing) && $this->coordinatorIsAlive($existing)) {
+                throw new RuntimeException('A browser walkthrough is already active.');
+            }
+
+            $message = $this->isExpired($existing)
+                ? 'The previous browser walkthrough coordinator lease expired.'
+                : 'The previous browser walkthrough coordinator process is no longer running.';
+            $recovered = $this->recovery->recover($existing, $message);
+            $existing['status'] = $recovered['status'];
+            $existing['completed_at'] = $this->clock->now()->toIso8601String();
+            $existing['recovered_at'] = $existing['completed_at'];
+            $existing['recovery_path'] = $recovered['recovery_path'];
+            $existing['recovered_run_finalized'] = $recovered['run_finalized'];
+            $this->write($existing);
         }
 
         $token = bin2hex(random_bytes(32));
@@ -56,6 +70,8 @@ final class BrowserWalkthroughControl
             'run_id' => $run['run_id'],
             'run_path' => $run['run_path'],
             'run_type' => ElectionRunType::Rehearsal->value,
+            'coordinator_pid' => getmypid(),
+            'coordinator_started_at' => $this->clock->now()->toIso8601String(),
             'created_at' => $this->clock->now()->toIso8601String(),
             'expires_at' => $this->clock->now()->addHours(4)->toIso8601String(),
             'token_hash' => hash('sha256', $token),
@@ -148,6 +164,24 @@ final class BrowserWalkthroughControl
         $expiresAt = (string) ($control['expires_at'] ?? '');
 
         return $expiresAt === '' || $this->clock->now()->greaterThanOrEqualTo($expiresAt);
+    }
+
+    /**
+     * @param  array<string, mixed>  $control
+     */
+    private function coordinatorIsAlive(array $control): bool
+    {
+        $pid = filter_var($control['coordinator_pid'] ?? null, FILTER_VALIDATE_INT);
+
+        if (! is_int($pid) || $pid < 1) {
+            return true;
+        }
+
+        if ($pid === getmypid()) {
+            return true;
+        }
+
+        return ! function_exists('posix_kill') || @posix_kill($pid, 0);
     }
 
     private function path(): string
