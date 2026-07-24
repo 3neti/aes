@@ -70,6 +70,35 @@ test('provisioning imports configured POP and CLC sources and activates the Tond
         );
 });
 
+test('precinct setup records distinct Electoral Board approvals and serialized inventory', function (): void {
+    $this->post(route('election.provision.activate'));
+
+    $this->post(route('election.provision.setup'), config('election.simulation.precinct_setup'))
+        ->assertRedirect(route('election.provision'))
+        ->assertSessionHas('precinct_setup_hash');
+
+    $setup = app(ElectionStorage::class)->readJson('runtime/precinct-setup.json');
+
+    expect($setup['passed'])->toBeTrue()
+        ->and($setup['dual_control']['passed'])->toBeTrue()
+        ->and($setup['dual_control']['approvers'])->toHaveCount(2)
+        ->and($setup['electoral_board'])->toHaveCount(3)
+        ->and($setup['inventory']['ballot_stock_count'])->toBe(1000)
+        ->and($setup['inventory']['seal_numbers'])->toHaveCount(2)
+        ->and($setup['setup_hash'])->toBeString();
+});
+
+test('precinct setup rejects duplicate dual-control officers', function (): void {
+    $this->post(route('election.provision.activate'));
+    $data = config('election.simulation.precinct_setup');
+    $data['poll_clerk_code'] = $data['chairperson_code'];
+
+    $this->post(route('election.provision.setup'), $data)
+        ->assertSessionHasErrors('poll_clerk_code');
+
+    expect(app(ElectionStorage::class)->readJson('runtime/precinct-setup.json'))->toBe([]);
+});
+
 test('certification verifies configured package integrity without advancing the lifecycle', function (): void {
     $this->post(route('election.provision.activate'));
 

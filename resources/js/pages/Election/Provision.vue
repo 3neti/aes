@@ -9,6 +9,7 @@ import {
     activate,
     ebRoleBaseline,
     legalScenarioSuite as legalScenarioSuiteAction,
+    setup,
     supplyVerificationBaseline as supplyVerificationBaselineAction,
 } from '@/routes/election/provision';
 
@@ -84,6 +85,16 @@ type ActivationEvidence = {
     };
 };
 
+type PrecinctSetup = {
+    passed?: boolean;
+    setup_hash?: string;
+    electoral_board?: Array<{ name: string; role: string }>;
+    inventory?: {
+        ballot_stock_count?: number;
+        seal_numbers?: string[];
+    };
+};
+
 const props = defineProps<{
     snapshot: ElectionSnapshot;
     electoralBoardBaseline: ElectoralBoardBaseline;
@@ -96,12 +107,17 @@ const props = defineProps<{
         pop_filename: string;
         clc_source: string;
     };
+    precinctSetup: PrecinctSetup;
 }>();
 
 const readinessItems = [
     {
         label: 'Precinct package and ballot mapping',
         ready: () => Boolean(props.snapshot.configuration.mapping_hash),
+    },
+    {
+        label: 'Dual-control setup and physical inventory',
+        ready: () => Boolean(props.precinctSetup.passed),
     },
     {
         label: 'Electoral Board role roster',
@@ -222,9 +238,92 @@ const readinessItems = [
         </CeremonyActionPanel>
 
         <CeremonyActionPanel
+            title="Electoral Board and physical inventory"
+            description="Bind the Electoral Board and serialized election materials to this run under dual control."
+            eyebrow="Step 2"
+            :status="precinctSetup.passed ? 'Recorded' : 'Required'"
+            :tone="precinctSetup.passed ? 'complete' : 'warning'"
+        >
+            <Form
+                v-bind="setup.form()"
+                #default="{ processing, errors }"
+                class="grid gap-5"
+            >
+                <div class="grid gap-4 md:grid-cols-3">
+                    <label class="grid gap-1 text-sm font-semibold">
+                        Chairperson code
+                        <input name="chairperson_code" class="min-h-11 border border-stone-300 px-3" value="SIM-OFFICER-001" />
+                    </label>
+                    <label class="grid gap-1 text-sm font-semibold">
+                        Chairperson PIN
+                        <input name="chairperson_pin" type="password" inputmode="numeric" class="min-h-11 border border-stone-300 px-3" />
+                    </label>
+                    <label class="grid gap-1 text-sm font-semibold">
+                        Third Member code
+                        <input name="third_member_code" class="min-h-11 border border-stone-300 px-3" value="SIM-OFFICER-003" />
+                    </label>
+                    <label class="grid gap-1 text-sm font-semibold">
+                        Poll Clerk code
+                        <input name="poll_clerk_code" class="min-h-11 border border-stone-300 px-3" value="SIM-OFFICER-002" />
+                    </label>
+                    <label class="grid gap-1 text-sm font-semibold">
+                        Poll Clerk PIN
+                        <input name="poll_clerk_pin" type="password" inputmode="numeric" class="min-h-11 border border-stone-300 px-3" />
+                    </label>
+                </div>
+                <div class="grid gap-4 md:grid-cols-3">
+                    <label class="grid gap-1 text-sm font-semibold">Device serial<input name="device_serial" class="min-h-11 border border-stone-300 px-3" value="AES-PI-39010001-001" /></label>
+                    <label class="grid gap-1 text-sm font-semibold">Printer serial<input name="printer_serial" class="min-h-11 border border-stone-300 px-3" value="AES-PRINTER-39010001-001" /></label>
+                    <label class="grid gap-1 text-sm font-semibold">Scanner serial<input name="scanner_serial" class="min-h-11 border border-stone-300 px-3" value="AES-SCANNER-39010001-001" /></label>
+                    <label class="grid gap-1 text-sm font-semibold">Ballot stock start<input name="ballot_stock_start" type="number" class="min-h-11 border border-stone-300 px-3" value="1" /></label>
+                    <label class="grid gap-1 text-sm font-semibold">Ballot stock end<input name="ballot_stock_end" type="number" class="min-h-11 border border-stone-300 px-3" value="1000" /></label>
+                    <label class="grid gap-1 text-sm font-semibold">Ballot box ID<input name="ballot_box_id" class="min-h-11 border border-stone-300 px-3" value="AES-BOX-39010001-001" /></label>
+                    <label class="grid gap-1 text-sm font-semibold">Custody envelope ID<input name="custody_envelope_id" class="min-h-11 border border-stone-300 px-3" value="AES-ENV-39010001-001" /></label>
+                    <label class="grid gap-1 text-sm font-semibold md:col-span-2">Seal numbers<input name="seal_numbers" class="min-h-11 border border-stone-300 px-3" value="AES-SEAL-39010001-001,AES-SEAL-39010001-002" /></label>
+                </div>
+                <p
+                    v-if="Object.keys(errors).length"
+                    class="text-sm font-semibold text-red-700"
+                >
+                    Review the officer credentials and inventory fields.
+                </p>
+                <button
+                    class="primary-button justify-self-start"
+                    type="submit"
+                    :disabled="processing"
+                >
+                    Record setup under dual control
+                </button>
+            </Form>
+            <dl
+                v-if="precinctSetup.passed"
+                class="mt-5 grid gap-3 text-sm sm:grid-cols-3"
+            >
+                <div>
+                    <dt class="text-stone-500">Board members</dt>
+                    <dd class="mt-1 font-bold">
+                        {{ precinctSetup.electoral_board?.length }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-stone-500">Ballot stock</dt>
+                    <dd class="mt-1 font-bold">
+                        {{ precinctSetup.inventory?.ballot_stock_count }}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-stone-500">Seals</dt>
+                    <dd class="mt-1 font-bold">
+                        {{ precinctSetup.inventory?.seal_numbers?.length }}
+                    </dd>
+                </div>
+            </dl>
+        </CeremonyActionPanel>
+
+        <CeremonyActionPanel
             title="Opening readiness checklist"
             description="Complete and preserve each baseline before final testing and sealing."
-            eyebrow="Step 2"
+            eyebrow="Step 3"
         >
             <ol class="divide-y divide-stone-200 border border-stone-200">
                 <li

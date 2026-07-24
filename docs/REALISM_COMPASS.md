@@ -16,7 +16,7 @@ The browser lifecycle reaches Audit and Reconciliation and produces a verified e
 | Operational run isolation | Complete | Tests use isolated storage; rehearsals cannot alter election-day evidence or pointers. |
 | Real precinct activation | Complete | Browser and scenarios activate configured Tondo POP + CLC ballot with provenance evidence. |
 | Strict package certification | Complete | Source, registry, package, mapping, and activation hashes fail closed before known-ballot testing. |
-| Electoral Board and inventory | Pending | Required officers, signatures, devices, seals, and supplies are complete. |
+| Electoral Board and inventory | Complete | Three officers, dual approval, serialized devices, ballot stock, seals, and custody containers are bound to the run. |
 | Paper ballot lifecycle | Pending | Every counted payload resolves to one deposited paper ballot. |
 | Voter station | Pending | Voter UI contains no operator or diagnostic controls. |
 | Public counting and adjudication | Pending | Physical and digital ballot counts reconcile before tally completion. |
@@ -41,4 +41,4 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Electoral Board and Inventory.
+Paper Ballot Lifecycle.

@@ -5,9 +5,9 @@
 - Status: In progress
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Strict Package Certification
-- Current slice: Electoral Board and Inventory
-- Next slice: Paper Ballot Lifecycle
+- Completed slice: Electoral Board and Inventory
+- Current slice: Paper Ballot Lifecycle
+- Next slice: Voter Station Separation
 - Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
 
 ### Operational Run Isolation
@@ -49,6 +49,19 @@
 - Package pass/tamper tests: 2 passed, 16 assertions.
 - Certification domain and scenario regressions: 3 passed, 39 assertions.
 - Certification page regressions: 4 passed, 56 assertions.
+- Production frontend build: passed.
+
+### Electoral Board and Inventory
+
+- Added an authoritative precinct setup artifact under the preparation ceremony.
+- Requires distinct Chairperson and Poll Clerk codes and PINs for dual-control approval.
+- Binds the configured Chairperson, Poll Clerk, and Third Member identities to the active run using hashed officer codes.
+- Records device, printer, and scanner serials; ballot stock range and quantity; ballot box and custody envelope identifiers; and at least two distinct seal numbers.
+- Added a ceremony form and readiness status to Precinct Setup.
+- Added the setup hash and dual-control result to certification sealing checks.
+- Updated the deterministic sealing scenario to generate realistic setup evidence before sealing.
+- Setup pass/rejection tests: 2 passed, 13 assertions.
+- Sealing scenario regression: 1 passed, 24 assertions.
 - Production frontend build: passed.
 
 ## Current Implementation

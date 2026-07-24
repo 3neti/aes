@@ -494,6 +494,7 @@ final class ElectionStorage
             $relative === 'packages/configured-precinct-activation.json' => self::CeremonyDirectories['preparation'].'/configured-precinct-activation.json',
             $relative === 'runtime/active-precinct.json' => self::CeremonyDirectories['preparation'].'/active-precinct.json',
             $relative === 'runtime/electoral-board-baseline.json' => self::CeremonyDirectories['preparation'].'/electoral-board-baseline.json',
+            $relative === 'runtime/precinct-setup.json' => self::CeremonyDirectories['preparation'].'/precinct-setup.json',
             $relative === 'runtime/lifecycle.json' => self::CeremonyDirectories['start'].'/lifecycle.json',
             $relative === 'runtime/tally.json' => self::CeremonyDirectories['counting'].'/tally.json',
             $relative === 'runtime/tally-sheet.txt' => self::CeremonyDirectories['counting'].'/tally-sheet.txt',

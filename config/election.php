@@ -7,6 +7,23 @@ return [
     'runtime' => [
         'run_type' => env('ELECTION_RUN_TYPE'),
     ],
+    'simulation' => [
+        'precinct_setup' => [
+            'chairperson_code' => 'SIM-OFFICER-001',
+            'chairperson_pin' => '123456',
+            'poll_clerk_code' => 'SIM-OFFICER-002',
+            'poll_clerk_pin' => '123456',
+            'third_member_code' => 'SIM-OFFICER-003',
+            'device_serial' => 'AES-PI-39010001-001',
+            'printer_serial' => 'AES-PRINTER-39010001-001',
+            'scanner_serial' => 'AES-SCANNER-39010001-001',
+            'ballot_stock_start' => 1,
+            'ballot_stock_end' => 1000,
+            'ballot_box_id' => 'AES-BOX-39010001-001',
+            'custody_envelope_id' => 'AES-ENV-39010001-001',
+            'seal_numbers' => 'AES-SEAL-39010001-001,AES-SEAL-39010001-002',
+        ],
+    ],
     'sample' => [
         'election_id' => 'AES-2026-SAMPLE',
         'precinct_id' => '0421-A',

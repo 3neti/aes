@@ -28,6 +28,7 @@ use App\Election\Preparation\ActivateImportedPrecinctPackage;
 use App\Election\Preparation\ActivatePrecinctBallotPackage;
 use App\Election\Preparation\ClcCandidateImporter;
 use App\Election\Preparation\PopWorkbookImporter;
+use App\Election\Preparation\PrecinctSetupService;
 use App\Election\Preparation\SupplyVerificationBaselineService;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\SpoilBallot;
@@ -86,6 +87,7 @@ final class ScenarioRunner
         private readonly FinalBackupService $finalBackup,
         private readonly CustodyService $custody,
         private readonly SpecialPollingIntakeService $specialPollingIntake,
+        private readonly PrecinctSetupService $precinctSetup,
     ) {}
 
     /**
@@ -487,6 +489,7 @@ final class ScenarioRunner
         $activation = $this->activateConfiguredPrecinctBallot();
         $this->clock->tick();
         $devices = $this->devices->run();
+        $this->precinctSetup->record((array) config('election.simulation.precinct_setup'));
         $this->initializationReport->write();
         $certification = $this->certification->run();
 

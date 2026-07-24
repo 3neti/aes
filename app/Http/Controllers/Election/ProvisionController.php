@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Election;
 use App\Election\Attestation\ElectoralBoardBaselineService;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Preparation\ActivateConfiguredPrecinct;
+use App\Election\Preparation\PrecinctSetupService;
 use App\Election\Preparation\SupplyVerificationBaselineService;
 use App\Election\Scenarios\LegalScenarioHarnessService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Election\StorePrecinctSetupRequest;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,6 +22,7 @@ final class ProvisionController extends Controller
         LegalScenarioHarnessService $harness,
         SupplyVerificationBaselineService $supplyBaseline,
         ActivateConfiguredPrecinct $activate,
+        PrecinctSetupService $setup,
     ): Response {
         return Inertia::render('Election/Provision', [
             'snapshot' => $snapshot->get(),
@@ -33,6 +36,7 @@ final class ProvisionController extends Controller
                 'pop_filename' => basename((string) config('election.pop.source_path')),
                 'clc_source' => basename((string) config('election.clc.source_path')),
             ],
+            'precinctSetup' => $setup->summary(),
         ]);
     }
 
@@ -41,6 +45,14 @@ final class ProvisionController extends Controller
         $activate->handle();
 
         return redirect()->route('election.certification');
+    }
+
+    public function storeSetup(StorePrecinctSetupRequest $request, PrecinctSetupService $setup): RedirectResponse
+    {
+        $report = $setup->record($request->validated());
+
+        return redirect()->route('election.provision')
+            ->with('precinct_setup_hash', $report['setup_hash']);
     }
 
     public function writeElectoralBoardBaseline(ElectoralBoardBaselineService $baseline): RedirectResponse

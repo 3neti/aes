@@ -18,6 +18,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/', HomeController::class)->name('home');
     Route::get('/provision', [ProvisionController::class, 'show'])->name('provision');
     Route::post('/provision/activate', [ProvisionController::class, 'activate'])->name('provision.activate');
+    Route::post('/provision/setup', [ProvisionController::class, 'storeSetup'])->name('provision.setup');
     Route::post('/provision/eb-role-baseline', [ProvisionController::class, 'writeElectoralBoardBaseline'])->name('provision.eb-role-baseline');
     Route::post('/provision/supply-verification-baseline', [ProvisionController::class, 'writeSupplyVerificationBaseline'])->name('provision.supply-verification-baseline');
     Route::post('/provision/legal-scenario-suite', [ProvisionController::class, 'runLegalScenarioSuite'])->name('provision.legal-scenario-suite');

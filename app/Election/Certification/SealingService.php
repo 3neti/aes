@@ -31,8 +31,10 @@ final class SealingService
         $discrepancyReport = $this->storage->readJson('certification/fts-discrepancy-report.json');
         $zeroOutReport = $this->storage->readJson('certification/zero-out-report.json');
         $initializationReport = $this->storage->readJson('diagnostics/initialization-report.json');
+        $precinctSetup = $this->storage->readJson('runtime/precinct-setup.json');
 
         $checks = [
+            $this->checkPrecinctSetup($precinctSetup),
             $this->checkCertificationReport($certificationReport),
             $this->checkManualVerification($manualVerificationReport),
             $this->checkDiscrepancyResolution($discrepancyReport),
@@ -57,12 +59,14 @@ final class SealingService
                 'discrepancy_report_path' => $this->storage->path('certification/fts-discrepancy-report.json'),
                 'zero_out_report_path' => $this->storage->path('certification/zero-out-report.json'),
                 'initialization_report_path' => $this->storage->path('diagnostics/initialization-report.json'),
+                'precinct_setup_path' => $this->storage->path('runtime/precinct-setup.json'),
             ],
             'certification_report_hash' => $certificationReport['report_hash'] ?? null,
             'manual_verification_report_hash' => $manualVerificationReport['report_hash'] ?? null,
             'discrepancy_report_hash' => $discrepancyReport['report_hash'] ?? null,
             'zero_out_report_hash' => $zeroOutReport['report_hash'] ?? null,
             'initialization_report_hash' => $initializationReport['report_hash'] ?? null,
+            'precinct_setup_hash' => $precinctSetup['setup_hash'] ?? null,
         ];
 
         $report['artifact_path'] = $this->storage->path('certification/sealing-report.json');
@@ -78,6 +82,26 @@ final class SealingService
         ]);
 
         return $report;
+    }
+
+    /**
+     * @param  array<string, mixed>  $setup
+     * @return array<string, mixed>
+     */
+    private function checkPrecinctSetup(array $setup): array
+    {
+        return [
+            'name' => 'precinct_setup_complete',
+            'passed' => $setup !== [] && (bool) ($setup['passed'] ?? false),
+            'details' => [
+                'setup_present' => $setup !== [],
+                'setup_hash' => $setup['setup_hash'] ?? null,
+                'dual_control_passed' => $setup['dual_control']['passed'] ?? null,
+            ],
+            'message' => $setup === []
+                ? 'Precinct setup and inventory are missing.'
+                : 'Precinct setup, Electoral Board identity, and inventory are complete.',
+        ];
     }
 
     /**
