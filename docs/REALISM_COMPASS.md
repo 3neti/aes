@@ -1,0 +1,45 @@
+# Precinct Realism Compass
+
+## Objective
+
+Evolve the deterministic simulation into a credible offline precinct appliance while preserving paper authority, ceremony discipline, reproducibility, and inspectable evidence.
+
+## Current Position
+
+The browser lifecycle reaches Audit and Reconciliation and produces a verified evidence archive. The implementation is not field-ready because browser provisioning still uses sample election data, run namespaces are not isolated, paper accountability is incomplete, and legal transitions do not yet require complete physical and dual-control evidence.
+
+## Slice Status
+
+| Slice | Status | Exit Gate |
+| --- | --- | --- |
+| Realism plan and compass | In progress | Plan, compass, main compass, and status agree. |
+| Operational run isolation | Pending | Tests and rehearsals cannot alter election-day evidence or pointers. |
+| Real precinct activation | Pending | Browser activates configured Tondo POP + CLC ballot. |
+| Strict package certification | Pending | Any provenance mismatch fails closed. |
+| Electoral Board and inventory | Pending | Required officers, signatures, devices, seals, and supplies are complete. |
+| Paper ballot lifecycle | Pending | Every counted payload resolves to one deposited paper ballot. |
+| Voter station | Pending | Voter UI contains no operator or diagnostic controls. |
+| Public counting and adjudication | Pending | Physical and digital ballot counts reconcile before tally completion. |
+| Return, posting, and custody | Pending | Ordered handoff and all cross-references pass first time. |
+| Appliance hardening | Pending | Failure and recovery scenarios are deterministic. |
+| 50-ballot field simulation | Pending | Full field scenario and archive verification pass. |
+
+## Non-Negotiable Gates
+
+1. Election-day storage is protected from reset.
+2. Browser and scenario activation use the same configured election package.
+3. Package and registry verification fail closed.
+4. Irreversible transitions require configured officer approvals.
+5. Paper lifecycle accounting balances.
+6. Counting discrepancies require adjudication.
+7. Election Return approval and custody evidence are complete.
+8. Audit reconciliation and evidence archive verification pass.
+
+## Update Rule
+
+Update this compass after every realism slice. A slice is complete only after focused tests pass, documentation status is updated, and the slice is committed.
+
+## Next Slice
+
+Operational Run Isolation.
+

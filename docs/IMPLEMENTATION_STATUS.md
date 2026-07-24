@@ -1,5 +1,14 @@
 # Alternative Election System Implementation Status
 
+## Precinct Realism Program
+
+- Status: Started
+- Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
+- Compass: `docs/REALISM_COMPASS.md`
+- Current slice: Plan and compass
+- Next slice: Operational Run Isolation
+- Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
+
 ## Current Implementation
 
 - Current Wave: 1 (Foundation)

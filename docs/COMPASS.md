@@ -2,8 +2,11 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Special Polling Intake Slice (Slice 23)
-- Next Slice: Future Delivery Drivers Slice (Slice 24) is deferred
+- Completed Slice: Browser Lifecycle Completion and Evidence Verification
+- Active Program: Precinct Realism
+- Current Slice: Realism Plan and Compass
+- Next Slice: Operational Run Isolation
+- Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
 
