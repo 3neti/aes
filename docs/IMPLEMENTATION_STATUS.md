@@ -769,3 +769,35 @@
 - Define the legally approved transmission policy before enabling any network transmission path.
 - Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.
 - Exercise backup-appliance recovery with a copied evidence run and documented Election Board custody procedure.
+
+## Private Voter Journey Slice
+
+Completed:
+
+- Added anonymous one-use voter authorization with officer PIN validation, keyed code hashes, expiry, and journal events.
+- Added a tablet entry screen, fixed-order official ballot, contest counters, hard maximum enforcement, undervote support, and a separate review step.
+- Added encrypted private print releases with opaque QR/manual codes and no plaintext pre-print ballot file.
+- Added a private print station that never displays candidate selections and continues to use the configured ballot-printer adapter.
+- Added encrypted sealed-ballot deposits during voting and automatic opening through `CountingService` only after polls close.
+- Added a watcher view that suppresses candidate totals and individual ballot information until official results are available.
+- Updated the full browser walkthrough to record officer admission, voter code claim, private finalization, printing, verification, deposit, and post-close counting.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/PrivateVoterJourneyTest.php`: passed, 4 tests and 103 assertions.
+- Focused voter page compatibility tests: passed, 4 tests and 65 assertions.
+- Focused legacy lifecycle and full-demo tests: passed, 4 tests and 49 assertions.
+- `npm run build`: passed, 626 modules transformed.
+- `node --check scripts/election-browser-walkthrough.mjs`: passed.
+- `vendor/bin/pint --dirty --format agent`: passed.
+- `php artisan election:browser-walkthrough full-election --ballots=1 --slow-mo=0 --base-url=http://aes.test`: passed.
+- Recorded rehearsal: `storage/app/election/runs/20260724-110337-556352-39010001-browser-full-election`.
+- Browser result: 45 completed actions, 1 finalized/printed/deposited ballot, 40 screenshots, 40 storyboard frames, zero browser messages, approved Election Return, closed precinct, and verified archive.
+- Full election page regression: passed, 67 tests and 1,242 assertions.
+
+Known limitations:
+
+- Simulation file printing necessarily writes the human-readable paper-ballot artifact to the evidence folder; a physical CUPS deployment should apply spool retention and access controls.
+- The private print station currently models paper QR scanning with a controlled server-side deposit action. Physical scanner confirmation remains an adapter/hardware-pilot task.
+- Candidate photographs remain disabled until COMELEC supplies a complete, approved, consistently cropped image set with provenance.
+- Individual ballot disclosure remains disabled even after close; watcher access is limited to aggregate official evidence.

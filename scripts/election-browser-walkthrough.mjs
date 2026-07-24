@@ -36,8 +36,6 @@ const storyboardFrameDirectory = path.join(
 const viewport = { width: 1440, height: 900 };
 const actions = [];
 const browserMessages = [];
-const acceptedQrPayloads = [];
-const spoiledQrPayloads = [];
 const walkthroughStatistics = {
     ballots_finalized: 0,
     ballots_printed: 0,
@@ -217,12 +215,27 @@ async function recordSignedCheckpoint() {
 
 async function finalizeVoterBallot(ballotNumber) {
     await openPath('/election/voting');
-    await page
-        .getByRole('link', {
-            name: 'Open voter ballot',
+    const authorizationForm = page.locator('form').filter({
+        has: page.getByRole('button', {
+            name: 'Issue anonymous voting code',
             exact: true,
-        })
-        .click();
+        }),
+    });
+    await authorizationForm
+        .locator('input[name="officer_code"]')
+        .fill('SIM-OFFICER-001');
+    await authorizationForm.locator('input[name="officer_pin"]').fill('123456');
+    await postButton(
+        'Issue anonymous voting code',
+        '/election/voting/voter-authorizations',
+        60_000,
+        false,
+    );
+    const voterCode = await page.locator('p.font-mono').first().textContent();
+
+    await openPath('/election/voter');
+    await page.locator('input[name="code"]').fill(voterCode.trim());
+    await postButton('Begin voting', '/election/voter/claim', 60_000, false);
     await page.waitForURL('**/election/voter/ballot');
 
     const contests = page.locator('fieldset');
@@ -240,72 +253,53 @@ async function finalizeVoterBallot(ballotNumber) {
             .first()
             .textContent();
         const maximumSelections = Number(instruction?.match(/\d+/)?.[0] ?? 0);
-        const candidates = contest.locator(
-            'input[type="radio"], input[type="checkbox"]',
-        );
+        const candidates = contest.locator('button[type="button"]');
         const candidateCount = await candidates.count();
         const selections = Math.min(maximumSelections, candidateCount);
 
         for (let selection = 0; selection < selections; selection++) {
             await candidates
                 .nth((ballotNumber + selection - 1) % candidateCount)
-                .check();
+                .click();
         }
     }
 
+    await page
+        .getByRole('button', { name: /^Review \d+ selections?$/ })
+        .click();
     await postButton(
-        'Finalize my ballot',
+        'Finalize and get print code',
         '/election/voter/ballot',
         60_000,
         false,
     );
-    await page.waitForURL('**/election/voter/complete?ballot=*');
-    await page.getByText('Ballot finalized', { exact: true }).waitFor();
+    await page.waitForURL('**/election/voter/complete');
+    await page
+        .getByText('Ballot finalized privately', { exact: true })
+        .waitFor();
     walkthroughStatistics.ballots_finalized++;
-}
-
-async function printPreparedBallot(spoil) {
-    await openPath('/election/voting');
-    const printLink = page.getByRole('link', {
-        name: /^Print ballot /,
-    });
-    await printLink.waitFor();
-    await printLink.click();
-    await page.waitForURL('**/election/printing/*');
-
-    const printingPath = new URL(page.url()).pathname;
-    const ballotId = decodeURIComponent(printingPath.split('/').pop());
-    const qrPayload = await page.locator('textarea[readonly]').inputValue();
-
-    await postButton('Print paper ballot', `${printingPath}/print`);
-    walkthroughStatistics.ballots_printed++;
-
-    if (spoil) {
-        spoiledQrPayloads.push(qrPayload);
-    } else {
-        acceptedQrPayloads.push(qrPayload);
-    }
 
     return {
-        ballot_id: ballotId,
-        paper_ballot_serial: await page
-            .getByText('Paper stock serial', { exact: true })
-            .locator('..')
-            .locator('dd')
-            .textContent(),
+        release_code: (await page.locator('p.font-mono').textContent()).trim(),
     };
 }
 
-async function submitScannerPayload(payload) {
-    const form = page.locator('form').filter({
-        has: page.getByRole('button', {
-            name: 'Submit scanner input',
-            exact: true,
-        }),
-    });
+async function printAndDepositPreparedBallot(release) {
+    await openPath('/election/print-station');
+    await page.locator('input[name="code"]').fill(release.release_code);
+    await postButton('Prepare paper ballot', '/election/print-station/redeem');
+    await postButton('Print paper ballot', '/election/print-station/print');
+    walkthroughStatistics.ballots_printed++;
+    await postButton(
+        'Scan and deposit verified ballot',
+        '/election/print-station/deposit',
+        60_000,
+        false,
+    );
+    await page.getByText('Ballot accepted', { exact: true }).waitFor();
+    walkthroughStatistics.ballots_accepted++;
 
-    await form.locator('textarea[name="payload"]').fill(payload);
-    await postButton('Submit scanner input', '/election/counting/scan');
+    return release;
 }
 
 try {
@@ -576,48 +570,13 @@ try {
             await form.locator('input[name="officer_pin"]').fill('123456');
             await postButton('Begin voting', '/election/voting/open-polls');
             await page
-                .getByRole('link', {
-                    name: 'Open voter ballot',
+                .getByRole('button', {
+                    name: 'Issue anonymous voting code',
                     exact: true,
                 })
                 .waitFor();
         },
         '15-voting-open.png',
-    );
-
-    await runStep(
-        'finalize-spoiled-ballot',
-        async () => {
-            await finalizeVoterBallot(1);
-        },
-        '16-spoiled-ballot-finalized.png',
-    );
-
-    let spoiledBallot;
-    await runStep(
-        'print-spoiled-ballot',
-        async () => {
-            spoiledBallot = await printPreparedBallot(true);
-
-            return spoiledBallot;
-        },
-        '17-spoiled-ballot-printed.png',
-    );
-
-    await runStep(
-        'mark-ballot-spoiled',
-        async () => {
-            const printingPath = new URL(page.url()).pathname;
-            await postButton(
-                'Mark spoiled and return',
-                `${printingPath}/spoil`,
-            );
-            await openPath('/election/voting');
-            walkthroughStatistics.ballots_spoiled++;
-
-            return spoiledBallot;
-        },
-        '18-ballot-spoiled.png',
     );
 
     const requestedBallots = Number(
@@ -629,20 +588,25 @@ try {
         ballotNumber <= requestedBallots;
         ballotNumber++
     ) {
+        let release;
         await runStep(
             `finalize-voter-ballot-${ballotNumber}`,
             async () => {
-                await finalizeVoterBallot(ballotNumber + 1);
+                release = await finalizeVoterBallot(ballotNumber);
+
+                return {
+                    release_ready: true,
+                };
             },
-            `19-voter-ballot-${ballotNumber}-finalized.png`,
+            `16-voter-ballot-${ballotNumber}-finalized.png`,
         );
 
         await runStep(
-            `print-voter-ballot-${ballotNumber}`,
+            `print-and-deposit-voter-ballot-${ballotNumber}`,
             async () => {
-                return printPreparedBallot(false);
+                return printAndDepositPreparedBallot(release);
             },
-            `20-voter-ballot-${ballotNumber}-printed.png`,
+            `17-voter-ballot-${ballotNumber}-deposited.png`,
         );
     }
 
@@ -652,11 +616,11 @@ try {
             await openPath('/election/voting');
 
             return {
-                accepted_ballots_ready_for_counting: acceptedQrPayloads.length,
-                spoiled_ballots: spoiledQrPayloads.length,
+                sealed_ballots_ready_for_counting:
+                    walkthroughStatistics.ballots_accepted,
             };
         },
-        '21-voting-and-printing-complete.png',
+        '18-voting-and-printing-complete.png',
     );
 
     recordAction('voting-printing-and-spoilage', 'passed', {
@@ -676,69 +640,7 @@ try {
                 })
                 .waitFor();
         },
-        '22-polls-closed.png',
-    );
-
-    for (
-        let ballotNumber = 0;
-        ballotNumber < acceptedQrPayloads.length;
-        ballotNumber++
-    ) {
-        await runStep(
-            `scan-valid-ballot-${ballotNumber + 1}`,
-            async () => {
-                await submitScannerPayload(acceptedQrPayloads[ballotNumber]);
-                walkthroughStatistics.ballots_accepted++;
-
-                return {
-                    accepted_ballots: walkthroughStatistics.ballots_accepted,
-                };
-            },
-            `23-valid-ballot-${ballotNumber + 1}-accepted.png`,
-        );
-    }
-
-    await runStep(
-        'scan-spoiled-ballot',
-        async () => {
-            await submitScannerPayload(spoiledQrPayloads[0]);
-            walkthroughStatistics.scans_rejected++;
-            await page
-                .getByText('Ballot is spoiled.', { exact: true })
-                .waitFor();
-        },
-        '24-spoiled-ballot-rejected.png',
-    );
-
-    await runStep(
-        'adjudicate-spoiled-ballot',
-        async () => {
-            const form = page
-                .locator('form')
-                .filter({
-                    has: page.getByRole('button', {
-                        name: 'Record adjudication',
-                        exact: true,
-                    }),
-                })
-                .first();
-
-            await form
-                .locator('select[name="disposition"]')
-                .selectOption('spoiled-ballot-separated');
-            await form
-                .locator('input[name="reason"]')
-                .fill(
-                    'Spoiled paper ballot remained in the spoil envelope outside the ballot box.',
-                );
-            await form.locator('input[name="officer_pin"]').fill('123456');
-            await postButton(
-                'Record adjudication',
-                '/election/counting/adjudicate',
-            );
-            walkthroughStatistics.scans_adjudicated++;
-        },
-        '25-spoiled-ballot-adjudicated.png',
+        '19-polls-closed.png',
     );
 
     await runStep(
@@ -753,7 +655,7 @@ try {
 
             await form
                 .locator('input[name="physical_count"]')
-                .fill(String(acceptedQrPayloads.length));
+                .fill(String(walkthroughStatistics.ballots_accepted));
             await form.locator('input[name="officer_pin"]').fill('123456');
             await postButton(
                 'Record physical control',
@@ -761,7 +663,7 @@ try {
             );
             await page.getByText('Reconciled', { exact: true }).waitFor();
         },
-        '26-physical-ballots-reconciled.png',
+        '20-physical-ballots-reconciled.png',
     );
 
     await runStep(
@@ -779,7 +681,7 @@ try {
                 })
                 .waitFor();
         },
-        '27-counting-complete.png',
+        '21-counting-complete.png',
     );
 
     recordAction('counting-adjudication-and-tally', 'passed', {

@@ -6,11 +6,14 @@ use App\Http\Controllers\Election\CountingController;
 use App\Http\Controllers\Election\DiagnosticsController;
 use App\Http\Controllers\Election\HomeController;
 use App\Http\Controllers\Election\PrintingController;
+use App\Http\Controllers\Election\PrintStationController;
 use App\Http\Controllers\Election\ProvisionController;
 use App\Http\Controllers\Election\ReturnsController;
 use App\Http\Controllers\Election\TransmissionController;
+use App\Http\Controllers\Election\VoterAuthorizationController;
 use App\Http\Controllers\Election\VoterBallotController;
 use App\Http\Controllers\Election\VotingController;
+use App\Http\Controllers\Election\WatcherController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
@@ -34,9 +37,23 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/certification/seal', [CertificationController::class, 'runSealing'])->name('certification.seal');
     Route::get('/certification/sealing-report/download', [CertificationController::class, 'downloadSealing'])->name('certification.sealing-report.download');
     Route::get('/voting', [VotingController::class, 'show'])->name('voting');
+    Route::post('/voting/voter-authorizations', [VoterAuthorizationController::class, 'issue'])
+        ->middleware('throttle:30,1')
+        ->name('voting.voter-authorizations.issue');
+    Route::get('/voter', [VoterAuthorizationController::class, 'show'])->name('voter');
+    Route::post('/voter/claim', [VoterAuthorizationController::class, 'claim'])
+        ->middleware('throttle:10,1')
+        ->name('voter.claim');
     Route::get('/voter/ballot', [VoterBallotController::class, 'show'])->name('voter.ballot');
     Route::post('/voter/ballot', [VoterBallotController::class, 'finalize'])->name('voter.finalize');
     Route::get('/voter/complete', [VoterBallotController::class, 'complete'])->name('voter.complete');
+    Route::get('/print-station', [PrintStationController::class, 'show'])->name('print-station');
+    Route::post('/print-station/redeem', [PrintStationController::class, 'redeem'])
+        ->middleware('throttle:10,1')
+        ->name('print-station.redeem');
+    Route::post('/print-station/print', [PrintStationController::class, 'print'])->name('print-station.print');
+    Route::post('/print-station/deposit', [PrintStationController::class, 'deposit'])->name('print-station.deposit');
+    Route::get('/watchers', WatcherController::class)->name('watchers');
     Route::post('/voting/open-polls', [VotingController::class, 'openPolls'])->name('voting.open-polls');
     Route::post('/voting/finalize', [VotingController::class, 'finalize'])->name('voting.finalize');
     Route::post('/voting/close-polls', [VotingController::class, 'closePolls'])->name('voting.close-polls');

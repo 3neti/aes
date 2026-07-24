@@ -1,0 +1,173 @@
+<?php
+
+use App\Election\Counting\CountingService;
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
+use App\Election\Preparation\ActivateSamplePackage;
+use App\Election\Preparation\PrecinctSetupService;
+use App\Election\Support\ElectionClock;
+use App\Election\Support\ElectionStorage;
+use App\Election\Voting\AnonymousVoterAuthorization;
+use Inertia\Testing\AssertableInertia as Assert;
+
+beforeEach(function (): void {
+    app(ElectionStorage::class)->reset();
+    app(ElectionClock::class)->unfreeze();
+    app(ActivateSamplePackage::class)->handle();
+    app(PrecinctSetupService::class)->record(config('election.simulation.precinct_setup'));
+    app(LifecycleState::class)->set(Lifecycle::Voting);
+});
+
+test('an officer issues an anonymous single-use voter authorization', function (): void {
+    $response = $this->post(route('election.voting.voter-authorizations.issue'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ]);
+
+    $response
+        ->assertRedirect(route('election.voting'))
+        ->assertSessionHas('voter_authorization', fn (array $authorization): bool => preg_match(
+            '/^[A-Z2-9]{4}-[A-Z2-9]{4}$/',
+            $authorization['code'],
+        ) === 1);
+
+    $path = app(ElectionStorage::class)->files('voter-authorizations')[0];
+    $record = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($record)
+        ->not->toHaveKeys(['voter_name', 'voter_id', 'code'])
+        ->and($record['status'])->toBe('issued')
+        ->and($record['code_hash'])->toHaveLength(64);
+});
+
+test('a voter code can be claimed once and expires', function (): void {
+    $authorizations = app(AnonymousVoterAuthorization::class);
+    $authorization = $authorizations->issue();
+
+    $this->post(route('election.voter.claim'), ['code' => $authorization['code']])
+        ->assertRedirect(route('election.voter.ballot'));
+
+    $this->post(route('election.voter.claim'), ['code' => $authorization['code']])
+        ->assertSessionHasErrors('code');
+
+    app(ElectionClock::class)->freeze('2026-05-11 08:00:00');
+    $expired = $authorizations->issue();
+    app(ElectionClock::class)->tick(301);
+
+    $this->post(route('election.voter.claim'), ['code' => $expired['code']])
+        ->assertSessionHasErrors('code');
+});
+
+test('the private voter journey seals choices until polls close', function (): void {
+    $authorization = app(AnonymousVoterAuthorization::class)->issue();
+
+    $this->get(route('election.voter'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterWelcome')
+            ->where('precinct.precinct_id', '0421-A')
+            ->missing('snapshot')
+        );
+
+    $this->get(route('election.voter.ballot'))->assertForbidden();
+
+    $this->post(route('election.voter.claim'), ['code' => $authorization['code']])
+        ->assertRedirect(route('election.voter.ballot'));
+
+    $this->get(route('election.voter.ballot'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterBallot')
+            ->has('ballot.contests', 3)
+            ->missing('snapshot')
+            ->missing('journal')
+        );
+
+    $finalize = $this->post(route('election.voter.finalize'), [
+        'selections' => [
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ],
+    ]);
+    $release = $finalize->getSession()->get('election.voter_print_release');
+
+    $finalize->assertRedirect(route('election.voter.complete'));
+    expect($release['release_qr_data_uri'])->toStartWith('data:image/png;base64,');
+
+    $releasePath = app(ElectionStorage::class)->path("print-releases/{$release['release_id']}.json");
+    $releaseContents = file_get_contents($releasePath);
+
+    expect($releaseContents)
+        ->not->toContain('pres-ada')
+        ->not->toContain('mayor-lina')
+        ->not->toContain('council-ana')
+        ->not->toContain('"selections"');
+
+    $this->get(route('election.voter.complete'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterComplete')
+            ->where('release.release_id', $release['release_id'])
+            ->missing('snapshot')
+        );
+
+    $this->post(route('election.print-station.redeem'), ['code' => $release['release_code']])
+        ->assertRedirect(route('election.print-station'));
+
+    $this->get(route('election.print-station'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/PrintStation')
+            ->where('release.status', 'pending')
+            ->missing('release.encrypted_payload')
+            ->missing('release.payload_hash')
+        );
+
+    $this->post(route('election.print-station.print'))
+        ->assertRedirect(route('election.print-station'));
+
+    $this->post(route('election.print-station.deposit'))
+        ->assertRedirect(route('election.print-station'))
+        ->assertSessionHas('deposit_feedback.status', 'accepted');
+
+    $storage = app(ElectionStorage::class);
+    $sealedPath = $storage->files('counting/sealed')[0];
+    $sealedContents = file_get_contents($sealedPath);
+
+    expect($storage->files('counting/accepted'))->toBeEmpty()
+        ->and($sealedContents)->not->toContain('pres-ada')
+        ->and($sealedContents)->not->toContain('"selections"')
+        ->and(collect($storage->files('voter-ballots'))->filter(
+            fn (string $path): bool => str_ends_with($path, '.json'),
+        ))->toBeEmpty();
+
+    $this->get(route('election.watchers'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Watcher')
+            ->where('operations.deposited_ballots', 1)
+            ->where('resultsAvailable', false)
+            ->where('tally', [])
+        );
+
+    $this->post(route('election.voting.close-polls'))
+        ->assertRedirect(route('election.counting'));
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::Counting)
+        ->and($storage->files('counting/accepted'))->toHaveCount(1)
+        ->and(app(CountingService::class)->tally()['accepted_ballots'])->toBe(1);
+});
+
+test('the server rejects ballot selections above a contest maximum', function (): void {
+    $authorization = app(AnonymousVoterAuthorization::class)->issue();
+    $this->post(route('election.voter.claim'), ['code' => $authorization['code']]);
+
+    $this->post(route('election.voter.finalize'), [
+        'selections' => [
+            'president' => ['pres-ada', 'pres-ben'],
+        ],
+    ])->assertSessionHasErrors('selections');
+
+    expect(app(ElectionStorage::class)->files('print-releases'))->toBeEmpty();
+});

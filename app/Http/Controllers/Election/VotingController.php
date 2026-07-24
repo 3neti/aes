@@ -6,11 +6,12 @@ use App\Election\Attestation\OfficerRegistry;
 use App\Election\Certification\InitializationReportService;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Counting\CountingLegalEvidenceService;
+use App\Election\Counting\CountingService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
-use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\SealedBallotBox;
 use App\Election\Voting\SpecialPollingIntakeService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OpenPollsRequest;
@@ -26,19 +27,15 @@ final class VotingController extends Controller
 {
     public function show(
         ElectionSnapshot $snapshot,
-        ElectionStorage $storage,
         SpecialPollingIntakeService $specialPollingIntake,
+        SealedBallotBox $ballotBox,
+        Request $request,
     ): Response {
-        $readyBallot = collect($storage->files('voter-ballots'))
-            ->filter(fn (string $path): bool => str_ends_with($path, '.json'))
-            ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
-            ->filter(fn (array $payload): bool => ! file_exists($storage->path("print-jobs/{$payload['ballot_id']}.json")))
-            ->last();
-
         return Inertia::render('Election/Voting', [
             'snapshot' => $snapshot->get(),
             'specialPollingIntake' => $specialPollingIntake->summary(),
-            'readyBallot' => $readyBallot ?: [],
+            'voterAuthorization' => $request->session()->get('voter_authorization'),
+            'ballotBox' => $ballotBox->operationalSummary(),
         ]);
     }
 
@@ -103,11 +100,14 @@ final class VotingController extends Controller
     public function closePolls(
         CeremonyActions $ceremonies,
         CountingLegalEvidenceService $legalEvidence,
+        SealedBallotBox $ballotBox,
+        CountingService $counting,
     ): RedirectResponse {
         try {
             $ceremonies->closePolls();
             $legalEvidence->writeForClosePolls();
             $ceremonies->startCounting();
+            $ballotBox->openForCounting($counting);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages([
                 'lifecycle' => $exception->getMessage(),

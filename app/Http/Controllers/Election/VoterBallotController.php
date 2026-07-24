@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Election;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
-use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\AnonymousVoterAuthorization;
+use App\Election\Voting\PrivateBallotRelease;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\FinalizePrivateBallotRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -15,9 +17,15 @@ use Inertia\Response;
 
 final class VoterBallotController extends Controller
 {
-    public function show(ElectionStorage $storage, LifecycleState $lifecycle): Response
-    {
+    public function show(
+        Request $request,
+        ElectionStorage $storage,
+        LifecycleState $lifecycle,
+        AnonymousVoterAuthorization $authorizations,
+    ): Response {
         abort_unless($lifecycle->current() === Lifecycle::Voting, 409);
+        $authorizationId = $request->session()->get('election.voter_authorization_id');
+        abort_unless(is_string($authorizationId) && $authorizations->isClaimed($authorizationId), 403);
 
         $configuration = $storage->readJson('runtime/active-precinct.json');
 
@@ -32,8 +40,9 @@ final class VoterBallotController extends Controller
     }
 
     public function finalize(
-        Request $request,
-        BallotPayloadService $payloads,
+        FinalizePrivateBallotRequest $request,
+        AnonymousVoterAuthorization $authorizations,
+        PrivateBallotRelease $releases,
         LifecycleState $lifecycle,
     ): RedirectResponse {
         if ($lifecycle->current() !== Lifecycle::Voting) {
@@ -42,31 +51,38 @@ final class VoterBallotController extends Controller
             ]);
         }
 
-        $validated = $request->validate([
-            'selections' => ['nullable', 'array'],
-            'selections.*' => ['array'],
-            'selections.*.*' => ['string'],
-        ]);
+        $authorizationId = $request->session()->get('election.voter_authorization_id');
+
+        if (! is_string($authorizationId) || ! $authorizations->isClaimed($authorizationId)) {
+            abort(403);
+        }
+
+        $validated = $request->validated();
         $selections = collect($validated['selections'] ?? [])
             ->map(fn (array $candidateIds): array => array_values($candidateIds))
             ->all();
-        $payload = $payloads->finalize($selections);
 
-        return redirect()->route('election.voter.complete', ['ballot' => $payload['ballot_id']]);
+        try {
+            $release = $releases->create($authorizationId, $selections);
+            $authorizations->complete($authorizationId);
+        } catch (\RuntimeException $exception) {
+            throw ValidationException::withMessages(['selections' => $exception->getMessage()]);
+        }
+
+        $request->session()->forget('election.voter_authorization_id');
+        $request->session()->put('election.voter_print_release', $release);
+
+        return redirect()->route('election.voter.complete');
     }
 
-    public function complete(Request $request, ElectionStorage $storage): Response
+    public function complete(Request $request): Response
     {
-        $ballotId = $request->string('ballot')->toString();
-        $payload = $storage->readJson("ballots/{$ballotId}.json");
+        $release = $request->session()->get('election.voter_print_release');
 
-        abort_if($payload === [], 404);
+        abort_unless(is_array($release), 404);
 
         return Inertia::render('Election/VoterComplete', [
-            'ballot' => [
-                'ballot_id' => $payload['ballot_id'],
-                'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
-            ],
+            'release' => $release,
         ]);
     }
 }

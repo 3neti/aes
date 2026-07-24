@@ -15,6 +15,7 @@ final class BallotPayloadService
         private readonly ActivityJournal $journal,
         private readonly StandardQrCode $qrCode,
         private readonly PaperBallotLedger $paperBallots,
+        private readonly BallotSelectionValidator $selections,
     ) {}
 
     /**
@@ -24,7 +25,7 @@ final class BallotPayloadService
     public function finalize(array $selections, ?string $ballotId = null, bool $journal = true): array
     {
         $configuration = $this->configuration();
-        $this->validateSelections($configuration, $selections);
+        $this->selections->validate($configuration, $selections);
 
         $payload = [
             'schema_version' => 'ballot-payload-1',
@@ -92,27 +93,5 @@ final class BallotPayloadService
         }
 
         return $configuration;
-    }
-
-    /**
-     * @param  array<string, mixed>  $configuration
-     * @param  array<string, array<int, string>>  $selections
-     */
-    private function validateSelections(array $configuration, array $selections): void
-    {
-        foreach ($configuration['contests'] as $contest) {
-            $selected = $selections[$contest['id']] ?? [];
-            $candidateIds = collect($contest['candidates'])->pluck('id')->all();
-
-            if (count($selected) > $contest['max_selections']) {
-                throw new RuntimeException("Too many selections for {$contest['title']}.");
-            }
-
-            foreach ($selected as $candidateId) {
-                if (! in_array($candidateId, $candidateIds, true)) {
-                    throw new RuntimeException("Invalid candidate [{$candidateId}].");
-                }
-            }
-        }
     }
 }

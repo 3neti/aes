@@ -286,10 +286,21 @@ test('printing page exposes finalized ballot qr and artifact state', function ()
         );
 });
 
-test('voter ballot is isolated from operator evidence and hands finalized ballot back for printing', function (): void {
+test('voter ballot requires anonymous authorization and hands off a private print release', function (): void {
     app(ActivateSamplePackage::class)->handle();
     app(PrecinctSetupService::class)->record(config('election.simulation.precinct_setup'));
     app(LifecycleState::class)->set(Lifecycle::Voting);
+
+    $this->get(route('election.voter.ballot'))->assertForbidden();
+
+    $issue = $this->post(route('election.voting.voter-authorizations.issue'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ]);
+    $authorization = $issue->getSession()->get('voter_authorization');
+
+    $this->post(route('election.voter.claim'), ['code' => $authorization['code']])
+        ->assertRedirect(route('election.voter.ballot'));
 
     $this->get(route('election.voter.ballot'))
         ->assertSuccessful()
@@ -309,25 +320,23 @@ test('voter ballot is isolated from operator evidence and hands finalized ballot
             'council' => ['council-ana'],
         ],
     ]);
-    $ballot = collect(app(ElectionStorage::class)->files('ballots'))
-        ->first(fn (string $path): bool => str_ends_with($path, '.json'));
-    $payload = json_decode(file_get_contents($ballot), true, flags: JSON_THROW_ON_ERROR);
+    $release = $response->getSession()->get('election.voter_print_release');
 
-    $response->assertRedirect(route('election.voter.complete', ['ballot' => $payload['ballot_id']]));
+    $response->assertRedirect(route('election.voter.complete'));
 
-    $this->get(route('election.voter.complete', ['ballot' => $payload['ballot_id']]))
+    $this->get(route('election.voter.complete'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterComplete')
-            ->where('ballot.ballot_id', $payload['ballot_id'])
-            ->where('ballot.paper_ballot_serial', '0421-A-000001')
+            ->where('release.release_id', $release['release_id'])
+            ->where('release.paper_ballot_serial', '0421-A-000001')
             ->missing('snapshot')
         );
 
     $this->get(route('election.voting'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('readyBallot.ballot_id', $payload['ballot_id'])
-            ->where('readyBallot.paper_ballot_serial', '0421-A-000001')
+            ->where('ballotBox.deposited_ballots', 0)
+            ->missing('readyBallot')
         );
 });
 
@@ -344,7 +353,7 @@ test('voter station never offers certification ballots for printing', function (
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/Voting')
-            ->where('readyBallot', [])
+            ->where('ballotBox.deposited_ballots', 0)
             ->where('snapshot.counts.ballots', 2)
         );
 });

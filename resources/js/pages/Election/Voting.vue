@@ -3,13 +3,13 @@ import { Form, Link } from '@inertiajs/vue3';
 import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
-import { counting, printing } from '@/routes/election';
-import { ballot as voterBallot } from '@/routes/election/voter';
+import { counting, printStation, voter, watchers } from '@/routes/election';
 import {
     closePolls,
     openPolls,
     specialPollingIntake as specialPollingIntakeRoute,
 } from '@/routes/election/voting';
+import { issue as issueVoterAuthorization } from '@/routes/election/voting/voter-authorizations';
 
 type SpecialPollingIntake = {
     exists?: boolean;
@@ -23,10 +23,11 @@ type SpecialPollingIntake = {
 defineProps<{
     snapshot: ElectionSnapshot;
     specialPollingIntake: SpecialPollingIntake;
-    readyBallot: {
-        ballot_id?: string;
-        paper_ballot_serial?: string;
+    voterAuthorization?: {
+        code: string;
+        expires_at: string;
     };
+    ballotBox: { deposited_ballots: number };
 }>();
 
 const canOpenPolls = (stage: string): boolean =>
@@ -187,32 +188,96 @@ const specialPollingTypes = [
 
         <CeremonyActionPanel
             v-if="canFinalize(snapshot.stage)"
-            title="Voter station"
-            description="Open the isolated ballot screen for the next voter. Operator controls and evidence records are not shown there."
+            title="Admit the next voter"
+            description="After checking the voter against the official roster, issue one anonymous voting code. No voter identity is stored by the appliance."
             eyebrow="Voting session"
             :status="
-                readyBallot.ballot_id
-                    ? 'Ballot ready for printing'
-                    : 'Ready for voter'
+                voterAuthorization?.code
+                    ? 'Code ready'
+                    : 'Officer authorization required'
             "
-            :tone="readyBallot.ballot_id ? 'warning' : 'complete'"
+            :tone="voterAuthorization?.code ? 'complete' : 'warning'"
         >
-            <div class="flex flex-wrap gap-3">
-                <Link
-                    v-if="!readyBallot.ballot_id"
-                    :href="voterBallot.url()"
-                    class="primary-button inline-flex items-center justify-center"
-                >
-                    Open voter ballot
-                </Link>
-                <Link
-                    v-else
-                    :href="printing.url({ ballot: readyBallot.ballot_id })"
-                    class="primary-button inline-flex items-center justify-center"
-                >
-                    Print ballot {{ readyBallot.paper_ballot_serial }}
-                </Link>
+            <div
+                v-if="voterAuthorization?.code"
+                class="border-l-4 border-emerald-700 bg-emerald-50 p-4"
+            >
+                <p class="text-sm font-bold text-emerald-900">
+                    One-time voting code
+                </p>
+                <p class="mt-1 font-mono text-3xl font-bold text-emerald-950">
+                    {{ voterAuthorization.code }}
+                </p>
+                <p class="mt-2 text-sm text-emerald-900">
+                    Give this code only to the admitted voter. It can be claimed
+                    once.
+                </p>
             </div>
+            <Form
+                v-else
+                v-bind="issueVoterAuthorization.form()"
+                #default="{ errors, processing }"
+                class="grid gap-3 sm:grid-cols-2"
+            >
+                <label>
+                    <span class="text-sm font-bold">Officer ID</span>
+                    <input
+                        class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                        name="officer_code"
+                        required
+                        autocomplete="off"
+                    />
+                </label>
+                <label>
+                    <span class="text-sm font-bold">Officer PIN</span>
+                    <input
+                        class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                        name="officer_pin"
+                        type="password"
+                        inputmode="numeric"
+                        required
+                        autocomplete="off"
+                    />
+                </label>
+                <p
+                    v-if="errors.officer_pin || errors.lifecycle"
+                    class="text-sm font-bold text-red-700 sm:col-span-2"
+                >
+                    {{ errors.officer_pin || errors.lifecycle }}
+                </p>
+                <button
+                    class="primary-button sm:col-span-2"
+                    type="submit"
+                    :disabled="processing"
+                >
+                    {{
+                        processing
+                            ? 'Issuing code...'
+                            : 'Issue anonymous voting code'
+                    }}
+                </button>
+            </Form>
+            <div class="mt-4 flex flex-wrap gap-3">
+                <Link
+                    :href="voter.url()"
+                    class="secondary-button inline-flex items-center justify-center"
+                    >Open voter tablet</Link
+                >
+                <Link
+                    :href="printStation.url()"
+                    class="secondary-button inline-flex items-center justify-center"
+                    >Open private print station</Link
+                >
+                <Link
+                    :href="watchers.url()"
+                    class="secondary-button inline-flex items-center justify-center"
+                    >Open watcher view</Link
+                >
+            </div>
+            <p class="mt-4 text-sm text-stone-600">
+                Sealed paper ballots deposited:
+                <strong>{{ ballotBox.deposited_ballots }}</strong>
+            </p>
         </CeremonyActionPanel>
 
         <div

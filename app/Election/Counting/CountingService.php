@@ -25,7 +25,7 @@ final class CountingService
     /**
      * @return array<string, mixed>
      */
-    public function accept(string $rawPayload): array
+    public function accept(string $rawPayload, bool $recordDeposit = true): array
     {
         try {
             $payload = $this->payloads->decode($rawPayload);
@@ -41,7 +41,9 @@ final class CountingService
             ];
 
             $this->storage->writeJson("counting/accepted/{$record['sequence']}-{$payload['payload_hash']}.json", $record);
-            $this->paperBallots->recordDeposited($payload['payload_hash']);
+            if ($recordDeposit) {
+                $this->paperBallots->recordDeposited($payload['payload_hash']);
+            }
             $this->journal->record('ballot.counted', [
                 'ballot_id' => $payload['ballot_id'],
                 'payload_hash' => $payload['payload_hash'],

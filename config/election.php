@@ -7,6 +7,12 @@ return [
     'runtime' => [
         'run_type' => env('ELECTION_RUN_TYPE'),
     ],
+    'voter' => [
+        'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),
+        'print_release_ttl_seconds' => (int) env('ELECTION_PRINT_RELEASE_TTL', 600),
+        'candidate_photos_enabled' => false,
+        'individual_ballot_disclosure' => false,
+    ],
     'simulation' => [
         'precinct_setup' => [
             'chairperson_code' => 'SIM-OFFICER-001',
