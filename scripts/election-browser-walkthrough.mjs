@@ -47,6 +47,11 @@ const walkthroughStatistics = {
     ballots_accepted: 0,
     scans_rejected: 0,
     scans_adjudicated: 0,
+    return_generated: false,
+    return_approved: false,
+    handoff_completed: false,
+    precinct_closed: false,
+    audit_archive_verified: false,
 };
 let sequence = 0;
 let browser;
@@ -639,6 +644,225 @@ try {
         rejected_scans: walkthroughStatistics.scans_rejected,
         adjudicated_scans: walkthroughStatistics.scans_adjudicated,
     });
+
+    await runStep('generate-election-return', async () => {
+        await postButton(
+            'Generate Election Return',
+            '/election/returns/generate',
+        );
+        await page.getByText('Counts match', { exact: true }).waitFor();
+        walkthroughStatistics.return_generated = true;
+    }, '28-election-return-generated.png');
+
+    await runStep('prepare-return-copies-and-posting', async () => {
+        await postButton(
+            'Prepare copies and posting',
+            '/election/returns/copy-distribution',
+        );
+        await page.getByText('Copies prepared', { exact: true }).waitFor();
+    }, '29-return-copies-and-posting.png');
+
+    await runStep('approve-election-return', async () => {
+        const form = page.locator('form').filter({
+            has: page.getByRole('button', {
+                name: 'Approve Election Return',
+                exact: true,
+            }),
+        });
+
+        await form.locator('input[name="chairperson_pin"]').fill('123456');
+        await form.locator('input[name="poll_clerk_pin"]').fill('123456');
+        await postButton(
+            'Approve Election Return',
+            '/election/returns/approve',
+        );
+        await page
+            .getByText('Dual-control approval recorded', { exact: true })
+            .waitFor();
+        walkthroughStatistics.return_approved = true;
+    }, '30-election-return-approved.png');
+
+    await runStep('complete-election-return-ceremony', async () => {
+        await postButton(
+            'Continue to official handoff',
+            '/election/returns/close',
+        );
+        await openPath('/election/transmission');
+        await page.getByRole('heading', {
+            name: 'Transmission or Official Handoff',
+            exact: true,
+        }).waitFor();
+    }, '31-official-handoff-opened.png');
+
+    await runStep('prepare-transmission-report', async () => {
+        await postButton(
+            'Prepare Transmission Report',
+            '/election/transmission/send',
+        );
+        await page.getByText('Transmission ID', { exact: true }).waitFor();
+    }, '32-transmission-report-prepared.png');
+
+    await runStep('prepare-delivery-package', async () => {
+        await postButton(
+            'Prepare Delivery Package',
+            '/election/transmission/package',
+        );
+        await page.getByText('Package Hash', { exact: true }).waitFor();
+    }, '33-delivery-package-prepared.png');
+
+    await runStep('record-handoff-officer-verification', async () => {
+        const form = page.locator('form').filter({
+            has: page.getByRole('button', {
+                name: 'Record Officer Verification',
+                exact: true,
+            }),
+        });
+
+        await form
+            .locator('input[name="officer_code"]')
+            .fill('SIM-OFFICER-001');
+        await form.locator('input[name="officer_pin"]').fill('123456');
+        await form.locator('input[name="verification_note"]').fill(
+            'Chairperson verified the official handoff package.',
+        );
+        await postButton(
+            'Record Officer Verification',
+            '/election/transmission/officer-verification',
+        );
+        await page.getByText('verified', { exact: true }).waitFor();
+    }, '34-handoff-officer-verified.png');
+
+    await runStep('record-handoff-recipient-verification', async () => {
+        const form = page.locator('form').filter({
+            has: page.getByRole('button', {
+                name: 'Record Recipient Verification',
+                exact: true,
+            }),
+        });
+
+        await form
+            .locator('input[name="recipient"]')
+            .fill('City Board of Canvassers Receiving Officer');
+        await form
+            .locator('input[name="recipient_role"]')
+            .fill('Authorized Receiving Officer');
+        await form
+            .locator('input[name="acknowledgement_note"]')
+            .fill('Recipient acknowledged the sealed offline evidence package.');
+        await postButton(
+            'Record Recipient Verification',
+            '/election/transmission/recipient-verification',
+        );
+        await page
+            .getByText('City Board of Canvassers Receiving Officer', {
+                exact: true,
+            })
+            .waitFor();
+    }, '35-handoff-recipient-verified.png');
+
+    await runStep('generate-delivery-receipt', async () => {
+        await postButton(
+            'Generate Delivery Receipt',
+            '/election/transmission/receipt',
+        );
+        await page.getByText('Receipt ID', { exact: true }).waitFor();
+    }, '36-delivery-receipt-generated.png');
+
+    await runStep('record-final-backup', async () => {
+        await postButton(
+            'Record Final Backup',
+            '/election/transmission/final-backup',
+        );
+        await page.getByText('Backup ID', { exact: true }).waitFor();
+    }, '37-final-backup-recorded.png');
+
+    await runStep('record-custody-turnover', async () => {
+        await postButton(
+            'Record Custody Turnover',
+            '/election/transmission/custody',
+        );
+        await page.getByText('Custody ID', { exact: true }).first().waitFor();
+        walkthroughStatistics.handoff_completed = true;
+    }, '38-custody-turnover-recorded.png');
+
+    await runStep('close-precinct', async () => {
+        await postButton(
+            'Close Precinct',
+            '/election/transmission/close-precinct',
+        );
+        await openPath('/election/diagnostics');
+        await page.getByRole('button', {
+            name: 'Begin Audit and Reconciliation',
+            exact: true,
+        }).waitFor();
+        walkthroughStatistics.precinct_closed = true;
+    }, '39-precinct-closed.png');
+
+    await runStep('begin-audit-and-reconciliation', async () => {
+        await postButton(
+            'Begin Audit and Reconciliation',
+            '/election/diagnostics/begin-audit',
+        );
+        await page.getByRole('heading', {
+            name: 'Precinct Evidence Manifest',
+            exact: true,
+        }).waitFor();
+    }, '40-audit-opened.png');
+
+    await runStep('generate-evidence-reference-baseline', async () => {
+        await postButton(
+            'Generate Baseline',
+            '/election/diagnostics/evidence-reference-baseline',
+        );
+    }, '41-evidence-reference-baseline.png');
+
+    await runStep('generate-official-minutes-baseline', async () => {
+        await postButton(
+            'Generate Official Minutes',
+            '/election/diagnostics/official-minutes-baseline',
+        );
+    }, '42-official-minutes-baseline.png');
+
+    await runStep('generate-audit-reconciliation-baseline', async () => {
+        await postButton(
+            'Generate Reconciliation',
+            '/election/diagnostics/audit-reconciliation-baseline',
+        );
+    }, '43-audit-reconciliation-baseline.png');
+
+    await runStep('generate-final-evidence-manifest', async () => {
+        await postButton(
+            'Generate Manifest',
+            '/election/diagnostics/evidence-manifest',
+        );
+        await page.getByText('Manifest Hash', { exact: true }).waitFor();
+    }, '44-final-evidence-manifest.png');
+
+    await runStep('build-evidence-bundle-archive', async () => {
+        await postButton(
+            'Build Download Archive',
+            '/election/diagnostics/evidence-bundle-archive',
+            120_000,
+        );
+        await page.getByText('Archive Hash', { exact: true }).first().waitFor();
+    }, '45-evidence-bundle-archive.png');
+
+    await runStep('verify-evidence-bundle-archive', async () => {
+        await postButton(
+            'Verify Built Archive',
+            '/election/diagnostics/evidence-bundle-archive/verify',
+            120_000,
+        );
+        await page
+            .getByText('Latest archive verification passed.', { exact: true })
+            .waitFor();
+        walkthroughStatistics.audit_archive_verified = true;
+    }, '46-evidence-bundle-verified.png');
+
+    recordAction('returns-handoff-custody-and-audit', 'passed', {
+        final_url: page.url(),
+        ...walkthroughStatistics,
+    });
 } catch (error) {
     errorMessage = error instanceof Error ? error.message : String(error);
     recordAction('walkthrough', 'failed', { error: errorMessage });
@@ -696,6 +920,7 @@ for (const action of actions) {
         ]);
     }
 }
+
 const artifacts = [];
 
 for (const [label, artifactPath] of artifactCandidates) {

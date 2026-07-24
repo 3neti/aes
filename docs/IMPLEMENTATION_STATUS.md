@@ -681,7 +681,7 @@
 - SQLite read models are not introduced.
 - x-journal, x-change, and x-feedback are intentionally not integrated.
 - Recovery inspection is implemented on the active appliance, but automated failover to a separately provisioned backup appliance is not implemented.
-- `election:browser-walkthrough full-election` now records a real isolated browser rehearsal, but this checkpoint covers only appliance launch and the election home page. Ceremony interaction is the active next slice.
+- `election:browser-walkthrough full-election` now records the complete ceremony-driven browser rehearsal from precinct activation through verified audit archive.
 
 ## Recorded Browser Walkthrough
 
@@ -713,11 +713,19 @@
 - Vue type checking and the production frontend build passed.
 - Real browser counting recording passed with 30 completed actions, 27 screenshots, 1 accepted ballot file, 1 rejected scan, 1 adjudication, balanced paper accounting, closing/counting legal evidence, and no browser console errors.
 - Persisted counting checkpoint: `storage/app/election/runs/20260724-042942-423131-39010001-browser-full-election`.
-- The lifecycle reached `election_return`.
+- Browser returns now generate the Election Return, prepare the prescribed copies and posting record, obtain distinct Chairperson and Poll Clerk approval, and enter official handoff.
+- Browser handoff now prepares the deferred transmission report and delivery package, records officer and recipient verification, generates the delivery receipt, records final backup and custody turnover, and closes the precinct.
+- Browser audit now opens the final ceremony, generates evidence-reference, official-minutes, and audit-reconciliation baselines, regenerates the evidence manifest, builds the downloadable archive, and verifies the built TAR.
+- Real complete browser recording passed with 50 completed actions, 98 action records, 46 screenshots, 1 accepted ballot, 1 rejected and adjudicated spoiled scan, no browser console messages, and a verified evidence archive.
+- Persisted complete run: `storage/app/election/runs/20260724-044219-807626-39010001-browser-full-election`.
+- Persisted complete video: `storage/app/election/runs/20260724-044219-807626-39010001-browser-full-election/12-audit-and-reconciliation/browser-recordings/full-election.webm`.
+- The lifecycle reached `audit`; the election-day pointer remained unchanged.
 
 ## Next Recommended Steps
 
-- Automate Election Return generation and approval, official handoff, receipt, final backup, custody turnover, precinct closure, and audit evidence generation.
+- Regenerate the final evidence manifest and downloadable archive after the video, trace, browser report, run summary, and artifact index exist so the downloadable bundle includes the recording evidence.
+- Add a concise lifecycle walkthrough report with ceremony statistics and direct pointers to the principal paper and browser artifacts.
+- Exercise and document the recorder failure path, then run the focused and full regression suites.
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
 - Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.
