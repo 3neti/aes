@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Election;
 
 use App\Election\Attestation\ElectoralBoardBaselineService;
 use App\Election\Core\ElectionSnapshot;
-use App\Election\Preparation\ActivateSamplePackage;
+use App\Election\Preparation\ActivateConfiguredPrecinct;
 use App\Election\Preparation\SupplyVerificationBaselineService;
 use App\Election\Scenarios\LegalScenarioHarnessService;
 use App\Http\Controllers\Controller;
@@ -19,16 +19,24 @@ final class ProvisionController extends Controller
         ElectoralBoardBaselineService $baseline,
         LegalScenarioHarnessService $harness,
         SupplyVerificationBaselineService $supplyBaseline,
+        ActivateConfiguredPrecinct $activate,
     ): Response {
         return Inertia::render('Election/Provision', [
             'snapshot' => $snapshot->get(),
             'electoralBoardBaseline' => $baseline->summary(),
             'legalScenarioSuite' => $harness->summary(),
             'supplyVerificationBaseline' => $supplyBaseline->summary(),
+            'activationEvidence' => $activate->summary(),
+            'configuredPrecinct' => [
+                'clustered_precinct' => config('election.pop.clustered_precinct'),
+                'district' => config('election.pop.district'),
+                'pop_filename' => basename((string) config('election.pop.source_path')),
+                'clc_source' => basename((string) config('election.clc.source_path')),
+            ],
         ]);
     }
 
-    public function activate(ActivateSamplePackage $activate): RedirectResponse
+    public function activate(ActivateConfiguredPrecinct $activate): RedirectResponse
     {
         $activate->handle();
 

@@ -63,11 +63,39 @@ type SupplyVerificationBaseline = {
     generate_url: string;
 };
 
+type ActivationEvidence = {
+    precinct_id?: string;
+    district?: string;
+    location?: {
+        city_municipality?: string;
+        barangay?: string;
+        polling_place?: string;
+    };
+    contest_count?: number;
+    candidate_count?: number;
+    activation_hash?: string;
+    pop?: {
+        source_filename?: string;
+        mapping_profile?: string;
+    };
+    clc?: {
+        source_count?: number;
+        needs_review_count?: number;
+    };
+};
+
 const props = defineProps<{
     snapshot: ElectionSnapshot;
     electoralBoardBaseline: ElectoralBoardBaseline;
     legalScenarioSuite: LegalScenarioSuite;
     supplyVerificationBaseline: SupplyVerificationBaseline;
+    activationEvidence: ActivationEvidence;
+    configuredPrecinct: {
+        clustered_precinct: string;
+        district: string;
+        pop_filename: string;
+        clc_source: string;
+    };
 }>();
 
 const readinessItems = [
@@ -100,7 +128,7 @@ const readinessItems = [
     <CeremonyLayout :snapshot="snapshot" title="Precinct Setup">
         <CeremonyActionPanel
             title="Load this precinct"
-            description="Activate the embedded precinct package, POP mapping, and candidate configuration assigned to this appliance."
+            description="Import the configured Project of Precincts workbook and Certified List of Candidates PDFs, then derive the ballot assigned to this appliance."
             eyebrow="Step 1"
             :status="
                 snapshot.configuration.mapping_hash
@@ -116,8 +144,40 @@ const readinessItems = [
                         <dd class="mt-1 font-bold text-stone-950">
                             {{
                                 snapshot.configuration.precinct_id ||
-                                'Pending activation'
+                                configuredPrecinct.clustered_precinct
                             }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-stone-500">District</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{ activationEvidence.district || configuredPrecinct.district }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-stone-500">Source files</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{ configuredPrecinct.pop_filename }} + {{ configuredPrecinct.clc_source }}
+                        </dd>
+                    </div>
+                    <div v-if="activationEvidence.location?.polling_place" class="sm:col-span-2">
+                        <dt class="text-stone-500">Polling place</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{ activationEvidence.location.polling_place }},
+                            {{ activationEvidence.location.barangay }},
+                            {{ activationEvidence.location.city_municipality }}
+                        </dd>
+                    </div>
+                    <div v-if="activationEvidence.contest_count">
+                        <dt class="text-stone-500">Ballot contests</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{ activationEvidence.contest_count }}
+                        </dd>
+                    </div>
+                    <div v-if="activationEvidence.candidate_count">
+                        <dt class="text-stone-500">Candidates</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{ activationEvidence.candidate_count }}
                         </dd>
                     </div>
                     <div>
@@ -153,8 +213,8 @@ const readinessItems = [
                             processing
                                 ? 'Loading precinct...'
                                 : snapshot.configuration.mapping_hash
-                                  ? 'Reload precinct package'
-                                  : 'Load precinct package'
+                                  ? 'Verify precinct package again'
+                                  : 'Import and activate precinct'
                         }}
                     </button>
                 </Form>

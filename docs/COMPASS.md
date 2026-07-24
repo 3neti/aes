@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Operational Run Isolation
+- Completed Slice: Real Precinct Activation
 - Active Program: Precinct Realism
-- Current Slice: Real Precinct Activation
-- Next Slice: Strict Package Certification
+- Current Slice: Strict Package Certification
+- Next Slice: Electoral Board and Inventory
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

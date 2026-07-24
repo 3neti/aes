@@ -5,9 +5,9 @@
 - Status: In progress
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Operational Run Isolation
-- Current slice: Real Precinct Activation
-- Next slice: Strict Package Certification
+- Completed slice: Real Precinct Activation
+- Current slice: Strict Package Certification
+- Next slice: Electoral Board and Inventory
 - Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
 
 ### Operational Run Isolation
@@ -23,6 +23,18 @@
 - Focused isolation tests: 3 passed, 9 assertions.
 - Scenario and run-folder compatibility tests: 4 passed, 70 assertions.
 - Full lifecycle regression: 66 of 69 initially passed; the three exposed stale fixtures were corrected and all four affected focused tests now pass.
+
+### Real Precinct Activation
+
+- Replaced the browser sample-package activation path with the configured POP workbook and CLC PDF import pipeline.
+- Added a shared configured-precinct activation action used by both the browser and lifecycle scenario runner.
+- Browser provisioning now activates clustered precinct `39010001`, First District, at Isabelo Delos Reyes Elementary School in Barangay 1, Tondo.
+- The derived ballot contains six supported contests and 387 candidates from the configured source set.
+- Activation evidence records the POP source hash and mapping profile, CLC source and registry hashes, package and ballot registry hashes, mapping hash, and extraction review count.
+- The Precinct Setup page now displays the configured source files, polling place, district, contest count, and candidate count.
+- Configured provisioning feature test: 1 passed, 29 assertions.
+- Shared Friday certification scenario regression: 1 passed, 12 assertions.
+- Production frontend build: passed.
 
 ## Current Implementation
 

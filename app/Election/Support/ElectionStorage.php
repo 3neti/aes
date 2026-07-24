@@ -491,6 +491,7 @@ final class ElectionStorage
         return match (true) {
             $relative === 'registries/sample.json' => self::CeremonyDirectories['preparation'].'/sample-registries.json',
             $relative === 'packages/active-package.json' => self::CeremonyDirectories['preparation'].'/active-package.json',
+            $relative === 'packages/configured-precinct-activation.json' => self::CeremonyDirectories['preparation'].'/configured-precinct-activation.json',
             $relative === 'runtime/active-precinct.json' => self::CeremonyDirectories['preparation'].'/active-precinct.json',
             $relative === 'runtime/electoral-board-baseline.json' => self::CeremonyDirectories['preparation'].'/electoral-board-baseline.json',
             $relative === 'runtime/lifecycle.json' => self::CeremonyDirectories['start'].'/lifecycle.json',

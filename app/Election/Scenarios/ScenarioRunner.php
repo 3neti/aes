@@ -23,6 +23,7 @@ use App\Election\Lifecycle\ElectionRunType;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Minutes\OfficialMinutesBaselineService;
+use App\Election\Preparation\ActivateConfiguredPrecinct;
 use App\Election\Preparation\ActivateImportedPrecinctPackage;
 use App\Election\Preparation\ActivatePrecinctBallotPackage;
 use App\Election\Preparation\ClcCandidateImporter;
@@ -64,6 +65,7 @@ final class ScenarioRunner
         private readonly ClcCandidateImporter $clcImporter,
         private readonly ActivateImportedPrecinctPackage $activateImportedPrecinct,
         private readonly ActivatePrecinctBallotPackage $activatePrecinctBallot,
+        private readonly ActivateConfiguredPrecinct $activateConfiguredPrecinct,
         private readonly CertificationDeckBuilder $deckBuilder,
         private readonly InitializationReportService $initializationReport,
         private readonly CountingLegalEvidenceService $countingLegalEvidence,
@@ -1283,23 +1285,20 @@ final class ScenarioRunner
      */
     private function activateConfiguredPrecinctBallot(): array
     {
+        $result = $this->activateConfiguredPrecinct->handle();
         $sourcePath = $this->popSourcePath();
         $profile = $this->popProfile();
         $clusteredPrecinct = $this->popClusteredPrecinct();
-        $manifest = $this->popImporter->import($sourcePath, $profile);
-        $clcManifest = $this->clcImporter->import();
-        $importedPackage = $this->activateImportedPrecinct->handle($clusteredPrecinct);
-        $activation = $this->activatePrecinctBallot->handle($clusteredPrecinct, $this->popDistrict());
 
         return [
-            'configuration' => $activation['configuration'],
+            'configuration' => $result['configuration'],
             'pop_import' => [
-                ...$this->popReport($manifest, $importedPackage, $sourcePath, $profile, $clusteredPrecinct),
-                'clc_manifest_hash' => $clcManifest['manifest_hash'] ?? null,
-                'clc_registry_hash' => $clcManifest['registry_hash'] ?? null,
-                'clc_manifest_path' => $clcManifest['artifact_path'] ?? null,
+                ...$this->popReport($result['pop_import'], $result['imported_package'], $sourcePath, $profile, $clusteredPrecinct),
+                'clc_manifest_hash' => $result['clc_import']['manifest_hash'] ?? null,
+                'clc_registry_hash' => $result['clc_import']['registry_hash'] ?? null,
+                'clc_manifest_path' => $result['clc_import']['artifact_path'] ?? null,
             ],
-            'ballot_definition' => $activation['report'],
+            'ballot_definition' => $result['report'],
         ];
     }
 

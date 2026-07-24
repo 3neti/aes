@@ -40,6 +40,36 @@ test('ceremony page renders :component', function (string $route, string $compon
     'diagnostics' => ['election.diagnostics', 'Election/Diagnostics'],
 ]);
 
+test('provisioning imports configured POP and CLC sources and activates the Tondo ballot', function (): void {
+    $this->post(route('election.provision.activate'))
+        ->assertRedirect(route('election.certification'));
+
+    $storage = app(ElectionStorage::class);
+    $configuration = $storage->readJson('runtime/active-precinct.json');
+    $activation = $storage->readJson('packages/configured-precinct-activation.json');
+
+    expect($configuration['precinct_id'])->toBe('39010001')
+        ->and($configuration['ballot_style_id'])->toBe('BS-2025NLE-39010001')
+        ->and($configuration['contests'])->toHaveCount(6)
+        ->and($activation['precinct_id'])->toBe('39010001')
+        ->and($activation['contest_count'])->toBe(6)
+        ->and($activation['candidate_count'])->toBeGreaterThan(0)
+        ->and($activation['pop']['source_filename'])->toBe('2025NLE_POP.xlsx')
+        ->and($activation['clc']['source_count'])->toBeGreaterThan(0)
+        ->and($activation['activation_hash'])->toBeString();
+
+    $this->get(route('election.provision'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Provision')
+            ->where('snapshot.configuration.precinct_id', '39010001')
+            ->where('activationEvidence.precinct_id', '39010001')
+            ->where('activationEvidence.contest_count', 6)
+            ->where('configuredPrecinct.clustered_precinct', '39010001')
+            ->where('configuredPrecinct.pop_filename', '2025NLE_POP.xlsx')
+        );
+});
+
 test('certification page can run certification and manual verification', function (): void {
     $this->from(route('election.certification'));
 
