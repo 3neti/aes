@@ -2,12 +2,12 @@
 
 ## Precinct Realism Program
 
-- Status: In progress
+- Status: Simulation implementation complete; hardware and prescribed-form validation pending
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Return, Posting, and Custody
-- Current slice: Appliance Hardening
-- Next slice: 50-Ballot Field Simulation
+- Completed slice: COMELEC Print-Form Redesign
+- Current slice: Field Hardware Pilot preparation
+- Next slice: Printer, scanner, paper-stock, and prescribed-form validation
 - Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
 
 ### Operational Run Isolation
@@ -767,7 +767,7 @@
 
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
-- Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.
+- Calibrate the redesigned ballot, tally, and Election Return on the intended printer, paper stock, camera, and handheld scanner.
 - Exercise backup-appliance recovery with a copied evidence run and documented Election Board custody procedure.
 
 ## Private Voter Journey Slice
@@ -833,3 +833,37 @@ Known gaps exposed for the next slice:
 - The current ballot PDF prints the QR artifact filesystem path but does not embed the QR image.
 - The single-page tally sheet and Election Return truncate the multi-contest candidate set.
 - The generic evidence PDF format needs COMELEC-approved typography, pagination, signature blocks, certification language, and printer calibration.
+
+## COMELEC Print-Form Redesign Slice
+
+Completed:
+
+- Added a deterministic A4 PDF document engine with repeated headers, precinct/document identity, page numbering, source-of-truth notice, multi-page flow, and embedded grayscale PNG support.
+- Added dedicated ballot, tally sheet, and Election Return renderers instead of routing election forms through the generic evidence renderer.
+- The ballot now embeds a 740 by 740 pixel QR at approximately 65 mm, disables PDF image interpolation, records the payload hash, and prints every voter selection in activated contest order.
+- Long contest titles reserve a separate fixed-width selection-limit column and wrap without collision.
+- Tally and Election Return tables now print all activated candidates, including zero totals, and repeat contest/column headers across page breaks.
+- Added paper reconciliation and Electoral Board signature/certification sections.
+- Generic supporting-evidence PDFs now paginate without the former one-page line limit.
+- Preserved existing artifact paths, journal events, hashes, printer adapters, and evidence bundle discovery.
+
+Verification:
+
+- Print-form regression: 5 tests and 234 assertions passed.
+- Focused ballot QR/scanner regression: 3 tests and 19 assertions passed.
+- Directly affected lifecycle, scanner, counting, Return, and full-demo scenario regression: 6 tests and 57 assertions passed.
+- Private voter journey regression: 4 tests and 103 assertions passed.
+- Targeted PHPStan analysis of the touched printing, QR, counting, Return, support, and provider surface passed with zero errors.
+- The repository-wide PHPStan scan still reports 127 existing errors outside this slice.
+- A combined run of the three broader test files was stopped after remaining silent for more than eight minutes; the affected suites and filters above passed separately.
+- Real browser walkthrough passed at `storage/app/election/runs/20260724-163307-733872-39010001-browser-full-election`.
+- Real output: 2 ballot pages, 12 tally pages, and 13 Election Return pages covering 387 candidate rows.
+- Representative first, continuation, and final pages were visually inspected for overlap, clipping, repeated headings, footer separation, and signature space.
+- The 2,901-byte QR decoded from the 144-dpi rendered ballot page and matched the source QR payload exactly.
+- Final evidence archive verification passed across 260 files with zero mismatches.
+
+Known limitations:
+
+- The new forms are COMELEC-oriented simulation evidence, not approved prescribed forms.
+- Physical printer margin, toner, paper, camera-distance, and scanner testing remain part of the field hardware pilot.
+- Form wording, official copy counts, typography, signature requirements, and paper dimensions require COMELEC review.

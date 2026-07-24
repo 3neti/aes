@@ -14,6 +14,7 @@ use App\Election\Devices\SimulatedPrinterHealthCheck;
 use App\Election\Devices\SimulatedScannerHealthCheck;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\CupsBallotPrinter;
+use App\Election\Printing\Documents\OfficialBallotPdf;
 use App\Election\Printing\FileBallotPrinter;
 use App\Election\Scanning\BallotScanner;
 use App\Election\Scanning\CameraImageScanner;
@@ -23,7 +24,6 @@ use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\GhostscriptPdfTextExtractor;
 use App\Election\Support\PdfTextExtractor;
-use App\Election\Support\SimplePdf;
 use App\Election\Voting\PaperBallotLedger;
 use App\Election\Voting\QrCodeDecoder;
 use App\Election\Voting\StandardQrCode;
@@ -52,7 +52,7 @@ class AppServiceProvider extends ServiceProvider
                     new FileBallotPrinter(
                         $app->make(ElectionStorage::class),
                         $app->make(ActivityJournal::class),
-                        $app->make(SimplePdf::class),
+                        $app->make(OfficialBallotPdf::class),
                         $app->make(BallotConfigurationLabels::class),
                         $app->make(PaperBallotLedger::class),
                     ),

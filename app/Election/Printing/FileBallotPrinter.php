@@ -4,8 +4,8 @@ namespace App\Election\Printing;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\BallotConfigurationLabels;
+use App\Election\Printing\Documents\OfficialBallotPdf;
 use App\Election\Support\ElectionStorage;
-use App\Election\Support\SimplePdf;
 use App\Election\Voting\PaperBallotLedger;
 
 final class FileBallotPrinter implements BallotPrinter
@@ -13,7 +13,7 @@ final class FileBallotPrinter implements BallotPrinter
     public function __construct(
         private readonly ElectionStorage $storage,
         private readonly ActivityJournal $journal,
-        private readonly SimplePdf $pdf,
+        private readonly OfficialBallotPdf $pdf,
         private readonly BallotConfigurationLabels $labels,
         private readonly PaperBallotLedger $paperBallots,
     ) {}
@@ -36,16 +36,13 @@ final class FileBallotPrinter implements BallotPrinter
         $contents .= "\nQR Payload:\n{$payload['qr_payload']}\n";
 
         $artifactPath = $this->storage->writeText("ballots/{$ballotId}.txt", $contents);
-        $pdfPath = $this->storage->writeText("ballots/{$ballotId}.pdf", $this->pdf->render('Official Simulation Ballot', [
-            "Election: {$payload['election_id']}",
-            "Precinct: {$payload['precinct_id']}",
-            "Ballot: {$ballotId}",
-            'Paper Ballot Serial: '.($payload['paper_ballot_serial'] ?? 'CERTIFICATION/UNNUMBERED'),
-            "Payload Hash: {$payload['payload_hash']}",
-            "QR Artifact: {$payload['qr_artifact_path']}",
-            'Selections:',
-            ...$this->labels->selectionLines($payload['selections']),
-        ]));
+        $pdfPath = $this->storage->writeText(
+            "ballots/{$ballotId}.pdf",
+            $this->pdf->render(
+                $payload,
+                $this->storage->readJson('runtime/active-precinct.json'),
+            ),
+        );
         $job = [
             'schema_version' => 'print-job-1',
             'ballot_id' => $ballotId,

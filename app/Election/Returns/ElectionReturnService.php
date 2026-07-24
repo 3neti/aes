@@ -5,8 +5,8 @@ namespace App\Election\Returns;
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
+use App\Election\Printing\Documents\ElectionReturnPdf;
 use App\Election\Support\ElectionStorage;
-use App\Election\Support\SimplePdf;
 
 final class ElectionReturnService
 {
@@ -14,7 +14,7 @@ final class ElectionReturnService
         private readonly ElectionStorage $storage,
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
-        private readonly SimplePdf $pdf,
+        private readonly ElectionReturnPdf $pdf,
         private readonly BallotConfigurationLabels $labels,
         private readonly ElectionReturnLegalEvidenceService $legalEvidence,
     ) {}
@@ -40,7 +40,10 @@ final class ElectionReturnService
 
         $this->storage->writeJson("returns/{$return['precinct_id']}-return.json", $return);
         $this->storage->writeText("returns/{$return['precinct_id']}-return.txt", $this->renderText($return));
-        $this->storage->writeText("returns/{$return['precinct_id']}-return.pdf", $this->pdf->render('Election Return', $this->renderPdfLines($return)));
+        $this->storage->writeText(
+            "returns/{$return['precinct_id']}-return.pdf",
+            $this->pdf->render($configuration, $return),
+        );
         $this->journal->record('return.generated', [
             'precinct_id' => $return['precinct_id'],
             'return_hash' => $return['return_hash'],
@@ -67,25 +70,5 @@ final class ElectionReturnService
         }
 
         return $text;
-    }
-
-    /**
-     * @param  array<string, mixed>  $return
-     * @return array<int, string>
-     */
-    private function renderPdfLines(array $return): array
-    {
-        $lines = [
-            "Election: {$return['election_id']}",
-            "Precinct: {$return['precinct_id']}",
-            "Accepted Ballots: {$return['accepted_ballots']}",
-            "Rejected Ballots: {$return['rejected_ballots']}",
-            "Return Hash: {$return['return_hash']}",
-            'Totals:',
-        ];
-
-        array_push($lines, ...$this->labels->tallyLines($return['tally']));
-
-        return $lines;
     }
 }

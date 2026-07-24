@@ -140,6 +140,18 @@ The final `Printed Artifacts for Review` section renders every page of the actua
 
 Use these pages for print-form critique. In particular, review candidate completeness and ordering, contest limits, precinct identity, QR presence and scan quality, line wrapping, margins, font size, page breaks, signature and annotation space, copy/posting suitability, and chain-of-custody fields. The page image links to its full-resolution PNG for close inspection.
 
+The current simulation print forms use deterministic A4 pages:
+
+- The ballot embeds its QR image and prints every selected candidate in activated contest order. Dense operational payloads use a 740 by 740 pixel QR source printed at approximately 65 mm.
+- The tally sheet and Election Return print every candidate, including zero-vote candidates, with repeated contest and column headers after page breaks.
+- The tally ends with paper-ballot reconciliation fields. The Election Return ends with a separate Electoral Board certification and signature page.
+- Every page repeats the document title, section, precinct/document identity, page count, and paper-source-of-truth notice.
+- The forms are clearly marked as simulation evidence. They are COMELEC-oriented review forms, not approved prescribed forms.
+
+For the accepted Tondo rehearsal at `storage/app/election/runs/20260724-163307-733872-39010001-browser-full-election`, the ballot has 2 pages, the tally has 12 pages, and the Election Return has 13 pages for 387 candidate rows. The QR decoded from the rendered ballot page to the same 2,901-byte payload as the source image. The final archive checked 260 files with zero mismatches.
+
+Before field use, print representative pages on the intended printer and paper stock, scan the QR with the intended camera and handheld scanner, confirm margins at actual scale, and obtain COMELEC approval for the prescribed form language, copy counts, signature blocks, and paper dimensions.
+
 The storyboard is generated before the coordinator builds the final TAR so that all three storyboard files and all referenced screenshots are included in the verified archive. For that reason, the storyboard does not claim its own final archive verification. Confirm that separate final fact in `browser-walkthrough-completion.json`.
 
 ## Verify the Final Archive

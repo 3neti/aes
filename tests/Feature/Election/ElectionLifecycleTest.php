@@ -725,6 +725,8 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('Alternative Election System - Simulation Evidence Artifact')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('Paper ballots remain the legal source of truth.')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('/BaseFont /Courier')
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('/Subtype /Image')
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('/BallotQr')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('1. Ada Santos');
 });
 
@@ -997,7 +999,8 @@ test('election return artifact is generated from tally', function (): void {
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Election Return')
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Alternative Election System - Simulation Evidence Artifact')
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Paper ballots remain the legal source of truth.')
-        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('1. Ada Santos: 1');
+        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Ada Santos')
+        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('ELECTORAL BOARD CERTIFICATION');
 });
 
 test('election return legal evidence artifact is generated from return', function (): void {

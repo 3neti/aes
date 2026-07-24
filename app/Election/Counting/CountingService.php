@@ -5,10 +5,11 @@ namespace App\Election\Counting;
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
+use App\Election\Printing\Documents\TallySheetPdf;
 use App\Election\Support\ElectionStorage;
-use App\Election\Support\SimplePdf;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\PaperBallotLedger;
+use RuntimeException;
 
 final class CountingService
 {
@@ -17,7 +18,7 @@ final class CountingService
         private readonly BallotPayloadService $payloads,
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
-        private readonly SimplePdf $pdf,
+        private readonly TallySheetPdf $pdf,
         private readonly BallotConfigurationLabels $labels,
         private readonly PaperBallotLedger $paperBallots,
     ) {}
@@ -131,7 +132,7 @@ final class CountingService
     public function acceptedRecords(): array
     {
         return collect($this->storage->files('counting/accepted'))
-            ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
+            ->map(fn (string $path): array => $this->readRecord($path))
             ->values()
             ->all();
     }
@@ -144,7 +145,7 @@ final class CountingService
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
 
         if (($payload['mapping_hash'] ?? null) !== ($configuration['mapping_hash'] ?? null)) {
-            throw new \RuntimeException('Mapping hash mismatch.');
+            throw new RuntimeException('Mapping hash mismatch.');
         }
 
         if (($payload['payload_hash'] ?? null) !== $this->json->hash(array_diff_key($payload, [
@@ -152,18 +153,18 @@ final class CountingService
             'qr_artifact_path' => true,
             'payload_hash' => true,
         ]))) {
-            throw new \RuntimeException('Payload hash mismatch.');
+            throw new RuntimeException('Payload hash mismatch.');
         }
 
         if (file_exists($this->storage->path("runtime/spoiled-{$payload['payload_hash']}.json"))) {
-            throw new \RuntimeException('Ballot is spoiled.');
+            throw new RuntimeException('Ballot is spoiled.');
         }
 
         foreach ($this->storage->files('counting/accepted') as $path) {
-            $record = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+            $record = $this->readRecord($path);
 
             if (($record['payload_hash'] ?? null) === $payload['payload_hash']) {
-                throw new \RuntimeException('Duplicate ballot payload.');
+                throw new RuntimeException('Duplicate ballot payload.');
             }
         }
     }
@@ -188,6 +189,23 @@ final class CountingService
         array_push($lines, ...$this->labels->tallyLines($tally['tally'] ?? []));
 
         $this->storage->writeText('runtime/tally-sheet.txt', implode(PHP_EOL, $lines).PHP_EOL);
-        $this->storage->writeText('runtime/tally-sheet.pdf', $this->pdf->render('Tally Sheet', $lines));
+        $this->storage->writeText(
+            'runtime/tally-sheet.pdf',
+            $this->pdf->render($configuration, $tally),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readRecord(string $path): array
+    {
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            throw new RuntimeException("Unable to read counting record [{$path}].");
+        }
+
+        return json_decode($contents, true, flags: JSON_THROW_ON_ERROR);
     }
 }

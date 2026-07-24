@@ -10,6 +10,8 @@ use RuntimeException;
 
 final class StandardQrCode
 {
+    private const OutputSize = 740;
+
     public function __construct(
         private readonly QrCodeDecoder $decoder,
     ) {}
@@ -17,7 +19,7 @@ final class StandardQrCode
     public function renderPng(string $payload): string
     {
         $renderer = new ImageRenderer(
-            new RendererStyle(360, 4),
+            new RendererStyle(self::OutputSize, 4),
             new ImagickImageBackEnd('png'),
         );
 

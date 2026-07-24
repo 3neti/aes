@@ -6,7 +6,7 @@ Evolve the deterministic simulation into a credible offline precinct appliance w
 
 ## Current Position
 
-The precinct realism program is complete for simulation mode. The browser and scenario lifecycle use the configured Tondo POP + CLC package, preserve isolated election-day and rehearsal evidence, account for serialized paper ballots, require dual-control approvals, inspect evidence-chain integrity after restart, and pass a persisted 50-ballot rehearsal with full automated verification.
+The precinct realism program is complete for simulation mode. The browser and scenario lifecycle use the configured Tondo POP + CLC package, preserve isolated election-day and rehearsal evidence, account for serialized paper ballots, require dual-control approvals, inspect evidence-chain integrity after restart, and pass a persisted 50-ballot rehearsal with full automated verification. Generated ballots, tally sheets, and Election Returns now use deterministic A4 COMELEC-oriented layouts with complete candidate listings, repeated pagination controls, and a scannable embedded ballot QR.
 
 ## Slice Status
 
@@ -20,6 +20,7 @@ The precinct realism program is complete for simulation mode. The browser and sc
 | Paper ballot lifecycle             | Complete | Serialized stock events link issuance, printing, spoilage, and accepted counting to paper disposition.                                                     |
 | Private voter journey              | Complete | Anonymous one-use admission, client-side ballot review, encrypted print release, private printing, sealed deposit, and post-close disclosure are enforced. |
 | Printed artifact review            | Complete | The storyboard renders actual generated PDF pages with source paths and hashes for independent COMELEC print-form critique.                                |
+| COMELEC print-form redesign        | Complete | A4 ballot, tally, and Return forms paginate all 387 candidates, reserve officer certification areas, and embed a page-capture-decodable ballot QR.         |
 | Public counting and adjudication   | Complete | Physical box count, accepted records, and every rejected-scan disposition must reconcile before completion.                                                |
 | Return, posting, and custody       | Complete | Dual approval gates handoff; delivery and custody require the same posted return evidence chain.                                                           |
 | Appliance hardening                | Complete | Restart inspection preserves the ceremony, verifies evidence chains, blocks tampered runs, and reports degraded devices.                                   |
@@ -43,7 +44,7 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-COMELEC Print-Form Redesign, followed by the Field Hardware Pilot.
+Field Hardware Pilot with the intended printer, scanner, paper stock, and prescribed-form review.
 
 ## Private Voter Journey
 
@@ -70,4 +71,17 @@ COMELEC Print-Form Redesign, followed by the Field Hardware Pilot.
 - Each review page records the original PDF path, page count, byte count, source PDF SHA-256, rendered page SHA-256, and a document-specific COMELEC review checklist.
 - Persisted print-review rehearsal: `storage/app/election/runs/20260724-113305-224964-39010001-browser-full-election`.
 - Print-review result: 72 storyboard checkpoints, 8 rendered documents/pages, zero browser messages, and a 236-file final archive verified with zero mismatches.
-- Visual review confirmed that the storyboard layout is readable and unclipped. It also made the current form limitations explicit: the ballot references a QR image path instead of embedding the QR, while the one-page tally and Election Return do not contain the complete multi-contest candidate set.
+- The initial print review exposed missing QR embedding and truncated result forms; the COMELEC print-form redesign below closes those simulation defects.
+
+## COMELEC Print-Form Redesign
+
+- Added a deterministic A4 PDF document engine with repeated COMELEC-oriented headers, page numbers, precinct/document identity, legal-source notice, crisp embedded PNG support, and lossless multi-page output.
+- Replaced generic ballot output with a voter-verifiable selection form containing election and paper-stock identity, complete selected-candidate names, an embedded QR, payload hash, spoilage guidance, and voter verification instructions.
+- Increased the standard QR source to 740 by 740 pixels and prints the ballot QR at approximately 65 mm with interpolation disabled.
+- Replaced truncated tally and Election Return output with complete contest tables in activated ballot order, including every zero-vote candidate, repeated table headers, contest limits, hashes, reconciliation, certification, and Electoral Board signature areas.
+- Supporting evidence PDFs now paginate all supplied lines instead of dropping content after one page.
+- Persisted acceptance rehearsal: `storage/app/election/runs/20260724-163307-733872-39010001-browser-full-election`.
+- Real Tondo output contains a two-page ballot, 12-page tally sheet, and 13-page Election Return covering all 387 candidates.
+- The 2,901-byte QR payload decoded from the 144-dpi rendered ballot page and matched the source payload exactly.
+- The final evidence archive verified 260 files with zero mismatches.
+- These remain simulation forms pending COMELEC approval of prescribed wording, copy distribution, typography, paper size, and signature requirements.
