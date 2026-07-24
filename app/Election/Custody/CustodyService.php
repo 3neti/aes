@@ -110,13 +110,12 @@ final class CustodyService
                     'required' => true,
                 ],
             ],
-            'seals' => [
-                [
-                    'seal_number' => $this->nextSealNumber($precinct),
+            'seals' => collect($this->storage->readJson('runtime/precinct-setup.json')['inventory']['seal_numbers'] ?? [$this->nextSealNumber($precinct)])
+                ->map(fn (string $seal): array => [
+                    'seal_number' => $seal,
                     'applied_by' => 'Simulation Officer',
                     'applied_at' => $this->clock->now()->toIso8601String(),
-                ],
-            ],
+                ])->values()->all(),
             'recipients' => [
                 [
                     'type' => 'election-board',

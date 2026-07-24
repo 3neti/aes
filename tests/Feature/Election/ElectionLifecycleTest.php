@@ -141,7 +141,8 @@ test('lifecycle includes transmission, final backup, and custody stages', functi
 });
 
 test('returns close action advances lifecycle to transmission ceremony', function (): void {
-    app(LifecycleState::class)->set(Lifecycle::ElectionReturn);
+    $this->artisan('election:scenario election-return-copy-distribution')
+        ->assertSuccessful();
 
     $this->post(route('election.returns.close'))
         ->assertRedirect(route('election.transmission'));

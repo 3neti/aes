@@ -1164,7 +1164,15 @@ test('returns page can prepare copy distribution and show posting summary', func
         ->post(route('election.returns.copy-distribution'))
         ->assertRedirect(route('election.returns'));
 
+    $this->post(route('election.returns.approve'), [
+        'chairperson_code' => 'SIM-OFFICER-001',
+        'chairperson_pin' => '123456',
+        'poll_clerk_code' => 'SIM-OFFICER-002',
+        'poll_clerk_pin' => '123456',
+    ])->assertRedirect(route('election.returns'));
+
     $distribution = app(ElectionStorage::class)->readJson('returns/39010001-copy-distribution.json');
+    $approval = app(ElectionStorage::class)->readJson('returns/election-return-approval.json');
 
     $this->get(route('election.returns'))
         ->assertSuccessful()
@@ -1175,7 +1183,20 @@ test('returns page can prepare copy distribution and show posting summary', func
             ->where('returnCopyDistribution.copy_count', 3)
             ->where('returnCopyDistribution.required_copy_count', 2)
             ->where('returnCopyDistribution.posting.status', 'completed')
+            ->where('returnApproval.passed', true)
+            ->where('returnApproval.return_hash', $approval['return_hash'])
+            ->where('returnApproval.distribution_hash', $distribution['distribution_hash'])
         );
+});
+
+test('official handoff is blocked until dual-control return approval exists', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(LifecycleState::class)->set(Lifecycle::ElectionReturn);
+
+    $this->post(route('election.returns.close'))
+        ->assertSessionHasErrors('approval');
+
+    expect(app(LifecycleState::class)->current())->toBe(Lifecycle::ElectionReturn);
 });
 
 test('transmission page can prepare and expose delivery package', function (): void {
@@ -1237,7 +1258,7 @@ test('transmission page can prepare and expose delivery package', function (): v
             ->where('deliveryPackage.exists', true)
             ->where('deliveryPackage.package_id', $package['package_id'])
             ->where('deliveryPackage.package_hash', $package['delivery_package_hash'])
-            ->where('deliveryPackage.artifact_count', 6)
+            ->where('deliveryPackage.artifact_count', 7)
             ->where('deliveryPackage.required_artifacts_present', true)
             ->where('transmission.transmission_id', $transmission['transmission_id'])
             ->where('custody.custody_id', $custody['custody_id'] ?? null)

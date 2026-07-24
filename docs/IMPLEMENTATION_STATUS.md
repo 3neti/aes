@@ -5,9 +5,9 @@
 - Status: In progress
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Public Counting and Adjudication
-- Current slice: Return, Posting, and Custody
-- Next slice: Appliance Hardening
+- Completed slice: Return, Posting, and Custody
+- Current slice: Appliance Hardening
+- Next slice: 50-Ballot Field Simulation
 - Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
 
 ### Operational Run Isolation
@@ -99,6 +99,19 @@
 - The deterministic legal counting scenario now records two physical ballots and adjudicates its spoiled ballot before completion.
 - Reconciliation gate and scenario tests: 2 passed, 11 assertions.
 - Counting feedback and legal-evidence regressions: 3 passed, 58 assertions.
+- Production frontend build: passed.
+
+### Return, Posting, and Custody
+
+- Election Return generation through the operator controller now requires a passed physical ballot reconciliation.
+- Added dual-control Election Return approval by the Chairperson and a distinct Poll Clerk.
+- Approval binds the run ID, return hash, legal evidence hash, posting distribution hash, count-match result, and both officer identities.
+- Official handoff remains blocked until approval passes.
+- Delivery packages now require the return approval artifact and include seven tracked artifacts.
+- Deterministic return, delivery, receipt, backup, and custody scenarios create approval before entering handoff.
+- Custody records use the seal numbers inventoried during precinct setup instead of inventing unrelated seals.
+- Return approval, handoff block, and delivery tests: 3 passed, 83 assertions.
+- Delivery package and custody scenario regressions: 2 passed, 38 assertions.
 - Production frontend build: passed.
 
 ## Current Implementation

@@ -33,6 +33,7 @@ use App\Election\Preparation\PrecinctSetupService;
 use App\Election\Preparation\SupplyVerificationBaselineService;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\SpoilBallot;
+use App\Election\Returns\ElectionReturnApprovalService;
 use App\Election\Returns\ElectionReturnCopyDistributionService;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionClock;
@@ -90,6 +91,7 @@ final class ScenarioRunner
         private readonly SpecialPollingIntakeService $specialPollingIntake,
         private readonly PrecinctSetupService $precinctSetup,
         private readonly CountingReconciliationService $countingReconciliation,
+        private readonly ElectionReturnApprovalService $returnApproval,
     ) {}
 
     /**
@@ -674,6 +676,7 @@ final class ScenarioRunner
         $this->ceremonies->moveToReturns();
         $return = $this->returns->generate($tally);
         $copyDistribution = $this->returnCopyDistribution->prepare($return);
+        $this->approveElectionReturn();
 
         return [
             'scenario' => 'election-return-copy-distribution',
@@ -728,6 +731,7 @@ final class ScenarioRunner
         $this->ceremonies->moveToReturns();
         $return = $this->returns->generate($tally);
         $copyDistribution = $this->returnCopyDistribution->prepare($return);
+        $this->approveElectionReturn();
         $this->ceremonies->moveToTransmission();
         $transmission = $this->transmission->run();
         $this->ceremonies->completeTransmission();
@@ -792,6 +796,7 @@ final class ScenarioRunner
         $this->ceremonies->moveToReturns();
         $return = $this->returns->generate($tally);
         $this->returnCopyDistribution->prepare($return);
+        $this->approveElectionReturn();
         $this->ceremonies->moveToTransmission();
         $transmission = $this->transmission->run();
         $package = $this->deliveryPackage->prepare($transmission);
@@ -870,6 +875,7 @@ final class ScenarioRunner
         $this->ceremonies->moveToReturns();
         $return = $this->returns->generate($tally);
         $this->returnCopyDistribution->prepare($return);
+        $this->approveElectionReturn();
 
         $this->ceremonies->moveToTransmission();
         $transmission = $this->transmission->run();
@@ -958,6 +964,7 @@ final class ScenarioRunner
         $this->ceremonies->moveToReturns();
         $return = $this->returns->generate($tally);
         $this->returnCopyDistribution->prepare($return);
+        $this->approveElectionReturn();
 
         $this->ceremonies->moveToTransmission();
         $transmission = $this->transmission->run();
@@ -1058,6 +1065,7 @@ final class ScenarioRunner
         $this->ceremonies->moveToReturns();
         $return = $this->returns->generate($tally);
         $this->returnCopyDistribution->prepare($return);
+        $this->approveElectionReturn();
 
         $this->ceremonies->moveToTransmission();
         $transmission = $this->transmission->run();
@@ -1342,6 +1350,16 @@ final class ScenarioRunner
             'open-polls-initialization-report', 'voting-legal-edge-cases', 'special-polling-intake', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'delivery-receipt', 'manual-handoff', 'final-backup', 'custody-turnover', 'audit-reconciliation-baseline' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
+    }
+
+    private function approveElectionReturn(): void
+    {
+        $this->returnApproval->approve(
+            'SIM-OFFICER-001',
+            '123456',
+            'SIM-OFFICER-002',
+            '123456',
+        );
     }
 
     /**

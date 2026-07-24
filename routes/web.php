@@ -52,6 +52,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/returns', [ReturnsController::class, 'show'])->name('returns');
     Route::post('/returns/generate', [ReturnsController::class, 'generate'])->name('returns.generate');
     Route::post('/returns/copy-distribution', [ReturnsController::class, 'copyDistribution'])->name('returns.copy-distribution');
+    Route::post('/returns/approve', [ReturnsController::class, 'approve'])->name('returns.approve');
     Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
     Route::get('/transmission', [TransmissionController::class, 'show'])->name('transmission');
     Route::post('/transmission/package', [TransmissionController::class, 'preparePackage'])->name('transmission.prepare');

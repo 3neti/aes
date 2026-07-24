@@ -138,6 +138,12 @@ final class DeliveryPackageService
                 'required' => true,
             ],
             [
+                'type' => 'election_return_approval',
+                'path' => 'returns/election-return-approval.json',
+                'label' => 'Dual-control Election Return Approval',
+                'required' => true,
+            ],
+            [
                 'type' => 'transmission_report',
                 'path' => 'transmission/transmission-report.json',
                 'label' => 'Transmission Report',
