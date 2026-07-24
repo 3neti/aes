@@ -12,8 +12,8 @@ The browser lifecycle reaches Audit and Reconciliation and produces a verified e
 
 | Slice | Status | Exit Gate |
 | --- | --- | --- |
-| Realism plan and compass | In progress | Plan, compass, main compass, and status agree. |
-| Operational run isolation | Pending | Tests and rehearsals cannot alter election-day evidence or pointers. |
+| Realism plan and compass | Complete | Plan, compass, main compass, and status agree. |
+| Operational run isolation | Complete | Tests use isolated storage; rehearsals cannot alter election-day evidence or pointers. |
 | Real precinct activation | Pending | Browser activates configured Tondo POP + CLC ballot. |
 | Strict package certification | Pending | Any provenance mismatch fails closed. |
 | Electoral Board and inventory | Pending | Required officers, signatures, devices, seals, and supplies are complete. |
@@ -41,5 +41,4 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Operational Run Isolation.
-
+Real Precinct Activation.

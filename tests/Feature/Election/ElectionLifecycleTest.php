@@ -17,6 +17,7 @@ use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
 use App\Election\Diagnostics\RemovableMediaExporter;
 use App\Election\Diagnostics\RemovableMediaExportVerifier;
 use App\Election\Lifecycle\CeremonyActions;
+use App\Election\Lifecycle\ElectionRunType;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
@@ -36,6 +37,60 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
     app(ElectionStorage::class)->reset();
+});
+
+test('automated tests use storage isolated from operational election evidence', function (): void {
+    $storage = app(ElectionStorage::class);
+
+    expect($storage->root())->toEndWith('/storage/app/election-testing')
+        ->and(storage_path('app/election/runs/20260724-004938-0421-a-operator'))->toBeDirectory();
+});
+
+test('rehearsal runs cannot replace the election day pointer', function (): void {
+    $storage = app(ElectionStorage::class);
+    $storage->selectRunType(ElectionRunType::ElectionDay);
+    $electionDay = $storage->startRun(
+        'operator',
+        '39010001',
+        '20260511-050000',
+        ElectionRunType::ElectionDay,
+    );
+
+    $storage->selectRunType(ElectionRunType::Rehearsal);
+    $rehearsal = $storage->startRun(
+        'full-demo',
+        '39010001',
+        '20260508-080000',
+        ElectionRunType::Rehearsal,
+        'scenario-runner',
+    );
+
+    expect(trim(file_get_contents($storage->root().'/LATEST_RUN.txt')))->toBe($electionDay['run_path'])
+        ->and($storage->currentRun(ElectionRunType::ElectionDay)['run_id'])->toBe($electionDay['run_id'])
+        ->and($storage->currentRun(ElectionRunType::Rehearsal)['run_id'])->toBe($rehearsal['run_id']);
+});
+
+test('locked runs cannot be reset or replaced', function (): void {
+    $storage = app(ElectionStorage::class);
+    $storage->selectRunType(ElectionRunType::ElectionDay);
+    $run = $storage->startRun(
+        'operator',
+        '39010001',
+        '20260511-050000',
+        ElectionRunType::ElectionDay,
+    );
+    $locked = $storage->lockActiveRun();
+
+    expect($locked['status'])->toBe('locked')
+        ->and($locked['run_type'])->toBe(ElectionRunType::ElectionDay->value)
+        ->and($run['run_path'].'/run-context.json')->toBeFile();
+
+    expect(fn () => $storage->startRun(
+        'operator',
+        '39010001',
+        '20260511-050000',
+        ElectionRunType::ElectionDay,
+    ))->toThrow(RuntimeException::class);
 });
 
 test('lifecycle transitions reject invalid jumps', function (): void {
@@ -535,7 +590,7 @@ test('officer attestation writes artifact and journal event', function (): void 
         ->and($record['attestation_hash'])->toBeString()
         ->and($record['officer_code_hash'])->toBe(hash('sha256', 'SIM-OFFICER-001'))
         ->and($record['officer_name'])->toBe('Simulation Officer')
-        ->and($record['officer_role'])->toBe('Precinct Chair')
+        ->and($record['officer_role'])->toBe('Election Board Chairperson')
         ->and($record['signature_artifact_hash'])->toBe(hash('sha256', lifecycleTestSignaturePng()))
         ->and(file_exists($record['artifact_path']))->toBeTrue()
         ->and(file_exists($record['signature_artifact_path']))->toBeTrue()
@@ -1392,7 +1447,8 @@ test('scenario command writes run first report folders', function (): void {
         ->and($fullDemoRun['run_path'].'/README.txt')->toBeReadableFile()
         ->and($fullDemoRun['run_path'].'/run-summary.txt')->toBeReadableFile()
         ->and($fullDemoRun['run_path'].'/artifact-index.json')->toBeReadableFile()
-        ->and(storage_path('app/election/LATEST_RUN.txt'))->toBeReadableFile()
+        ->and($storage->root().'/pointers/rehearsal.json')->toBeReadableFile()
+        ->and($storage->root().'/LATEST_RUN.txt')->not->toBeFile()
         ->and(storage_path('app/election-scenario-reports'))->not->toBeDirectory()
         ->and(storage_path('app/election-scenario-artifacts'))->not->toBeDirectory()
         ->and($storage->readJson('scenarios/full-demo-report.json')['passed'])->toBeTrue();

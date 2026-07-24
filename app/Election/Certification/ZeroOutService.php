@@ -45,6 +45,7 @@ final class ZeroOutService
             'run_id' => $runId,
             'precinct_id' => $precinct,
             'generated_at' => $this->clock->now()->toIso8601String(),
+            'certification_report_hash' => $certificationReport['report_hash'] ?? null,
             'counts_before' => $countsBefore,
             'counts_after' => $countsAfter,
             'cleared_artifacts' => $clearedArtifacts,
@@ -88,8 +89,9 @@ final class ZeroOutService
             ],
         ];
 
+        $report['artifact_path'] = $this->storage->path('certification/zero-out-report.json');
         $report['report_hash'] = $this->json->hash($this->reportForHash($report));
-        $report['artifact_path'] = $this->storage->writeJson('certification/zero-out-report.json', $report);
+        $this->storage->writeJson('certification/zero-out-report.json', $report);
 
         $this->journal->record('certification.zero_out', [
             'run_id' => $runId,

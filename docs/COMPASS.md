@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Browser Lifecycle Completion and Evidence Verification
+- Completed Slice: Operational Run Isolation
 - Active Program: Precinct Realism
-- Current Slice: Realism Plan and Compass
-- Next Slice: Operational Run Isolation
+- Current Slice: Real Precinct Activation
+- Next Slice: Strict Package Certification
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

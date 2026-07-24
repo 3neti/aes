@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'storage' => [
+        'directory' => env('ELECTION_STORAGE_DIRECTORY', 'election'),
+    ],
+    'runtime' => [
+        'run_type' => env('ELECTION_RUN_TYPE'),
+    ],
     'sample' => [
         'election_id' => 'AES-2026-SAMPLE',
         'precinct_id' => '0421-A',

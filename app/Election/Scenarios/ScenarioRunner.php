@@ -19,6 +19,7 @@ use App\Election\Custody\CustodyService;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\EvidenceReferenceBaselineService;
 use App\Election\Lifecycle\CeremonyActions;
+use App\Election\Lifecycle\ElectionRunType;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Minutes\OfficialMinutesBaselineService;
@@ -90,9 +91,16 @@ final class ScenarioRunner
      */
     public function run(string $name): array
     {
-        $this->storage->reset();
+        $this->storage->selectRunType(ElectionRunType::Rehearsal);
+        $this->storage->reset(ElectionRunType::Rehearsal);
         $this->clock->freeze('2026-05-08 08:00:00');
-        $this->storage->startRun($name, $this->scenarioPrecinct($name), $this->clock->now()->format('Ymd-His'));
+        $this->storage->startRun(
+            $name,
+            $this->scenarioPrecinct($name),
+            $this->clock->now()->format('Ymd-His'),
+            ElectionRunType::Rehearsal,
+            'scenario-runner',
+        );
 
         $report = match ($name) {
             'friday-certification' => $this->fridayCertification(),
@@ -454,7 +462,8 @@ final class ScenarioRunner
 
         return [
             'scenario' => 'fts-manual-verification-discrepancy',
-            'passed' => (bool) ($discrepancy['passed'] ?? false),
+            'passed' => (bool) ($discrepancy['discrepancy_detected'] ?? false)
+                && ! (bool) ($discrepancy['passed'] ?? true),
             'run_id' => $discrepancy['run_id'] ?? null,
             'precinct_id' => $discrepancy['precinct_id'] ?? $activation['configuration']['precinct_id'] ?? null,
             'device_report_hash' => $devices['report_hash'] ?? null,
@@ -476,6 +485,7 @@ final class ScenarioRunner
         $activation = $this->activateConfiguredPrecinctBallot();
         $this->clock->tick();
         $devices = $this->devices->run();
+        $this->initializationReport->write();
         $certification = $this->certification->run();
 
         $manualVerification = $this->manualVerification->run([

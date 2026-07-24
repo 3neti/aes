@@ -65,8 +65,9 @@ final class SealingService
             'initialization_report_hash' => $initializationReport['report_hash'] ?? null,
         ];
 
+        $report['artifact_path'] = $this->storage->path('certification/sealing-report.json');
         $report['report_hash'] = $this->json->hash($this->reportForHash($report));
-        $report['artifact_path'] = $this->storage->writeJson('certification/sealing-report.json', $report);
+        $this->storage->writeJson('certification/sealing-report.json', $report);
 
         $this->journal->record('certification.sealed', [
             'run_id' => $runId,

@@ -71,8 +71,9 @@ final class DiscrepancyReportService
             ];
         }
 
+        $report['artifact_path'] = $this->storage->path('certification/fts-discrepancy-report.json');
         $report['report_hash'] = $this->json->hash($this->reportForHash($report));
-        $report['artifact_path'] = $this->storage->writeJson('certification/fts-discrepancy-report.json', $report);
+        $this->storage->writeJson('certification/fts-discrepancy-report.json', $report);
 
         $this->journal->record('certification.discrepancy_evaluated', [
             'run_id' => $runId,

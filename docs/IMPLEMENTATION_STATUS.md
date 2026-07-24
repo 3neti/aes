@@ -2,12 +2,27 @@
 
 ## Precinct Realism Program
 
-- Status: Started
+- Status: In progress
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Current slice: Plan and compass
-- Next slice: Operational Run Isolation
+- Completed slice: Operational Run Isolation
+- Current slice: Real Precinct Activation
+- Next slice: Strict Package Certification
 - Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
+
+### Operational Run Isolation
+
+- Added explicit run types for rehearsals, certification, election day, audit, and automated tests.
+- Added typed run pointers while retaining `current-run.json` as the election-day compatibility pointer.
+- Restricted `LATEST_RUN.txt` updates to election-day runs.
+- Added immutable `run-context.json` evidence with run type, status, and creation source.
+- Added run locking that prevents replacement of an existing locked run ID.
+- Moved Pest and Pest Browser evidence to `storage/app/election-testing` so tests cannot erase operational evidence.
+- Changed the Artisan scenario runner to create rehearsal runs without replacing the operator run.
+- Preserved operational browser evidence at `storage/app/election/runs/20260724-004938-0421-a-operator`.
+- Focused isolation tests: 3 passed, 9 assertions.
+- Scenario and run-folder compatibility tests: 4 passed, 70 assertions.
+- Full lifecycle regression: 66 of 69 initially passed; the three exposed stale fixtures were corrected and all four affected focused tests now pass.
 
 ## Current Implementation
 

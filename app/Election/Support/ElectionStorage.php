@@ -3,7 +3,9 @@
 namespace App\Election\Support;
 
 use App\Election\Core\CanonicalJson;
+use App\Election\Lifecycle\ElectionRunType;
 use Illuminate\Filesystem\Filesystem;
+use RuntimeException;
 
 final class ElectionStorage
 {
@@ -34,7 +36,9 @@ final class ElectionStorage
 
     public function root(): string
     {
-        return storage_path('app/election');
+        $directory = trim((string) config('election.storage.directory', 'election'), '/');
+
+        return storage_path('app/'.$directory);
     }
 
     public function scenarioReportsRoot(): string
@@ -83,35 +87,54 @@ final class ElectionStorage
         }
     }
 
-    public function reset(): void
+    public function reset(?ElectionRunType $runType = null): void
     {
-        if ($this->files->exists($this->root())) {
+        if ($this->isIsolatedTestStorage() && $this->files->exists($this->root())) {
             $this->files->deleteDirectory($this->root());
+
+            $this->ensureDirectories();
+
+            return;
         }
 
-        foreach ([
-            storage_path('app/election-scenario-reports'),
-            storage_path('app/election-scenario-artifacts'),
-        ] as $legacyRoot) {
-            if ($this->files->exists($legacyRoot)) {
-                $this->files->deleteDirectory($legacyRoot);
-            }
+        $runType ??= $this->selectedRunType();
+        $context = $this->currentRun($runType);
+
+        if ($context !== [] && ($context['status'] ?? 'open') === 'locked') {
+            throw new RuntimeException("Locked {$runType->value} run [{$context['run_id']}] cannot be reset.");
         }
 
+        if (isset($context['run_path']) && $this->files->isDirectory((string) $context['run_path'])) {
+            $this->files->deleteDirectory((string) $context['run_path']);
+        }
+
+        $this->files->delete($this->runPointerPath($runType));
         $this->ensureDirectories();
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function startRun(string $scenario, string $precinctId, string $timestamp): array
-    {
+    public function startRun(
+        string $scenario,
+        string $precinctId,
+        string $timestamp,
+        ?ElectionRunType $runType = null,
+        string $creationSource = 'operator',
+    ): array {
         $this->ensureDirectories();
+        $runType ??= $this->selectedRunType();
 
         $runId = $this->runId($timestamp, $precinctId, $scenario);
         $runPath = $this->root().'/runs/'.$runId;
 
         if ($this->files->isDirectory($runPath)) {
+            $existingContext = $this->readAbsoluteJson($runPath.'/run-context.json');
+
+            if (($existingContext['status'] ?? null) === 'locked') {
+                throw new RuntimeException("Locked run [{$runId}] cannot be replaced.");
+            }
+
             $this->files->deleteDirectory($runPath);
         }
 
@@ -120,8 +143,11 @@ final class ElectionStorage
         }
 
         $context = [
-            'schema_version' => 'election-run-context-1',
+            'schema_version' => 'election-run-context-2',
             'run_id' => $runId,
+            'run_type' => $runType->value,
+            'status' => 'open',
+            'creation_source' => $creationSource,
             'scenario' => $scenario,
             'precinct_id' => $precinctId,
             'started_at' => $timestamp,
@@ -132,6 +158,7 @@ final class ElectionStorage
             'artifact_index_path' => $runPath.'/artifact-index.json',
         ];
 
+        $this->files->put($runPath.'/run-context.json', $this->json->encode($context));
         $this->files->put($runPath.'/README.txt', $this->runReadme($context));
         $this->files->put($runPath.'/README.md', $this->runReadmeMarkdown($context));
         foreach (self::CeremonyDirectories as $key => $directory) {
@@ -140,8 +167,13 @@ final class ElectionStorage
 
         $this->files->put($runPath.'/'.self::CeremonyDirectories['start'].'/README.txt', $this->startHereReadme($context));
         $this->files->put($runPath.'/'.self::CeremonyDirectories['start'].'/README.md', $this->startHereReadmeMarkdown($context));
-        $this->files->put($this->root().'/LATEST_RUN.txt', $runPath.PHP_EOL);
-        $this->files->put($this->root().'/current-run.json', $this->json->encode($context));
+        $this->files->ensureDirectoryExists($this->root().'/pointers');
+        $this->files->put($this->runPointerPath($runType), $this->json->encode($context));
+
+        if ($runType === ElectionRunType::ElectionDay) {
+            $this->files->put($this->root().'/LATEST_RUN.txt', $runPath.PHP_EOL);
+            $this->files->put($this->root().'/current-run.json', $this->json->encode($context));
+        }
 
         return $context;
     }
@@ -149,9 +181,14 @@ final class ElectionStorage
     /**
      * @return array<string, mixed>
      */
-    public function currentRun(): array
+    public function currentRun(?ElectionRunType $runType = null): array
     {
-        $path = $this->root().'/current-run.json';
+        $runType ??= $this->selectedRunType();
+        $path = $this->runPointerPath($runType);
+
+        if (! $this->files->exists($path) && $runType === ElectionRunType::ElectionDay) {
+            $path = $this->root().'/current-run.json';
+        }
 
         if (! $this->files->exists($path)) {
             return [];
@@ -165,10 +202,44 @@ final class ElectionStorage
         $context = $this->currentRun();
 
         if ($context === []) {
-            $context = $this->startRun('manual-run', 'unknown-precinct', now()->format('Ymd-His'));
+            $context = $this->startRun(
+                'manual-run',
+                'unknown-precinct',
+                now()->format('Ymd-His'),
+                creationSource: app()->runningUnitTests() ? 'automated-test' : 'operator',
+            );
         }
 
         return (string) $context['run_path'];
+    }
+
+    public function selectRunType(ElectionRunType $runType): void
+    {
+        config()->set('election.runtime.run_type', $runType->value);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function lockActiveRun(): array
+    {
+        $runType = $this->selectedRunType();
+        $context = $this->currentRun($runType);
+
+        if ($context === []) {
+            throw new RuntimeException('There is no active run to lock.');
+        }
+
+        $context['status'] = 'locked';
+        $context['locked_at'] = now()->toIso8601String();
+        $this->files->put((string) $context['run_path'].'/run-context.json', $this->json->encode($context));
+        $this->files->put($this->runPointerPath($runType), $this->json->encode($context));
+
+        if ($runType === ElectionRunType::ElectionDay) {
+            $this->files->put($this->root().'/current-run.json', $this->json->encode($context));
+        }
+
+        return $context;
     }
 
     public function runPath(string $relative = ''): string
@@ -364,6 +435,41 @@ final class ElectionStorage
         return 'runs/'.basename($this->activeRunPath()).'/'.$this->runRelativePath($relative);
     }
 
+    private function selectedRunType(): ElectionRunType
+    {
+        $configured = config('election.runtime.run_type');
+
+        if (is_string($configured) && $configured !== '') {
+            return ElectionRunType::from($configured);
+        }
+
+        return app()->runningUnitTests()
+            ? ElectionRunType::AutomatedTest
+            : ElectionRunType::ElectionDay;
+    }
+
+    private function runPointerPath(ElectionRunType $runType): string
+    {
+        return $this->root().'/pointers/'.$runType->value.'.json';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readAbsoluteJson(string $path): array
+    {
+        if (! $this->files->exists($path)) {
+            return [];
+        }
+
+        return json_decode($this->files->get($path), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    private function isIsolatedTestStorage(): bool
+    {
+        return basename($this->root()) === 'election-testing';
+    }
+
     /**
      * @return array<string, string>
      */
@@ -467,9 +573,10 @@ final class ElectionStorage
         return implode(PHP_EOL, [
             'Alternative Election System Evidence Storage',
             '',
-            'Open LATEST_RUN.txt to find the newest run folder.',
+            'Open LATEST_RUN.txt to find the active election-day run folder.',
             'Each run folder contains numbered ceremony folders so files sort in election-flow order.',
             'source-data contains imported POP/CLC source registries used by runs.',
+            'Rehearsal, certification, audit, and automated-test pointers are kept separately.',
             '',
         ]);
     }
@@ -479,13 +586,14 @@ final class ElectionStorage
         return implode(PHP_EOL, [
             '# Alternative Election System Evidence Storage',
             '',
-            'Open `LATEST_RUN.txt` to find the newest run folder.',
+            'Open `LATEST_RUN.txt` to find the active election-day run folder.',
             '',
             'Each run folder is organized in numbered ceremony order so election workers can browse the evidence bundle as a legal sequence. Source imports used by the runs live under `source-data` and are separated from run evidence.',
             '',
             'Typical folders:',
             '',
             '- `runs/`: generated lifecycle scenario and operator evidence bundles.',
+            '- `pointers/`: separate active pointers for election-day, rehearsal, certification, audit, and automated-test runs.',
             '- `source-data/pop/`: imported Project of Precincts source copies and registries.',
             '- `source-data/clc/`: imported Certified List of Candidates source copies and registries.',
             '- `source-data/imported-packages/`: package skeletons created from imported precinct records.',
@@ -519,6 +627,8 @@ final class ElectionStorage
             '# Alternative Election System Run Folder',
             '',
             '- Run ID: `'.$context['run_id'].'`',
+            '- Run type: `'.($context['run_type'] ?? 'legacy-election-day').'`',
+            '- Status: `'.($context['status'] ?? 'open').'`',
             '- Precinct: `'.$context['precinct_id'].'`',
             '- Scenario: `'.$context['scenario'].'`',
             '',
