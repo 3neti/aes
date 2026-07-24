@@ -495,7 +495,7 @@ final class DiagnosticsService
         }
 
         return collect($this->files->allFiles($root))
-            ->reject(fn ($file): bool => $file->getPathname() === $this->storage->path('diagnostics/evidence-manifest.json'))
+            ->reject(fn ($file): bool => $this->excludedFromManifest($file->getPathname()))
             ->map(function ($file) use ($directory, $root): array {
                 $nested = trim(str_replace($root, '', dirname($file->getPathname())), '/');
                 $artifactDirectory = $nested === '' ? $directory : $directory.'/'.$nested;
@@ -504,5 +504,17 @@ final class DiagnosticsService
             })
             ->values()
             ->all();
+    }
+
+    private function excludedFromManifest(string $path): bool
+    {
+        $basename = basename($path);
+
+        return $path === $this->storage->path('diagnostics/evidence-manifest.json')
+            || str_ends_with($basename, '.tar')
+            || in_array($basename, [
+                'evidence-bundle-archive.json',
+                'evidence-bundle-archive-verification.json',
+            ], true);
     }
 }

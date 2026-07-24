@@ -520,7 +520,8 @@ test('evidence bundle archive verifier accepts intact tar bundle', function (): 
 
 test('evidence bundle archive excludes a previously generated manifest from its artifact inventory', function (): void {
     app(ActivateSamplePackage::class)->handle();
-    app(DiagnosticsService::class)->writeEvidenceManifest();
+    $firstArchive = app(EvidenceBundleArchiveBuilder::class)->build();
+    app(EvidenceBundleArchiveVerifier::class)->writeReport($firstArchive['archive_path']);
 
     $archive = app(EvidenceBundleArchiveBuilder::class)->build();
     $verification = app(EvidenceBundleArchiveVerifier::class)->verify($archive['archive_path']);
@@ -530,6 +531,9 @@ test('evidence bundle archive excludes a previously generated manifest from its 
         ->pluck('relative_path');
 
     expect($manifestPaths)->not->toContain('12-audit-and-reconciliation/evidence-manifest.json')
+        ->and($manifestPaths)->not->toContain('12-audit-and-reconciliation/evidence-bundle-archive.json')
+        ->and($manifestPaths)->not->toContain('12-audit-and-reconciliation/evidence-bundle-archive-verification.json')
+        ->and($manifestPaths->filter(fn (string $path): bool => str_ends_with($path, '.tar')))->toBeEmpty()
         ->and($verification['passed'])->toBeTrue()
         ->and($verification['mismatches'])->toBe([]);
 });

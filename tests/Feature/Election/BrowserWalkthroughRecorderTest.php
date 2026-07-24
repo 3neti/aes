@@ -70,11 +70,32 @@ test('browser walkthrough command records and finalizes an isolated rehearsal', 
     $rehearsal = $storage->currentRun(ElectionRunType::Rehearsal);
     $reportPath = $rehearsal['run_path'].'/12-audit-and-reconciliation/browser-recordings/browser-walkthrough-report.json';
     $report = json_decode(file_get_contents($reportPath), true, flags: JSON_THROW_ON_ERROR);
+    $browserDirectory = dirname($reportPath);
+    $browserIndex = json_decode(file_get_contents($browserDirectory.'/browser-artifact-index.json'), true, flags: JSON_THROW_ON_ERROR);
+    $lifecycleReport = json_decode(file_get_contents($browserDirectory.'/browser-lifecycle-report.json'), true, flags: JSON_THROW_ON_ERROR);
+    $completion = json_decode(file_get_contents($browserDirectory.'/browser-walkthrough-completion.json'), true, flags: JSON_THROW_ON_ERROR);
+    $archiveReport = json_decode(file_get_contents($rehearsal['run_path'].'/12-audit-and-reconciliation/evidence-bundle-archive.json'), true, flags: JSON_THROW_ON_ERROR);
+    $archiveVerification = json_decode(file_get_contents($rehearsal['run_path'].'/12-audit-and-reconciliation/evidence-bundle-archive-verification.json'), true, flags: JSON_THROW_ON_ERROR);
+    $archiveContents = file_get_contents($archiveReport['archive_path']);
 
     expect($rehearsal['status'])->toBe('locked')
         ->and($storage->currentRun(ElectionRunType::ElectionDay)['run_id'])->toBe($electionDay['run_id'])
         ->and($report['passed'])->toBeTrue()
         ->and($report['statistics']['ballots_requested'])->toBe(3)
+        ->and($lifecycleReport['passed'])->toBeTrue()
+        ->and($lifecycleReport['statistics']['ballots_requested'])->toBe(3)
+        ->and($browserIndex['artifact_count'])->toBeGreaterThanOrEqual(5)
+        ->and(collect($browserIndex['artifacts'])->pluck('relative_path'))->toContain(
+            '12-audit-and-reconciliation/browser-recordings/full-election.webm',
+            '12-audit-and-reconciliation/browser-recordings/browser-walkthrough-report.json',
+            '12-audit-and-reconciliation/browser-recordings/browser-lifecycle-report.json',
+        )
+        ->and($completion['passed'])->toBeTrue()
+        ->and($completion['post_recording']['archive_verified'])->toBeTrue()
+        ->and($archiveVerification['passed'])->toBeTrue()
+        ->and($archiveContents)->toContain('browser-recordings/full-election.webm')
+        ->and($archiveContents)->toContain('browser-recordings/playwright-trace.zip')
+        ->and($archiveContents)->toContain('browser-recordings/browser-artifact-index.json')
         ->and($rehearsal['run_path'].'/artifact-index.json')->toBeFile()
         ->and(config('election.runtime.run_type'))->toBe(ElectionRunType::ElectionDay->value);
 
@@ -133,12 +154,15 @@ test('browser walkthrough command preserves and locks failed recorder evidence',
     $reportPath = $rehearsal['run_path'].'/12-audit-and-reconciliation/browser-recordings/browser-walkthrough-report.json';
     $report = json_decode(file_get_contents($reportPath), true, flags: JSON_THROW_ON_ERROR);
     $control = app(BrowserWalkthroughControl::class)->read();
+    $completion = json_decode(file_get_contents(dirname($reportPath).'/browser-walkthrough-completion.json'), true, flags: JSON_THROW_ON_ERROR);
 
     expect($rehearsal['status'])->toBe('locked')
         ->and($report['passed'])->toBeFalse()
         ->and($report['error'])->toBe('The election home page did not load.')
         ->and($report['process_error_output'])->toBe('walkthrough failed')
         ->and($control['status'])->toBe('failed')
+        ->and($completion['recording_passed'])->toBeFalse()
+        ->and($completion['post_recording']['archive_verified'])->toBeTrue()
         ->and($rehearsal['run_path'].'/artifact-index.json')->toBeFile()
         ->and($rehearsal['run_path'].'/12-audit-and-reconciliation/browser-recordings/failure.png')->toBeFile();
 });

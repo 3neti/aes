@@ -3,8 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Election\Core\CanonicalJson;
+use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
+use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
 use App\Election\Lifecycle\ElectionRunType;
 use App\Election\Scenarios\BrowserWalkthroughControl;
+use App\Election\Scenarios\BrowserWalkthroughEvidenceReport;
 use App\Election\Scenarios\BrowserWalkthroughRecorder;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Console\Attributes\Description;
@@ -25,6 +28,9 @@ final class ElectionBrowserWalkthroughCommand extends Command
     public function handle(
         BrowserWalkthroughControl $control,
         BrowserWalkthroughRecorder $recorder,
+        BrowserWalkthroughEvidenceReport $evidenceReport,
+        EvidenceBundleArchiveBuilder $archiveBuilder,
+        EvidenceBundleArchiveVerifier $archiveVerifier,
         ElectionStorage $storage,
         CanonicalJson $json,
         Filesystem $files,
@@ -77,6 +83,7 @@ final class ElectionBrowserWalkthroughCommand extends Command
                 (bool) $this->option('headed'),
                 $slowMotion,
             );
+            $storage->selectRunType(ElectionRunType::Rehearsal);
 
             $report = [
                 'schema_version' => 'browser-walkthrough-report-1',
@@ -98,12 +105,74 @@ final class ElectionBrowserWalkthroughCommand extends Command
             $reportPath = $artifactDirectory.'/browser-walkthrough-report.json';
             $files->put($reportPath, $json->encode($report));
 
+            $postProcessing = [];
+            $postProcessingError = null;
+
+            try {
+                $postProcessing = $evidenceReport->write(
+                    $walkthrough['run_path'],
+                    $artifactDirectory,
+                    $report,
+                );
+                $archive = $archiveBuilder->build();
+                $verification = $archiveVerifier->writeReport(
+                    $archive['archive_path'],
+                    ['archive_source' => 'browser-walkthrough-finalization'],
+                );
+                $postProcessing = [
+                    ...$postProcessing,
+                    'archive_path' => $archive['archive_path'],
+                    'archive_sha256' => $archive['archive_sha256'],
+                    'archive_entry_count' => $archive['entry_count'],
+                    'archive_verification_path' => $verification['artifact_path'],
+                    'archive_verification_hash' => $verification['verification_hash'],
+                    'archive_verified' => ($verification['passed'] ?? false) === true,
+                    'archive_checked_files' => $verification['checked_files'] ?? 0,
+                ];
+
+                if (! $postProcessing['archive_verified']) {
+                    $postProcessingError = 'The post-recording evidence archive failed verification.';
+                }
+            } catch (Throwable $exception) {
+                $postProcessingError = $exception->getMessage();
+            }
+
+            $report['passed'] = $report['passed'] && $postProcessingError === null;
+            $report['statistics']['post_recording_archive_verified'] = $postProcessing['archive_verified'] ?? false;
+            $report['statistics']['post_recording_archive_checked_files'] = $postProcessing['archive_checked_files'] ?? 0;
+            $report['post_recording'] = $postProcessing;
+
+            if ($postProcessingError !== null) {
+                $report['error'] = trim(implode(' ', array_filter([
+                    $report['error'],
+                    $postProcessingError,
+                ])));
+            }
+
+            $completion = [
+                'schema_version' => 'browser-walkthrough-completion-1',
+                'run_id' => $walkthrough['run_id'],
+                'walkthrough_id' => $walkthrough['walkthrough_id'],
+                'recording_report' => $this->artifact('Browser walkthrough report', $reportPath),
+                'recording_passed' => ($result['passed'] ?? false) === true,
+                'post_recording' => $postProcessing,
+                'passed' => $report['passed'],
+                'error' => $report['error'],
+                'completed_at' => now()->toIso8601String(),
+            ];
+            $completion['completion_hash'] = $json->hash($completion);
+            $completionPath = $artifactDirectory.'/browser-walkthrough-completion.json';
+            $files->put($completionPath, $json->encode($completion));
+
+            foreach ($this->postRecordingArtifacts($postProcessing, $completionPath) as $artifact) {
+                $report['artifacts'][] = $artifact;
+            }
+
             $control->complete(
                 (string) $walkthrough['token'],
                 $report['passed'] ? 'passed' : 'failed',
             );
 
-            $storage->selectRunType(ElectionRunType::Rehearsal);
             $storage->lockActiveRun();
             $finalized = $storage->finalizeRun($scenario, $report);
         } catch (Throwable $exception) {
@@ -138,5 +207,41 @@ final class ElectionBrowserWalkthroughCommand extends Command
                 || $host === '127.0.0.1'
                 || $host === '::1'
                 || str_ends_with($host, '.test'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $postProcessing
+     * @return array<int, array<string, mixed>>
+     */
+    private function postRecordingArtifacts(array $postProcessing, string $completionPath): array
+    {
+        $paths = [
+            'Browser lifecycle report' => $postProcessing['lifecycle_report_path'] ?? null,
+            'Browser lifecycle text report' => $postProcessing['lifecycle_report_text_path'] ?? null,
+            'Browser artifact index' => $postProcessing['browser_artifact_index_path'] ?? null,
+            'Final evidence archive' => $postProcessing['archive_path'] ?? null,
+            'Final evidence archive verification' => $postProcessing['archive_verification_path'] ?? null,
+            'Browser walkthrough completion' => $completionPath,
+        ];
+
+        return collect($paths)
+            ->filter(fn (mixed $path): bool => is_string($path) && file_exists($path))
+            ->map(fn (string $path, string $label): array => $this->artifact($label, $path))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function artifact(string $label, string $path): array
+    {
+        return [
+            'label' => $label,
+            'path' => $path,
+            'relative_path' => basename($path),
+            'bytes' => filesize($path),
+            'sha256' => hash_file('sha256', $path),
+        ];
     }
 }

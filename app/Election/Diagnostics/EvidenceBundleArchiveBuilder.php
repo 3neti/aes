@@ -7,6 +7,7 @@ use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Filesystem\Filesystem;
+use RuntimeException;
 
 final class EvidenceBundleArchiveBuilder
 {
@@ -32,7 +33,7 @@ final class EvidenceBundleArchiveBuilder
         $entries = $this->archiveEntries($manifest, $archiveId);
 
         $this->files->ensureDirectoryExists(dirname($archivePath));
-        $this->files->put($archivePath, $this->tar($entries));
+        $this->writeTar($archivePath, $entries);
 
         $report = [
             'schema_version' => 'evidence-bundle-archive-report-1',
@@ -60,7 +61,7 @@ final class EvidenceBundleArchiveBuilder
 
     /**
      * @param  array<string, mixed>  $manifest
-     * @return array<int, array{name: string, contents: string}>
+     * @return array<int, array{name: string, contents?: string, source_path?: string}>
      */
     private function archiveEntries(array $manifest, string $archiveId): array
     {
@@ -82,7 +83,7 @@ final class EvidenceBundleArchiveBuilder
 
                 $entries[] = [
                     'name' => $archiveId.'/artifacts/'.$relativePath,
-                    'contents' => $this->files->get($sourcePath),
+                    'source_path' => $sourcePath,
                 ];
             }
         }
@@ -100,19 +101,70 @@ final class EvidenceBundleArchiveBuilder
     }
 
     /**
-     * @param  array<int, array{name: string, contents: string}>  $entries
+     * @param  array<int, array{name: string, contents?: string, source_path?: string}>  $entries
      */
-    private function tar(array $entries): string
+    private function writeTar(string $path, array $entries): void
     {
-        $tar = '';
+        $archive = fopen($path, 'wb');
 
-        foreach ($entries as $entry) {
-            $tar .= $this->tarHeader($entry['name'], strlen($entry['contents']));
-            $tar .= $entry['contents'];
-            $tar .= str_repeat("\0", (512 - (strlen($entry['contents']) % 512)) % 512);
+        if ($archive === false) {
+            throw new RuntimeException("Unable to create evidence archive: {$path}");
         }
 
-        return $tar.str_repeat("\0", 1024);
+        try {
+            foreach ($entries as $entry) {
+                $sourcePath = $entry['source_path'] ?? null;
+                $contents = $entry['contents'] ?? null;
+                $size = is_string($sourcePath)
+                    ? (int) filesize($sourcePath)
+                    : strlen((string) $contents);
+
+                $this->writeAll($archive, $this->tarHeader($entry['name'], $size));
+
+                if (is_string($sourcePath)) {
+                    $source = fopen($sourcePath, 'rb');
+
+                    if ($source === false) {
+                        throw new RuntimeException("Unable to read archive artifact: {$sourcePath}");
+                    }
+
+                    try {
+                        if (stream_copy_to_stream($source, $archive) === false) {
+                            throw new RuntimeException("Unable to copy archive artifact: {$sourcePath}");
+                        }
+                    } finally {
+                        fclose($source);
+                    }
+                } else {
+                    $this->writeAll($archive, (string) $contents);
+                }
+
+                $this->writeAll($archive, str_repeat("\0", (512 - ($size % 512)) % 512));
+            }
+
+            $this->writeAll($archive, str_repeat("\0", 1024));
+        } finally {
+            fclose($archive);
+        }
+    }
+
+    /**
+     * @param  resource  $stream
+     */
+    private function writeAll($stream, string $contents): void
+    {
+        $offset = 0;
+        $length = strlen($contents);
+
+        while ($offset < $length) {
+            $written = fwrite($stream, substr($contents, $offset));
+
+            if ($written === false || $written === 0) {
+                throw new RuntimeException('Unable to write the evidence archive.');
+            }
+
+            $offset += $written;
+        }
     }
 
     private function tarHeader(string $name, int $size): string
@@ -156,7 +208,7 @@ final class EvidenceBundleArchiveBuilder
         $prefix = implode('/', $parts);
 
         if (strlen($basename) > 100 || strlen($prefix) > 155) {
-            throw new \RuntimeException("Archive entry path is too long: {$name}");
+            throw new RuntimeException("Archive entry path is too long: {$name}");
         }
 
         return [$basename, $prefix];

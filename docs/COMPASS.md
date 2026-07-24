@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Browser Returns, Handoff, Custody, and Audit
+- Completed Slice: Walkthrough Artifact Index and Lifecycle Report
 - Active Program: Recorded Browser Lifecycle Walkthrough
-- Current Slice: Walkthrough Artifact Index and Lifecycle Report
-- Next Slice: Recorder Failure Preservation and Full Regression
+- Current Slice: Recorder Failure Preservation and Full Regression
+- Next Slice: Browser Walkthrough Operator Manual and Field Handoff
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

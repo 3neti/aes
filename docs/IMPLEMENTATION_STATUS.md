@@ -720,12 +720,25 @@
 - Persisted complete run: `storage/app/election/runs/20260724-044219-807626-39010001-browser-full-election`.
 - Persisted complete video: `storage/app/election/runs/20260724-044219-807626-39010001-browser-full-election/12-audit-and-reconciliation/browser-recordings/full-election.webm`.
 - The lifecycle reached `audit`; the election-day pointer remained unchanged.
+- Added `browser-lifecycle-report.json` and a plain-text companion that summarize eight ceremony groups, action completion, statistics, numbered evidence folders, and principal artifact pointers.
+- Added `browser-artifact-index.json` with SHA-256 hashes for the finished video, trace, screenshots, action log, recording metadata, browser report, and lifecycle reports.
+- Browser walkthrough finalization now rebuilds the evidence manifest after the browser closes, creates a final downloadable TAR containing the completed recording artifacts, verifies that TAR, and writes `browser-walkthrough-completion.json`.
+- Evidence manifests exclude generated TAR files and archive report/verification records, preventing recursive archive growth during rebuilds.
+- Replaced in-memory TAR construction and verification with streaming file I/O after the first 117 MB recording exposed the appliance memory limit.
+- The preserved interrupted 117.6 MB run was recovered, verified across 152 files, and locked with its interruption recorded.
+- Focused coordinator and archive coverage passed: 6 tests and 55 assertions.
+- Final complete run passed with 50 completed browser actions, 46 screenshots, 53 indexed browser artifacts, 161 run artifacts, and no browser console messages.
+- Final 120.2 MB evidence TAR verified 152 files with zero mismatches and contains the WebM, Playwright trace, browser report, lifecycle report, and browser artifact index.
+- Persisted finalized run: `storage/app/election/runs/20260724-045338-420890-39010001-browser-full-election`.
+- Persisted lifecycle report: `storage/app/election/runs/20260724-045338-420890-39010001-browser-full-election/12-audit-and-reconciliation/browser-recordings/browser-lifecycle-report.txt`.
+- Persisted final evidence archive: `storage/app/election/runs/20260724-045338-420890-39010001-browser-full-election/12-audit-and-reconciliation/evidence-bundle-20260724-045458.tar`.
+- The election-day pointer remains `storage/app/election/runs/20260724-004938-0421-a-operator`.
 
 ## Next Recommended Steps
 
-- Regenerate the final evidence manifest and downloadable archive after the video, trace, browser report, run summary, and artifact index exist so the downloadable bundle includes the recording evidence.
-- Add a concise lifecycle walkthrough report with ceremony statistics and direct pointers to the principal paper and browser artifacts.
-- Exercise and document the recorder failure path, then run the focused and full regression suites.
+- Add controlled coordinator interruption handling so a fatal child/coordinator exit can be marked failed and locked automatically on the next invocation.
+- Exercise the ordinary recorder failure fixture with the final evidence pipeline, then run the full PHP, browser, type, lint, and production build regression suites.
+- Add an operator manual for running the recorded walkthrough and locating the video, lifecycle report, paper artifacts, final TAR, and verification evidence.
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
 - Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.

@@ -41,14 +41,14 @@ final class EvidenceBundleArchiveVerifier
             $mismatches[] = $this->mismatch('archive_index_missing', 'The archive does not contain a recognizable evidence bundle root.', 'archive-index.json');
         }
 
-        $manifest = $archiveId === null ? null : $this->jsonEntry($entries, $archiveId.'/evidence-manifest.json', 'manifest_invalid', $mismatches);
-        $index = $archiveId === null ? null : $this->jsonEntry($entries, $archiveId.'/archive-index.json', 'archive_index_invalid', $mismatches);
+        $manifest = $archiveId === null ? null : $this->jsonEntry($path, $entries, $archiveId.'/evidence-manifest.json', 'manifest_invalid', $mismatches);
+        $index = $archiveId === null ? null : $this->jsonEntry($path, $entries, $archiveId.'/archive-index.json', 'archive_index_invalid', $mismatches);
 
         if (is_array($manifest)) {
             $mismatches = [
                 ...$mismatches,
                 ...$this->manifestMismatches($manifest),
-                ...$this->artifactMismatches($entries, $archiveId, $manifest),
+                ...$this->artifactMismatches($path, $entries, $archiveId, $manifest),
             ];
         }
 
@@ -150,29 +150,46 @@ final class EvidenceBundleArchiveVerifier
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, array{offset: int, size: int}>
      */
     private function readTar(string $path): array
     {
-        $contents = $this->files->get($path);
+        $archive = fopen($path, 'rb');
+
+        if ($archive === false) {
+            return [];
+        }
+
         $entries = [];
-        $offset = 0;
 
-        while ($offset + 512 <= strlen($contents)) {
-            $header = substr($contents, $offset, 512);
+        try {
+            while (($header = fread($archive, 512)) !== false && strlen($header) === 512) {
+                if ($header === str_repeat("\0", 512)) {
+                    break;
+                }
 
-            if ($header === str_repeat("\0", 512)) {
-                break;
+                $name = rtrim(substr($header, 0, 100), "\0");
+                $prefix = rtrim(substr($header, 345, 155), "\0");
+                $size = octdec(trim(rtrim(substr($header, 124, 12), "\0")));
+                $pathName = $prefix === '' ? $name : $prefix.'/'.$name;
+                $dataOffset = ftell($archive);
+
+                if ($dataOffset === false) {
+                    break;
+                }
+
+                $entries[$pathName] = [
+                    'offset' => $dataOffset,
+                    'size' => $size,
+                ];
+                $nextHeader = $dataOffset + $size + ((512 - ($size % 512)) % 512);
+
+                if (fseek($archive, $nextHeader) !== 0) {
+                    break;
+                }
             }
-
-            $name = rtrim(substr($header, 0, 100), "\0");
-            $prefix = rtrim(substr($header, 345, 155), "\0");
-            $size = octdec(trim(rtrim(substr($header, 124, 12), "\0")));
-            $pathName = $prefix === '' ? $name : $prefix.'/'.$name;
-            $dataOffset = $offset + 512;
-
-            $entries[$pathName] = substr($contents, $dataOffset, $size);
-            $offset = $dataOffset + $size + ((512 - ($size % 512)) % 512);
+        } finally {
+            fclose($archive);
         }
 
         ksort($entries);
@@ -181,7 +198,7 @@ final class EvidenceBundleArchiveVerifier
     }
 
     /**
-     * @param  array<string, string>  $entries
+     * @param  array<string, array{offset: int, size: int}>  $entries
      */
     private function archiveId(array $entries): ?string
     {
@@ -195,11 +212,11 @@ final class EvidenceBundleArchiveVerifier
     }
 
     /**
-     * @param  array<string, string>  $entries
+     * @param  array<string, array{offset: int, size: int}>  $entries
      * @param  array<int, array<string, mixed>>  $mismatches
      * @return array<string, mixed>|null
      */
-    private function jsonEntry(array $entries, string $path, string $invalidType, array &$mismatches): ?array
+    private function jsonEntry(string $archivePath, array $entries, string $path, string $invalidType, array &$mismatches): ?array
     {
         if (! array_key_exists($path, $entries)) {
             $mismatches[] = $this->mismatch(str_replace('_invalid', '_missing', $invalidType), 'A required archive JSON file is missing.', $path);
@@ -208,7 +225,7 @@ final class EvidenceBundleArchiveVerifier
         }
 
         try {
-            return json_decode($entries[$path], true, flags: JSON_THROW_ON_ERROR);
+            return json_decode($this->entryContents($archivePath, $entries[$path]), true, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             $mismatches[] = $this->mismatch($invalidType, 'A required archive JSON file is invalid.', $path);
 
@@ -237,11 +254,11 @@ final class EvidenceBundleArchiveVerifier
     }
 
     /**
-     * @param  array<string, string>  $entries
+     * @param  array<string, array{offset: int, size: int}>  $entries
      * @param  array<string, mixed>  $manifest
      * @return array<int, array<string, mixed>>
      */
-    private function artifactMismatches(array $entries, ?string $archiveId, array $manifest): array
+    private function artifactMismatches(string $archivePath, array $entries, ?string $archiveId, array $manifest): array
     {
         if ($archiveId === null) {
             return [];
@@ -249,7 +266,7 @@ final class EvidenceBundleArchiveVerifier
 
         return collect($manifest['categories'] ?? [])
             ->flatMap(fn (array $category): array => $category['files'] ?? [])
-            ->flatMap(function (array $file) use ($entries, $archiveId): array {
+            ->flatMap(function (array $file) use ($archivePath, $entries, $archiveId): array {
                 $relativePath = (string) ($file['relative_path'] ?? '');
                 $entryPath = $archiveId.'/artifacts/'.$relativePath;
 
@@ -260,8 +277,8 @@ final class EvidenceBundleArchiveVerifier
                 }
 
                 $mismatches = [];
-                $actualBytes = strlen($entries[$entryPath]);
-                $actualHash = hash('sha256', $entries[$entryPath]);
+                $actualBytes = $entries[$entryPath]['size'];
+                $actualHash = $this->entryHash($archivePath, $entries[$entryPath]);
 
                 if (($file['bytes'] ?? null) !== $actualBytes) {
                     $mismatches[] = $this->mismatch('artifact_size_mismatch', 'An archived artifact byte count does not match the manifest.', $entryPath, $file['bytes'] ?? null, $actualBytes);
@@ -278,7 +295,7 @@ final class EvidenceBundleArchiveVerifier
     }
 
     /**
-     * @param  array<string, string>  $entries
+     * @param  array<string, array{offset: int, size: int}>  $entries
      * @param  array<string, mixed>  $index
      * @param  array<string, mixed>  $manifest
      * @return array<int, array<string, mixed>>
@@ -300,6 +317,78 @@ final class EvidenceBundleArchiveVerifier
         }
 
         return $mismatches;
+    }
+
+    /**
+     * @param  array{offset: int, size: int}  $entry
+     */
+    private function entryContents(string $archivePath, array $entry): string
+    {
+        $archive = fopen($archivePath, 'rb');
+
+        if ($archive === false || fseek($archive, $entry['offset']) !== 0) {
+            if (is_resource($archive)) {
+                fclose($archive);
+            }
+
+            return '';
+        }
+
+        try {
+            $remaining = $entry['size'];
+            $contents = '';
+
+            while ($remaining > 0) {
+                $chunk = fread($archive, min(1024 * 1024, $remaining));
+
+                if ($chunk === false || $chunk === '') {
+                    break;
+                }
+
+                $contents .= $chunk;
+                $remaining -= strlen($chunk);
+            }
+
+            return $contents;
+        } finally {
+            fclose($archive);
+        }
+    }
+
+    /**
+     * @param  array{offset: int, size: int}  $entry
+     */
+    private function entryHash(string $archivePath, array $entry): string
+    {
+        $archive = fopen($archivePath, 'rb');
+        $hash = hash_init('sha256');
+
+        if ($archive === false || fseek($archive, $entry['offset']) !== 0) {
+            if (is_resource($archive)) {
+                fclose($archive);
+            }
+
+            return hash_final($hash);
+        }
+
+        try {
+            $remaining = $entry['size'];
+
+            while ($remaining > 0) {
+                $chunk = fread($archive, min(1024 * 1024, $remaining));
+
+                if ($chunk === false || $chunk === '') {
+                    break;
+                }
+
+                hash_update($hash, $chunk);
+                $remaining -= strlen($chunk);
+            }
+        } finally {
+            fclose($archive);
+        }
+
+        return hash_final($hash);
     }
 
     /**
