@@ -707,10 +707,17 @@
 - QR payloads from valid and spoiled printed ballots remain in the recorder session for the counting and rejection segment.
 - Real browser voting/printing/spoilage recording passed with 23 completed actions, 21 screenshots, 2 finalized ballots, 2 print records, 1 spoiled ballot, 5 paper-ledger events, and no browser console errors.
 - Persisted voting/printing checkpoint: `storage/app/election/runs/20260724-041908-002535-39010001-browser-full-election`.
+- Counting adjudication now supports `spoiled-ballot-separated` for a real spoiled paper ballot kept in its envelope outside the ballot box.
+- Browser counting closes polls, submits each valid QR payload, confirms spoiled QR rejection, records officer adjudication, records the physical ballot count, verifies reconciliation, and completes the tally.
+- Focused counting reconciliation coverage passed: 2 tests and 30 assertions.
+- Vue type checking and the production frontend build passed.
+- Real browser counting recording passed with 30 completed actions, 27 screenshots, 1 accepted ballot file, 1 rejected scan, 1 adjudication, balanced paper accounting, closing/counting legal evidence, and no browser console errors.
+- Persisted counting checkpoint: `storage/app/election/runs/20260724-042942-423131-39010001-browser-full-election`.
+- The lifecycle reached `election_return`.
 
 ## Next Recommended Steps
 
-- Automate close-polls, accepted and rejected QR scans, rejection adjudication, physical ballot reconciliation, and tally completion.
+- Automate Election Return generation and approval, official handoff, receipt, final backup, custody turnover, precinct closure, and audit evidence generation.
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
 - Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.

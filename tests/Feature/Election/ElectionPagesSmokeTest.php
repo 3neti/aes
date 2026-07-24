@@ -8,6 +8,7 @@ use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Preparation\PrecinctSetupService;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\SpoilBallot;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadService;
@@ -1142,6 +1143,44 @@ test('counting completion requires a matching physical paper control', function 
         ->assertRedirect(route('election.returns'));
 
     expect(app(LifecycleState::class)->current())->toBe(Lifecycle::ElectionReturn);
+});
+
+test('spoiled paper ballot can be adjudicated as separated from the ballot box', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(PrecinctSetupService::class)->record(config('election.simulation.precinct_setup'));
+    app(LifecycleState::class)->set(Lifecycle::Counting);
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ], 'spoiled-separated-001');
+    app(SpoilBallot::class)->handle($payload['payload_hash']);
+    $rejected = app(CountingService::class)->accept($payload['qr_payload']);
+
+    $this->post(route('election.counting.adjudicate'), [
+        'sequence' => $rejected['sequence'],
+        'disposition' => 'spoiled-ballot-separated',
+        'reason' => 'Spoiled paper ballot remained in the spoil envelope.',
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ])->assertRedirect(route('election.counting'));
+
+    $this->post(route('election.counting.physical-count'), [
+        'physical_count' => 0,
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ])->assertRedirect(route('election.counting'));
+
+    $this->get(route('election.counting'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('reconciliation.passed', true)
+            ->where('reconciliation.physical_ballots', 0)
+            ->where('reconciliation.rejected_scans', 1)
+            ->where('reconciliation.adjudicated_rejections', 1)
+            ->where('reconciliation.excluded_paper_ballots', 0)
+            ->where('reconciliation.adjudications.0.disposition', 'spoiled-ballot-separated')
+        );
 });
 
 test('counting completion writes legal evidence and advances to election return', function (): void {

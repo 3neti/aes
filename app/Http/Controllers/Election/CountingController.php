@@ -57,7 +57,7 @@ final class CountingController extends Controller
     {
         $validated = $request->validate([
             'sequence' => ['required', 'integer', 'min:1'],
-            'disposition' => ['required', 'in:excluded-paper-ballot,duplicate-scan,not-a-paper-ballot'],
+            'disposition' => ['required', 'in:excluded-paper-ballot,duplicate-scan,not-a-paper-ballot,spoiled-ballot-separated'],
             'reason' => ['required', 'string', 'max:500'],
             'officer_code' => ['required', 'string'],
             'officer_pin' => ['required', 'digits:6'],

@@ -502,6 +502,9 @@ onBeforeUnmount(() => stopCamera(false));
                                 <option value="not-a-paper-ballot">
                                     Not a paper ballot
                                 </option>
+                                <option value="spoiled-ballot-separated">
+                                    Spoiled ballot kept outside ballot box
+                                </option>
                             </select></label
                         >
                         <label class="text-sm font-bold"

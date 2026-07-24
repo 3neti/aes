@@ -44,6 +44,9 @@ const walkthroughStatistics = {
     ballots_finalized: 0,
     ballots_printed: 0,
     ballots_spoiled: 0,
+    ballots_accepted: 0,
+    scans_rejected: 0,
+    scans_adjudicated: 0,
 };
 let sequence = 0;
 let browser;
@@ -271,6 +274,21 @@ async function printPreparedBallot(spoil) {
             .locator('dd')
             .textContent(),
     };
+}
+
+async function submitScannerPayload(payload) {
+    const form = page.locator('form').filter({
+        has: page.getByRole('button', {
+            name: 'Submit scanner input',
+            exact: true,
+        }),
+    });
+
+    await form.locator('textarea[name="payload"]').fill(payload);
+    await postButton(
+        'Submit scanner input',
+        '/election/counting/scan',
+    );
 }
 
 try {
@@ -530,6 +548,96 @@ try {
     recordAction('voting-printing-and-spoilage', 'passed', {
         final_url: page.url(),
         ...walkthroughStatistics,
+    });
+
+    await runStep('close-polls', async () => {
+        await postButton('Close polls', '/election/voting/close-polls');
+        await openPath('/election/counting');
+        await page.getByRole('heading', {
+            name: 'Scan paper ballots',
+            exact: true,
+        }).waitFor();
+    }, '22-polls-closed.png');
+
+    for (
+        let ballotNumber = 0;
+        ballotNumber < acceptedQrPayloads.length;
+        ballotNumber++
+    ) {
+        await runStep(`scan-valid-ballot-${ballotNumber + 1}`, async () => {
+            await submitScannerPayload(acceptedQrPayloads[ballotNumber]);
+            walkthroughStatistics.ballots_accepted++;
+
+            return {
+                accepted_ballots: walkthroughStatistics.ballots_accepted,
+            };
+        }, `23-valid-ballot-${ballotNumber + 1}-accepted.png`);
+    }
+
+    await runStep('scan-spoiled-ballot', async () => {
+        await submitScannerPayload(spoiledQrPayloads[0]);
+        walkthroughStatistics.scans_rejected++;
+        await page.getByText('Ballot is spoiled.', { exact: true }).waitFor();
+    }, '24-spoiled-ballot-rejected.png');
+
+    await runStep('adjudicate-spoiled-ballot', async () => {
+        const form = page.locator('form').filter({
+            has: page.getByRole('button', {
+                name: 'Record adjudication',
+                exact: true,
+            }),
+        }).first();
+
+        await form
+            .locator('select[name="disposition"]')
+            .selectOption('spoiled-ballot-separated');
+        await form.locator('input[name="reason"]').fill(
+            'Spoiled paper ballot remained in the spoil envelope outside the ballot box.',
+        );
+        await form.locator('input[name="officer_pin"]').fill('123456');
+        await postButton(
+            'Record adjudication',
+            '/election/counting/adjudicate',
+        );
+        walkthroughStatistics.scans_adjudicated++;
+    }, '25-spoiled-ballot-adjudicated.png');
+
+    await runStep('record-physical-ballot-control', async () => {
+        const form = page.locator('form').filter({
+            has: page.getByRole('button', {
+                name: 'Record physical control',
+                exact: true,
+            }),
+        });
+
+        await form
+            .locator('input[name="physical_count"]')
+            .fill(String(acceptedQrPayloads.length));
+        await form.locator('input[name="officer_pin"]').fill('123456');
+        await postButton(
+            'Record physical control',
+            '/election/counting/physical-count',
+        );
+        await page.getByText('Reconciled', { exact: true }).waitFor();
+    }, '26-physical-ballots-reconciled.png');
+
+    await runStep('complete-counting-and-tally', async () => {
+        await postButton(
+            'Complete counting and tally',
+            '/election/counting/complete',
+        );
+        await openPath('/election/returns');
+        await page.getByRole('heading', {
+            name: 'Generate the Election Return',
+            exact: true,
+        }).waitFor();
+    }, '27-counting-complete.png');
+
+    recordAction('counting-adjudication-and-tally', 'passed', {
+        final_url: page.url(),
+        accepted_ballots: walkthroughStatistics.ballots_accepted,
+        rejected_scans: walkthroughStatistics.scans_rejected,
+        adjudicated_scans: walkthroughStatistics.scans_adjudicated,
     });
 } catch (error) {
     errorMessage = error instanceof Error ? error.message : String(error);
