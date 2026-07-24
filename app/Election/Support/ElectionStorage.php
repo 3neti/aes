@@ -369,6 +369,9 @@ final class ElectionStorage
             'passed' => $report['passed'] ?? false,
             'generated_at' => now()->toIso8601String(),
             'artifact_count' => count($artifacts),
+            'scenario_statistics' => $report['statistics'] ?? [],
+            'scenario_checks' => $report['checks'] ?? [],
+            'scenario_artifacts' => $report['artifacts'] ?? [],
             'important_paths' => [
                 'start_here' => $runPath.'/'.self::CeremonyDirectories['start'],
                 'precinct_package_and_configuration' => $runPath.'/'.self::CeremonyDirectories['preparation'],
@@ -845,9 +848,51 @@ final class ElectionStorage
         ];
 
         foreach ($summary['important_paths'] as $label => $path) {
-            $lines[] = '- '.$label.': '.$path;
+            $lines[] = '- '.$this->summaryLabel($label).': '.$path;
+        }
+
+        if (($summary['scenario_statistics'] ?? []) !== []) {
+            $lines[] = '';
+            $lines[] = 'Statistics:';
+
+            foreach ($summary['scenario_statistics'] as $label => $value) {
+                $lines[] = '- '.$this->summaryLabel((string) $label).': '.$this->summaryValue($value);
+            }
+        }
+
+        if (($summary['scenario_checks'] ?? []) !== []) {
+            $lines[] = '';
+            $lines[] = 'Checks:';
+
+            foreach ($summary['scenario_checks'] as $label => $value) {
+                $lines[] = '- '.$this->summaryLabel((string) $label).': '.$this->summaryValue($value);
+            }
+        }
+
+        if (($summary['scenario_artifacts'] ?? []) !== []) {
+            $lines[] = '';
+            $lines[] = 'Evidence files:';
+
+            foreach ($summary['scenario_artifacts'] as $label => $path) {
+                $lines[] = '- '.$this->summaryLabel((string) $label).': '.$this->summaryValue($path);
+            }
         }
 
         return implode(PHP_EOL, $lines).PHP_EOL;
+    }
+
+    private function summaryLabel(string $label): string
+    {
+        return ucfirst(str_replace('_', ' ', $label));
+    }
+
+    private function summaryValue(mixed $value): string
+    {
+        return match (true) {
+            is_bool($value) => $value ? 'yes' : 'no',
+            is_scalar($value) => (string) $value,
+            $value === null => 'not recorded',
+            default => $this->json->encode($value),
+        };
     }
 }

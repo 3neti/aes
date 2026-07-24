@@ -500,6 +500,12 @@
 - Appliance recovery production frontend build: passed.
 - `election:recover` now verifies the active run, precinct identity, lifecycle stage, append-only activity journal chain, and serialized paper-ballot ledger chain without changing the active ceremony.
 - Diagnostics now shows restart readiness, evidence check results, the recovered run and ceremony, and degraded device status.
+- Deterministic 50-ballot field scenario focused suite: passed, 1 test and 36 assertions.
+- `php artisan election:scenario field-50-ballots` now runs the configured Tondo POP + CLC ballot from final testing and sealing through Audit.
+- The field scenario serves 50 voters, issues and prints 52 serialized paper ballots, spoils 2 originals, accepts 50 deposited ballots, rejects and adjudicates 1 duplicate scan, and reconciles against a physical count of 50.
+- The field scenario performs a mid-voting appliance recovery inspection and completes dual Election Return approval, official handoff, final backup, custody turnover, audit reconciliation, and deterministic TAR verification.
+- The field report includes statistics, integrity gates, hashes, and direct paths to the ceremony artifacts.
+- `run-summary.json` and `run-summary.txt` now carry scenario statistics, checks, and evidence file pointers; the text summary is designed for direct operator inspection.
 
 - Focused Pest lifecycle suite: passed, 30 tests and 143 assertions.
 - Focused Pest ceremony page suite: passed, 26 tests and 437 assertions.

@@ -18,6 +18,9 @@ use App\Election\Counting\CountingReconciliationService;
 use App\Election\Counting\CountingService;
 use App\Election\Custody\CustodyService;
 use App\Election\Devices\DeviceCertificationService;
+use App\Election\Diagnostics\ApplianceRecoveryService;
+use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
+use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
 use App\Election\Diagnostics\EvidenceReferenceBaselineService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\ElectionRunType;
@@ -44,6 +47,7 @@ use App\Election\Transmission\FinalBackupService;
 use App\Election\Transmission\ManualHandoffService;
 use App\Election\Transmission\TransmissionService;
 use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\PaperBallotLedger;
 use App\Election\Voting\SpecialPollingIntakeService;
 use InvalidArgumentException;
 use RuntimeException;
@@ -92,6 +96,10 @@ final class ScenarioRunner
         private readonly PrecinctSetupService $precinctSetup,
         private readonly CountingReconciliationService $countingReconciliation,
         private readonly ElectionReturnApprovalService $returnApproval,
+        private readonly PaperBallotLedger $paperBallots,
+        private readonly ApplianceRecoveryService $recovery,
+        private readonly EvidenceBundleArchiveBuilder $archiveBuilder,
+        private readonly EvidenceBundleArchiveVerifier $archiveVerifier,
     ) {}
 
     /**
@@ -133,6 +141,7 @@ final class ScenarioRunner
             'final-backup' => $this->finalBackupScenario(),
             'custody-turnover' => $this->custodyTurnoverScenario(),
             'audit-reconciliation-baseline' => $this->auditReconciliationBaselineScenario(),
+            'field-50-ballots' => $this->fieldFiftyBallotsScenario(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
 
@@ -1176,6 +1185,236 @@ final class ScenarioRunner
     /**
      * @return array<string, mixed>
      */
+    private function fieldFiftyBallotsScenario(): array
+    {
+        $activation = $this->activateConfiguredPrecinctBallot();
+        $configuration = $activation['configuration'];
+        $this->clock->tick();
+
+        $devices = $this->devices->run();
+        $initialization = $this->initializationReport->write();
+        $certification = $this->certification->run();
+        $manualVerification = $this->manualVerification->run([
+            'schema_version' => 'manual-return-1',
+            'precinct_id' => $configuration['precinct_id'],
+            'accepted_ballots' => $certification['accepted_ballots'],
+            'rejected_ballots' => $certification['rejected_ballots'],
+            'tally' => $certification['actual_tally'],
+        ]);
+        $discrepancy = $this->discrepancy->run();
+        $zeroOut = $this->zeroOut->run();
+        $sealing = $this->sealing->run();
+        $certificationAttestation = $this->attest(
+            'Final Testing and Sealing',
+            Lifecycle::Certification,
+            'The configured precinct package passed deterministic final testing and sealing.',
+        );
+
+        $this->lifecycle->set(Lifecycle::OpenPrecinct);
+        $this->ceremonies->openPolls('Simulation Election Board Chairperson');
+        $this->ceremonies->openPolls('Simulation Poll Clerk');
+
+        $acceptedPayloads = [];
+        $spoiledPayloads = [];
+        $restartRecovery = [];
+
+        for ($voter = 1; $voter <= 50; $voter++) {
+            $selections = $this->deckBuilder->selections($configuration, ($voter - 1) % 20);
+
+            if (in_array($voter, [7, 31], true)) {
+                $spoiledPayload = $this->payloads->finalize(
+                    $selections,
+                    sprintf('field-voter-%03d-spoiled', $voter),
+                );
+                $this->printer->print($spoiledPayload);
+                $this->spoil->handle(
+                    $spoiledPayload['payload_hash'],
+                    'Voter requested a replacement after reviewing the printed ballot.',
+                );
+                $spoiledPayloads[] = $spoiledPayload;
+            }
+
+            $payload = $this->payloads->finalize(
+                $selections,
+                sprintf('field-ballot-%03d', $voter),
+            );
+            $this->printer->print($payload);
+            $acceptedPayloads[] = $payload;
+
+            if ($voter === 25) {
+                $restartRecovery = $this->recovery->inspect();
+            }
+
+            $this->clock->tick();
+        }
+
+        $this->ceremonies->closePolls('Simulation Election Board Chairperson');
+        $closePollsEvidence = $this->countingLegalEvidence->writeForClosePolls();
+        $this->ceremonies->startCounting();
+
+        foreach ($acceptedPayloads as $payload) {
+            $this->counting->accept($payload['qr_payload']);
+        }
+
+        $duplicateScan = $this->counting->accept($acceptedPayloads[11]['qr_payload']);
+        $physicalControl = $this->countingReconciliation->recordPhysicalCount(
+            50,
+            'SIM-OFFICER-001',
+            '123456',
+        );
+        $duplicateAdjudication = $this->countingReconciliation->adjudicate(
+            (int) $duplicateScan['sequence'],
+            'duplicate-scan',
+            'The Election Board confirmed that this was a repeated scan of an already accepted paper ballot.',
+            'SIM-OFFICER-001',
+            '123456',
+        );
+        $reconciliation = $this->countingReconciliation->summary();
+        $tally = $this->counting->tally();
+        $countingEvidence = $this->countingLegalEvidence->writeForCompletion($tally);
+
+        $this->ceremonies->moveToReturns();
+        $return = $this->returns->generate($tally);
+        $copyDistribution = $this->returnCopyDistribution->prepare($return);
+        $returnApproval = $this->returnApproval->approve(
+            'SIM-OFFICER-001',
+            '123456',
+            'SIM-OFFICER-002',
+            '123456',
+        );
+        $returnAttestation = $this->attest(
+            'Election Return',
+            Lifecycle::ElectionReturn,
+            'The Election Board reviewed, approved, and posted the Election Return.',
+        );
+
+        $this->ceremonies->moveToTransmission();
+        $transmission = $this->transmission->run();
+        $deliveryPackage = $this->deliveryPackage->prepare($transmission);
+        $officerVerification = $this->manualHandoff->verifyOfficer([
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_pin' => '123456',
+            'verification_note' => 'Field rehearsal handoff officer verified.',
+            'stage' => Lifecycle::Transmission,
+        ]);
+        $recipientVerification = $this->manualHandoff->verifyRecipient([
+            'recipient' => 'City Board of Canvassers Receiving Officer',
+            'recipient_role' => 'Authorized Receiving Officer',
+            'handoff_date' => '2026-05-08',
+            'handoff_time' => '19:30',
+            'delivery_method' => 'manual',
+            'acknowledged' => true,
+            'acknowledgement_note' => 'The sealed precinct evidence package was received for the field rehearsal.',
+            'stage' => Lifecycle::Transmission,
+        ]);
+        $deliveryReceipt = $this->deliveryReceipt->prepare([
+            'stage' => Lifecycle::Transmission,
+            'delivery_note' => 'Deterministic 50-ballot field rehearsal handoff.',
+        ]);
+        $finalBackup = $this->finalBackup->perform([
+            'stage' => Lifecycle::FinalBackup,
+            'backup_media' => 'local-storage',
+            'backup_type' => 'local-storage',
+            'backup_note' => 'Deterministic field rehearsal final backup.',
+        ]);
+        $custody = $this->custody->record();
+        $this->ceremonies->recordCustody();
+        $this->ceremonies->closePrecinct('Simulation Election Board Chairperson');
+        $this->ceremonies->beginAudit();
+
+        $minutes = $this->officialMinutes->write();
+        $referenceBaseline = $this->baseline->write();
+        $audit = $this->auditReconciliation->write();
+        $archive = $this->archiveBuilder->build();
+        $archiveVerification = $this->archiveVerifier->writeReport($archive['archive_path']);
+        $paperBallotAccounting = $this->paperBallots->summary();
+
+        $passed = (bool) $devices['passed']
+            && (bool) $initialization['passed']
+            && (bool) $certification['passed']
+            && (bool) $manualVerification['passed']
+            && (bool) $discrepancy['passed']
+            && (bool) $zeroOut['passed']
+            && (bool) $sealing['passed']
+            && ($restartRecovery['resume_status'] ?? null) === 'resume-allowed'
+            && $duplicateScan['status'] === 'rejected'
+            && (bool) $reconciliation['passed']
+            && ($tally['accepted_ballots'] ?? 0) === 50
+            && ($paperBallotAccounting['issued'] ?? 0) === 52
+            && ($paperBallotAccounting['spoiled'] ?? 0) === 2
+            && ($paperBallotAccounting['deposited'] ?? 0) === 50
+            && (bool) $paperBallotAccounting['balanced']
+            && (bool) $returnApproval['passed']
+            && (bool) $audit['reconciliation_complete']
+            && (bool) $archiveVerification['passed']
+            && $this->lifecycle->current() === Lifecycle::Audit;
+
+        return [
+            'scenario' => 'field-50-ballots',
+            'passed' => $passed,
+            'precinct_id' => $configuration['precinct_id'],
+            'pop_import' => $activation['pop_import'],
+            'ballot_definition' => $activation['ballot_definition'],
+            'lifecycle_stage' => $this->lifecycle->current(),
+            'statistics' => [
+                'voters_served' => 50,
+                'paper_ballots_issued' => $paperBallotAccounting['issued'],
+                'paper_ballots_printed' => $paperBallotAccounting['printed'],
+                'paper_ballots_spoiled' => $paperBallotAccounting['spoiled'],
+                'paper_ballots_deposited' => $paperBallotAccounting['deposited'],
+                'accepted_ballots' => $tally['accepted_ballots'],
+                'rejected_scans' => $tally['rejected_ballots'],
+                'adjudicated_rejections' => $reconciliation['adjudicated_rejections'],
+                'physical_ballots' => $reconciliation['physical_ballots'],
+                'journal_entries' => count($this->journal->entries()),
+                'archive_checked_files' => $archiveVerification['checked_files'],
+            ],
+            'checks' => [
+                'restart_resume_status' => $restartRecovery['resume_status'] ?? null,
+                'paper_ballot_accounting_balanced' => $paperBallotAccounting['balanced'],
+                'counting_reconciliation_passed' => $reconciliation['passed'],
+                'return_dual_approval_passed' => $returnApproval['passed'],
+                'audit_reconciliation_complete' => $audit['reconciliation_complete'],
+                'archive_verification_passed' => $archiveVerification['passed'],
+            ],
+            'artifacts' => [
+                'initialization_report' => $initialization['artifact_path'],
+                'certification_report' => $this->storage->path('certification/friday-certification-report.json'),
+                'certification_attestation' => $certificationAttestation['artifact_path'],
+                'restart_recovery_report' => $restartRecovery['artifact_path'],
+                'physical_ballot_control' => $physicalControl['artifact_path'],
+                'duplicate_adjudication' => $duplicateAdjudication['artifact_path'],
+                'counting_evidence' => $countingEvidence['artifact_path'],
+                'close_polls_evidence' => $closePollsEvidence['artifact_path'],
+                'tally' => $this->storage->path('runtime/tally.json'),
+                'tally_sheet' => $this->storage->path('runtime/tally-sheet.pdf'),
+                'election_return' => $this->storage->path("returns/{$configuration['precinct_id']}-return.pdf"),
+                'copy_distribution' => $copyDistribution['artifact_path'],
+                'return_approval' => $returnApproval['artifact_path'],
+                'return_attestation' => $returnAttestation['artifact_path'],
+                'transmission' => $transmission['artifact_path'],
+                'delivery_package' => $deliveryPackage['artifact_path'],
+                'officer_verification' => $officerVerification['artifact_path'],
+                'recipient_verification' => $recipientVerification['artifact_path'],
+                'delivery_receipt' => $deliveryReceipt['artifact_path'],
+                'final_backup' => $finalBackup['artifact_path'],
+                'custody' => $custody['artifact_path'],
+                'official_minutes' => $minutes['artifact_path'],
+                'evidence_reference_baseline' => $referenceBaseline['artifact_path'],
+                'audit_reconciliation' => $audit['artifact_path'],
+                'evidence_archive' => $archive['archive_path'],
+                'archive_verification' => $archiveVerification['artifact_path'],
+            ],
+            'tally_hash' => $tally['tally_hash'],
+            'return_hash' => $return['return_hash'],
+            'archive_sha256' => $archive['archive_sha256'],
+            'archive_verification_hash' => $archiveVerification['verification_hash'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function votingLegalEdgeCasesScenario(): array
     {
         $this->activateConfiguredPrecinctBallot();
@@ -1347,7 +1586,7 @@ final class ScenarioRunner
     {
         return match ($name) {
             'friday-certification', 'full-demo', 'evidence-folder-demo', 'pop-import-demo', 'legal-suite', 'eb-role-baseline', 'initialization-report', 'supply-verification-baseline', 'fts-manual-verification-discrepancy', 'fts-zero-out' => $this->popClusteredPrecinct(),
-            'open-polls-initialization-report', 'voting-legal-edge-cases', 'special-polling-intake', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'delivery-receipt', 'manual-handoff', 'final-backup', 'custody-turnover', 'audit-reconciliation-baseline' => $this->popClusteredPrecinct(),
+            'open-polls-initialization-report', 'voting-legal-edge-cases', 'special-polling-intake', 'close-polls-and-counting-legal-evidence', 'election-return-legal-artifact', 'election-return-copy-distribution', 'delivery-package', 'delivery-receipt', 'manual-handoff', 'final-backup', 'custody-turnover', 'audit-reconciliation-baseline', 'field-50-ballots' => $this->popClusteredPrecinct(),
             default => 'unknown-precinct',
         };
     }

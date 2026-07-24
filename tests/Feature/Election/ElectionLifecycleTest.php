@@ -1550,6 +1550,49 @@ test('scenario command writes run first report folders', function (): void {
         ->and($storage->readJson('scenarios/full-demo-report.json')['passed'])->toBeTrue();
 });
 
+test('fifty ballot field scenario reconciles paper, counting, return, and archive evidence', function (): void {
+    $this->artisan('election:scenario field-50-ballots')
+        ->expectsOutput('Scenario field-50-ballots passed.')
+        ->expectsOutputToContain('Run ID: 20260508-080000-39010001-field-50-ballots')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('scenarios/field-50-ballots-report.json');
+    $run = $storage->currentRun(ElectionRunType::Rehearsal);
+    $summary = json_decode(file_get_contents($run['summary_report_path']), true, flags: JSON_THROW_ON_ERROR);
+    $summaryText = file_get_contents($run['summary_report_text_path']);
+
+    expect($report['passed'])->toBeTrue()
+        ->and($report['precinct_id'])->toBe('39010001')
+        ->and($report['lifecycle_stage'])->toBe(Lifecycle::Audit)
+        ->and($report['statistics']['voters_served'])->toBe(50)
+        ->and($report['statistics']['paper_ballots_issued'])->toBe(52)
+        ->and($report['statistics']['paper_ballots_spoiled'])->toBe(2)
+        ->and($report['statistics']['paper_ballots_deposited'])->toBe(50)
+        ->and($report['statistics']['accepted_ballots'])->toBe(50)
+        ->and($report['statistics']['rejected_scans'])->toBe(1)
+        ->and($report['statistics']['adjudicated_rejections'])->toBe(1)
+        ->and($report['statistics']['physical_ballots'])->toBe(50)
+        ->and($report['checks']['restart_resume_status'])->toBe('resume-allowed')
+        ->and($report['checks']['paper_ballot_accounting_balanced'])->toBeTrue()
+        ->and($report['checks']['counting_reconciliation_passed'])->toBeTrue()
+        ->and($report['checks']['return_dual_approval_passed'])->toBeTrue()
+        ->and($report['checks']['audit_reconciliation_complete'])->toBeTrue()
+        ->and($report['checks']['archive_verification_passed'])->toBeTrue()
+        ->and($run['run_path'].'/04-voting/ballots/field-ballot-050.pdf')->toBeReadableFile()
+        ->and($run['run_path'].'/06-counting-and-tally/accepted')->toBeDirectory()
+        ->and(count($storage->files('counting/accepted')))->toBe(50)
+        ->and($report['artifacts']['election_return'])->toBeReadableFile()
+        ->and($report['artifacts']['evidence_archive'])->toBeReadableFile()
+        ->and($report['artifacts']['archive_verification'])->toBeReadableFile()
+        ->and($summary['scenario_statistics']['voters_served'])->toBe(50)
+        ->and($summary['scenario_checks']['archive_verification_passed'])->toBeTrue()
+        ->and($summary['scenario_artifacts']['election_return'])->toBe($report['artifacts']['election_return'])
+        ->and($summaryText)->toContain('Voters served: 50')
+        ->and($summaryText)->toContain('Archive verification passed: yes')
+        ->and($summaryText)->toContain('Election return: '.$report['artifacts']['election_return']);
+});
+
 test('evidence folder demo scenario command is registered', function (): void {
     $this->artisan('election:scenario evidence-folder-demo')
         ->expectsOutput('Scenario evidence-folder-demo passed.')

@@ -327,7 +327,7 @@ Run Folder: /Users/rli/PhpstormProjects/aes/storage/app/election/runs/20260508-0
 Report: /Users/rli/PhpstormProjects/aes/storage/app/election/runs/20260508-080000-39010001-pop-import-demo/00-start-here/2026-05-08-080000-39010001-pop-import-demo-...-report.json
 ```
 
-The lifecycle `friday-certification`, `full-demo`, and `evidence-folder-demo` scenarios now use the configured POP source by default. They also import the configured CLC PDF source and activate a deterministic POP + CLC ballot definition for the selected precinct. Their scenario reports include `pop_import` and `ballot_definition` sections with source paths, mapping profile, row counts, registry hashes, selected clustered precinct, precinct location, contest counts, candidate counts, package hash, and artifact paths.
+The lifecycle `friday-certification`, `full-demo`, `evidence-folder-demo`, and `field-50-ballots` scenarios now use the configured POP source by default. They also import the configured CLC PDF source and activate a deterministic POP + CLC ballot definition for the selected precinct. Their scenario reports include `pop_import` and `ballot_definition` sections with source paths, mapping profile, row counts, registry hashes, selected clustered precinct, precinct location, contest counts, candidate counts, package hash, and artifact paths.
 
 The evidence folder scenario now writes a normal run folder with numbered ceremony directories. POP source evidence remains under `source-data`; the active precinct and active package are under `01-precinct-package-and-configuration`.
 
