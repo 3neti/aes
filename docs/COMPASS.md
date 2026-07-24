@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Recorder Failure Preservation and Coordinator Recovery
+- Completed Slice: Browser Walkthrough Operator Manual and Field Handoff
 - Active Program: Recorded Browser Lifecycle Walkthrough
-- Current Slice: Browser Walkthrough Operator Manual and Field Handoff
-- Next Slice: Full Application and Browser Regression
+- Current Slice: Full Application and Browser Regression
+- Next Slice: Supervised Raspberry Pi Hardware Pilot
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

@@ -2,6 +2,8 @@
 
 This project uses Pest Browser with Playwright for browser-level ceremony workflow tests. The browser suite is intentionally separate from the main PHP-version matrix because the Alternative Election System tests write deterministic evidence files under `storage/app/election`, and those files can race when the full suite is parallelized.
 
+For the recorded operator-facing full election rehearsal, use `docs/BROWSER_WALKTHROUGH_OPERATOR_MANUAL.md`. That command produces a video and complete run evidence; the tests in this document verify browser behavior during development and CI.
+
 ## Local Setup
 
 Install PHP and Node dependencies first:
@@ -85,8 +87,8 @@ Use this check when changing CI artifact wiring:
 4. Enable `force_browser_artifact_failure`.
 5. Wait for the `browser` job to fail after the browser test step.
 6. Confirm that both artifacts are available:
-   - `browser-screenshots`
-   - `browser-backend-logs`
+    - `browser-screenshots`
+    - `browser-backend-logs`
 7. Download each artifact and confirm it contains the `controlled-browser-artifact-failure` marker file.
 
 Do not enable this input for routine verification. It is intentionally a failing workflow run.

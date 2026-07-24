@@ -738,10 +738,12 @@
 - When the prior coordinator process is dead or its lease expired, the next invocation writes an interruption completion record and recovery report, locks and finalizes the interrupted rehearsal, and only then creates the replacement run.
 - Recovery preserves an already completed result when interruption happened after completion, while a run without completion evidence fails closed.
 - Interruption recovery, isolation, and coordinator coverage passed: 7 tests and 56 assertions.
+- Added `docs/BROWSER_WALKTHROUGH_OPERATOR_MANUAL.md` with prerequisites, command options, ceremony flow, run directory guide, browser artifact descriptions, TAR verification commands, recovery behavior, and an acceptance checklist.
+- Linked the operator manual from `docs/BROWSER_TESTING_WORKFLOW.md` while keeping CI/browser-test instructions separate.
+- Verified both documented Artisan commands and the configured default POP source path; both browser documents pass Prettier formatting.
 
 ## Next Recommended Steps
 
-- Add an operator manual for running the recorded walkthrough and locating the video, lifecycle report, paper artifacts, final TAR, and verification evidence.
 - Exercise the ordinary recorder failure fixture with the final evidence pipeline, then run the full PHP, browser, type, lint, and production build regression suites.
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
