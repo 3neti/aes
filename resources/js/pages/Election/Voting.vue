@@ -5,7 +5,8 @@ import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import StatusBadge from '@/components/election/StatusBadge.vue';
 import type { Candidate, ElectionSnapshot } from '@/components/election/types';
-import { counting } from '@/routes/election';
+import { counting, printing } from '@/routes/election';
+import { ballot as voterBallot } from '@/routes/election/voter';
 import {
     closePolls,
     finalize,
@@ -25,6 +26,10 @@ type SpecialPollingIntake = {
 defineProps<{
     snapshot: ElectionSnapshot;
     specialPollingIntake: SpecialPollingIntake;
+    readyBallot: {
+        ballot_id?: string;
+        paper_ballot_serial?: string;
+    };
 }>();
 
 const filters = ref<Record<string, string>>({});
@@ -219,6 +224,32 @@ function candidateInitials(candidate: Candidate): string {
 
         <CeremonyActionPanel
             v-if="canFinalize(snapshot.stage)"
+            title="Voter station"
+            description="Open the isolated ballot screen for the next voter. Operator controls and evidence records are not shown there."
+            eyebrow="Voting session"
+            :status="readyBallot.ballot_id ? 'Ballot ready for printing' : 'Ready for voter'"
+            :tone="readyBallot.ballot_id ? 'warning' : 'complete'"
+        >
+            <div class="flex flex-wrap gap-3">
+                <Link
+                    v-if="!readyBallot.ballot_id"
+                    :href="voterBallot.url()"
+                    class="primary-button inline-flex items-center justify-center"
+                >
+                    Open voter ballot
+                </Link>
+                <Link
+                    v-else
+                    :href="printing.url({ ballot: readyBallot.ballot_id })"
+                    class="primary-button inline-flex items-center justify-center"
+                >
+                    Print ballot {{ readyBallot.paper_ballot_serial }}
+                </Link>
+            </div>
+        </CeremonyActionPanel>
+
+        <CeremonyActionPanel
+            v-if="false"
             title="Prepare the voter ballot"
             description="Select the voter choices by contest. The voter reviews the printed paper ballot before casting it."
             eyebrow="Voting session"

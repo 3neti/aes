@@ -18,7 +18,7 @@ The browser lifecycle reaches Audit and Reconciliation and produces a verified e
 | Strict package certification | Complete | Source, registry, package, mapping, and activation hashes fail closed before known-ballot testing. |
 | Electoral Board and inventory | Complete | Three officers, dual approval, serialized devices, ballot stock, seals, and custody containers are bound to the run. |
 | Paper ballot lifecycle | Complete | Serialized stock events link issuance, printing, spoilage, and accepted counting to paper disposition. |
-| Voter station | Pending | Voter UI contains no operator or diagnostic controls. |
+| Voter station | Complete | Dedicated voter routes receive ballot data only and hand finalized stock back to the operator console. |
 | Public counting and adjudication | Pending | Physical and digital ballot counts reconcile before tally completion. |
 | Return, posting, and custody | Pending | Ordered handoff and all cross-references pass first time. |
 | Appliance hardening | Pending | Failure and recovery scenarios are deterministic. |
@@ -41,4 +41,4 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Voter Station.
+Public Counting and Adjudication.

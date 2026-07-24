@@ -4,6 +4,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
+use App\Election\Preparation\PrecinctSetupService;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
@@ -279,6 +280,51 @@ test('printing page exposes finalized ballot qr and artifact state', function ()
             ->where('payload.payload_hash', $payload['payload_hash'])
             ->where('qrImageDataUri', fn (string $value): bool => str_starts_with($value, 'data:image/png;base64,'))
             ->has('snapshot.counts')
+        );
+});
+
+test('voter ballot is isolated from operator evidence and hands finalized ballot back for printing', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    app(PrecinctSetupService::class)->record(config('election.simulation.precinct_setup'));
+    app(LifecycleState::class)->set(Lifecycle::Voting);
+
+    $this->get(route('election.voter.ballot'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterBallot')
+            ->where('ballot.precinct_id', '0421-A')
+            ->has('ballot.contests', 3)
+            ->missing('snapshot')
+            ->missing('journal')
+            ->missing('diagnostics')
+        );
+
+    $response = $this->post(route('election.voter.finalize'), [
+        'selections' => [
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ],
+    ]);
+    $ballot = collect(app(ElectionStorage::class)->files('ballots'))
+        ->first(fn (string $path): bool => str_ends_with($path, '.json'));
+    $payload = json_decode(file_get_contents($ballot), true, flags: JSON_THROW_ON_ERROR);
+
+    $response->assertRedirect(route('election.voter.complete', ['ballot' => $payload['ballot_id']]));
+
+    $this->get(route('election.voter.complete', ['ballot' => $payload['ballot_id']]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterComplete')
+            ->where('ballot.ballot_id', $payload['ballot_id'])
+            ->where('ballot.paper_ballot_serial', '0421-A-000001')
+            ->missing('snapshot')
+        );
+
+    $this->get(route('election.voting'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('readyBallot.ballot_id', $payload['ballot_id'])
+            ->where('readyBallot.paper_ballot_serial', '0421-A-000001')
         );
 });
 

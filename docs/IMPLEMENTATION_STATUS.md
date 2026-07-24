@@ -5,9 +5,9 @@
 - Status: In progress
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Paper Ballot Lifecycle
-- Current slice: Voter Station Separation
-- Next slice: Public Counting and Adjudication
+- Completed slice: Voter Station Separation
+- Current slice: Public Counting and Adjudication
+- Next slice: Return, Posting, and Custody
 - Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
 
 ### Operational Run Isolation
@@ -77,6 +77,16 @@
 - Ledger and print artifact tests: 2 passed, 22 assertions.
 - Full demo and ledger regression: 2 passed, 14 assertions.
 - Production frontend build: passed.
+
+### Voter Station Separation
+
+- Added dedicated voter ballot and voter completion routes and Vue pages.
+- Voter page props contain only election, precinct, ballot style, contests, and candidates.
+- Voter pages do not receive the operator snapshot, journal, diagnostics, lifecycle actions, evidence links, printing controls, spoilage controls, or counting controls.
+- Finalized voter ballots return to a neutral completion screen with the physical paper stock serial.
+- The operator Voting page detects the pending unprinted ballot and links separately to the printing ceremony.
+- Voter isolation and operator handoff test: 1 passed, 40 assertions.
+- Production frontend build: passed; voter pages compile as separate lightweight chunks without the ceremony layout.
 
 ## Current Implementation
 

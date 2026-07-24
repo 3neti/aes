@@ -9,6 +9,7 @@ use App\Http\Controllers\Election\PrintingController;
 use App\Http\Controllers\Election\ProvisionController;
 use App\Http\Controllers\Election\ReturnsController;
 use App\Http\Controllers\Election\TransmissionController;
+use App\Http\Controllers\Election\VoterBallotController;
 use App\Http\Controllers\Election\VotingController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +34,9 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/certification/seal', [CertificationController::class, 'runSealing'])->name('certification.seal');
     Route::get('/certification/sealing-report/download', [CertificationController::class, 'downloadSealing'])->name('certification.sealing-report.download');
     Route::get('/voting', [VotingController::class, 'show'])->name('voting');
+    Route::get('/voter/ballot', [VoterBallotController::class, 'show'])->name('voter.ballot');
+    Route::post('/voter/ballot', [VoterBallotController::class, 'finalize'])->name('voter.finalize');
+    Route::get('/voter/complete', [VoterBallotController::class, 'complete'])->name('voter.complete');
     Route::post('/voting/open-polls', [VotingController::class, 'openPolls'])->name('voting.open-polls');
     Route::post('/voting/finalize', [VotingController::class, 'finalize'])->name('voting.finalize');
     Route::post('/voting/close-polls', [VotingController::class, 'closePolls'])->name('voting.close-polls');
