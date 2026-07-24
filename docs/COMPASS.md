@@ -2,10 +2,10 @@
 # Architecture Compass
 ## Implementation Status
 
-- Completed Slice: Browser Walkthrough Operator Manual and Field Handoff
-- Active Program: Recorded Browser Lifecycle Walkthrough
-- Current Slice: Full Application and Browser Regression
-- Next Slice: Supervised Raspberry Pi Hardware Pilot
+- Completed Slice: Full Application and Browser Regression
+- Active Program: Appliance Field Validation
+- Current Slice: Supervised Raspberry Pi Hardware Pilot
+- Next Slice: Legally Approved Transmission Policy and Driver
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

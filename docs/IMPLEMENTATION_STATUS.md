@@ -741,10 +741,18 @@
 - Added `docs/BROWSER_WALKTHROUGH_OPERATOR_MANUAL.md` with prerequisites, command options, ceremony flow, run directory guide, browser artifact descriptions, TAR verification commands, recovery behavior, and an acceptance checklist.
 - Linked the operator manual from `docs/BROWSER_TESTING_WORKFLOW.md` while keeping CI/browser-test instructions separate.
 - Verified both documented Artisan commands and the configured default POP source path; both browser documents pass Prettier formatting.
+- Full Laravel/Pest regression passed: 170 tests and 2,503 assertions.
+- Dedicated Pest Browser/Playwright regression passed: 7 tests and 109 assertions.
+- Vue TypeScript checking passed.
+- ESLint passed.
+- Production Vite build passed with 618 modules transformed.
+- Composer strict validation passed.
+- Browser recorder Node syntax check passed.
+- Final rehearsal remains locked at `storage/app/election/runs/20260724-045338-420890-39010001-browser-full-election`.
+- Election-day evidence remains unchanged at `storage/app/election/runs/20260724-004938-0421-a-operator`.
 
 ## Next Recommended Steps
 
-- Exercise the ordinary recorder failure fixture with the final evidence pipeline, then run the full PHP, browser, type, lint, and production build regression suites.
 - Run a supervised hardware pilot with the intended Raspberry Pi, CUPS printer, camera/handheld scanner, UPS, and named removable media.
 - Define the legally approved transmission policy before enabling any network transmission path.
 - Add Poppler-based render checks and representative printer calibration for ballot and Election Return PDFs.
