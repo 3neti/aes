@@ -5,9 +5,9 @@
 - Status: Simulation implementation complete; hardware and prescribed-form validation pending
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Cloud Runtime Alignment
-- Current slice: Cloud Deployment Migration Gate
-- Next slice: Demonstration Availability
+- Completed slice: Cloud Deployment Migration Gate
+- Current slice: Demonstration Availability
+- Next slice: Shared Cloud Persistence
 - Primary acceptance target: a protected multi-tablet COMELEC review rehearsal that reaches audit, preserves role and voter isolation, and produces a verified Review Kit without weakening election-day controls
 
 ### Operational Run Isolation
@@ -883,5 +883,7 @@ Known limitations:
 - Production deployment `depl-a25b6b6c-69a0-4de8-a12d-4b6c976ad8d3` succeeded on PHP 8.4.
 - A command executed inside the running Cloud container reported PHP 8.4, matching local development, CI, and the declared Composer platform.
 - The protected review URL remained healthy after the runtime replacement.
-- Next slices enable migrations, disable hibernation for demonstrations, and provision shared persistence before adding role-paired tablets.
+- The Cloud deploy command is now `php artisan migrate --force`; local dry-run verification reports no pending migration errors.
+- The first deployment after a persistent database is attached will be retained as the live migration-gate acceptance record.
+- Next slices disable hibernation for demonstrations and provision shared persistence before adding role-paired tablets.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.

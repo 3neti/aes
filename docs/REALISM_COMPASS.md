@@ -24,7 +24,7 @@ The precinct realism program is complete for simulation mode. The browser and sc
 | Review mode and temporary defaults | Complete | Review forms load server-supplied simulation values; election-day fields remain empty and signatures/approvals remain manual.                              |
 | Cloud review protection            | Complete | Review access is protected and responses explicitly prohibit search-engine indexing before credentials or evidence are enabled.                            |
 | Cloud runtime alignment            | Complete | Cloud runs PHP 8.4, matching local development, CI, and the declared project platform.                                                                     |
-| Cloud deployment migration gate    | Planned  | Successful deployments apply pending migrations non-interactively against persistent storage.                                                              |
+| Cloud deployment migration gate    | Complete | Deployments run `php artisan migrate --force`; the first persistent-database deployment supplies the final live execution proof.                            |
 | Demonstration availability         | Planned  | Hibernation is disabled for the scheduled review window and the cost/availability decision is recorded.                                                    |
 | Multi-tablet Review Room           | Planned  | Officer, voter, print, watcher, and presentation tablets join one isolated rehearsal without cross-role or cross-voter disclosure.                         |
 | Concurrent voting hardening        | Planned  | Locks and idempotency prevent duplicate serials, journal events, releases, deposits, and scans under simultaneous tablet activity.                         |
@@ -53,7 +53,7 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Cloud Deployment Migration Gate, followed by demonstration availability, shared persistence, and the Multi-Tablet Review Room. The supervised offline hardware pilot remains the next field-validation program.
+Demonstration Availability, followed by shared persistence and the Multi-Tablet Review Room. The supervised offline hardware pilot remains the next field-validation program.
 
 ## Temporary Review Defaults
 
