@@ -4,6 +4,7 @@ use App\Console\Commands\ElectionBrowserWalkthroughCommand;
 use App\Console\Commands\ElectionScenarioCommand;
 use App\Http\Middleware\BindBrowserWalkthroughRun;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ProtectReviewEnvironment;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ElectionScenarioCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(prepend: [
+            ProtectReviewEnvironment::class,
+        ]);
+
         $middleware->web(append: [
             BindBrowserWalkthroughRun::class,
             HandleInertiaRequests::class,

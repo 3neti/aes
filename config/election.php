@@ -15,6 +15,11 @@ return [
     'review' => [
         'enabled' => (bool) env('ELECTION_REVIEW_MODE', false),
         'label' => (string) env('ELECTION_REVIEW_LABEL', 'COMELEC Review Environment'),
+        'access' => [
+            'enabled' => (bool) env('ELECTION_REVIEW_ACCESS_ENABLED', false),
+            'username' => (string) env('ELECTION_REVIEW_ACCESS_USERNAME', ''),
+            'password' => (string) env('ELECTION_REVIEW_ACCESS_PASSWORD', ''),
+        ],
     ],
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),
