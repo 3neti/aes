@@ -246,36 +246,209 @@ final class ScenarioRunner
         $activation = $this->activateConfiguredPrecinctBallot();
         $configuration = $activation['configuration'];
         $this->clock->tick();
+
         $devices = $this->devices->run();
+        $initialization = $this->initializationReport->write();
         $certification = $this->certification->run();
-        $certificationAttestation = $this->attest('Certification', Lifecycle::Certification, 'Certification officer review complete.');
-        $this->lifecycle->set(Lifecycle::OpenPrecinct);
-        $this->ceremonies->openPolls();
-        $this->ceremonies->openPolls();
+        $manualVerification = $this->manualVerification->run([
+            'schema_version' => 'manual-return-1',
+            'precinct_id' => $configuration['precinct_id'],
+            'accepted_ballots' => $certification['accepted_ballots'],
+            'rejected_ballots' => $certification['rejected_ballots'],
+            'tally' => $certification['actual_tally'],
+        ]);
+        $discrepancy = $this->discrepancy->run();
+        $zeroOut = $this->zeroOut->run();
+        $sealing = $this->sealing->run();
+        $certificationAttestation = $this->attest(
+            'Final Testing and Sealing',
+            Lifecycle::Certification,
+            'The configured precinct package passed deterministic final testing and sealing.',
+        );
+
+        $certificationPassed = (bool) $devices['passed']
+            && (bool) $initialization['passed']
+            && (bool) $certification['passed']
+            && (bool) $manualVerification['passed']
+            && (bool) $discrepancy['passed']
+            && (bool) $zeroOut['passed']
+            && (bool) $sealing['passed'];
+
+        if (! $certificationPassed) {
+            return [
+                'scenario' => 'full-demo',
+                'passed' => false,
+                'precinct_id' => $configuration['precinct_id'],
+                'pop_import' => $activation['pop_import'],
+                'ballot_definition' => $activation['ballot_definition'],
+                'lifecycle_stage' => $this->lifecycle->current(),
+                'checks' => [
+                    'device_certification_passed' => $devices['passed'],
+                    'initialization_passed' => $initialization['passed'],
+                    'friday_certification_passed' => $certification['passed'],
+                    'manual_verification_passed' => $manualVerification['passed'],
+                    'discrepancy_clear' => $discrepancy['passed'],
+                    'zero_out_passed' => $zeroOut['passed'],
+                    'sealing_passed' => $sealing['passed'],
+                ],
+            ];
+        }
+
+        $this->ceremonies->openPrecinct('Simulation Election Board Chairperson');
+        $openingInitialization = $this->initializationReport->write('opening/initialization-report.json');
+        $this->ceremonies->openPolls('Simulation Election Board Chairperson');
+        $this->ceremonies->openPolls('Simulation Poll Clerk');
 
         $payload = $this->payloads->finalize($this->deckBuilder->selections($configuration), 'demo-ballot-001');
         $printJob = $this->printer->print($payload);
 
         $spoiledPayload = $this->payloads->finalize($this->deckBuilder->selections($configuration, 1), 'demo-ballot-spoiled');
         $this->printer->print($spoiledPayload);
-        $this->spoil->handle($spoiledPayload['payload_hash']);
+        $this->spoil->handle(
+            $spoiledPayload['payload_hash'],
+            'Voter requested a replacement after reviewing the printed ballot.',
+        );
 
-        $this->ceremonies->closePolls();
+        $this->ceremonies->closePolls('Simulation Election Board Chairperson');
+        $closePollsEvidence = $this->countingLegalEvidence->writeForClosePolls();
         $this->ceremonies->startCounting();
         $accepted = $this->counting->accept($payload['qr_payload']);
         $rejected = $this->counting->accept($spoiledPayload['qr_payload']);
+        $physicalControl = $this->countingReconciliation->recordPhysicalCount(
+            1,
+            'SIM-OFFICER-001',
+            '123456',
+        );
+        $adjudication = $this->countingReconciliation->adjudicate(
+            (int) $rejected['sequence'],
+            'spoiled-ballot-separated',
+            'The Election Board confirmed that the spoiled paper ballot was segregated and was not deposited in the ballot box.',
+            'SIM-OFFICER-001',
+            '123456',
+        );
+        $reconciliation = $this->countingReconciliation->summary();
         $tally = $this->counting->tally();
+        $countingEvidence = $this->countingLegalEvidence->writeForCompletion($tally);
+
         $this->ceremonies->moveToReturns();
         $return = $this->returns->generate($tally);
-        $returnAttestation = $this->attest('Election Return', Lifecycle::ElectionReturn, 'Return officer review complete.');
+        $copyDistribution = $this->returnCopyDistribution->prepare($return);
+        $returnApproval = $this->returnApproval->approve(
+            'SIM-OFFICER-001',
+            '123456',
+            'SIM-OFFICER-002',
+            '123456',
+        );
+        $returnAttestation = $this->attest(
+            'Election Return',
+            Lifecycle::ElectionReturn,
+            'The Election Board reviewed, approved, and posted the Election Return.',
+        );
+
         $this->ceremonies->moveToTransmission();
-        $this->ceremonies->completeTransmission();
+        $transmission = $this->transmission->run();
+        $deliveryPackage = $this->deliveryPackage->prepare($transmission);
+        $officerVerification = $this->manualHandoff->verifyOfficer([
+            'officer_code' => 'SIM-OFFICER-001',
+            'officer_pin' => '123456',
+            'verification_note' => 'Full ceremony rehearsal handoff officer verified.',
+            'stage' => Lifecycle::Transmission,
+        ]);
+        $recipientVerification = $this->manualHandoff->verifyRecipient([
+            'recipient' => 'City Board of Canvassers Receiving Officer',
+            'recipient_role' => 'Authorized Receiving Officer',
+            'handoff_date' => '2026-05-08',
+            'handoff_time' => '19:30',
+            'delivery_method' => 'manual',
+            'acknowledged' => true,
+            'acknowledgement_note' => 'The sealed precinct evidence package was received for the full ceremony rehearsal.',
+            'stage' => Lifecycle::Transmission,
+        ]);
+        $deliveryReceipt = $this->deliveryReceipt->prepare([
+            'stage' => Lifecycle::Transmission,
+            'delivery_note' => 'Deterministic full ceremony rehearsal handoff.',
+        ]);
+        $finalBackup = $this->finalBackup->perform([
+            'stage' => Lifecycle::FinalBackup,
+            'backup_media' => 'local-storage',
+            'backup_type' => 'local-storage',
+            'backup_note' => 'Deterministic full ceremony rehearsal final backup.',
+        ]);
+        $custody = $this->custody->record();
         $this->ceremonies->recordCustody();
-        $this->ceremonies->closePrecinct();
+        $this->ceremonies->closePrecinct('Simulation Election Board Chairperson');
+        $this->ceremonies->beginAudit();
+
+        $minutes = $this->officialMinutes->write();
+        $referenceBaseline = $this->baseline->write();
+        $audit = $this->auditReconciliation->write();
+        $archive = $this->archiveBuilder->build();
+        $archiveVerification = $this->archiveVerifier->writeReport($archive['archive_path']);
+        $paperBallotAccounting = $this->paperBallots->summary();
+
+        $artifacts = [
+            'initialization_report' => $initialization['artifact_path'],
+            'opening_initialization_report' => $openingInitialization['artifact_path'],
+            'certification_report' => $this->storage->path('certification/friday-certification-report.json'),
+            'manual_verification_report' => $manualVerification['artifact_path'],
+            'discrepancy_report' => $discrepancy['artifact_path'],
+            'zero_out_report' => $zeroOut['artifact_path'],
+            'sealing_report' => $sealing['artifact_path'],
+            'certification_attestation' => $certificationAttestation['artifact_path'],
+            'printed_ballot' => $printJob['artifact_path'],
+            'close_polls_evidence' => $closePollsEvidence['artifact_path'],
+            'physical_ballot_control' => $physicalControl['artifact_path'],
+            'rejected_scan_adjudication' => $adjudication['artifact_path'],
+            'counting_evidence' => $countingEvidence['artifact_path'],
+            'tally_sheet' => $this->storage->path('runtime/tally-sheet.pdf'),
+            'election_return' => $this->storage->path("returns/{$configuration['precinct_id']}-return.pdf"),
+            'copy_distribution' => $copyDistribution['artifact_path'],
+            'return_approval' => $returnApproval['artifact_path'],
+            'return_attestation' => $returnAttestation['artifact_path'],
+            'transmission' => $transmission['artifact_path'],
+            'delivery_package' => $deliveryPackage['artifact_path'],
+            'officer_verification' => $officerVerification['artifact_path'],
+            'recipient_verification' => $recipientVerification['artifact_path'],
+            'delivery_receipt' => $deliveryReceipt['artifact_path'],
+            'final_backup' => $finalBackup['artifact_path'],
+            'custody' => $custody['artifact_path'],
+            'official_minutes' => $minutes['artifact_path'],
+            'evidence_reference_baseline' => $referenceBaseline['artifact_path'],
+            'audit_reconciliation' => $audit['artifact_path'],
+            'evidence_archive' => $archive['archive_path'],
+            'archive_verification' => $archiveVerification['artifact_path'],
+        ];
+        $artifactFilesExist = collect($artifacts)
+            ->every(fn (string $path): bool => is_file($path));
+
+        $checks = [
+            'device_certification_passed' => (bool) $devices['passed'],
+            'initialization_passed' => (bool) $initialization['passed'],
+            'friday_certification_passed' => (bool) $certification['passed'],
+            'manual_verification_passed' => (bool) $manualVerification['passed'],
+            'discrepancy_clear' => (bool) $discrepancy['passed'],
+            'zero_out_passed' => (bool) $zeroOut['passed'],
+            'sealing_passed' => (bool) $sealing['passed'],
+            'opening_initialization_passed' => (bool) $openingInitialization['passed'],
+            'accepted_ballot_counted' => $accepted['status'] === 'accepted',
+            'spoiled_ballot_rejected' => $rejected['status'] === 'rejected',
+            'counting_reconciliation_passed' => (bool) $reconciliation['passed'],
+            'return_dual_approval_passed' => (bool) $returnApproval['passed'],
+            'transmission_passed' => (bool) $transmission['passed'],
+            'delivery_package_complete' => (bool) $deliveryPackage['required_artifacts_present'],
+            'delivery_receipt_accepted' => ($deliveryReceipt['status'] ?? null) === 'accepted',
+            'final_backup_complete' => (bool) $finalBackup['backup_completed'],
+            'custody_sealed' => ($custody['status'] ?? null) === 'sealed',
+            'audit_reconciliation_complete' => (bool) $audit['reconciliation_complete'],
+            'archive_verification_passed' => (bool) $archiveVerification['passed'],
+            'paper_ballot_accounting_balanced' => (bool) $paperBallotAccounting['balanced'],
+            'primary_artifacts_exist' => $artifactFilesExist,
+            'lifecycle_reached_audit' => $this->lifecycle->current() === Lifecycle::Audit,
+        ];
 
         return [
             'scenario' => 'full-demo',
-            'passed' => $devices['passed'] && $certification['passed'] && $accepted['status'] === 'accepted' && $rejected['status'] === 'rejected',
+            'passed' => collect($checks)->every(fn (bool $passed): bool => $passed),
             'precinct_id' => $configuration['precinct_id'],
             'pop_import' => $activation['pop_import'],
             'ballot_definition' => $activation['ballot_definition'],
@@ -283,7 +456,35 @@ final class ScenarioRunner
             'print_job' => $printJob,
             'accepted_ballots' => $tally['accepted_ballots'],
             'rejected_ballots' => $tally['rejected_ballots'],
+            'lifecycle_stage' => $this->lifecycle->current(),
+            'checks' => $checks,
+            'statistics' => [
+                'paper_ballots_issued' => $paperBallotAccounting['issued'],
+                'paper_ballots_printed' => $paperBallotAccounting['printed'],
+                'paper_ballots_spoiled' => $paperBallotAccounting['spoiled'],
+                'paper_ballots_deposited' => $paperBallotAccounting['deposited'],
+                'accepted_ballots' => $tally['accepted_ballots'],
+                'rejected_scans' => $tally['rejected_ballots'],
+                'adjudicated_rejections' => $reconciliation['adjudicated_rejections'],
+                'physical_ballots' => $reconciliation['physical_ballots'],
+                'journal_entries' => count($this->journal->entries()),
+                'primary_artifacts' => count($artifacts),
+                'archive_checked_files' => $archiveVerification['checked_files'],
+            ],
+            'artifacts' => $artifacts,
+            'certification_report_hash' => $certification['report_hash'],
+            'sealing_report_hash' => $sealing['report_hash'],
+            'counting_reconciliation_hash' => $physicalControl['control_hash'],
             'return_hash' => $return['return_hash'],
+            'return_approval_hash' => $returnApproval['approval_hash'],
+            'transmission_hash' => $transmission['transmission_hash'],
+            'delivery_package_hash' => $deliveryPackage['delivery_package_hash'],
+            'delivery_receipt_hash' => $deliveryReceipt['delivery_receipt_hash'],
+            'final_backup_hash' => $finalBackup['final_backup_hash'],
+            'custody_hash' => $custody['custody_hash'],
+            'audit_reconciliation_hash' => $audit['audit_reconciliation_hash'],
+            'archive_sha256' => $archive['archive_sha256'],
+            'archive_verification_hash' => $archiveVerification['verification_hash'],
             'attestation_hashes' => [
                 $certificationAttestation['attestation_hash'],
                 $returnAttestation['attestation_hash'],

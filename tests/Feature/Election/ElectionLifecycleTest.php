@@ -1275,9 +1275,24 @@ test('full demo scenario command succeeds', function (): void {
     $returnText = file_get_contents(app(ElectionStorage::class)->path('returns/39010001-return.txt'));
     $tallySheet = app(ElectionStorage::class)->readText('runtime/tally-sheet.txt');
     $printedBallot = file_get_contents($report['print_job']['artifact_path']);
+    $journal = collect(app(ActivityJournal::class)->entries());
+    $stages = $journal
+        ->where('event_type', 'lifecycle.stage_set')
+        ->pluck('payload.stage');
+    $eventTypes = $journal->pluck('event_type');
 
     expect($report['passed'])->toBeTrue()
         ->and($report['precinct_id'])->toBe('39010001')
+        ->and($report['lifecycle_stage'])->toBe(Lifecycle::Audit)
+        ->and(collect($report['checks'])->every(fn (bool $passed): bool => $passed))->toBeTrue()
+        ->and($report['checks']['sealing_passed'])->toBeTrue()
+        ->and($report['checks']['counting_reconciliation_passed'])->toBeTrue()
+        ->and($report['checks']['return_dual_approval_passed'])->toBeTrue()
+        ->and($report['checks']['final_backup_complete'])->toBeTrue()
+        ->and($report['checks']['custody_sealed'])->toBeTrue()
+        ->and($report['checks']['audit_reconciliation_complete'])->toBeTrue()
+        ->and($report['checks']['archive_verification_passed'])->toBeTrue()
+        ->and($report['checks']['primary_artifacts_exist'])->toBeTrue()
         ->and($report['pop_import']['mapping_profile'])->toBe('comelec-pop-2025-nle')
         ->and($report['pop_import']['row_count'])->toBe(93629)
         ->and($report['pop_import']['clustered_precinct'])->toBe('39010001')
@@ -1294,7 +1309,44 @@ test('full demo scenario command succeeds', function (): void {
         ->and($returnText)->toContain('DOMAGOSO, ISKO MORENO')
         ->and($report['accepted_ballots'])->toBe(1)
         ->and($report['rejected_ballots'])->toBe(1)
-        ->and($report['attestation_hashes'])->toHaveCount(2);
+        ->and($report['attestation_hashes'])->toHaveCount(2)
+        ->and($report['statistics']['paper_ballots_issued'])->toBe(2)
+        ->and($report['statistics']['paper_ballots_spoiled'])->toBe(1)
+        ->and($report['statistics']['paper_ballots_deposited'])->toBe(1)
+        ->and($report['statistics']['primary_artifacts'])->toBeGreaterThanOrEqual(25)
+        ->and($stages)->toContain(
+            Lifecycle::Certification,
+            Lifecycle::OpenPrecinct,
+            Lifecycle::OpenPolls,
+            Lifecycle::Voting,
+            Lifecycle::ClosePolls,
+            Lifecycle::Counting,
+            Lifecycle::ElectionReturn,
+            Lifecycle::Transmission,
+            Lifecycle::FinalBackup,
+            Lifecycle::Custody,
+            Lifecycle::ClosePrecinct,
+            Lifecycle::Audit,
+        )
+        ->and($eventTypes)->toContain(
+            'certification.sealed',
+            'precinct.opened',
+            'polls.opened',
+            'polls.closed',
+            'counting.started',
+            'return.generated',
+            'return.approved',
+            'transmission.completed',
+            'transmission.final_backup',
+            'custody.recorded',
+            'precinct.closed',
+            'audit.started',
+            'evidence_bundle.archive_verification_passed',
+        );
+
+    foreach ($report['artifacts'] as $artifact) {
+        expect($artifact)->toBeReadableFile();
+    }
 });
 
 test('legal scenario suite command succeeds', function (): void {
