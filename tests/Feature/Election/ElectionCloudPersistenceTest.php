@@ -4,6 +4,7 @@ use App\Election\Diagnostics\CloudEvidenceMirror;
 use App\Election\Lifecycle\ElectionRunType;
 use App\Election\Support\ElectionOperationLock;
 use App\Election\Support\ElectionStorage;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 
 test('a run is mirrored to private object storage with a verified manifest', function (): void {
@@ -44,6 +45,41 @@ test('a run is mirrored to private object storage with a verified manifest', fun
 
     expect($manifest['artifact_count'])->toBe($report['artifact_count'])
         ->and($manifest['manifest_hash'])->toBe($report['manifest_hash']);
+});
+
+test('re-mirroring a deterministic run removes stale remote artifacts', function (): void {
+    Storage::fake('election_evidence');
+    config()->set('election.cloud_evidence.enabled', true);
+    config()->set('election.cloud_evidence.disk', 'election_evidence');
+    config()->set('election.cloud_evidence.prefix', 'review-evidence');
+
+    $storage = app(ElectionStorage::class);
+    $storage->selectRunType(ElectionRunType::AutomatedTest);
+    $storage->reset(ElectionRunType::AutomatedTest);
+    $run = $storage->startRun(
+        'cloud-evidence-repeat-test',
+        '39010001',
+        '20260508-080500',
+        ElectionRunType::AutomatedTest,
+        'automated-test',
+    );
+    $obsoleteLocalPath = $run['run_path'].'/obsolete-evidence.json';
+    app(Filesystem::class)->put($obsoleteLocalPath, '{}');
+
+    $mirror = app(CloudEvidenceMirror::class);
+    $firstReport = $mirror->mirror($run['run_path']);
+    $obsoleteRemotePath = $firstReport['remote_root'].'/obsolete-evidence.json';
+
+    Storage::disk('election_evidence')->assertExists($obsoleteRemotePath);
+
+    app(Filesystem::class)->delete($obsoleteLocalPath);
+    $secondReport = $mirror->mirror($run['run_path']);
+
+    Storage::disk('election_evidence')
+        ->assertMissing($obsoleteRemotePath);
+
+    expect(Storage::disk('election_evidence')->allFiles($secondReport['remote_root']))
+        ->toHaveCount($secondReport['artifact_count'] + 1);
 });
 
 test('the mirror command reports the remote evidence manifest', function (): void {

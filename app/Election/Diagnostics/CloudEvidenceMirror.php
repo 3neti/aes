@@ -89,6 +89,17 @@ final class CloudEvidenceMirror
         ];
         $manifest['manifest_hash'] = $this->json->hash($manifest);
         $manifestPath = $remoteRoot.'/cloud-evidence-manifest.json';
+        $currentRemotePaths = collect($artifacts)
+            ->pluck('relative_path')
+            ->map(fn (string $relativePath): string => $remoteRoot.'/'.$relativePath)
+            ->push($manifestPath);
+        $staleRemotePaths = collect($disk->allFiles($remoteRoot))
+            ->diff($currentRemotePaths)
+            ->values();
+
+        if ($staleRemotePaths->isNotEmpty() && ! $disk->delete($staleRemotePaths->all())) {
+            throw new RuntimeException('Unable to remove stale cloud election evidence.');
+        }
 
         if (! $disk->put($manifestPath, $this->json->encode($manifest))) {
             throw new RuntimeException('Unable to write the cloud evidence manifest.');
