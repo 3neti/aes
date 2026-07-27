@@ -84,7 +84,7 @@ export type ElectionReviewRoomStation = {
     joined_at: string | null;
     last_seen_at: string | null;
     join_url?: string;
-    join_qr?: string;
+    join_qr_url?: string;
 };
 
 export type ElectionReviewRoomEvent = {

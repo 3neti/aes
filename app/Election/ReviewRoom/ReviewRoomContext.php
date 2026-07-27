@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 
 final class ReviewRoomContext
 {
+    public function __construct(private readonly ReviewRoomService $rooms) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -42,9 +44,19 @@ final class ReviewRoomContext
             return null;
         }
 
+        $pairingKey = $request->session()->get('election_review_station_pairing_key');
+
+        if (! is_string($pairingKey) || $pairingKey === '') {
+            return null;
+        }
+
         $station = ReviewStation::query()->with('room')->find($stationId);
 
-        if ($station === null || $station->room->status !== 'open') {
+        if (
+            $station === null
+            || $station->room->status !== 'open'
+            || ! $this->rooms->isPairedWithKey($station, $pairingKey)
+        ) {
             return null;
         }
 

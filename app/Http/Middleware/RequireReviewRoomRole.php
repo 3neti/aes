@@ -31,6 +31,7 @@ final class RequireReviewRoomRole
                 'election_review_room_id',
                 'election_review_station_id',
                 'election_review_station_role',
+                'election_review_station_pairing_key',
             ]);
 
             if ($request->isMethod('GET')) {

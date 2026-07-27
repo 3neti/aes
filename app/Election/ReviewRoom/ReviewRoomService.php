@@ -64,7 +64,7 @@ final class ReviewRoomService
         );
     }
 
-    public function join(ReviewStation $station, string $token, string $sessionId): ReviewStation
+    public function join(ReviewStation $station, string $token, string $pairingKey): ReviewStation
     {
         if (! hash_equals($station->join_token_hash, hash('sha256', $token))) {
             throw new RuntimeException('The review station link is invalid.');
@@ -72,7 +72,7 @@ final class ReviewRoomService
 
         return $this->operationLock->execute(
             "review-room:join:{$station->id}",
-            fn (): ReviewStation => DB::transaction(function () use ($station, $sessionId): ReviewStation {
+            fn (): ReviewStation => DB::transaction(function () use ($station, $pairingKey): ReviewStation {
                 $station = ReviewStation::query()
                     ->with('room')
                     ->lockForUpdate()
@@ -82,7 +82,7 @@ final class ReviewRoomService
                     throw new RuntimeException('The review room is closed.');
                 }
 
-                $sessionHash = $this->sessionHash($sessionId);
+                $sessionHash = $this->pairingKeyHash($pairingKey);
 
                 if ($station->session_id_hash !== null && ! hash_equals($station->session_id_hash, $sessionHash)) {
                     throw new RuntimeException('This review station is already paired with another browser.');
@@ -112,6 +112,51 @@ final class ReviewRoomService
     public function heartbeat(ReviewStation $station): void
     {
         $station->forceFill(['last_seen_at' => now()])->saveQuietly();
+    }
+
+    public function isPairedWithKey(ReviewStation $station, string $pairingKey): bool
+    {
+        return $station->session_id_hash !== null
+            && hash_equals($station->session_id_hash, $this->pairingKeyHash($pairingKey));
+    }
+
+    public function release(ReviewStation $station, string $reason): ReviewStation
+    {
+        return $this->operationLock->execute(
+            "review-room:release:{$station->id}",
+            fn (): ReviewStation => DB::transaction(function () use ($station, $reason): ReviewStation {
+                $station = ReviewStation::query()
+                    ->with('room')
+                    ->lockForUpdate()
+                    ->findOrFail($station->id);
+
+                if ($station->room->status !== 'open') {
+                    throw new RuntimeException('The review room is closed.');
+                }
+
+                if ($station->session_id_hash === null) {
+                    return $station;
+                }
+
+                $joinedAt = $station->joined_at?->toIso8601String();
+                $station->forceFill([
+                    'session_id_hash' => null,
+                    'joined_at' => null,
+                    'last_seen_at' => null,
+                ])->save();
+
+                $this->appendEvent($station->room, 'review-station.released', [
+                    'station_id' => $station->id,
+                    'role' => $station->role->value,
+                    'label' => $station->label,
+                    'slot' => $station->slot,
+                    'previous_joined_at' => $joinedAt,
+                    'reason' => $reason,
+                ]);
+
+                return $station->refresh();
+            }, attempts: 5),
+        );
     }
 
     public function close(ReviewRoom $room): ReviewRoom
@@ -180,9 +225,9 @@ final class ReviewRoomService
         return $code;
     }
 
-    private function sessionHash(string $sessionId): string
+    private function pairingKeyHash(string $pairingKey): string
     {
-        return hash_hmac('sha256', $sessionId, (string) config('app.key'));
+        return hash_hmac('sha256', $pairingKey, (string) config('app.key'));
     }
 
     /**

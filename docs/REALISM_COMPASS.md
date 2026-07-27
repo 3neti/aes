@@ -26,7 +26,7 @@ The precinct realism program is complete for single-device simulation mode. The 
 | Cloud runtime alignment            | Complete | Cloud runs PHP 8.4, matching local development, CI, and the declared project platform.                                                                     |
 | Cloud deployment migration gate    | Complete | Deployments run `php artisan migrate --force`; the first persistent-database deployment supplies the final live execution proof.                            |
 | Demonstration availability         | Complete | Hibernation is disabled for the scheduled review window and the cost/availability decision is recorded.                                                    |
-| Multi-tablet Review Room           | Complete | Signed QR pairing, one-browser station binding, role isolation, connectivity status, five/ten-session coverage, and append-only room evidence pass.         |
+| Multi-tablet Review Room           | Complete | Signed lazy QR pairing, hashed session keys, journaled pairing release, role isolation, five/ten-session coverage, and append-only room evidence pass.       |
 | Concurrent voting hardening        | Planned  | Locks and idempotency prevent duplicate serials, journal events, releases, deposits, and scans under simultaneous tablet activity.                         |
 | Cloud evidence storage             | Complete | Private shared review storage survives request routing and restart while the local appliance filesystem remains the operational default.                   |
 | COMELEC Review Kit                 | Planned  | One offline package contains the brief, storyboard, video, forms, reports, evidence, checklist, known gaps, and hashes.                                    |

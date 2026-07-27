@@ -908,5 +908,9 @@ Known limitations:
 - Environment-variable deployment `depl-a25b80a2-e15e-421b-8b2c-31f3acb69487` succeeded with Review Room mode enabled, five default voter tablets, and a maximum of ten.
 - Live verification confirmed anonymous `401`, authorized `200`, `noindex`/`nofollow`/`noarchive`/`nosnippet`, private no-store caching, PHP 8.4, PostgreSQL, Redis, and database-backed sessions.
 - No live review room was created during deployment verification; the facilitator retains control over when the first shared rehearsal begins.
+- Pairing recovery hardening moved QR image generation out of the five-second facilitator refresh and into individually cached, facilitator-only image endpoints.
+- Station ownership now uses a random pairing key stored in the server-side session and hashed in PostgreSQL; every protected request verifies the key.
+- Facilitators and paired Election Officers can release a failed or reassigned browser pairing. The release clears ownership, immediately revokes the old browser, and appends `review-station.released` to the room evidence chain.
+- Pairing recovery verification passed: 15 focused feature/browser tests with 148 assertions, PHPStan with zero errors, TypeScript, ESLint, Prettier, Pint, and the production frontend build.
 - Next, apply distributed locking and idempotency to concurrent authorization, ballot finalization, printing, deposit, journal sequencing, and counting actions; then run full five- and ten-voter evidence-producing rehearsals.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.

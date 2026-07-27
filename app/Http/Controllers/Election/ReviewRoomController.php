@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ElectionSnapshot;
+use App\Election\ReviewRoom\ReviewRoomContext;
 use App\Election\ReviewRoom\ReviewRoomPresenter;
 use App\Election\ReviewRoom\ReviewRoomService;
+use App\Election\ReviewRoom\ReviewStationRole;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Election\CreateReviewRoomRequest;
@@ -12,24 +14,25 @@ use App\Models\ReviewRoom;
 use App\Models\ReviewStation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
 
 final class ReviewRoomController extends Controller
 {
-    public function index(Request $request, ReviewRoomPresenter $presenter): Response
-    {
+    public function index(
+        Request $request,
+        ReviewRoomPresenter $presenter,
+        ReviewRoomContext $context,
+    ): Response {
         $this->ensureEnabled();
         $room = ReviewRoom::query()
             ->with(['stations', 'events'])
             ->latest('opened_at')
             ->first();
-        $isFacilitator = $room !== null
-            && (
-                $request->session()->get('election_review_facilitator_room_id') === $room->id
-                || $request->session()->get('election_review_station_role') === 'officer'
-            );
+        $isFacilitator = $room !== null && $this->isFacilitator($request, $room, $context);
 
         return Inertia::render('Election/ReviewRoom', [
             'room' => $room === null
@@ -86,8 +89,14 @@ final class ReviewRoomController extends Controller
             $request->session()->regenerate();
         }
 
+        $pairingKey = $request->session()->get('election_review_station_pairing_key');
+
+        if (! is_string($pairingKey) || $pairingKey === '') {
+            $pairingKey = Str::random(64);
+        }
+
         try {
-            $station = $rooms->join($station, $token, $request->session()->getId());
+            $station = $rooms->join($station, $token, $pairingKey);
         } catch (RuntimeException $exception) {
             abort(403, $exception->getMessage());
         }
@@ -96,6 +105,7 @@ final class ReviewRoomController extends Controller
             'election_review_room_id' => $room->id,
             'election_review_station_id' => $station->id,
             'election_review_station_role' => $station->role->value,
+            'election_review_station_pairing_key' => $pairingKey,
         ]);
 
         return to_route($station->role->destinationRoute());
@@ -117,15 +127,48 @@ final class ReviewRoomController extends Controller
         ]);
     }
 
+    public function stationQr(
+        Request $request,
+        ReviewRoom $room,
+        ReviewStation $station,
+        ReviewRoomPresenter $presenter,
+        ReviewRoomContext $context,
+    ): HttpResponse {
+        $this->ensureEnabled();
+        $this->ensureStationBelongsToRoom($room, $station);
+        abort_unless($this->isFacilitator($request, $room, $context), 403);
+
+        return response($presenter->joinQr($room, $station), 200, [
+            'Content-Type' => 'image/png',
+            'Content-Disposition' => 'inline',
+        ]);
+    }
+
+    public function releaseStation(
+        Request $request,
+        ReviewRoom $room,
+        ReviewStation $station,
+        ReviewRoomService $rooms,
+        ReviewRoomContext $context,
+    ): RedirectResponse {
+        $this->ensureEnabled();
+        $this->ensureStationBelongsToRoom($room, $station);
+        abort_unless($this->isFacilitator($request, $room, $context), 403);
+
+        $rooms->release($station, 'Facilitator released a failed or reassigned browser pairing.');
+
+        return to_route('election.review-room.index')
+            ->with('success', "{$station->label} is ready to pair again.");
+    }
+
     public function close(
         Request $request,
         ReviewRoom $room,
         ReviewRoomService $rooms,
+        ReviewRoomContext $context,
     ): RedirectResponse {
         $this->ensureEnabled();
-        $isFacilitator = $request->session()->get('election_review_facilitator_room_id') === $room->id;
-        $isOfficer = $request->session()->get('election_review_station_role') === 'officer';
-        abort_unless($isFacilitator || $isOfficer, 403);
+        abort_unless($this->isFacilitator($request, $room, $context), 403);
 
         $rooms->close($room);
 
@@ -140,5 +183,26 @@ final class ReviewRoomController extends Controller
             && config('election.review_room.enabled', false),
             404,
         );
+    }
+
+    private function isFacilitator(
+        Request $request,
+        ReviewRoom $room,
+        ReviewRoomContext $context,
+    ): bool {
+        if ($request->session()->get('election_review_facilitator_room_id') === $room->id) {
+            return true;
+        }
+
+        $station = $context->station($request);
+
+        return $station !== null
+            && $station->review_room_id === $room->id
+            && $station->role === ReviewStationRole::Officer;
+    }
+
+    private function ensureStationBelongsToRoom(ReviewRoom $room, ReviewStation $station): void
+    {
+        abort_unless($station->review_room_id === $room->id, 404);
     }
 }

@@ -83,7 +83,7 @@ test('facilitator creates the complete assigned station set and hash chained eve
             ->where('room.code', $room->code)
             ->has('room.stations', 7)
             ->has('room.stations.0.join_url')
-            ->has('room.stations.0.join_qr')
+            ->has('room.stations.0.join_qr_url')
         );
 });
 
@@ -98,7 +98,7 @@ test('unpaired browsers see pairing instructions without station credentials', f
             ->where('room.code', $room->code)
             ->has('room.stations', 6)
             ->missing('room.stations.0.join_url')
-            ->missing('room.stations.0.join_qr')
+            ->missing('room.stations.0.join_qr_url')
         );
 });
 
@@ -143,7 +143,7 @@ test('presentation station receives a projection safe room view', function (): v
             ->where('room.code', $room->code)
             ->has('room.stations', 6)
             ->missing('room.stations.0.join_url')
-            ->missing('room.stations.0.join_qr')
+            ->missing('room.stations.0.join_qr_url')
             ->missing('room.tally')
             ->missing('room.ballots')
         );
@@ -183,16 +183,84 @@ test('only one review room may remain open', function (): void {
         ->toThrow(RuntimeException::class, 'Close the active review room');
 });
 
-test('facilitator presentation contains a QR for every station', function (): void {
+test('facilitator presentation uses lazy QR endpoints for every station', function (): void {
     $room = createReviewRoom(3);
-    $room = app(ReviewRoomPresenter::class)->facilitator($room);
+    $presented = app(ReviewRoomPresenter::class)->facilitator($room);
 
-    expect($room['stations'])->toHaveCount(7);
+    expect($presented['stations'])->toHaveCount(7);
 
-    foreach ($room['stations'] as $station) {
+    foreach ($presented['stations'] as $station) {
         expect($station['join_url'])->toStartWith('http')
-            ->and($station['join_qr'])->toStartWith('data:image/png;base64,');
+            ->and($station['join_qr_url'])->toStartWith('http')
+            ->and($station)->not->toHaveKey('join_qr');
     }
+
+    $station = $room->stations()->firstOrFail();
+    $response = $this->withSession([
+        'election_review_facilitator_room_id' => $room->id,
+    ])->get(route('election.review-room.station-qr', [$room, $station]));
+
+    $response->assertSuccessful()
+        ->assertHeader('Content-Type', 'image/png');
+
+    expect($response->getContent())->toStartWith("\x89PNG");
+});
+
+test('facilitator releases a stranded pairing and records linked evidence', function (): void {
+    $room = createReviewRoom(1);
+    $station = $room->stations()
+        ->where('role', ReviewStationRole::Officer)
+        ->sole();
+    app(ReviewRoomService::class)->join(
+        $station,
+        $station->join_token,
+        'stranded-browser-session',
+    );
+
+    $this->withSession([
+        'election_review_facilitator_room_id' => $room->id,
+    ])->post(route('election.review-room.station-release', [$room, $station]))
+        ->assertRedirect(route('election.review-room.index'));
+
+    $station->refresh();
+    $events = $room->events()->orderBy('sequence')->get();
+
+    expect($station->session_id_hash)->toBeNull()
+        ->and($station->joined_at)->toBeNull()
+        ->and($station->last_seen_at)->toBeNull()
+        ->and($events)->toHaveCount(3)
+        ->and($events->last()->event_type)->toBe('review-station.released')
+        ->and($events->last()->previous_hash)->toBe($events->get(1)->event_hash);
+});
+
+test('unpaired browser cannot read QR images or release station assignments', function (): void {
+    $room = createReviewRoom(1);
+    $station = $room->stations()
+        ->where('role', ReviewStationRole::Officer)
+        ->sole();
+
+    $this->get(route('election.review-room.station-qr', [$room, $station]))
+        ->assertForbidden();
+    $this->post(route('election.review-room.station-release', [$room, $station]))
+        ->assertForbidden();
+});
+
+test('released browser session immediately loses its station role', function (): void {
+    $room = createReviewRoom(1);
+    $station = $room->stations()
+        ->where('role', ReviewStationRole::Voter)
+        ->sole();
+
+    $this->get(reviewStationJoinUrl($room, $station))
+        ->assertRedirect(route('election.voter'));
+
+    app(ReviewRoomService::class)->release($station, 'Test recovery.');
+
+    $this->get(route('election.voter'))
+        ->assertRedirect(route('election.review-room.index'));
+
+    $this->get(reviewStationJoinUrl($room, $station))
+        ->assertRedirect(route('election.voter'));
 });
 
 test('five and ten voter tablets pair to independent browser sessions', function (int $voterCount): void {

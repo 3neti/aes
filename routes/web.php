@@ -25,6 +25,12 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/review-room', [ReviewRoomController::class, 'index'])->name('review-room.index');
     Route::post('/review-room', [ReviewRoomController::class, 'store'])->name('review-room.store');
     Route::post('/review-room/{room:code}/close', [ReviewRoomController::class, 'close'])->name('review-room.close');
+    Route::get('/review-room/{room:code}/stations/{station}/qr', [ReviewRoomController::class, 'stationQr'])
+        ->middleware('throttle:60,1')
+        ->name('review-room.station-qr');
+    Route::post('/review-room/{room:code}/stations/{station}/release', [ReviewRoomController::class, 'releaseStation'])
+        ->middleware('throttle:30,1')
+        ->name('review-room.station-release');
     Route::get('/review-room/{room:code}/join/{station}', [ReviewRoomController::class, 'join'])
         ->middleware(['signed', 'throttle:30,1'])
         ->name('review-room.join');

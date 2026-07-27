@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted } from 'vue';
 import type { ElectionReviewRoom } from '@/components/election/types';
 import {
     close as closeReviewRoom,
+    stationRelease,
     store as storeReviewRoom,
 } from '@/routes/election/review-room';
 
@@ -284,8 +285,8 @@ onBeforeUnmount(() => {
                             </div>
 
                             <img
-                                v-if="station.join_qr"
-                                :src="station.join_qr"
+                                v-if="station.join_qr_url"
+                                :src="station.join_qr_url"
                                 :alt="`Pair ${station.label}`"
                                 class="mx-auto mt-4 aspect-square w-full max-w-52 border border-stone-200 bg-white p-2"
                             />
@@ -295,12 +296,31 @@ onBeforeUnmount(() => {
                                 {{ formatTime(station.last_seen_at) }}
                             </p>
                             <a
-                                v-if="station.join_url"
+                                v-if="
+                                    station.join_url &&
+                                    station.status === 'waiting'
+                                "
                                 :href="station.join_url"
                                 class="mt-3 inline-flex min-h-10 w-full items-center justify-center bg-blue-800 px-3 py-2 text-center text-sm font-bold text-white"
                             >
                                 Pair this device
                             </a>
+                            <Form
+                                v-if="station.status !== 'waiting'"
+                                v-bind="
+                                    stationRelease.form({
+                                        room: room.code,
+                                        station: station.id,
+                                    })
+                                "
+                            >
+                                <button
+                                    type="submit"
+                                    class="mt-2 min-h-10 w-full border border-red-700 bg-white px-3 py-2 text-sm font-bold text-red-800"
+                                >
+                                    Release pairing
+                                </button>
+                            </Form>
                         </article>
                     </div>
                 </section>

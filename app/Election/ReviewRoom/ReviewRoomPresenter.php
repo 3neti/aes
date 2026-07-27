@@ -6,11 +6,15 @@ use App\Election\Voting\StandardQrCode;
 use App\Models\ReviewRoom;
 use App\Models\ReviewRoomEvent;
 use App\Models\ReviewStation;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Support\Facades\URL;
 
 final class ReviewRoomPresenter
 {
-    public function __construct(private readonly StandardQrCode $qrCode) {}
+    public function __construct(
+        private readonly StandardQrCode $qrCode,
+        private readonly CacheManager $cache,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -91,7 +95,30 @@ final class ReviewRoomPresenter
             return $data;
         }
 
-        $url = URL::temporarySignedRoute(
+        return [
+            ...$data,
+            'join_url' => $this->joinUrl($room, $station),
+            'join_qr_url' => route('election.review-room.station-qr', [
+                'room' => $room,
+                'station' => $station,
+            ]),
+        ];
+    }
+
+    public function joinQr(ReviewRoom $room, ReviewStation $station): string
+    {
+        $ttl = now()->addMinutes((int) config('election.review_room.join_link_ttl_minutes', 480));
+
+        return $this->cache->remember(
+            "review-room:station-qr:{$station->id}",
+            $ttl,
+            fn (): string => $this->qrCode->renderPng($this->joinUrl($room, $station)),
+        );
+    }
+
+    private function joinUrl(ReviewRoom $room, ReviewStation $station): string
+    {
+        return URL::temporarySignedRoute(
             'election.review-room.join',
             now()->addMinutes((int) config('election.review_room.join_link_ttl_minutes', 480)),
             [
@@ -100,12 +127,6 @@ final class ReviewRoomPresenter
                 'token' => $station->join_token,
             ],
         );
-
-        return [
-            ...$data,
-            'join_url' => $url,
-            'join_qr' => 'data:image/png;base64,'.base64_encode($this->qrCode->renderPng($url)),
-        ];
     }
 
     private function status(ReviewStation $station): string

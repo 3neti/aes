@@ -4,7 +4,7 @@
 
 ## Implementation Status
 
-- Completed Slice: Multi-Tablet Review Room
+- Completed Slice: Review Room Pairing Recovery
 - Active Program: COMELEC Review Deployment
 - Current Slice: Concurrent Voting Hardening
 - Next Slice: COMELEC Review Kit
