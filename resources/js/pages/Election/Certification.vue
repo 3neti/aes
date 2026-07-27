@@ -627,9 +627,24 @@ const manualReturnTemplateJson = JSON.stringify(
                     : 'warning'
             "
         >
-            <Form v-bind="runSealing.form()" class="mt-5">
-                <button class="secondary-button" type="submit">
-                    Record Sealing
+            <Form
+                v-bind="runSealing.form()"
+                #default="{ errors, processing }"
+                class="mt-5 grid gap-3"
+            >
+                <p
+                    v-if="errors.sealing"
+                    role="alert"
+                    class="border-l-4 border-red-700 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900"
+                >
+                    {{ errors.sealing }}
+                </p>
+                <button
+                    class="secondary-button justify-self-start"
+                    type="submit"
+                    :disabled="processing"
+                >
+                    {{ processing ? 'Recording sealing...' : 'Record Sealing' }}
                 </button>
             </Form>
 

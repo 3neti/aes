@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Election;
 
 use App\Election\Attestation\ElectoralBoardBaselineService;
+use App\Election\Certification\ReviewCertificationReadiness;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Preparation\ActivateConfiguredPrecinct;
 use App\Election\Preparation\PrecinctSetupService;
@@ -40,9 +41,12 @@ final class ProvisionController extends Controller
         ]);
     }
 
-    public function activate(ActivateConfiguredPrecinct $activate): RedirectResponse
-    {
+    public function activate(
+        ActivateConfiguredPrecinct $activate,
+        ReviewCertificationReadiness $readiness,
+    ): RedirectResponse {
         $activate->handle();
+        $readiness->ensure();
 
         return redirect()->route('election.certification');
     }

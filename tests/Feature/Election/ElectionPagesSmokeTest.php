@@ -238,7 +238,8 @@ test('certification page can run zero-out and sealing', function (): void {
         ->assertRedirect(route('election.certification'));
 
     $this->post(route('election.certification.seal'))
-        ->assertRedirect(route('election.certification'));
+        ->assertRedirect(route('election.certification'))
+        ->assertSessionHasErrors('sealing');
 
     $zeroOut = app(ElectionStorage::class)->readJson('certification/zero-out-report.json');
     $sealing = app(ElectionStorage::class)->readJson('certification/sealing-report.json');

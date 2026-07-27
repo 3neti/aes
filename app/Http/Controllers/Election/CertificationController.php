@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Election;
 use App\Election\Certification\CertificationService;
 use App\Election\Certification\DiscrepancyReportService;
 use App\Election\Certification\ManualVerificationService;
+use App\Election\Certification\ReviewCertificationReadiness;
 use App\Election\Certification\SealingService;
 use App\Election\Certification\ZeroOutService;
 use App\Election\Core\ElectionSnapshot;
@@ -109,17 +110,31 @@ final class CertificationController extends Controller
         return response()->download($path, 'zero-out-report.json');
     }
 
-    public function runSealing(SealingService $sealing, LifecycleState $lifecycle): RedirectResponse
-    {
+    public function runSealing(
+        ReviewCertificationReadiness $readiness,
+        SealingService $sealing,
+        LifecycleState $lifecycle,
+    ): RedirectResponse {
+        $readiness->ensure();
         $report = $sealing->run();
 
         if ($report['passed'] ?? false) {
             $lifecycle->set(Lifecycle::OpenPrecinct);
+
+            return redirect()
+                ->route('election.certification')
+                ->with('sealing_report_hash', $report['report_hash'] ?? null);
         }
+
+        $failedChecks = $this->failedCheckMessages($report);
 
         return redirect()
             ->route('election.certification')
-            ->with('sealing_report_hash', $report['report_hash'] ?? null);
+            ->withErrors([
+                'sealing' => $failedChecks !== ''
+                    ? $failedChecks
+                    : 'The certification evidence could not be sealed.',
+            ]);
     }
 
     public function downloadSealing(ElectionStorage $storage): BinaryFileResponse
@@ -129,6 +144,34 @@ final class CertificationController extends Controller
         abort_unless(file_exists($path), 404);
 
         return response()->download($path, 'sealing-report.json');
+    }
+
+    /**
+     * @param  array<string, mixed>  $report
+     */
+    private function failedCheckMessages(array $report): string
+    {
+        $checks = $report['checks'] ?? null;
+
+        if (! is_array($checks)) {
+            return '';
+        }
+
+        $messages = [];
+
+        foreach ($checks as $check) {
+            if (! is_array($check) || (bool) ($check['passed'] ?? false)) {
+                continue;
+            }
+
+            $message = $check['message'] ?? null;
+
+            if (is_string($message) && $message !== '') {
+                $messages[] = $message;
+            }
+        }
+
+        return implode(' ', $messages);
     }
 
     /**
