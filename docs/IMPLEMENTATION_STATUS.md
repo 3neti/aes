@@ -5,9 +5,9 @@
 - Status: Simulation implementation complete; hardware and prescribed-form validation pending
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Demonstration Availability
-- Current slice: Shared Cloud Persistence
-- Next slice: Multi-Tablet Review Room
+- Completed slice: Shared Cloud Persistence
+- Current slice: Multi-Tablet Review Room
+- Next slice: Concurrent Voting Hardening
 - Primary acceptance target: a protected multi-tablet COMELEC review rehearsal that reaches audit, preserves role and voter isolation, and produces a verified Review Kit without weakening election-day controls
 
 ### Operational Run Isolation
@@ -894,6 +894,8 @@ Known limitations:
 - Added the `election_evidence` S3-compatible disk, hash-verifying `CloudEvidenceMirror`, `election:evidence-mirror` command, and cache-backed `ElectionOperationLock`.
 - Scenario runs automatically mirror finalized evidence when Cloud evidence storage is explicitly enabled; local appliance storage remains the default when it is disabled.
 - Focused persistence tests passed: 3 tests with 12 assertions. The lifecycle regression passed: 74 tests with 1,015 assertions.
-- The Cloud resources and production-safe session/cache/evidence settings are attached; deployment and live connection verification remain before this slice is complete.
-- Next, verify shared persistence in the deployed environment before adding role-paired tablets.
+- Deployment `depl-a25b753a-e843-46ff-8dc7-66a4c8b0ed3a` succeeded on PHP 8.4 and ran the configured migration command against PostgreSQL.
+- Live verification confirmed all three migrations ran, Redis acquired and released an atomic lock, and the private bucket completed a reversible write/read/delete round trip.
+- The protected endpoint continued returning the review login challenge and no-index/no-cache headers after the persistence rollout.
+- Next, add the role-paired Multi-Tablet Review Room and apply shared locks to its concurrent ceremony actions.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.

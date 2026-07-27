@@ -28,7 +28,7 @@ The precinct realism program is complete for simulation mode. The browser and sc
 | Demonstration availability         | Complete | Hibernation is disabled for the scheduled review window and the cost/availability decision is recorded.                                                    |
 | Multi-tablet Review Room           | Planned  | Officer, voter, print, watcher, and presentation tablets join one isolated rehearsal without cross-role or cross-voter disclosure.                         |
 | Concurrent voting hardening        | Planned  | Locks and idempotency prevent duplicate serials, journal events, releases, deposits, and scans under simultaneous tablet activity.                         |
-| Cloud evidence storage             | Active   | Private shared review storage survives request routing and restart while the local appliance filesystem remains the operational default.                   |
+| Cloud evidence storage             | Complete | Private shared review storage survives request routing and restart while the local appliance filesystem remains the operational default.                   |
 | COMELEC Review Kit                 | Planned  | One offline package contains the brief, storyboard, video, forms, reports, evidence, checklist, known gaps, and hashes.                                    |
 | Public counting and adjudication   | Complete | Physical box count, accepted records, and every rejected-scan disposition must reconcile before completion.                                                |
 | Return, posting, and custody       | Complete | Dual approval gates handoff; delivery and custody require the same posted return evidence chain.                                                           |
@@ -53,7 +53,7 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Shared Cloud Persistence, followed by the Multi-Tablet Review Room. The supervised offline hardware pilot remains the next field-validation program.
+Multi-Tablet Review Room, followed by concurrent voting hardening and the COMELEC Review Kit. The supervised offline hardware pilot remains the next field-validation program.
 
 ## Temporary Review Defaults
 

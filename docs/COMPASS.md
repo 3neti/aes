@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Demonstration Availability
+- Completed Slice: Shared Cloud Persistence
 - Active Program: COMELEC Review Deployment
-- Current Slice: Shared Cloud Persistence
-- Next Slice: Multi-Tablet Review Room
+- Current Slice: Multi-Tablet Review Room
+- Next Slice: Concurrent Voting Hardening
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
