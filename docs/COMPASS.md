@@ -1,11 +1,13 @@
 # Alternative Election System
+
 # Architecture Compass
+
 ## Implementation Status
 
 - Completed Slice: Full Application and Browser Regression
-- Active Program: Appliance Field Validation
-- Current Slice: Supervised Raspberry Pi Hardware Pilot
-- Next Slice: Legally Approved Transmission Policy and Driver
+- Active Program: COMELEC Review Deployment
+- Current Slice: Review Mode and Temporary Form Defaults
+- Next Slice: Multi-Tablet Review Room
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

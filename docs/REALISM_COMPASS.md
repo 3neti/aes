@@ -21,6 +21,11 @@ The precinct realism program is complete for simulation mode. The browser and sc
 | Private voter journey              | Complete | Anonymous one-use admission, client-side ballot review, encrypted print release, private printing, sealed deposit, and post-close disclosure are enforced. |
 | Printed artifact review            | Complete | The storyboard renders actual generated PDF pages with source paths and hashes for independent COMELEC print-form critique.                                |
 | COMELEC print-form redesign        | Complete | A4 ballot, tally, and Return forms paginate all 387 candidates, reserve officer certification areas, and embed a page-capture-decodable ballot QR.         |
+| Review mode and temporary defaults | Planned  | Review forms load server-supplied simulation values; election-day fields remain empty and signatures/approvals remain manual.                              |
+| Multi-tablet Review Room           | Planned  | Officer, voter, print, watcher, and presentation tablets join one isolated rehearsal without cross-role or cross-voter disclosure.                         |
+| Concurrent voting hardening        | Planned  | Locks and idempotency prevent duplicate serials, journal events, releases, deposits, and scans under simultaneous tablet activity.                         |
+| Cloud evidence storage             | Planned  | Private shared review storage survives request routing and restart while the local appliance filesystem remains the operational default.                   |
+| COMELEC Review Kit                 | Planned  | One offline package contains the brief, storyboard, video, forms, reports, evidence, checklist, known gaps, and hashes.                                    |
 | Public counting and adjudication   | Complete | Physical box count, accepted records, and every rejected-scan disposition must reconcile before completion.                                                |
 | Return, posting, and custody       | Complete | Dual approval gates handoff; delivery and custody require the same posted return evidence chain.                                                           |
 | Appliance hardening                | Complete | Restart inspection preserves the ceremony, verifies evidence chains, blocks tampered runs, and reports degraded devices.                                   |
@@ -44,7 +49,17 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Field Hardware Pilot with the intended printer, scanner, paper stock, and prescribed-form review.
+Review Mode and Temporary Form Defaults, followed by the Multi-Tablet Review Room and protected Laravel Cloud review deployment. The supervised offline hardware pilot remains the next field-validation program.
+
+## Temporary Review Defaults
+
+- Defaults are enabled only by an explicit simulation/review environment flag.
+- Values come from server-side configuration and are never compiled into the Vue application.
+- Setup defaults include simulation officer codes/PINs, device identities, ballot stock, box/envelope IDs, and seal numbers.
+- Ceremony defaults cover officer code/PIN entry for opening, voter admission, attestation, counting, Return approval, and handoff testing.
+- Signatures, observed physical counts, adjudication decisions, acknowledgements, recipient identities, and final approvals remain deliberate human acts.
+- Prefilled values never auto-submit a form or constitute approval.
+- Election-day mode exposes no temporary review credentials or field defaults.
 
 ## Private Voter Journey
 

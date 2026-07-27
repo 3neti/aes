@@ -27,6 +27,9 @@ The software does not declare legal compliance. It implements configurable proce
 - Officer PINs and signatures are local simulation credentials until COMELEC defines production credential issuance.
 - Manual handoff remains the first official delivery driver.
 - The first field-ready target uses local files, CUPS printing, a camera or handheld QR scanner, and removable media without network dependency.
+- Laravel Cloud is a presentation and review environment, not a replacement for the offline precinct appliance.
+- Multiple review tablets use separate browser sessions and one-use voter authorizations against the same isolated rehearsal run.
+- Temporary form defaults are permitted only in explicit simulation/review mode and are never exposed in an election-day run.
 
 ## Architecture
 
@@ -152,11 +155,88 @@ Definition of done: interruption scenarios resume deterministically without losi
 
 Definition of done: the field scenario reaches audit with all required checks passing and contextual file pointers in its summary.
 
+## COMELEC Review Deployment Program
+
+The review program presents the existing ceremonies to COMELEC personnel through a protected Laravel Cloud environment and several physical tablets. It must preserve the distinction between a convenient Internet-hosted review and the intended offline precinct appliance.
+
+### Slice 11: Review Mode and Temporary Form Defaults
+
+- Add an explicit review-mode configuration flag that is disabled by default.
+- Source temporary review values from server-side environment/configuration, not from Vue bundles or browser storage.
+- Prefill Electoral Board setup and inventory fields:
+    - Chairperson, Poll Clerk, and Third Member simulation codes.
+    - Chairperson and Poll Clerk simulation PINs.
+    - Device, printer, and scanner serials.
+    - Ballot-stock start and end numbers.
+    - Ballot box, custody envelope, and seal identifiers.
+- Prefill simulation officer codes and PINs on opening, voter admission, attestation, counting reconciliation, adjudication, Return approval, and handoff verification forms.
+- Prefill deterministic testing/configuration values only when they represent known simulation fixtures.
+- Provide one visible `Review defaults loaded` notice and a control to clear or reload the defaults.
+- Never prefill signatures, observed physical ballot counts, discrepancy dispositions, legal acknowledgements, recipient identities, or final approval acts.
+- Never auto-submit a ceremony or treat a prefilled field as officer approval.
+- Record in the rehearsal report that temporary review defaults were enabled.
+- Add a removal switch so the defaults can be disabled without changing Vue pages.
+
+Definition of done: a reviewer can proceed through setup, configuration, certification, and testing without memorizing simulation credentials, while election-day mode renders the same fields empty and exposes none of the temporary values.
+
+### Slice 12: Multi-Tablet Review Room
+
+- Add a facilitator/projector view for one isolated rehearsal room.
+- Generate role-specific join links and QR codes for:
+    - Electoral Board tablet.
+    - Voter tablets 1 through N.
+    - Private print-station tablet.
+    - Poll-watcher tablet.
+    - Read-only presentation screen.
+- Show station connectivity, readiness, authorizations, completed ballots, prints, and deposits without exposing voter selections.
+- Mirror only one designated training voter tablet during a presentation.
+- Mark every page as a simulation review environment.
+
+Definition of done: at least five independent voter browser sessions can join one rehearsal, vote independently, and remain isolated from officer, watcher, and other voter state.
+
+### Slice 13: Concurrent Voting Hardening
+
+- Add distributed locks around journal sequencing, paper serial issuance, authorization claiming, ballot finalization, print-release redemption, and counting-record allocation.
+- Add idempotency keys to every retryable tablet action.
+- Reject duplicate claims, submissions, redemptions, deposits, and scans deterministically.
+- Add concurrent feature/browser scenarios for five and ten voter tablets.
+
+Definition of done: concurrent tablet activity cannot duplicate a paper serial, journal sequence, release, deposit, or counting record.
+
+### Slice 14: Cloud Evidence Storage
+
+- Keep the local filesystem adapter as the precinct-appliance default.
+- Add a private shared object-storage adapter for immutable review evidence.
+- Use persistent database sessions and shared distributed locks.
+- Materialize temporary local files only when PDF, QR, archive, or rendering tools require a local path.
+- Rebuild and verify the same numbered evidence bundle from shared review storage.
+
+Definition of done: a review run survives request routing and application restart without missing, split, or conflicting evidence.
+
+### Slice 15: COMELEC Review Kit
+
+- Generate one offline review package containing the executive brief, storyboard, video, forms, scenario report, evidence bundle, reviewer checklist, known gaps, and README.
+- Include the exact review-mode configuration, connected-station statistics, test results, and evidence hashes.
+- Clearly distinguish simulated controls from field-validated controls.
+
+Definition of done: a reviewer can understand and verify the rehearsal without repository access or a live meeting.
+
+### Slice 16: Laravel Cloud Review Deployment
+
+- Deploy a protected review environment in the Singapore region.
+- Use a private object-storage bucket, persistent relational database, shared lock/session driver, file printer, and disabled transmission.
+- Keep the environment non-hibernating during scheduled demonstrations.
+- Run and record the full multi-tablet rehearsal before external review.
+
+Definition of done: the protected Cloud URL supports a complete multi-tablet COMELEC rehearsal and produces a verified downloadable Review Kit.
+
 ## UI Strategy
 
 The operator shell remains ceremony-driven. Each stage presents the legal ceremony name, accountable physical objects, required officers, evidence already recorded, exactly one next legal action, and explicit blocked reasons.
 
 Voter, public-count, and diagnostics views are separate surfaces. Administrative dashboards are not introduced.
+
+The COMELEC Review Room is a separate, read-only presentation surface. It may summarize connectivity and ceremony progress, but it may not perform operational actions or expose individual voter choices.
 
 ## Scenario Strategy
 
@@ -191,6 +271,9 @@ Every scenario writes a report with statistics, passed gates, failures injected,
 - Test evidence contaminating operations: enforce typed namespaces and protected pointers.
 - Hidden paper discrepancies: make physical reconciliation a hard gate.
 - Credential misuse: require role-scoped PINs, signatures, and dual control.
+- Review defaults leaking into operations: gate them by explicit review mode, source them server-side, test election-day absence, and retain manual signatures and approvals.
+- Concurrent tablet races: require distributed locks, idempotency, and multi-session scenarios before Cloud deployment.
+- Cloud filesystem loss: retain local appliance storage and use private shared object storage only through a dedicated review adapter.
 - Device interruption: use idempotent actions, append-only evidence, and recovery reports.
 - Overly complex UI: expose only the current ceremony and blocked reasons.
 
@@ -208,4 +291,10 @@ Every scenario writes a report with statistics, passed gates, failures injected,
 10. Add appliance recovery and failure injection.
 11. Add the 50-ballot field scenario.
 12. Run complete PHP, browser, type, build, scenario, audit, and archive verification.
-
+13. Add explicit review mode and temporary server-supplied form defaults.
+14. Add the role-paired multi-tablet Review Room.
+15. Add distributed locking, idempotency, and concurrent voter scenarios.
+16. Add shared Cloud evidence storage while retaining local appliance storage.
+17. Generate the self-contained COMELEC Review Kit.
+18. Deploy and verify the protected Laravel Cloud review environment.
+19. Continue with the supervised offline hardware pilot and prescribed-form review.

@@ -6,9 +6,9 @@
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
 - Completed slice: COMELEC Print-Form Redesign
-- Current slice: Field Hardware Pilot preparation
-- Next slice: Printer, scanner, paper-stock, and prescribed-form validation
-- Primary acceptance target: a configured Tondo election-day browser run that reaches audit with paper accounting, required officer evidence, complete reconciliation, and a verified archive
+- Current slice: Review Mode and Temporary Form Defaults (planned)
+- Next slice: Multi-Tablet Review Room
+- Primary acceptance target: a protected multi-tablet COMELEC review rehearsal that reaches audit, preserves role and voter isolation, and produces a verified Review Kit without weakening election-day controls
 
 ### Operational Run Isolation
 
@@ -867,3 +867,12 @@ Known limitations:
 - The new forms are COMELEC-oriented simulation evidence, not approved prescribed forms.
 - Physical printer margin, toner, paper, camera-distance, and scanner testing remain part of the field hardware pilot.
 - Form wording, official copy counts, typography, signature requirements, and paper dimensions require COMELEC review.
+
+## Planned COMELEC Review Deployment
+
+- The review deployment is a presentation environment and does not replace the offline precinct appliance.
+- The first slice will prefill simulation-only officer, setup, inventory, configuration, and testing fields from server-side configuration.
+- Temporary defaults will be gated by explicit review mode and absent from election-day responses.
+- Signatures, observed physical counts, adjudication decisions, acknowledgements, recipient identities, and final approvals will remain manual.
+- Later slices add role-paired tablets, concurrent voting locks and idempotency, shared Cloud evidence storage, the self-contained Review Kit, and the protected Laravel Cloud deployment.
+- The supervised printer/scanner/paper-stock pilot remains required after the review deployment.
