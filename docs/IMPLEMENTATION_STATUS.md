@@ -5,9 +5,9 @@
 - Status: Simulation implementation complete; hardware and prescribed-form validation pending
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Cloud Review Protection
-- Current slice: Cloud Runtime Alignment
-- Next slice: Cloud Deployment Migration Gate
+- Completed slice: Cloud Runtime Alignment
+- Current slice: Cloud Deployment Migration Gate
+- Next slice: Demonstration Availability
 - Primary acceptance target: a protected multi-tablet COMELEC review rehearsal that reaches audit, preserves role and voter isolation, and produces a verified Review Kit without weakening election-day controls
 
 ### Operational Run Isolation
@@ -880,5 +880,8 @@ Known limitations:
 - Authorized and unauthorized responses prohibit indexing and caching; the deployed `robots.txt` disallows all crawlers.
 - Live verification confirmed HTTP 401 for anonymous access, HTTP 200 for an authorized reviewer, the review-mode banner, and the expected response headers.
 - Cloud credentials remain deployment secrets and are not persisted in source control, scenario reports, or browser-role props.
-- Next slices align PHP, enable migrations, disable hibernation for demonstrations, and provision shared persistence before adding role-paired tablets.
+- Production deployment `depl-a25b6b6c-69a0-4de8-a12d-4b6c976ad8d3` succeeded on PHP 8.4.
+- A command executed inside the running Cloud container reported PHP 8.4, matching local development, CI, and the declared Composer platform.
+- The protected review URL remained healthy after the runtime replacement.
+- Next slices enable migrations, disable hibernation for demonstrations, and provision shared persistence before adding role-paired tablets.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.

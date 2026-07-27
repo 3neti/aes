@@ -23,7 +23,7 @@ The precinct realism program is complete for simulation mode. The browser and sc
 | COMELEC print-form redesign        | Complete | A4 ballot, tally, and Return forms paginate all 387 candidates, reserve officer certification areas, and embed a page-capture-decodable ballot QR.         |
 | Review mode and temporary defaults | Complete | Review forms load server-supplied simulation values; election-day fields remain empty and signatures/approvals remain manual.                              |
 | Cloud review protection            | Complete | Review access is protected and responses explicitly prohibit search-engine indexing before credentials or evidence are enabled.                            |
-| Cloud runtime alignment            | Planned  | Cloud runs PHP 8.4, matching local development, CI, and the declared project platform.                                                                     |
+| Cloud runtime alignment            | Complete | Cloud runs PHP 8.4, matching local development, CI, and the declared project platform.                                                                     |
 | Cloud deployment migration gate    | Planned  | Successful deployments apply pending migrations non-interactively against persistent storage.                                                              |
 | Demonstration availability         | Planned  | Hibernation is disabled for the scheduled review window and the cost/availability decision is recorded.                                                    |
 | Multi-tablet Review Room           | Planned  | Officer, voter, print, watcher, and presentation tablets join one isolated rehearsal without cross-role or cross-voter disclosure.                         |
@@ -53,7 +53,7 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Cloud Runtime Alignment, followed by deployment migrations, demonstration availability, shared persistence, and the Multi-Tablet Review Room. The supervised offline hardware pilot remains the next field-validation program.
+Cloud Deployment Migration Gate, followed by demonstration availability, shared persistence, and the Multi-Tablet Review Room. The supervised offline hardware pilot remains the next field-validation program.
 
 ## Temporary Review Defaults
 

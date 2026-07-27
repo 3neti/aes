@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Cloud Review Protection
+- Completed Slice: Cloud Runtime Alignment
 - Active Program: COMELEC Review Deployment
-- Current Slice: Cloud Runtime Alignment
-- Next Slice: Cloud Deployment Migration Gate
+- Current Slice: Cloud Deployment Migration Gate
+- Next Slice: Demonstration Availability
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
