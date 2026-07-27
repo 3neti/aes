@@ -5,9 +5,9 @@
 - Status: Simulation implementation complete; hardware and prescribed-form validation pending
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Review Mode and Temporary Form Defaults
-- Current slice: Cloud Review Protection
-- Next slice: Cloud Runtime Alignment
+- Completed slice: Cloud Review Protection
+- Current slice: Cloud Runtime Alignment
+- Next slice: Cloud Deployment Migration Gate
 - Primary acceptance target: a protected multi-tablet COMELEC review rehearsal that reaches audit, preserves role and voter isolation, and produces a verified Review Kit without weakening election-day controls
 
 ### Operational Run Isolation
@@ -876,5 +876,9 @@ Known limitations:
 - Signatures, observed physical counts, adjudication decisions, acknowledgements, recipient identities, and final approvals will remain manual.
 - Operators can clear and reload temporary defaults without submitting a ceremony, and scenario reports disclose review mode without persisting credentials.
 - Focused verification passed: 6 feature tests with 76 assertions, 1 browser test with 11 assertions, TypeScript, ESLint, production build, Pint, and formatting.
-- Next slices protect the Cloud URL, disable indexing, align PHP, enable migrations, disable hibernation for demonstrations, and provision shared persistence before adding role-paired tablets.
+- The Cloud URL now rejects anonymous access with a review-specific login challenge and accepts configured reviewer credentials.
+- Authorized and unauthorized responses prohibit indexing and caching; the deployed `robots.txt` disallows all crawlers.
+- Live verification confirmed HTTP 401 for anonymous access, HTTP 200 for an authorized reviewer, the review-mode banner, and the expected response headers.
+- Cloud credentials remain deployment secrets and are not persisted in source control, scenario reports, or browser-role props.
+- Next slices align PHP, enable migrations, disable hibernation for demonstrations, and provision shared persistence before adding role-paired tablets.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.
