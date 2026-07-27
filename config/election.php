@@ -12,6 +12,11 @@ return [
     'runtime' => [
         'run_type' => env('ELECTION_RUN_TYPE'),
     ],
+    'cloud_evidence' => [
+        'enabled' => (bool) env('ELECTION_CLOUD_EVIDENCE_ENABLED', false),
+        'disk' => (string) env('ELECTION_CLOUD_EVIDENCE_DISK', 'election_evidence'),
+        'prefix' => (string) env('ELECTION_CLOUD_EVIDENCE_PREFIX', 'review-evidence'),
+    ],
     'review' => [
         'enabled' => (bool) env('ELECTION_REVIEW_MODE', false),
         'label' => (string) env('ELECTION_REVIEW_LABEL', 'COMELEC Review Environment'),

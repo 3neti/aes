@@ -888,5 +888,12 @@ Known limitations:
 - Production hibernation is disabled so scheduled review sessions do not incur a cold-start delay.
 - The protected endpoint remained healthy and immediately responsive after the availability change.
 - Continuous availability incurs runtime cost; hibernation should be restored after the scheduled review window when the environment is not being used.
-- Next, provision shared persistence before adding role-paired tablets.
+- Provisioned a Singapore serverless PostgreSQL 18 database at the minimum 0.25 compute allocation.
+- Provisioned a 250 MB Redis cache for shared sessions, atomic locks, and concurrent ceremony coordination.
+- Provisioned a private `aes-review-evidence` object-storage bucket with a scoped read-write application key and restricted review-origin CORS.
+- Added the `election_evidence` S3-compatible disk, hash-verifying `CloudEvidenceMirror`, `election:evidence-mirror` command, and cache-backed `ElectionOperationLock`.
+- Scenario runs automatically mirror finalized evidence when Cloud evidence storage is explicitly enabled; local appliance storage remains the default when it is disabled.
+- Focused persistence tests passed: 3 tests with 12 assertions. The lifecycle regression passed: 74 tests with 1,015 assertions.
+- The Cloud resources and production-safe session/cache/evidence settings are attached; deployment and live connection verification remain before this slice is complete.
+- Next, verify shared persistence in the deployed environment before adding role-paired tablets.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.

@@ -19,6 +19,7 @@ use App\Election\Counting\CountingService;
 use App\Election\Custody\CustodyService;
 use App\Election\Devices\DeviceCertificationService;
 use App\Election\Diagnostics\ApplianceRecoveryService;
+use App\Election\Diagnostics\CloudEvidenceMirror;
 use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
 use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
 use App\Election\Diagnostics\EvidenceReferenceBaselineService;
@@ -102,6 +103,7 @@ final class ScenarioRunner
         private readonly EvidenceBundleArchiveBuilder $archiveBuilder,
         private readonly EvidenceBundleArchiveVerifier $archiveVerifier,
         private readonly ReviewMode $reviewMode,
+        private readonly CloudEvidenceMirror $cloudEvidence,
     ) {}
 
     /**
@@ -187,6 +189,9 @@ final class ScenarioRunner
 
         $archivePath = $this->storage->writeScenarioReport($name, $report, $this->clock->now()->format('Y-m-d-His'));
         $run = $this->storage->finalizeRun($name, $report);
+        $cloudEvidence = config('election.cloud_evidence.enabled', false)
+            ? $this->cloudEvidence->mirror($run['run_path'])
+            : null;
 
         $this->storage->writeJson("scenarios/{$name}-report.json", $report);
         $this->clock->unfreeze();
@@ -195,6 +200,7 @@ final class ScenarioRunner
             ...$report,
             ...$run,
             'archived_report_path' => $archivePath,
+            'cloud_evidence' => $cloudEvidence,
         ];
     }
 
