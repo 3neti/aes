@@ -904,5 +904,9 @@ Known limitations:
 - Added visible room/station identity to operator, voter, watcher, and print-station pages while preserving the existing offline behavior when Review Room mode is disabled.
 - Focused Review Room verification passed: 10 feature cases with more than 100 assertions and 2 browser workflows with no JavaScript or console errors.
 - Directly affected review, room, and ceremony regression passed: 81 tests with 1,414 assertions. TypeScript, ESLint, production build, Composer validation, and Pint passed.
+- Production deployment `depl-a25b7fa8-3aac-4464-895e-aa22041b9e93` succeeded at commit `2df2dcd` and the migration gate created the Review Room, station, and event tables in PostgreSQL.
+- Environment-variable deployment `depl-a25b80a2-e15e-421b-8b2c-31f3acb69487` succeeded with Review Room mode enabled, five default voter tablets, and a maximum of ten.
+- Live verification confirmed anonymous `401`, authorized `200`, `noindex`/`nofollow`/`noarchive`/`nosnippet`, private no-store caching, PHP 8.4, PostgreSQL, Redis, and database-backed sessions.
+- No live review room was created during deployment verification; the facilitator retains control over when the first shared rehearsal begins.
 - Next, apply distributed locking and idempotency to concurrent authorization, ballot finalization, printing, deposit, journal sequencing, and counting actions; then run full five- and ten-voter evidence-producing rehearsals.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.
