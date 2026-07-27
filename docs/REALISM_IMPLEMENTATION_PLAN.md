@@ -161,6 +161,8 @@ The review program presents the existing ceremonies to COMELEC personnel through
 
 ### Slice 11: Review Mode and Temporary Form Defaults
 
+Status: Complete.
+
 - Add an explicit review-mode configuration flag that is disabled by default.
 - Source temporary review values from server-side environment/configuration, not from Vue bundles or browser storage.
 - Prefill Electoral Board setup and inventory fields:
@@ -179,7 +181,52 @@ The review program presents the existing ceremonies to COMELEC personnel through
 
 Definition of done: a reviewer can proceed through setup, configuration, certification, and testing without memorizing simulation credentials, while election-day mode renders the same fields empty and exposes none of the temporary values.
 
-### Slice 12: Multi-Tablet Review Room
+### Slice 12: Cloud Review Protection
+
+- Protect the review URL before temporary credentials or rehearsal evidence are enabled.
+- Disable search-engine indexing through Cloud response headers and application-level `robots.txt`.
+- Retain browser-integrity protection and verify that anonymous public access is blocked.
+- Document the protection mechanism separately from election officer credentials.
+
+Definition of done: the Cloud review environment requires the configured review access control and returns no-index directives.
+
+### Slice 13: Cloud Runtime Alignment
+
+- Set the Cloud environment to PHP 8.4 to match local development, CI, and the project contract.
+- Verify Composer platform checks, Laravel boot, frontend assets, and the deployed health response.
+
+Definition of done: local, CI, and Cloud all execute the application with PHP 8.4.
+
+### Slice 14: Deployment Migration Gate
+
+- Enable `php artisan migrate --force` in the Cloud deployment command.
+- Preserve the existing deterministic frontend and Composer build.
+- Verify migrations against a provisioned persistent database before enabling multi-tablet use.
+
+Definition of done: every successful Cloud deployment applies pending migrations non-interactively and fails closed on migration errors.
+
+### Slice 15: Demonstration Availability
+
+- Disable hibernation for scheduled COMELEC demonstrations.
+- Record the availability decision and expected cost implication.
+- Re-enable hibernation after the review period unless the environment becomes a maintained test service.
+
+Definition of done: the review environment remains responsive throughout an agreed demonstration window.
+
+### Slice 16: Shared Persistence and Concurrency Foundations
+
+- Provision a minimum persistent relational database, shared cache/lock service, and private object-storage bucket in Singapore.
+- Keep the local filesystem adapter as the precinct-appliance default.
+- Use database-backed sessions and shared distributed locks in Cloud.
+- Add a private shared object-storage adapter for immutable review evidence.
+- Materialize temporary local files only when PDF, QR, archive, or rendering tools require a local path.
+- Add locks around journal sequencing, paper serial issuance, authorization claiming, ballot finalization, print-release redemption, and counting-record allocation.
+- Add idempotency keys to retryable tablet actions and reject duplicate actions deterministically.
+- Rebuild and verify the same numbered evidence bundle from shared review storage.
+
+Definition of done: a review run survives routing and restart, and concurrent activity cannot duplicate a serial, journal sequence, release, deposit, or counting record.
+
+### Slice 17: Multi-Tablet Review Room
 
 - Add a facilitator/projector view for one isolated rehearsal room.
 - Generate role-specific join links and QR codes for:
@@ -191,44 +238,17 @@ Definition of done: a reviewer can proceed through setup, configuration, certifi
 - Show station connectivity, readiness, authorizations, completed ballots, prints, and deposits without exposing voter selections.
 - Mirror only one designated training voter tablet during a presentation.
 - Mark every page as a simulation review environment.
-
-Definition of done: at least five independent voter browser sessions can join one rehearsal, vote independently, and remain isolated from officer, watcher, and other voter state.
-
-### Slice 13: Concurrent Voting Hardening
-
-- Add distributed locks around journal sequencing, paper serial issuance, authorization claiming, ballot finalization, print-release redemption, and counting-record allocation.
-- Add idempotency keys to every retryable tablet action.
-- Reject duplicate claims, submissions, redemptions, deposits, and scans deterministically.
 - Add concurrent feature/browser scenarios for five and ten voter tablets.
 
-Definition of done: concurrent tablet activity cannot duplicate a paper serial, journal sequence, release, deposit, or counting record.
+Definition of done: at least five independent voter browser sessions join one protected Cloud rehearsal, vote independently, remain isolated, and produce a verified evidence bundle.
 
-### Slice 14: Cloud Evidence Storage
-
-- Keep the local filesystem adapter as the precinct-appliance default.
-- Add a private shared object-storage adapter for immutable review evidence.
-- Use persistent database sessions and shared distributed locks.
-- Materialize temporary local files only when PDF, QR, archive, or rendering tools require a local path.
-- Rebuild and verify the same numbered evidence bundle from shared review storage.
-
-Definition of done: a review run survives request routing and application restart without missing, split, or conflicting evidence.
-
-### Slice 15: COMELEC Review Kit
+### Slice 18: COMELEC Review Kit
 
 - Generate one offline review package containing the executive brief, storyboard, video, forms, scenario report, evidence bundle, reviewer checklist, known gaps, and README.
 - Include the exact review-mode configuration, connected-station statistics, test results, and evidence hashes.
 - Clearly distinguish simulated controls from field-validated controls.
 
 Definition of done: a reviewer can understand and verify the rehearsal without repository access or a live meeting.
-
-### Slice 16: Laravel Cloud Review Deployment
-
-- Deploy a protected review environment in the Singapore region.
-- Use a private object-storage bucket, persistent relational database, shared lock/session driver, file printer, and disabled transmission.
-- Keep the environment non-hibernating during scheduled demonstrations.
-- Run and record the full multi-tablet rehearsal before external review.
-
-Definition of done: the protected Cloud URL supports a complete multi-tablet COMELEC rehearsal and produces a verified downloadable Review Kit.
 
 ## UI Strategy
 
@@ -292,9 +312,12 @@ Every scenario writes a report with statistics, passed gates, failures injected,
 11. Add the 50-ballot field scenario.
 12. Run complete PHP, browser, type, build, scenario, audit, and archive verification.
 13. Add explicit review mode and temporary server-supplied form defaults.
-14. Add the role-paired multi-tablet Review Room.
-15. Add distributed locking, idempotency, and concurrent voter scenarios.
-16. Add shared Cloud evidence storage while retaining local appliance storage.
-17. Generate the self-contained COMELEC Review Kit.
-18. Deploy and verify the protected Laravel Cloud review environment.
-19. Continue with the supervised offline hardware pilot and prescribed-form review.
+14. Protect the Cloud review environment and disable indexing.
+15. Align the Cloud runtime with PHP 8.4.
+16. Enable the production migration command.
+17. Disable hibernation for the scheduled demonstration period.
+18. Provision persistent database, shared locks/cache, and private object storage.
+19. Add Cloud storage adapters, locking, idempotency, and concurrent voter scenarios.
+20. Build and verify the role-paired Multi-Tablet Review Room.
+21. Generate the self-contained COMELEC Review Kit.
+22. Continue with the supervised offline hardware pilot and prescribed-form review.

@@ -41,6 +41,7 @@ use App\Election\Returns\ElectionReturnCopyDistributionService;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\ReviewMode;
 use App\Election\Transmission\DeliveryPackageService;
 use App\Election\Transmission\DeliveryReceiptService;
 use App\Election\Transmission\FinalBackupService;
@@ -100,6 +101,7 @@ final class ScenarioRunner
         private readonly ApplianceRecoveryService $recovery,
         private readonly EvidenceBundleArchiveBuilder $archiveBuilder,
         private readonly EvidenceBundleArchiveVerifier $archiveVerifier,
+        private readonly ReviewMode $reviewMode,
     ) {}
 
     /**
@@ -144,6 +146,8 @@ final class ScenarioRunner
             'field-50-ballots' => $this->fieldFiftyBallotsScenario(),
             default => throw new InvalidArgumentException("Unknown scenario [{$name}]."),
         };
+
+        $report['review_mode'] = $this->reviewMode->reportContext();
 
         if ($name === 'legal-suite') {
             $baseline = $this->baseline->write();

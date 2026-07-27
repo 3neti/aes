@@ -36,6 +36,44 @@ export type Contest = {
     candidates: Candidate[];
 };
 
+export type ReviewOfficerDefault = {
+    code: string;
+    pin: string;
+};
+
+export type ElectionReviewDefaults = {
+    primary_officer?: ReviewOfficerDefault;
+    chairperson?: ReviewOfficerDefault;
+    poll_clerk?: ReviewOfficerDefault;
+    third_member?: {
+        code: string;
+    };
+    setup?: {
+        chairperson_code: string;
+        chairperson_pin: string;
+        poll_clerk_code: string;
+        poll_clerk_pin: string;
+        third_member_code: string;
+        device_serial: string;
+        printer_serial: string;
+        scanner_serial: string;
+        ballot_stock_start: number;
+        ballot_stock_end: number;
+        ballot_box_id: string;
+        custody_envelope_id: string;
+        seal_numbers: string;
+    };
+    handoff?: {
+        verification_note: string;
+    };
+};
+
+export type ElectionReviewMode = {
+    enabled: boolean;
+    label: string | null;
+    defaults: ElectionReviewDefaults;
+};
+
 export type WorkflowStep = {
     id: string;
     label: string;

@@ -13,6 +13,7 @@ import {
     physicalCount,
     scan,
 } from '@/routes/election/counting';
+import { useElectionReview } from '@/stores/electionReview';
 
 type ScanFeedback = {
     status: 'accepted' | 'rejected';
@@ -77,6 +78,7 @@ const cameraMessage = ref('');
 const cameraForm = useForm({
     payload: '',
 });
+const { defaults: reviewDefaults } = useElectionReview();
 
 const canCapture = computed(
     () => cameraStatus.value === 'ready' && !cameraForm.processing,
@@ -407,7 +409,7 @@ onBeforeUnmount(() => stopCamera(false));
                         >Officer code<input
                             name="officer_code"
                             class="mt-1 min-h-11 w-full border border-stone-300 px-3"
-                            value="SIM-OFFICER-001"
+                            :value="reviewDefaults.primary_officer?.code ?? ''"
                     /></label>
                     <label class="text-sm font-bold"
                         >Officer PIN<input
@@ -415,6 +417,7 @@ onBeforeUnmount(() => stopCamera(false));
                             type="password"
                             inputmode="numeric"
                             class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                            :value="reviewDefaults.primary_officer?.pin ?? ''"
                     /></label>
                     <p
                         v-if="Object.keys(errors).length"
@@ -517,7 +520,9 @@ onBeforeUnmount(() => stopCamera(false));
                             >Officer code<input
                                 name="officer_code"
                                 class="mt-1 min-h-11 w-full border border-stone-300 px-3"
-                                value="SIM-OFFICER-001"
+                                :value="
+                                    reviewDefaults.primary_officer?.code ?? ''
+                                "
                         /></label>
                         <label class="text-sm font-bold"
                             >Officer PIN<input
@@ -525,6 +530,9 @@ onBeforeUnmount(() => stopCamera(false));
                                 type="password"
                                 inputmode="numeric"
                                 class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                :value="
+                                    reviewDefaults.primary_officer?.pin ?? ''
+                                "
                         /></label>
                         <button
                             class="secondary-button sm:col-span-2"

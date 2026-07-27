@@ -12,6 +12,7 @@ import {
     copyDistribution,
     generate,
 } from '@/routes/election/returns';
+import { useElectionReview } from '@/stores/electionReview';
 
 type ReturnArtifact = {
     return_hash?: string;
@@ -52,6 +53,8 @@ const props = defineProps<{
         approvers?: Array<{ name: string; role: string }>;
     };
 }>();
+
+const { defaults: reviewDefaults } = useElectionReview();
 
 function contestTitle(contestId: string): string {
     return (
@@ -96,7 +99,7 @@ function candidateName(contestId: string, candidateId: string): string {
                     >Chairperson code<input
                         name="chairperson_code"
                         class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"
-                        value="SIM-OFFICER-001"
+                        :value="reviewDefaults.chairperson?.code ?? ''"
                 /></label>
                 <label class="text-sm font-bold"
                     >Chairperson PIN<input
@@ -104,12 +107,13 @@ function candidateName(contestId: string, candidateId: string): string {
                         type="password"
                         inputmode="numeric"
                         class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"
+                        :value="reviewDefaults.chairperson?.pin ?? ''"
                 /></label>
                 <label class="text-sm font-bold"
                     >Poll Clerk code<input
                         name="poll_clerk_code"
                         class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"
-                        value="SIM-OFFICER-002"
+                        :value="reviewDefaults.poll_clerk?.code ?? ''"
                 /></label>
                 <label class="text-sm font-bold"
                     >Poll Clerk PIN<input
@@ -117,6 +121,7 @@ function candidateName(contestId: string, candidateId: string): string {
                         type="password"
                         inputmode="numeric"
                         class="mt-1 min-h-11 w-full border border-stone-300 bg-white px-3"
+                        :value="reviewDefaults.poll_clerk?.pin ?? ''"
                 /></label>
                 <p
                     v-if="Object.keys(errors).length"

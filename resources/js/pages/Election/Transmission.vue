@@ -12,6 +12,7 @@ import {
     recipientVerification,
     send,
 } from '@/routes/election/transmission';
+import { useElectionReview } from '@/stores/electionReview';
 
 defineProps<{
     snapshot: ElectionSnapshot;
@@ -24,6 +25,8 @@ defineProps<{
     manualOfficerVerification: Record<string, any>;
     manualRecipientVerification: Record<string, any>;
 }>();
+
+const { defaults: reviewDefaults } = useElectionReview();
 </script>
 
 <template>
@@ -363,6 +366,9 @@ defineProps<{
                                 name="officer_code"
                                 class="mt-1 w-full border border-stone-300 p-2"
                                 placeholder="SIM-OFFICER-001"
+                                :value="
+                                    reviewDefaults.primary_officer?.code ?? ''
+                                "
                             />
                         </label>
                         <label class="text-xs text-stone-700">
@@ -373,6 +379,9 @@ defineProps<{
                                 class="mt-1 w-full border border-stone-300 p-2"
                                 type="password"
                                 placeholder="123456"
+                                :value="
+                                    reviewDefaults.primary_officer?.pin ?? ''
+                                "
                             />
                         </label>
                         <label class="text-xs text-stone-700 sm:col-span-3">
@@ -381,6 +390,10 @@ defineProps<{
                                 name="verification_note"
                                 class="mt-1 w-full border border-stone-300 p-2"
                                 placeholder="Verified by election board officer"
+                                :value="
+                                    reviewDefaults.handoff?.verification_note ??
+                                    ''
+                                "
                             />
                         </label>
                         <div class="sm:col-span-3">

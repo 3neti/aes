@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { home } from '@/routes';
 import { diagnostics } from '@/routes/election';
 import { store as storeAttestation } from '@/routes/election/attestations';
+import { useElectionReview } from '@/stores/electionReview';
 import CeremonyStepper from './CeremonyStepper.vue';
 import EvidenceSummary from './EvidenceSummary.vue';
 import JournalTimeline from './JournalTimeline.vue';
@@ -18,6 +19,13 @@ const props = defineProps<{
 const signatureCanvas = ref<HTMLCanvasElement | null>(null);
 const signatureData = ref('');
 const isSigning = ref(false);
+const {
+    review: electionReview,
+    loaded: reviewDefaultsLoaded,
+    defaults: reviewDefaults,
+    clearDefaults,
+    reloadDefaults,
+} = useElectionReview();
 
 const precinctLabel = computed(
     () => props.snapshot.configuration.precinct_id || 'Not yet assigned',
@@ -193,6 +201,41 @@ onBeforeUnmount(() => {
         <main
             class="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8"
         >
+            <section
+                v-if="electionReview.enabled"
+                class="flex flex-col gap-3 border-l-4 border-blue-800 bg-blue-50 px-5 py-4 text-blue-950 sm:flex-row sm:items-center sm:justify-between"
+                aria-label="Review environment"
+            >
+                <div>
+                    <p class="text-xs font-bold uppercase">
+                        {{ electionReview.label }}
+                    </p>
+                    <p class="mt-1 text-sm">
+                        {{
+                            reviewDefaultsLoaded
+                                ? 'Temporary officer and setup defaults are loaded. Signatures and approval actions remain manual.'
+                                : 'Temporary defaults are cleared for this browser page.'
+                        }}
+                    </p>
+                </div>
+                <button
+                    v-if="reviewDefaultsLoaded"
+                    type="button"
+                    class="min-h-10 shrink-0 border border-blue-800 bg-white px-4 py-2 text-sm font-bold text-blue-900"
+                    @click="clearDefaults"
+                >
+                    Clear review defaults
+                </button>
+                <button
+                    v-else
+                    type="button"
+                    class="min-h-10 shrink-0 bg-blue-800 px-4 py-2 text-sm font-bold text-white"
+                    @click="reloadDefaults"
+                >
+                    Reload review defaults
+                </button>
+            </section>
+
             <div
                 class="flex flex-col gap-3 border border-stone-300 bg-white px-5 py-4 sm:flex-row sm:items-start sm:justify-between"
             >
@@ -302,6 +345,10 @@ onBeforeUnmount(() => {
                                         class="mt-1 w-full border border-stone-300 bg-white px-3 py-2.5"
                                         autocomplete="off"
                                         required
+                                        :value="
+                                            reviewDefaults.primary_officer
+                                                ?.code ?? ''
+                                        "
                                     />
                                     <span
                                         v-if="errors.officer_code"
@@ -321,6 +368,10 @@ onBeforeUnmount(() => {
                                         class="mt-1 w-full border border-stone-300 bg-white px-3 py-2.5"
                                         autocomplete="off"
                                         required
+                                        :value="
+                                            reviewDefaults.primary_officer
+                                                ?.pin ?? ''
+                                        "
                                     />
                                     <span
                                         v-if="errors.officer_pin"

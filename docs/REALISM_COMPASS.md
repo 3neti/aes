@@ -21,7 +21,11 @@ The precinct realism program is complete for simulation mode. The browser and sc
 | Private voter journey              | Complete | Anonymous one-use admission, client-side ballot review, encrypted print release, private printing, sealed deposit, and post-close disclosure are enforced. |
 | Printed artifact review            | Complete | The storyboard renders actual generated PDF pages with source paths and hashes for independent COMELEC print-form critique.                                |
 | COMELEC print-form redesign        | Complete | A4 ballot, tally, and Return forms paginate all 387 candidates, reserve officer certification areas, and embed a page-capture-decodable ballot QR.         |
-| Review mode and temporary defaults | Planned  | Review forms load server-supplied simulation values; election-day fields remain empty and signatures/approvals remain manual.                              |
+| Review mode and temporary defaults | Complete | Review forms load server-supplied simulation values; election-day fields remain empty and signatures/approvals remain manual.                              |
+| Cloud review protection            | Planned  | Review access is protected and responses explicitly prohibit search-engine indexing before credentials or evidence are enabled.                            |
+| Cloud runtime alignment            | Planned  | Cloud runs PHP 8.4, matching local development, CI, and the declared project platform.                                                                     |
+| Cloud deployment migration gate    | Planned  | Successful deployments apply pending migrations non-interactively against persistent storage.                                                              |
+| Demonstration availability         | Planned  | Hibernation is disabled for the scheduled review window and the cost/availability decision is recorded.                                                    |
 | Multi-tablet Review Room           | Planned  | Officer, voter, print, watcher, and presentation tablets join one isolated rehearsal without cross-role or cross-voter disclosure.                         |
 | Concurrent voting hardening        | Planned  | Locks and idempotency prevent duplicate serials, journal events, releases, deposits, and scans under simultaneous tablet activity.                         |
 | Cloud evidence storage             | Planned  | Private shared review storage survives request routing and restart while the local appliance filesystem remains the operational default.                   |
@@ -49,7 +53,7 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Review Mode and Temporary Form Defaults, followed by the Multi-Tablet Review Room and protected Laravel Cloud review deployment. The supervised offline hardware pilot remains the next field-validation program.
+Cloud Review Protection, followed by PHP runtime alignment, deployment migrations, demonstration availability, shared persistence, and the Multi-Tablet Review Room. The supervised offline hardware pilot remains the next field-validation program.
 
 ## Temporary Review Defaults
 

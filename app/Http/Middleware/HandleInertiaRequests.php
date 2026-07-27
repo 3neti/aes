@@ -2,11 +2,14 @@
 
 namespace App\Http\Middleware;
 
+use App\Election\Support\ReviewMode;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    public function __construct(private readonly ReviewMode $reviewMode) {}
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -41,6 +44,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'electionReview' => fn (): array => $this->reviewMode->propsFor($request),
         ];
     }
 }

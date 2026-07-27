@@ -54,6 +54,25 @@ test('opening ceremony exposes the final authorization that begins voting', func
         ->assertNoConsoleLogs();
 });
 
+test('review mode loads and clears temporary operator defaults', function (): void {
+    config()->set('election.review.enabled', true);
+
+    visit('/election/provision')
+        ->assertSee('Temporary officer and setup defaults are loaded')
+        ->assertValue('chairperson_code', 'SIM-OFFICER-001')
+        ->assertValue('chairperson_pin', '123456')
+        ->assertValue('device_serial', 'AES-PI-39010001-001')
+        ->click('Clear review defaults')
+        ->assertSee('Temporary defaults are cleared')
+        ->assertValue('chairperson_code', '')
+        ->assertValue('chairperson_pin', '')
+        ->click('Reload review defaults')
+        ->assertValue('chairperson_code', 'SIM-OFFICER-001')
+        ->assertValue('chairperson_pin', '123456')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
 test('official handoff unlocks the delivery receipt after both parties verify custody', function (): void {
     $this->artisan('election:scenario election-return-copy-distribution')
         ->assertSuccessful();

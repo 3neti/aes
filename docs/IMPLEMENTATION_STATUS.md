@@ -5,9 +5,9 @@
 - Status: Simulation implementation complete; hardware and prescribed-form validation pending
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: COMELEC Print-Form Redesign
-- Current slice: Review Mode and Temporary Form Defaults (planned)
-- Next slice: Multi-Tablet Review Room
+- Completed slice: Review Mode and Temporary Form Defaults
+- Current slice: Cloud Review Protection
+- Next slice: Cloud Runtime Alignment
 - Primary acceptance target: a protected multi-tablet COMELEC review rehearsal that reaches audit, preserves role and voter isolation, and produces a verified Review Kit without weakening election-day controls
 
 ### Operational Run Isolation
@@ -871,8 +871,10 @@ Known limitations:
 ## Planned COMELEC Review Deployment
 
 - The review deployment is a presentation environment and does not replace the offline precinct appliance.
-- The first slice will prefill simulation-only officer, setup, inventory, configuration, and testing fields from server-side configuration.
-- Temporary defaults will be gated by explicit review mode and absent from election-day responses.
+- Review mode now prefills simulation-only officer, setup, inventory, configuration, and testing fields from server-side configuration.
+- Temporary defaults are gated by explicit review mode and absent from election-day, voter, watcher, and print-station responses.
 - Signatures, observed physical counts, adjudication decisions, acknowledgements, recipient identities, and final approvals will remain manual.
-- Later slices add role-paired tablets, concurrent voting locks and idempotency, shared Cloud evidence storage, the self-contained Review Kit, and the protected Laravel Cloud deployment.
+- Operators can clear and reload temporary defaults without submitting a ceremony, and scenario reports disclose review mode without persisting credentials.
+- Focused verification passed: 6 feature tests with 76 assertions, 1 browser test with 11 assertions, TypeScript, ESLint, production build, Pint, and formatting.
+- Next slices protect the Cloud URL, disable indexing, align PHP, enable migrations, disable hibernation for demonstrations, and provision shared persistence before adding role-paired tablets.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.

@@ -12,6 +12,7 @@ import {
     setup,
     supplyVerificationBaseline as supplyVerificationBaselineAction,
 } from '@/routes/election/provision';
+import { useElectionReview } from '@/stores/electionReview';
 
 type ElectoralBoardBaseline = {
     exists: boolean;
@@ -109,6 +110,8 @@ const props = defineProps<{
     };
     precinctSetup: PrecinctSetup;
 }>();
+
+const { defaults: reviewDefaults } = useElectionReview();
 
 const readinessItems = [
     {
@@ -262,7 +265,9 @@ const readinessItems = [
                         <input
                             name="chairperson_code"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="SIM-OFFICER-001"
+                            :value="
+                                reviewDefaults.setup?.chairperson_code ?? ''
+                            "
                         />
                     </label>
                     <label class="grid gap-1 text-sm font-semibold">
@@ -272,6 +277,7 @@ const readinessItems = [
                             type="password"
                             inputmode="numeric"
                             class="min-h-11 border border-stone-300 px-3"
+                            :value="reviewDefaults.setup?.chairperson_pin ?? ''"
                         />
                     </label>
                     <label class="grid gap-1 text-sm font-semibold">
@@ -279,7 +285,9 @@ const readinessItems = [
                         <input
                             name="third_member_code"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="SIM-OFFICER-003"
+                            :value="
+                                reviewDefaults.setup?.third_member_code ?? ''
+                            "
                         />
                     </label>
                     <label class="grid gap-1 text-sm font-semibold">
@@ -287,7 +295,7 @@ const readinessItems = [
                         <input
                             name="poll_clerk_code"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="SIM-OFFICER-002"
+                            :value="reviewDefaults.setup?.poll_clerk_code ?? ''"
                         />
                     </label>
                     <label class="grid gap-1 text-sm font-semibold">
@@ -297,6 +305,7 @@ const readinessItems = [
                             type="password"
                             inputmode="numeric"
                             class="min-h-11 border border-stone-300 px-3"
+                            :value="reviewDefaults.setup?.poll_clerk_pin ?? ''"
                         />
                     </label>
                 </div>
@@ -305,52 +314,58 @@ const readinessItems = [
                         >Device serial<input
                             name="device_serial"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="AES-PI-39010001-001"
+                            :value="reviewDefaults.setup?.device_serial ?? ''"
                     /></label>
                     <label class="grid gap-1 text-sm font-semibold"
                         >Printer serial<input
                             name="printer_serial"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="AES-PRINTER-39010001-001"
+                            :value="reviewDefaults.setup?.printer_serial ?? ''"
                     /></label>
                     <label class="grid gap-1 text-sm font-semibold"
                         >Scanner serial<input
                             name="scanner_serial"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="AES-SCANNER-39010001-001"
+                            :value="reviewDefaults.setup?.scanner_serial ?? ''"
                     /></label>
                     <label class="grid gap-1 text-sm font-semibold"
                         >Ballot stock start<input
                             name="ballot_stock_start"
                             type="number"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="1"
+                            :value="
+                                reviewDefaults.setup?.ballot_stock_start ?? ''
+                            "
                     /></label>
                     <label class="grid gap-1 text-sm font-semibold"
                         >Ballot stock end<input
                             name="ballot_stock_end"
                             type="number"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="1000"
+                            :value="
+                                reviewDefaults.setup?.ballot_stock_end ?? ''
+                            "
                     /></label>
                     <label class="grid gap-1 text-sm font-semibold"
                         >Ballot box ID<input
                             name="ballot_box_id"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="AES-BOX-39010001-001"
+                            :value="reviewDefaults.setup?.ballot_box_id ?? ''"
                     /></label>
                     <label class="grid gap-1 text-sm font-semibold"
                         >Custody envelope ID<input
                             name="custody_envelope_id"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="AES-ENV-39010001-001"
+                            :value="
+                                reviewDefaults.setup?.custody_envelope_id ?? ''
+                            "
                     /></label>
                     <label
                         class="grid gap-1 text-sm font-semibold md:col-span-2"
                         >Seal numbers<input
                             name="seal_numbers"
                             class="min-h-11 border border-stone-300 px-3"
-                            value="AES-SEAL-39010001-001,AES-SEAL-39010001-002"
+                            :value="reviewDefaults.setup?.seal_numbers ?? ''"
                     /></label>
                 </div>
                 <p

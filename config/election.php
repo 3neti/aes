@@ -1,11 +1,20 @@
 <?php
 
+$reviewChairpersonCode = (string) env('ELECTION_REVIEW_CHAIRPERSON_CODE', 'SIM-OFFICER-001');
+$reviewPollClerkCode = (string) env('ELECTION_REVIEW_POLL_CLERK_CODE', 'SIM-OFFICER-002');
+$reviewThirdMemberCode = (string) env('ELECTION_REVIEW_THIRD_MEMBER_CODE', 'SIM-OFFICER-003');
+$reviewOfficerPin = (string) env('ELECTION_REVIEW_OFFICER_PIN', '123456');
+
 return [
     'storage' => [
         'directory' => env('ELECTION_STORAGE_DIRECTORY', 'election'),
     ],
     'runtime' => [
         'run_type' => env('ELECTION_RUN_TYPE'),
+    ],
+    'review' => [
+        'enabled' => (bool) env('ELECTION_REVIEW_MODE', false),
+        'label' => (string) env('ELECTION_REVIEW_LABEL', 'COMELEC Review Environment'),
     ],
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),
@@ -15,19 +24,19 @@ return [
     ],
     'simulation' => [
         'precinct_setup' => [
-            'chairperson_code' => 'SIM-OFFICER-001',
-            'chairperson_pin' => '123456',
-            'poll_clerk_code' => 'SIM-OFFICER-002',
-            'poll_clerk_pin' => '123456',
-            'third_member_code' => 'SIM-OFFICER-003',
-            'device_serial' => 'AES-PI-39010001-001',
-            'printer_serial' => 'AES-PRINTER-39010001-001',
-            'scanner_serial' => 'AES-SCANNER-39010001-001',
-            'ballot_stock_start' => 1,
-            'ballot_stock_end' => 1000,
-            'ballot_box_id' => 'AES-BOX-39010001-001',
-            'custody_envelope_id' => 'AES-ENV-39010001-001',
-            'seal_numbers' => 'AES-SEAL-39010001-001,AES-SEAL-39010001-002',
+            'chairperson_code' => $reviewChairpersonCode,
+            'chairperson_pin' => $reviewOfficerPin,
+            'poll_clerk_code' => $reviewPollClerkCode,
+            'poll_clerk_pin' => $reviewOfficerPin,
+            'third_member_code' => $reviewThirdMemberCode,
+            'device_serial' => (string) env('ELECTION_REVIEW_DEVICE_SERIAL', 'AES-PI-39010001-001'),
+            'printer_serial' => (string) env('ELECTION_REVIEW_PRINTER_SERIAL', 'AES-PRINTER-39010001-001'),
+            'scanner_serial' => (string) env('ELECTION_REVIEW_SCANNER_SERIAL', 'AES-SCANNER-39010001-001'),
+            'ballot_stock_start' => (int) env('ELECTION_REVIEW_BALLOT_STOCK_START', 1),
+            'ballot_stock_end' => (int) env('ELECTION_REVIEW_BALLOT_STOCK_END', 1000),
+            'ballot_box_id' => (string) env('ELECTION_REVIEW_BALLOT_BOX_ID', 'AES-BOX-39010001-001'),
+            'custody_envelope_id' => (string) env('ELECTION_REVIEW_CUSTODY_ENVELOPE_ID', 'AES-ENV-39010001-001'),
+            'seal_numbers' => (string) env('ELECTION_REVIEW_SEAL_NUMBERS', 'AES-SEAL-39010001-001,AES-SEAL-39010001-002'),
         ],
     ],
     'sample' => [
@@ -75,22 +84,22 @@ return [
     ],
     'officers' => [
         [
-            'code' => 'SIM-OFFICER-001',
+            'code' => $reviewChairpersonCode,
             'name' => 'Simulation Officer',
             'role' => 'Election Board Chairperson',
-            'pin_hash' => '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+            'pin_hash' => hash('sha256', $reviewOfficerPin),
         ],
         [
-            'code' => 'SIM-OFFICER-002',
+            'code' => $reviewPollClerkCode,
             'name' => 'Simulation Poll Clerk',
             'role' => 'Poll Clerk',
-            'pin_hash' => '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+            'pin_hash' => hash('sha256', $reviewOfficerPin),
         ],
         [
-            'code' => 'SIM-OFFICER-003',
+            'code' => $reviewThirdMemberCode,
             'name' => 'Simulation EB Member',
             'role' => 'Third Member',
-            'pin_hash' => '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+            'pin_hash' => hash('sha256', $reviewOfficerPin),
         ],
     ],
     'electoral_board_roles' => [

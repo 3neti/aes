@@ -10,6 +10,7 @@ import {
     specialPollingIntake as specialPollingIntakeRoute,
 } from '@/routes/election/voting';
 import { issue as issueVoterAuthorization } from '@/routes/election/voting/voter-authorizations';
+import { useElectionReview } from '@/stores/electionReview';
 
 type SpecialPollingIntake = {
     exists?: boolean;
@@ -29,6 +30,8 @@ defineProps<{
     };
     ballotBox: { deposited_ballots: number };
 }>();
+
+const { defaults: reviewDefaults } = useElectionReview();
 
 const canOpenPolls = (stage: string): boolean =>
     stage === 'open_precinct' || stage === 'open_polls';
@@ -81,6 +84,7 @@ const specialPollingTypes = [
                         required
                         type="text"
                         autocomplete="off"
+                        :value="reviewDefaults.primary_officer?.code ?? ''"
                     />
                     <span
                         v-if="errors.officer_code"
@@ -100,6 +104,7 @@ const specialPollingTypes = [
                         type="password"
                         inputmode="numeric"
                         autocomplete="off"
+                        :value="reviewDefaults.primary_officer?.pin ?? ''"
                     />
                     <span
                         v-if="errors.officer_pin"
@@ -226,6 +231,7 @@ const specialPollingTypes = [
                         name="officer_code"
                         required
                         autocomplete="off"
+                        :value="reviewDefaults.primary_officer?.code ?? ''"
                     />
                 </label>
                 <label>
@@ -237,6 +243,7 @@ const specialPollingTypes = [
                         inputmode="numeric"
                         required
                         autocomplete="off"
+                        :value="reviewDefaults.primary_officer?.pin ?? ''"
                     />
                 </label>
                 <p
