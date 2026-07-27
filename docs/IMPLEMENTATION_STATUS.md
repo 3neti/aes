@@ -5,9 +5,9 @@
 - Status: Simulation implementation complete; hardware and prescribed-form validation pending
 - Plan: `docs/REALISM_IMPLEMENTATION_PLAN.md`
 - Compass: `docs/REALISM_COMPASS.md`
-- Completed slice: Cloud Deployment Migration Gate
-- Current slice: Demonstration Availability
-- Next slice: Shared Cloud Persistence
+- Completed slice: Demonstration Availability
+- Current slice: Shared Cloud Persistence
+- Next slice: Multi-Tablet Review Room
 - Primary acceptance target: a protected multi-tablet COMELEC review rehearsal that reaches audit, preserves role and voter isolation, and produces a verified Review Kit without weakening election-day controls
 
 ### Operational Run Isolation
@@ -885,5 +885,8 @@ Known limitations:
 - The protected review URL remained healthy after the runtime replacement.
 - The Cloud deploy command is now `php artisan migrate --force`; local dry-run verification reports no pending migration errors.
 - The first deployment after a persistent database is attached will be retained as the live migration-gate acceptance record.
-- Next slices disable hibernation for demonstrations and provision shared persistence before adding role-paired tablets.
+- Production hibernation is disabled so scheduled review sessions do not incur a cold-start delay.
+- The protected endpoint remained healthy and immediately responsive after the availability change.
+- Continuous availability incurs runtime cost; hibernation should be restored after the scheduled review window when the environment is not being used.
+- Next, provision shared persistence before adding role-paired tablets.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.
