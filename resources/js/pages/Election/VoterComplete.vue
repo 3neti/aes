@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
+
 defineProps<{
     release: {
         release_id: string;
@@ -17,6 +19,7 @@ defineProps<{
         <section
             class="w-full max-w-xl border-t-8 border-emerald-700 bg-white p-6 text-center shadow-sm sm:p-8"
         >
+            <ReviewStationBar />
             <p class="text-sm font-bold text-emerald-800">
                 Ballot finalized privately
             </p>

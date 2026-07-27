@@ -1,4 +1,7 @@
-import type { ElectionReviewMode } from '@/components/election/types';
+import type {
+    ElectionReviewMode,
+    ElectionReviewRoomContext,
+} from '@/components/election/types';
 import type { Auth } from '@/types/auth';
 
 // Extend ImportMeta interface for Vite...
@@ -20,6 +23,7 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             electionReview: ElectionReviewMode;
+            electionReviewRoom: ElectionReviewRoomContext;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };

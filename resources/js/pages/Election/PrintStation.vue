@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
+import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
 import { deposit, print, redeem } from '@/routes/election/print-station';
 
 defineProps<{
@@ -21,6 +22,7 @@ defineProps<{
         class="flex min-h-screen items-center justify-center bg-stone-950 p-5 text-stone-950"
     >
         <section class="w-full max-w-xl bg-white p-6 shadow-lg sm:p-8">
+            <ReviewStationBar />
             <p class="text-sm font-bold text-blue-800">
                 Private paper ballot station
             </p>

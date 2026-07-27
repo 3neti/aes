@@ -8,6 +8,7 @@ import { useElectionReview } from '@/stores/electionReview';
 import CeremonyStepper from './CeremonyStepper.vue';
 import EvidenceSummary from './EvidenceSummary.vue';
 import JournalTimeline from './JournalTimeline.vue';
+import ReviewStationBar from './ReviewStationBar.vue';
 import StatusBadge from './StatusBadge.vue';
 import type { ElectionSnapshot } from './types';
 
@@ -133,6 +134,7 @@ onBeforeUnmount(() => {
             <span class="bg-yellow-400" />
             <span class="bg-red-700" />
         </div>
+        <ReviewStationBar />
 
         <header class="border-b border-stone-300 bg-white">
             <div

@@ -6,7 +6,7 @@ Evolve the deterministic simulation into a credible offline precinct appliance w
 
 ## Current Position
 
-The precinct realism program is complete for simulation mode. The browser and scenario lifecycle use the configured Tondo POP + CLC package, preserve isolated election-day and rehearsal evidence, account for serialized paper ballots, require dual-control approvals, inspect evidence-chain integrity after restart, and pass a persisted 50-ballot rehearsal with full automated verification. Generated ballots, tally sheets, and Election Returns now use deterministic A4 COMELEC-oriented layouts with complete candidate listings, repeated pagination controls, and a scannable embedded ballot QR.
+The precinct realism program is complete for single-device simulation mode. The protected Cloud review environment now adds shared PostgreSQL, Redis locks and sessions, private evidence storage, and a role-paired Multi-Tablet Review Room. One officer, five default voter tablets (up to ten), a private print station, a watcher, and a projection-safe presentation screen join through signed QR links without exposing station credentials or voter selections.
 
 ## Slice Status
 
@@ -26,7 +26,7 @@ The precinct realism program is complete for simulation mode. The browser and sc
 | Cloud runtime alignment            | Complete | Cloud runs PHP 8.4, matching local development, CI, and the declared project platform.                                                                     |
 | Cloud deployment migration gate    | Complete | Deployments run `php artisan migrate --force`; the first persistent-database deployment supplies the final live execution proof.                            |
 | Demonstration availability         | Complete | Hibernation is disabled for the scheduled review window and the cost/availability decision is recorded.                                                    |
-| Multi-tablet Review Room           | Planned  | Officer, voter, print, watcher, and presentation tablets join one isolated rehearsal without cross-role or cross-voter disclosure.                         |
+| Multi-tablet Review Room           | Complete | Signed QR pairing, one-browser station binding, role isolation, connectivity status, five/ten-session coverage, and append-only room evidence pass.         |
 | Concurrent voting hardening        | Planned  | Locks and idempotency prevent duplicate serials, journal events, releases, deposits, and scans under simultaneous tablet activity.                         |
 | Cloud evidence storage             | Complete | Private shared review storage survives request routing and restart while the local appliance filesystem remains the operational default.                   |
 | COMELEC Review Kit                 | Planned  | One offline package contains the brief, storyboard, video, forms, reports, evidence, checklist, known gaps, and hashes.                                    |
@@ -53,7 +53,7 @@ Update this compass after every realism slice. A slice is complete only after fo
 
 ## Next Slice
 
-Multi-Tablet Review Room, followed by concurrent voting hardening and the COMELEC Review Kit. The supervised offline hardware pilot remains the next field-validation program.
+Concurrent voting hardening, followed by the COMELEC Review Kit. The supervised offline hardware pilot remains the next field-validation program.
 
 ## Temporary Review Defaults
 

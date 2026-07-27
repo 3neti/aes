@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
+import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
 import type { Candidate, Contest } from '@/components/election/types';
 import { finalize } from '@/routes/election/voter';
 
@@ -74,6 +75,7 @@ function clearDraft(): void {
 
 <template>
     <main class="min-h-screen bg-stone-100 text-stone-950">
+        <ReviewStationBar />
         <header class="border-b-4 border-blue-800 bg-white">
             <div class="mx-auto max-w-5xl px-4 py-4 sm:px-6">
                 <div

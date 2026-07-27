@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Shared Cloud Persistence
+- Completed Slice: Multi-Tablet Review Room
 - Active Program: COMELEC Review Deployment
-- Current Slice: Multi-Tablet Review Room
-- Next Slice: Concurrent Voting Hardening
+- Current Slice: Concurrent Voting Hardening
+- Next Slice: COMELEC Review Kit
 - Program Compass: `docs/REALISM_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -701,8 +701,8 @@ A wave is complete only when:
 Current implementation status:
 
 - Current wave: Wave 9 - Hardening
-- Completed slice: Recorded Browser Walkthrough Storyboard
-- Next recommended slice: Supervised Raspberry Pi hardware pilot and printed-artifact calibration
+- Completed slice: Multi-Tablet Review Room
+- Next recommended slice: Concurrent voting hardening, followed by the COMELEC Review Kit
 
 Completed:
 
@@ -718,13 +718,17 @@ Completed:
 - recorded WebM walkthrough, Playwright trace, full-page screenshots, and readable viewport frames
 - offline HTML, 49-page PDF, and structured JSON storyboard with precise COMELEC review notes and screenshot hashes
 - final evidence TAR containing the storyboard and its source captures, re-hashed with zero mismatches
+- protected Laravel Cloud review mode with PHP 8.4, deployment migrations, continuous demonstration availability, PostgreSQL, Redis, and private evidence storage
+- role-paired Multi-Tablet Review Room for one officer, five default voter tablets, private printing, watcher observation, and a projection-safe presentation screen
+- signed QR joins, one-browser station binding, role-restricted routes, connectivity status, and an append-only hash-chained room journal
 
 Next:
 
-Run a supervised field pilot on the intended Raspberry Pi, printer,
-scanner/camera, UPS, and removable media. Calibrate the printed ballot,
-tally sheet, Election Return, and storyboard against the actual field
-equipment while preserving paper as the legal source of truth.
+Apply distributed locking and idempotency to every concurrent voting,
+printing, deposit, and counting mutation, then exercise five and ten
+independent voter flows through a verified evidence bundle. Package the
+results into the offline COMELEC Review Kit before the supervised hardware
+pilot.
 
 ---
 

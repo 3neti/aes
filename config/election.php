@@ -26,6 +26,14 @@ return [
             'password' => (string) env('ELECTION_REVIEW_ACCESS_PASSWORD', ''),
         ],
     ],
+    'review_room' => [
+        'enabled' => (bool) env('ELECTION_REVIEW_ROOM_ENABLED', false),
+        'default_name' => (string) env('ELECTION_REVIEW_ROOM_NAME', 'COMELEC Multi-Tablet Review'),
+        'default_voter_stations' => (int) env('ELECTION_REVIEW_ROOM_VOTER_STATIONS', 5),
+        'max_voter_stations' => (int) env('ELECTION_REVIEW_ROOM_MAX_VOTER_STATIONS', 10),
+        'join_link_ttl_minutes' => (int) env('ELECTION_REVIEW_ROOM_JOIN_TTL', 480),
+        'online_window_seconds' => (int) env('ELECTION_REVIEW_ROOM_ONLINE_WINDOW', 30),
+    ],
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),
         'print_release_ttl_seconds' => (int) env('ELECTION_PRINT_RELEASE_TTL', 600),

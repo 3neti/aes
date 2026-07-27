@@ -9,6 +9,7 @@ use App\Http\Controllers\Election\PrintingController;
 use App\Http\Controllers\Election\PrintStationController;
 use App\Http\Controllers\Election\ProvisionController;
 use App\Http\Controllers\Election\ReturnsController;
+use App\Http\Controllers\Election\ReviewRoomController;
 use App\Http\Controllers\Election\TransmissionController;
 use App\Http\Controllers\Election\VoterAuthorizationController;
 use App\Http\Controllers\Election\VoterBallotController;
@@ -16,94 +17,124 @@ use App\Http\Controllers\Election\VotingController;
 use App\Http\Controllers\Election\WatcherController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', HomeController::class)->name('home');
+Route::get('/', HomeController::class)
+    ->middleware('review-room-role:officer')
+    ->name('home');
 
 Route::prefix('election')->name('election.')->group(function (): void {
-    Route::get('/', HomeController::class)->name('home');
-    Route::get('/provision', [ProvisionController::class, 'show'])->name('provision');
-    Route::post('/provision/activate', [ProvisionController::class, 'activate'])->name('provision.activate');
-    Route::post('/provision/setup', [ProvisionController::class, 'storeSetup'])->name('provision.setup');
-    Route::post('/provision/eb-role-baseline', [ProvisionController::class, 'writeElectoralBoardBaseline'])->name('provision.eb-role-baseline');
-    Route::post('/provision/supply-verification-baseline', [ProvisionController::class, 'writeSupplyVerificationBaseline'])->name('provision.supply-verification-baseline');
-    Route::post('/provision/legal-scenario-suite', [ProvisionController::class, 'runLegalScenarioSuite'])->name('provision.legal-scenario-suite');
-    Route::get('/certification', [CertificationController::class, 'show'])->name('certification');
-    Route::post('/certification/run', [CertificationController::class, 'run'])->name('certification.run');
-    Route::post('/certification/manual-verification', [CertificationController::class, 'runManualVerification'])->name('certification.manual-verification');
-    Route::get('/certification/manual-verification/download', [CertificationController::class, 'downloadManualVerification'])->name('certification.manual-verification.download');
-    Route::post('/certification/discrepancy', [CertificationController::class, 'runDiscrepancy'])->name('certification.discrepancy');
-    Route::get('/certification/discrepancy-report/download', [CertificationController::class, 'downloadDiscrepancy'])->name('certification.discrepancy.download');
-    Route::post('/certification/zero-out', [CertificationController::class, 'runZeroOut'])->name('certification.zero-out');
-    Route::get('/certification/zero-out-report/download', [CertificationController::class, 'downloadZeroOut'])->name('certification.zero-out.download');
-    Route::post('/certification/seal', [CertificationController::class, 'runSealing'])->name('certification.seal');
-    Route::get('/certification/sealing-report/download', [CertificationController::class, 'downloadSealing'])->name('certification.sealing-report.download');
-    Route::get('/voting', [VotingController::class, 'show'])->name('voting');
-    Route::post('/voting/voter-authorizations', [VoterAuthorizationController::class, 'issue'])
-        ->middleware('throttle:30,1')
-        ->name('voting.voter-authorizations.issue');
-    Route::get('/voter', [VoterAuthorizationController::class, 'show'])->name('voter');
-    Route::post('/voter/claim', [VoterAuthorizationController::class, 'claim'])
-        ->middleware('throttle:10,1')
-        ->name('voter.claim');
-    Route::get('/voter/ballot', [VoterBallotController::class, 'show'])->name('voter.ballot');
-    Route::post('/voter/ballot', [VoterBallotController::class, 'finalize'])->name('voter.finalize');
-    Route::get('/voter/complete', [VoterBallotController::class, 'complete'])->name('voter.complete');
-    Route::get('/print-station', [PrintStationController::class, 'show'])->name('print-station');
-    Route::post('/print-station/redeem', [PrintStationController::class, 'redeem'])
-        ->middleware('throttle:10,1')
-        ->name('print-station.redeem');
-    Route::post('/print-station/print', [PrintStationController::class, 'print'])->name('print-station.print');
-    Route::post('/print-station/deposit', [PrintStationController::class, 'deposit'])->name('print-station.deposit');
-    Route::get('/watchers', WatcherController::class)->name('watchers');
-    Route::post('/voting/open-polls', [VotingController::class, 'openPolls'])->name('voting.open-polls');
-    Route::post('/voting/finalize', [VotingController::class, 'finalize'])->name('voting.finalize');
-    Route::post('/voting/close-polls', [VotingController::class, 'closePolls'])->name('voting.close-polls');
-    Route::post('/voting/special-polling-intake', [VotingController::class, 'recordSpecialPollingIntake'])->name('voting.special-polling-intake');
-    Route::get('/printing/{ballot?}', [PrintingController::class, 'show'])->name('printing');
-    Route::post('/printing/{ballot}/print', [PrintingController::class, 'print'])->name('printing.print');
-    Route::post('/printing/{ballot}/spoil', [PrintingController::class, 'spoil'])->name('printing.spoil');
-    Route::get('/counting', [CountingController::class, 'show'])->name('counting');
-    Route::post('/counting/scan', [CountingController::class, 'scan'])->name('counting.scan');
-    Route::post('/counting/physical-count', [CountingController::class, 'recordPhysicalCount'])->name('counting.physical-count');
-    Route::post('/counting/adjudicate', [CountingController::class, 'adjudicate'])->name('counting.adjudicate');
-    Route::post('/counting/complete', [CountingController::class, 'complete'])->name('counting.complete');
-    Route::get('/returns', [ReturnsController::class, 'show'])->name('returns');
-    Route::post('/returns/generate', [ReturnsController::class, 'generate'])->name('returns.generate');
-    Route::post('/returns/copy-distribution', [ReturnsController::class, 'copyDistribution'])->name('returns.copy-distribution');
-    Route::post('/returns/approve', [ReturnsController::class, 'approve'])->name('returns.approve');
-    Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
-    Route::get('/transmission', [TransmissionController::class, 'show'])->name('transmission');
-    Route::post('/transmission/package', [TransmissionController::class, 'preparePackage'])->name('transmission.prepare');
-    Route::post('/transmission/officer-verification', [TransmissionController::class, 'verifyOfficer'])->name('transmission.officer-verification');
-    Route::post('/transmission/recipient-verification', [TransmissionController::class, 'verifyRecipient'])->name('transmission.recipient-verification');
-    Route::post('/transmission/receipt', [TransmissionController::class, 'recordReceipt'])->name('transmission.receipt');
-    Route::post('/transmission/final-backup', [TransmissionController::class, 'recordFinalBackup'])->name('transmission.final-backup');
-    Route::post('/transmission/send', [TransmissionController::class, 'send'])->name('transmission.send');
-    Route::post('/transmission/custody', [TransmissionController::class, 'recordCustody'])->name('transmission.custody');
-    Route::post('/transmission/close-precinct', [TransmissionController::class, 'closePrecinct'])->name('transmission.close-precinct');
-    Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');
-    Route::post('/diagnostics/certify-devices', [DiagnosticsController::class, 'certifyDevices'])->name('diagnostics.certify-devices');
-    Route::post('/diagnostics/recovery', [DiagnosticsController::class, 'inspectRecovery'])->name('diagnostics.recovery.inspect');
-    Route::post('/diagnostics/begin-audit', [DiagnosticsController::class, 'beginAudit'])->name('diagnostics.begin-audit');
-    Route::post('/diagnostics/evidence-manifest', [DiagnosticsController::class, 'generateEvidenceManifest'])->name('diagnostics.evidence-manifest.generate');
-    Route::get('/diagnostics/evidence-manifest/download', [DiagnosticsController::class, 'downloadEvidenceManifest'])->name('diagnostics.evidence-manifest.download');
-    Route::post('/diagnostics/evidence-reference-baseline', [DiagnosticsController::class, 'generateEvidenceReferenceBaseline'])->name('diagnostics.evidence-reference-baseline.generate');
-    Route::get('/diagnostics/evidence-reference-baseline/download', [DiagnosticsController::class, 'downloadEvidenceReferenceBaseline'])->name('diagnostics.evidence-reference-baseline.download');
-    Route::post('/diagnostics/official-minutes-baseline', [DiagnosticsController::class, 'generateOfficialMinutesBaseline'])->name('diagnostics.official-minutes-baseline.generate');
-    Route::get('/diagnostics/official-minutes-baseline/download', [DiagnosticsController::class, 'downloadOfficialMinutesBaseline'])->name('diagnostics.official-minutes-baseline.download');
-    Route::post('/diagnostics/audit-reconciliation-baseline', [DiagnosticsController::class, 'generateAuditReconciliationBaseline'])->name('diagnostics.audit-reconciliation-baseline.generate');
-    Route::get('/diagnostics/audit-reconciliation-baseline/download', [DiagnosticsController::class, 'downloadAuditReconciliationBaseline'])->name('diagnostics.audit-reconciliation-baseline.download');
-    Route::post('/diagnostics/initialization-report', [DiagnosticsController::class, 'generateInitializationReport'])->name('diagnostics.initialization-report.generate');
-    Route::get('/diagnostics/initialization-report/download', [DiagnosticsController::class, 'downloadInitializationReport'])->name('diagnostics.initialization-report.download');
-    Route::post('/diagnostics/evidence-bundle-archive', [DiagnosticsController::class, 'buildEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.build');
-    Route::get('/diagnostics/evidence-bundle-archive/download', [DiagnosticsController::class, 'downloadEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.download');
-    Route::post('/diagnostics/evidence-bundle-archive/verify', [DiagnosticsController::class, 'verifyEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.verify');
-    Route::post('/diagnostics/evidence-bundle-archive/upload-verify', [DiagnosticsController::class, 'verifyUploadedEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.upload-verify');
-    Route::post('/diagnostics/removable-media/export', [DiagnosticsController::class, 'exportRemovableMedia'])->name('diagnostics.removable-media.export');
-    Route::post('/diagnostics/removable-media/readiness', [DiagnosticsController::class, 'checkRemovableMediaReadiness'])->name('diagnostics.removable-media.readiness');
-    Route::post('/diagnostics/removable-media/verify', [DiagnosticsController::class, 'verifyRemovableMedia'])->name('diagnostics.removable-media.verify');
-    Route::get('/diagnostics/attestations/{artifact}', [DiagnosticsController::class, 'attestation'])->name('diagnostics.attestations.show');
-    Route::get('/diagnostics/attestations/{artifact}/download', [DiagnosticsController::class, 'downloadAttestation'])->name('diagnostics.attestations.download');
-    Route::get('/diagnostics/signatures/{artifact}', [DiagnosticsController::class, 'signature'])->name('diagnostics.signatures.show');
-    Route::get('/diagnostics/signatures/{artifact}/download', [DiagnosticsController::class, 'downloadSignature'])->name('diagnostics.signatures.download');
-    Route::post('/attestations', [AttestationController::class, 'store'])->name('attestations.store');
+    Route::get('/review-room', [ReviewRoomController::class, 'index'])->name('review-room.index');
+    Route::post('/review-room', [ReviewRoomController::class, 'store'])->name('review-room.store');
+    Route::post('/review-room/{room:code}/close', [ReviewRoomController::class, 'close'])->name('review-room.close');
+    Route::get('/review-room/{room:code}/join/{station}', [ReviewRoomController::class, 'join'])
+        ->middleware(['signed', 'throttle:30,1'])
+        ->name('review-room.join');
+    Route::get('/review-room-presentation', [ReviewRoomController::class, 'presentation'])
+        ->middleware('review-room-role:presentation')
+        ->name('review-room.presentation');
+
+    Route::middleware('review-room-role:officer')->group(function (): void {
+        Route::get('/', HomeController::class)->name('home');
+        Route::get('/provision', [ProvisionController::class, 'show'])->name('provision');
+        Route::post('/provision/activate', [ProvisionController::class, 'activate'])->name('provision.activate');
+        Route::post('/provision/setup', [ProvisionController::class, 'storeSetup'])->name('provision.setup');
+        Route::post('/provision/eb-role-baseline', [ProvisionController::class, 'writeElectoralBoardBaseline'])->name('provision.eb-role-baseline');
+        Route::post('/provision/supply-verification-baseline', [ProvisionController::class, 'writeSupplyVerificationBaseline'])->name('provision.supply-verification-baseline');
+        Route::post('/provision/legal-scenario-suite', [ProvisionController::class, 'runLegalScenarioSuite'])->name('provision.legal-scenario-suite');
+
+        Route::get('/certification', [CertificationController::class, 'show'])->name('certification');
+        Route::post('/certification/run', [CertificationController::class, 'run'])->name('certification.run');
+        Route::post('/certification/manual-verification', [CertificationController::class, 'runManualVerification'])->name('certification.manual-verification');
+        Route::get('/certification/manual-verification/download', [CertificationController::class, 'downloadManualVerification'])->name('certification.manual-verification.download');
+        Route::post('/certification/discrepancy', [CertificationController::class, 'runDiscrepancy'])->name('certification.discrepancy');
+        Route::get('/certification/discrepancy-report/download', [CertificationController::class, 'downloadDiscrepancy'])->name('certification.discrepancy.download');
+        Route::post('/certification/zero-out', [CertificationController::class, 'runZeroOut'])->name('certification.zero-out');
+        Route::get('/certification/zero-out-report/download', [CertificationController::class, 'downloadZeroOut'])->name('certification.zero-out.download');
+        Route::post('/certification/seal', [CertificationController::class, 'runSealing'])->name('certification.seal');
+        Route::get('/certification/sealing-report/download', [CertificationController::class, 'downloadSealing'])->name('certification.sealing-report.download');
+
+        Route::get('/voting', [VotingController::class, 'show'])->name('voting');
+        Route::post('/voting/voter-authorizations', [VoterAuthorizationController::class, 'issue'])
+            ->middleware('throttle:30,1')
+            ->name('voting.voter-authorizations.issue');
+        Route::post('/voting/open-polls', [VotingController::class, 'openPolls'])->name('voting.open-polls');
+        Route::post('/voting/finalize', [VotingController::class, 'finalize'])->name('voting.finalize');
+        Route::post('/voting/close-polls', [VotingController::class, 'closePolls'])->name('voting.close-polls');
+        Route::post('/voting/special-polling-intake', [VotingController::class, 'recordSpecialPollingIntake'])->name('voting.special-polling-intake');
+
+        Route::get('/printing/{ballot?}', [PrintingController::class, 'show'])->name('printing');
+        Route::post('/printing/{ballot}/print', [PrintingController::class, 'print'])->name('printing.print');
+        Route::post('/printing/{ballot}/spoil', [PrintingController::class, 'spoil'])->name('printing.spoil');
+
+        Route::get('/counting', [CountingController::class, 'show'])->name('counting');
+        Route::post('/counting/scan', [CountingController::class, 'scan'])->name('counting.scan');
+        Route::post('/counting/physical-count', [CountingController::class, 'recordPhysicalCount'])->name('counting.physical-count');
+        Route::post('/counting/adjudicate', [CountingController::class, 'adjudicate'])->name('counting.adjudicate');
+        Route::post('/counting/complete', [CountingController::class, 'complete'])->name('counting.complete');
+
+        Route::get('/returns', [ReturnsController::class, 'show'])->name('returns');
+        Route::post('/returns/generate', [ReturnsController::class, 'generate'])->name('returns.generate');
+        Route::post('/returns/copy-distribution', [ReturnsController::class, 'copyDistribution'])->name('returns.copy-distribution');
+        Route::post('/returns/approve', [ReturnsController::class, 'approve'])->name('returns.approve');
+        Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
+
+        Route::get('/transmission', [TransmissionController::class, 'show'])->name('transmission');
+        Route::post('/transmission/package', [TransmissionController::class, 'preparePackage'])->name('transmission.prepare');
+        Route::post('/transmission/officer-verification', [TransmissionController::class, 'verifyOfficer'])->name('transmission.officer-verification');
+        Route::post('/transmission/recipient-verification', [TransmissionController::class, 'verifyRecipient'])->name('transmission.recipient-verification');
+        Route::post('/transmission/receipt', [TransmissionController::class, 'recordReceipt'])->name('transmission.receipt');
+        Route::post('/transmission/final-backup', [TransmissionController::class, 'recordFinalBackup'])->name('transmission.final-backup');
+        Route::post('/transmission/send', [TransmissionController::class, 'send'])->name('transmission.send');
+        Route::post('/transmission/custody', [TransmissionController::class, 'recordCustody'])->name('transmission.custody');
+        Route::post('/transmission/close-precinct', [TransmissionController::class, 'closePrecinct'])->name('transmission.close-precinct');
+
+        Route::get('/diagnostics', [DiagnosticsController::class, 'show'])->name('diagnostics');
+        Route::post('/diagnostics/certify-devices', [DiagnosticsController::class, 'certifyDevices'])->name('diagnostics.certify-devices');
+        Route::post('/diagnostics/recovery', [DiagnosticsController::class, 'inspectRecovery'])->name('diagnostics.recovery.inspect');
+        Route::post('/diagnostics/begin-audit', [DiagnosticsController::class, 'beginAudit'])->name('diagnostics.begin-audit');
+        Route::post('/diagnostics/evidence-manifest', [DiagnosticsController::class, 'generateEvidenceManifest'])->name('diagnostics.evidence-manifest.generate');
+        Route::get('/diagnostics/evidence-manifest/download', [DiagnosticsController::class, 'downloadEvidenceManifest'])->name('diagnostics.evidence-manifest.download');
+        Route::post('/diagnostics/evidence-reference-baseline', [DiagnosticsController::class, 'generateEvidenceReferenceBaseline'])->name('diagnostics.evidence-reference-baseline.generate');
+        Route::get('/diagnostics/evidence-reference-baseline/download', [DiagnosticsController::class, 'downloadEvidenceReferenceBaseline'])->name('diagnostics.evidence-reference-baseline.download');
+        Route::post('/diagnostics/official-minutes-baseline', [DiagnosticsController::class, 'generateOfficialMinutesBaseline'])->name('diagnostics.official-minutes-baseline.generate');
+        Route::get('/diagnostics/official-minutes-baseline/download', [DiagnosticsController::class, 'downloadOfficialMinutesBaseline'])->name('diagnostics.official-minutes-baseline.download');
+        Route::post('/diagnostics/audit-reconciliation-baseline', [DiagnosticsController::class, 'generateAuditReconciliationBaseline'])->name('diagnostics.audit-reconciliation-baseline.generate');
+        Route::get('/diagnostics/audit-reconciliation-baseline/download', [DiagnosticsController::class, 'downloadAuditReconciliationBaseline'])->name('diagnostics.audit-reconciliation-baseline.download');
+        Route::post('/diagnostics/initialization-report', [DiagnosticsController::class, 'generateInitializationReport'])->name('diagnostics.initialization-report.generate');
+        Route::get('/diagnostics/initialization-report/download', [DiagnosticsController::class, 'downloadInitializationReport'])->name('diagnostics.initialization-report.download');
+        Route::post('/diagnostics/evidence-bundle-archive', [DiagnosticsController::class, 'buildEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.build');
+        Route::get('/diagnostics/evidence-bundle-archive/download', [DiagnosticsController::class, 'downloadEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.download');
+        Route::post('/diagnostics/evidence-bundle-archive/verify', [DiagnosticsController::class, 'verifyEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.verify');
+        Route::post('/diagnostics/evidence-bundle-archive/upload-verify', [DiagnosticsController::class, 'verifyUploadedEvidenceBundleArchive'])->name('diagnostics.evidence-bundle-archive.upload-verify');
+        Route::post('/diagnostics/removable-media/export', [DiagnosticsController::class, 'exportRemovableMedia'])->name('diagnostics.removable-media.export');
+        Route::post('/diagnostics/removable-media/readiness', [DiagnosticsController::class, 'checkRemovableMediaReadiness'])->name('diagnostics.removable-media.readiness');
+        Route::post('/diagnostics/removable-media/verify', [DiagnosticsController::class, 'verifyRemovableMedia'])->name('diagnostics.removable-media.verify');
+        Route::get('/diagnostics/attestations/{artifact}', [DiagnosticsController::class, 'attestation'])->name('diagnostics.attestations.show');
+        Route::get('/diagnostics/attestations/{artifact}/download', [DiagnosticsController::class, 'downloadAttestation'])->name('diagnostics.attestations.download');
+        Route::get('/diagnostics/signatures/{artifact}', [DiagnosticsController::class, 'signature'])->name('diagnostics.signatures.show');
+        Route::get('/diagnostics/signatures/{artifact}/download', [DiagnosticsController::class, 'downloadSignature'])->name('diagnostics.signatures.download');
+        Route::post('/attestations', [AttestationController::class, 'store'])->name('attestations.store');
+    });
+
+    Route::middleware('review-room-role:voter')->group(function (): void {
+        Route::get('/voter', [VoterAuthorizationController::class, 'show'])->name('voter');
+        Route::post('/voter/claim', [VoterAuthorizationController::class, 'claim'])
+            ->middleware('throttle:10,1')
+            ->name('voter.claim');
+        Route::get('/voter/ballot', [VoterBallotController::class, 'show'])->name('voter.ballot');
+        Route::post('/voter/ballot', [VoterBallotController::class, 'finalize'])->name('voter.finalize');
+        Route::get('/voter/complete', [VoterBallotController::class, 'complete'])->name('voter.complete');
+    });
+
+    Route::middleware('review-room-role:print_station')->group(function (): void {
+        Route::get('/print-station', [PrintStationController::class, 'show'])->name('print-station');
+        Route::post('/print-station/redeem', [PrintStationController::class, 'redeem'])
+            ->middleware('throttle:10,1')
+            ->name('print-station.redeem');
+        Route::post('/print-station/print', [PrintStationController::class, 'print'])->name('print-station.print');
+        Route::post('/print-station/deposit', [PrintStationController::class, 'deposit'])->name('print-station.deposit');
+    });
+
+    Route::get('/watchers', WatcherController::class)
+        ->middleware('review-room-role:watcher')
+        ->name('watchers');
 });

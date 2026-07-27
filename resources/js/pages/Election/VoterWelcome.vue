@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
+import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
 import { claim } from '@/routes/election/voter';
 
 defineProps<{
@@ -17,6 +18,7 @@ defineProps<{
         <section
             class="w-full max-w-lg border-t-8 border-blue-800 bg-white p-6 shadow-sm sm:p-8"
         >
+            <ReviewStationBar />
             <p class="text-sm font-bold text-blue-800">
                 Official voting station
             </p>

@@ -74,6 +74,56 @@ export type ElectionReviewMode = {
     defaults: ElectionReviewDefaults;
 };
 
+export type ElectionReviewRoomStation = {
+    id: string;
+    role: 'officer' | 'voter' | 'print_station' | 'watcher' | 'presentation';
+    role_label: string;
+    label: string;
+    slot: number;
+    status: 'waiting' | 'connected' | 'inactive';
+    joined_at: string | null;
+    last_seen_at: string | null;
+    join_url?: string;
+    join_qr?: string;
+};
+
+export type ElectionReviewRoomEvent = {
+    sequence: number;
+    event_type: string;
+    occurred_at: string;
+    payload: Record<string, unknown>;
+    previous_hash: string | null;
+    event_hash: string;
+};
+
+export type ElectionReviewRoom = {
+    id: string;
+    code: string;
+    name: string;
+    precinct_id: string | null;
+    run_id: string | null;
+    status: 'open' | 'closed';
+    opened_at: string;
+    closed_at: string | null;
+    station_count: number;
+    connected_station_count: number;
+    stations: ElectionReviewRoomStation[];
+    events: ElectionReviewRoomEvent[];
+};
+
+export type ElectionReviewRoomContext = {
+    enabled: boolean;
+    station: {
+        id: string;
+        role: ElectionReviewRoomStation['role'];
+        role_label: string;
+        label: string;
+        room_code: string;
+        room_name: string;
+        room_status: 'open' | 'closed';
+    } | null;
+};
+
 export type WorkflowStep = {
     id: string;
     label: string;
