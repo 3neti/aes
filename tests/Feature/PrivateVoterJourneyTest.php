@@ -1,5 +1,6 @@
 <?php
 
+use App\Election\Core\ActivityJournal;
 use App\Election\Counting\CountingService;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
@@ -56,6 +57,55 @@ test('a voter code can be claimed once and expires', function (): void {
 
     $this->post(route('election.voter.claim'), ['code' => $expired['code']])
         ->assertSessionHasErrors('code');
+});
+
+test('an officer replaces an expired voter code with journal evidence', function (): void {
+    app(ElectionClock::class)->freeze('2026-05-11 08:00:00');
+
+    $this->post(route('election.voting.voter-authorizations.issue'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ])->assertRedirect(route('election.voting'));
+
+    $expiredAuthorization = session('voter_authorization');
+    app(ElectionClock::class)->tick(301);
+
+    $this->get(route('election.voting'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('voterAuthorization.authorization_id', $expiredAuthorization['authorization_id'])
+            ->where('voterAuthorization.status', 'expired')
+            ->where('voterAuthorization.seconds_remaining', 0)
+        );
+
+    $this->post(route('election.voting.voter-authorizations.issue'), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ])->assertRedirect(route('election.voting'));
+
+    $replacement = session('voter_authorization');
+    $storage = app(ElectionStorage::class);
+    $expiredRecord = $storage->readJson(
+        "voter-authorizations/{$expiredAuthorization['authorization_id']}.json",
+    );
+    $events = collect(app(ActivityJournal::class)->entries());
+
+    expect($replacement['authorization_id'])
+        ->not->toBe($expiredAuthorization['authorization_id'])
+        ->and($expiredRecord['status'])->toBe('expired')
+        ->and($expiredRecord['replacement_authorization_id'])->toBe($replacement['authorization_id'])
+        ->and($events->where('event_type', 'voter.authorization_expired'))->toHaveCount(1)
+        ->and($events->where('event_type', 'voter.authorization_replaced'))->toHaveCount(1)
+        ->and($events->firstWhere('event_type', 'voter.authorization_replaced')['payload'])
+        ->not->toHaveKeys(['code', 'previous_code', 'replacement_code']);
+
+    $this->post(route('election.voter.claim'), [
+        'code' => $expiredAuthorization['code'],
+    ])->assertSessionHasErrors('code');
+
+    $this->post(route('election.voter.claim'), [
+        'code' => $replacement['code'],
+    ])->assertRedirect(route('election.voter.ballot'));
 });
 
 test('the private voter journey seals choices until polls close', function (): void {

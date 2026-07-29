@@ -1654,6 +1654,34 @@ test('fifty ballot field scenario reconciles paper, counting, return, and archiv
         ->and($summaryText)->toContain('Election return: '.$report['artifacts']['election_return']);
 });
 
+test('scenario runner preserves a locked browser walkthrough before starting a new rehearsal', function (): void {
+    $storage = app(ElectionStorage::class);
+    $storage->selectRunType(ElectionRunType::Rehearsal);
+    $lockedRun = $storage->startRun(
+        'preserved-browser-walkthrough',
+        '39010001',
+        '20260729-120000',
+        ElectionRunType::Rehearsal,
+        'browser-walkthrough',
+    );
+    $preservedArtifact = $storage->writeText(
+        'scenarios/preserved-browser-evidence.txt',
+        'Preserve this locked evidence.',
+    );
+    $storage->lockActiveRun();
+
+    $this->artisan('election:scenario full-demo')
+        ->expectsOutput('Scenario full-demo passed.')
+        ->assertSuccessful();
+
+    $currentRun = $storage->currentRun(ElectionRunType::Rehearsal);
+
+    expect($currentRun['run_id'])->not->toBe($lockedRun['run_id'])
+        ->and($currentRun['scenario'])->toBe('full-demo')
+        ->and($preservedArtifact)->toBeReadableFile()
+        ->and(file_get_contents($preservedArtifact))->toBe('Preserve this locked evidence.');
+});
+
 test('evidence folder demo scenario command is registered', function (): void {
     $this->artisan('election:scenario evidence-folder-demo')
         ->expectsOutput('Scenario evidence-folder-demo passed.')

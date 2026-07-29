@@ -182,8 +182,6 @@ async function recordSignedCheckpoint() {
     });
 
     await signOff.locator('summary').click();
-    await signOff.locator('input[name="officer_code"]').fill('SIM-OFFICER-001');
-    await signOff.locator('input[name="officer_pin"]').fill('123456');
 
     const canvas = signOff.locator(
         'canvas[aria-label="Officer signature pad"]',
@@ -212,6 +210,8 @@ async function recordSignedCheckpoint() {
         );
     });
 
+    await signOff.locator('input[name="officer_code"]').fill('SIM-OFFICER-001');
+    await signOff.locator('input[name="officer_pin"]').fill('123456');
     await signOff
         .getByRole('button', {
             name: 'Record signed checkpoint',
@@ -235,18 +235,23 @@ async function recordSignedCheckpoint() {
 
 async function finalizeVoterBallot(ballotNumber) {
     await openPath('/election/voting');
+    const authorizationButton = page
+        .getByRole('button', {
+            name: /^(Issue anonymous voting code|Issue next voter code|Generate replacement code)$/,
+        })
+        .first();
     const authorizationForm = page.locator('form').filter({
-        has: page.getByRole('button', {
-            name: 'Issue anonymous voting code',
-            exact: true,
-        }),
+        has: authorizationButton,
     });
     await authorizationForm
         .locator('input[name="officer_code"]')
         .fill('SIM-OFFICER-001');
     await authorizationForm.locator('input[name="officer_pin"]').fill('123456');
+    const authorizationAction = (
+        await authorizationButton.textContent()
+    ).trim();
     await postButton(
-        'Issue anonymous voting code',
+        authorizationAction,
         '/election/voting/voter-authorizations',
         60_000,
         false,
@@ -476,8 +481,26 @@ try {
                 }),
             });
 
-            await form.locator('input[name="chairperson_pin"]').fill('123456');
-            await form.locator('input[name="poll_clerk_pin"]').fill('123456');
+            const setupValues = {
+                chairperson_code: 'SIM-OFFICER-001',
+                chairperson_pin: '123456',
+                poll_clerk_code: 'SIM-OFFICER-002',
+                poll_clerk_pin: '123456',
+                third_member_code: 'SIM-OFFICER-003',
+                device_serial: 'AES-PI-39010001-001',
+                printer_serial: 'AES-PRINTER-39010001-001',
+                scanner_serial: 'AES-SCANNER-39010001-001',
+                ballot_stock_start: '1',
+                ballot_stock_end: '1000',
+                ballot_box_id: 'AES-BOX-39010001-001',
+                custody_envelope_id: 'AES-ENV-39010001-001',
+                seal_numbers: 'AES-SEAL-39010001-001,AES-SEAL-39010001-002',
+            };
+
+            for (const [name, value] of Object.entries(setupValues)) {
+                await form.locator(`input[name="${name}"]`).fill(value);
+            }
+
             await postButton(
                 'Record setup under dual control',
                 '/election/provision/setup',
@@ -731,6 +754,9 @@ try {
             await form
                 .locator('input[name="physical_count"]')
                 .fill(String(walkthroughStatistics.ballots_accepted));
+            await form
+                .locator('input[name="officer_code"]')
+                .fill('SIM-OFFICER-001');
             await form.locator('input[name="officer_pin"]').fill('123456');
             await postButton(
                 'Record physical control',
@@ -801,7 +827,13 @@ try {
                 }),
             });
 
+            await form
+                .locator('input[name="chairperson_code"]')
+                .fill('SIM-OFFICER-001');
             await form.locator('input[name="chairperson_pin"]').fill('123456');
+            await form
+                .locator('input[name="poll_clerk_code"]')
+                .fill('SIM-OFFICER-002');
             await form.locator('input[name="poll_clerk_pin"]').fill('123456');
             await postButton(
                 'Approve Election Return',

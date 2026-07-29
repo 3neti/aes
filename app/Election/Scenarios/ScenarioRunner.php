@@ -112,7 +112,12 @@ final class ScenarioRunner
     public function run(string $name): array
     {
         $this->storage->selectRunType(ElectionRunType::Rehearsal);
-        $this->storage->reset(ElectionRunType::Rehearsal);
+        $currentRehearsal = $this->storage->currentRun(ElectionRunType::Rehearsal);
+
+        if (($currentRehearsal['status'] ?? null) !== 'locked') {
+            $this->storage->reset(ElectionRunType::Rehearsal);
+        }
+
         $this->clock->freeze('2026-05-08 08:00:00');
         $this->storage->startRun(
             $name,

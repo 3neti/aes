@@ -10,6 +10,7 @@ use App\Election\Counting\CountingService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
+use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\SealedBallotBox;
 use App\Election\Voting\SpecialPollingIntakeService;
@@ -29,12 +30,27 @@ final class VotingController extends Controller
         ElectionSnapshot $snapshot,
         SpecialPollingIntakeService $specialPollingIntake,
         SealedBallotBox $ballotBox,
+        AnonymousVoterAuthorization $authorizations,
         Request $request,
     ): Response {
+        $voterAuthorization = $request->session()->get('voter_authorization');
+
+        if (
+            is_array($voterAuthorization)
+            && is_string($voterAuthorization['authorization_id'] ?? null)
+        ) {
+            $voterAuthorization = [
+                ...$voterAuthorization,
+                ...$authorizations->inspect($voterAuthorization['authorization_id']),
+            ];
+        } else {
+            $voterAuthorization = null;
+        }
+
         return Inertia::render('Election/Voting', [
             'snapshot' => $snapshot->get(),
             'specialPollingIntake' => $specialPollingIntake->summary(),
-            'voterAuthorization' => $request->session()->get('voter_authorization'),
+            'voterAuthorization' => $voterAuthorization,
             'ballotBox' => $ballotBox->operationalSummary(),
         ]);
     }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Link } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
@@ -21,12 +22,15 @@ type SpecialPollingIntake = {
     totals_by_type?: Record<string, number>;
 };
 
-defineProps<{
+const props = defineProps<{
     snapshot: ElectionSnapshot;
     specialPollingIntake: SpecialPollingIntake;
     voterAuthorization?: {
+        authorization_id: string;
         code: string;
         expires_at: string;
+        status: string;
+        seconds_remaining: number;
     };
     ballotBox: { deposited_ballots: number };
 }>();
@@ -46,6 +50,96 @@ const specialPollingTypes = [
     { value: 'pdl', label: 'PDL / PPD' },
     { value: 'ip', label: 'Indigenous Peoples' },
 ];
+
+const authorizationSecondsRemaining = ref(0);
+let authorizationTimer: ReturnType<typeof setInterval> | null = null;
+
+const hasAuthorization = computed(() =>
+    Boolean(props.voterAuthorization?.authorization_id),
+);
+const authorizationIsActive = computed(
+    () =>
+        props.voterAuthorization?.status === 'issued' &&
+        authorizationSecondsRemaining.value > 0,
+);
+const authorizationIsExpired = computed(
+    () =>
+        props.voterAuthorization?.status === 'expired' ||
+        (props.voterAuthorization?.status === 'issued' &&
+            authorizationSecondsRemaining.value === 0),
+);
+const authorizationStatus = computed(() => {
+    if (authorizationIsActive.value) {
+        return 'Code ready';
+    }
+
+    if (authorizationIsExpired.value) {
+        return 'Code expired';
+    }
+
+    if (props.voterAuthorization?.status === 'claimed') {
+        return 'Code claimed';
+    }
+
+    return 'Officer authorization required';
+});
+const authorizationTone = computed(() => {
+    if (authorizationIsActive.value) {
+        return 'complete';
+    }
+
+    if (authorizationIsExpired.value) {
+        return 'danger';
+    }
+
+    return 'warning';
+});
+const formattedAuthorizationCountdown = computed(() => {
+    const minutes = Math.floor(authorizationSecondsRemaining.value / 60);
+    const seconds = authorizationSecondsRemaining.value % 60;
+
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+});
+const authorizationActionLabel = computed(() => {
+    if (authorizationIsExpired.value) {
+        return 'Generate replacement code';
+    }
+
+    if (hasAuthorization.value) {
+        return 'Issue next voter code';
+    }
+
+    return 'Issue anonymous voting code';
+});
+
+watch(
+    () => [
+        props.voterAuthorization?.authorization_id,
+        props.voterAuthorization?.seconds_remaining,
+    ],
+    () => {
+        authorizationSecondsRemaining.value = Math.max(
+            0,
+            props.voterAuthorization?.seconds_remaining ?? 0,
+        );
+    },
+    { immediate: true },
+);
+
+onMounted(() => {
+    authorizationTimer = setInterval(() => {
+        authorizationSecondsRemaining.value = Math.max(
+            0,
+            authorizationSecondsRemaining.value - 1,
+        );
+    }, 1000);
+});
+
+onBeforeUnmount(() => {
+    if (authorizationTimer) {
+        clearInterval(authorizationTimer);
+    }
+});
 </script>
 
 <template>
@@ -201,33 +295,55 @@ const specialPollingTypes = [
             title="Admit the next voter"
             description="After checking the voter against the official roster, issue one anonymous voting code. No voter identity is stored by the appliance."
             eyebrow="Voting session"
-            :status="
-                voterAuthorization?.code
-                    ? 'Code ready'
-                    : 'Officer authorization required'
-            "
-            :tone="voterAuthorization?.code ? 'complete' : 'warning'"
-            :recommended="
-                !voterAuthorization?.code && ballotBox.deposited_ballots === 0
-            "
+            :status="authorizationStatus"
+            :tone="authorizationTone"
+            :recommended="!authorizationIsActive"
         >
             <div
-                v-if="voterAuthorization?.code"
+                v-if="authorizationIsActive"
                 class="border-l-4 border-emerald-700 bg-emerald-50 p-4"
             >
                 <p class="text-sm font-bold text-emerald-900">
                     One-time voting code
                 </p>
                 <p class="mt-1 font-mono text-3xl font-bold text-emerald-950">
-                    {{ voterAuthorization.code }}
+                    {{ voterAuthorization?.code }}
                 </p>
                 <p class="mt-2 text-sm text-emerald-900">
                     Give this code only to the admitted voter. It can be claimed
                     once.
                 </p>
+                <p
+                    class="mt-3 inline-flex min-w-40 justify-center border border-emerald-300 bg-white px-3 py-2 font-mono text-lg font-bold text-emerald-950"
+                    aria-live="polite"
+                >
+                    Expires in {{ formattedAuthorizationCountdown }}
+                </p>
+            </div>
+            <div
+                v-else-if="authorizationIsExpired"
+                class="border-l-4 border-red-700 bg-red-50 p-4"
+                role="status"
+            >
+                <p class="text-lg font-bold text-red-900">Code expired</p>
+                <p class="mt-1 text-sm text-red-800">
+                    The stale code cannot be claimed. Generate a replacement for
+                    the same voter without re-pairing either device.
+                </p>
+            </div>
+            <div
+                v-else-if="voterAuthorization?.status === 'claimed'"
+                class="border-l-4 border-blue-800 bg-blue-50 p-4"
+                role="status"
+            >
+                <p class="text-lg font-bold text-blue-950">Code claimed</p>
+                <p class="mt-1 text-sm text-blue-900">
+                    The voter tablet has entered the private ballot. Issue a new
+                    code only after admitting the next voter.
+                </p>
             </div>
             <Form
-                v-else
+                v-if="!authorizationIsActive"
                 v-bind="issueVoterAuthorization.form()"
                 #default="{ errors, processing }"
                 class="grid gap-3 sm:grid-cols-2"
@@ -264,8 +380,7 @@ const specialPollingTypes = [
                     class="primary-button sm:col-span-2"
                     :class="{
                         'review-next-action-button':
-                            electionReview.enabled &&
-                            ballotBox.deposited_ballots === 0,
+                            electionReview.enabled && !authorizationIsActive,
                     }"
                     type="submit"
                     :disabled="processing"
@@ -273,7 +388,7 @@ const specialPollingTypes = [
                     {{
                         processing
                             ? 'Issuing code...'
-                            : 'Issue anonymous voting code'
+                            : authorizationActionLabel
                     }}
                 </button>
             </Form>

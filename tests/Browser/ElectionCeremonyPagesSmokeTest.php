@@ -1,5 +1,6 @@
 <?php
 
+use App\Election\Core\ActivityJournal;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
@@ -52,6 +53,32 @@ test('opening ceremony exposes the final authorization that begins voting', func
         ->assertSee('Issue anonymous voting code')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
+});
+
+test('expired voter code can be replaced without re-pairing', function (): void {
+    config()->set('election.voter.authorization_ttl_seconds', 1);
+    app(LifecycleState::class)->set(Lifecycle::Voting);
+
+    visit('/election/voting')
+        ->fill('officer_code', 'SIM-OFFICER-001')
+        ->fill('officer_pin', '123456')
+        ->click('Issue anonymous voting code')
+        ->assertSee('Expires in')
+        ->wait(2)
+        ->assertSee('Code expired')
+        ->fill('officer_code', 'SIM-OFFICER-001')
+        ->fill('officer_pin', '123456')
+        ->click('Generate replacement code')
+        ->assertSee('Code ready')
+        ->assertSee('Expires in')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+
+    expect(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+        ->toContain(
+            'voter.authorization_expired',
+            'voter.authorization_replaced',
+        );
 });
 
 test('review mode loads and clears temporary operator defaults', function (): void {

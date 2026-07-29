@@ -53,9 +53,17 @@ final class VoterAuthorizationController extends Controller
             ]);
         }
 
-        return redirect()
-            ->route('election.voting')
-            ->with('voter_authorization', $authorizations->issue());
+        $currentAuthorization = $request->session()->get('voter_authorization');
+        $previousAuthorizationId = is_array($currentAuthorization)
+            && is_string($currentAuthorization['authorization_id'] ?? null)
+                ? $currentAuthorization['authorization_id']
+                : null;
+        $request->session()->put(
+            'voter_authorization',
+            $authorizations->issue($previousAuthorizationId),
+        );
+
+        return redirect()->route('election.voting');
     }
 
     public function claim(
