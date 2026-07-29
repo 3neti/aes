@@ -70,15 +70,15 @@ const authorizationIsExpired = computed(
 );
 const authorizationStatus = computed(() => {
     if (authorizationIsActive.value) {
-        return 'Code ready';
+        return 'Control number ready';
     }
 
     if (authorizationIsExpired.value) {
-        return 'Code expired';
+        return 'Control number expired';
     }
 
     if (props.voterAuthorization?.status === 'claimed') {
-        return 'Code claimed';
+        return 'Control number claimed';
     }
 
     return 'Officer authorization required';
@@ -102,14 +102,14 @@ const formattedAuthorizationCountdown = computed(() => {
 });
 const authorizationActionLabel = computed(() => {
     if (authorizationIsExpired.value) {
-        return 'Generate replacement code';
+        return 'Generate replacement control number';
     }
 
     if (hasAuthorization.value) {
-        return 'Issue next voter code';
+        return 'Issue next Voter Control Number';
     }
 
-    return 'Issue anonymous voting code';
+    return 'Issue Voter Control Number';
 });
 
 watch(
@@ -293,7 +293,7 @@ onBeforeUnmount(() => {
         <CeremonyActionPanel
             v-if="canFinalize(snapshot.stage)"
             title="Admit the next voter"
-            description="After checking the voter against the official roster, issue one anonymous voting code. No voter identity is stored by the appliance."
+            description="After checking the voter against the official roster, issue one Voter Control Number to hand to the admitted voter. No voter identity is stored by the appliance."
             eyebrow="Voting session"
             :status="authorizationStatus"
             :tone="authorizationTone"
@@ -304,14 +304,14 @@ onBeforeUnmount(() => {
                 class="border-l-4 border-emerald-700 bg-emerald-50 p-4"
             >
                 <p class="text-sm font-bold text-emerald-900">
-                    One-time voting code
+                    Voter Control Number
                 </p>
                 <p class="mt-1 font-mono text-3xl font-bold text-emerald-950">
                     {{ voterAuthorization?.code }}
                 </p>
                 <p class="mt-2 text-sm text-emerald-900">
-                    Give this code only to the admitted voter. It can be claimed
-                    once.
+                    Hand this number only to the admitted voter. It can be
+                    entered on one voter tablet and claimed once.
                 </p>
                 <p
                     class="mt-3 inline-flex min-w-40 justify-center border border-emerald-300 bg-white px-3 py-2 font-mono text-lg font-bold text-emerald-950"
@@ -325,10 +325,13 @@ onBeforeUnmount(() => {
                 class="border-l-4 border-red-700 bg-red-50 p-4"
                 role="status"
             >
-                <p class="text-lg font-bold text-red-900">Code expired</p>
+                <p class="text-lg font-bold text-red-900">
+                    Control number expired
+                </p>
                 <p class="mt-1 text-sm text-red-800">
-                    The stale code cannot be claimed. Generate a replacement for
-                    the same voter without re-pairing either device.
+                    The stale control number cannot be claimed. Generate a
+                    replacement for the same voter without re-pairing either
+                    device.
                 </p>
             </div>
             <div
@@ -336,10 +339,12 @@ onBeforeUnmount(() => {
                 class="border-l-4 border-blue-800 bg-blue-50 p-4"
                 role="status"
             >
-                <p class="text-lg font-bold text-blue-950">Code claimed</p>
+                <p class="text-lg font-bold text-blue-950">
+                    Control number claimed
+                </p>
                 <p class="mt-1 text-sm text-blue-900">
                     The voter tablet has entered the private ballot. Issue a new
-                    code only after admitting the next voter.
+                    control number only after admitting the next voter.
                 </p>
             </div>
             <Form
@@ -387,7 +392,7 @@ onBeforeUnmount(() => {
                 >
                     {{
                         processing
-                            ? 'Issuing code...'
+                            ? 'Issuing control number...'
                             : authorizationActionLabel
                     }}
                 </button>

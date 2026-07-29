@@ -237,7 +237,7 @@ async function finalizeVoterBallot(ballotNumber) {
     await openPath('/election/voting');
     const authorizationButton = page
         .getByRole('button', {
-            name: /^(Issue anonymous voting code|Issue next voter code|Generate replacement code)$/,
+            name: /^(Issue Voter Control Number|Issue next Voter Control Number|Generate replacement control number)$/,
         })
         .first();
     const authorizationForm = page.locator('form').filter({
@@ -669,7 +669,7 @@ try {
             await postButton('Begin voting', '/election/voting/open-polls');
             await page
                 .getByRole('button', {
-                    name: 'Issue anonymous voting code',
+                    name: 'Issue Voter Control Number',
                     exact: true,
                 })
                 .waitFor();

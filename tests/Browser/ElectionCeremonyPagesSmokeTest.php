@@ -50,7 +50,18 @@ test('opening ceremony exposes the final authorization that begins voting', func
         ->fill('officer_pin', '123456')
         ->click('Begin voting')
         ->assertSee('Admit the next voter')
-        ->assertSee('Issue anonymous voting code')
+        ->assertSee('Issue Voter Control Number')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
+test('voter tablet presents four-digit control number entry', function (): void {
+    app(LifecycleState::class)->set(Lifecycle::Voting);
+
+    visit('/election/voter')
+        ->assertSee('Enter your Voter Control Number')
+        ->assertSee('The Election Board gives one four-digit control number')
+        ->assertSee('Voter Control Number')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
@@ -62,14 +73,14 @@ test('expired voter code can be replaced without re-pairing', function (): void 
     visit('/election/voting')
         ->fill('officer_code', 'SIM-OFFICER-001')
         ->fill('officer_pin', '123456')
-        ->click('Issue anonymous voting code')
+        ->click('Issue Voter Control Number')
         ->assertSee('Expires in')
         ->wait(2)
-        ->assertSee('Code expired')
+        ->assertSee('Control number expired')
         ->fill('officer_code', 'SIM-OFFICER-001')
         ->fill('officer_pin', '123456')
-        ->click('Generate replacement code')
-        ->assertSee('Code ready')
+        ->click('Generate replacement control number')
+        ->assertSee('Control number ready')
         ->assertSee('Expires in')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();

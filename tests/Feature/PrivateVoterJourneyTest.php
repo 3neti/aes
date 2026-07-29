@@ -19,7 +19,7 @@ beforeEach(function (): void {
     app(LifecycleState::class)->set(Lifecycle::Voting);
 });
 
-test('an officer issues an anonymous single-use voter authorization', function (): void {
+test('an officer issues a four-digit single-use voter control number', function (): void {
     $response = $this->post(route('election.voting.voter-authorizations.issue'), [
         'officer_code' => 'SIM-OFFICER-001',
         'officer_pin' => '123456',
@@ -28,7 +28,7 @@ test('an officer issues an anonymous single-use voter authorization', function (
     $response
         ->assertRedirect(route('election.voting'))
         ->assertSessionHas('voter_authorization', fn (array $authorization): bool => preg_match(
-            '/^[A-Z2-9]{4}-[A-Z2-9]{4}$/',
+            '/^[0-9]{4}$/',
             $authorization['code'],
         ) === 1);
 
@@ -38,7 +38,19 @@ test('an officer issues an anonymous single-use voter authorization', function (
     expect($record)
         ->not->toHaveKeys(['voter_name', 'voter_id', 'code'])
         ->and($record['status'])->toBe('issued')
+        ->and($record['schema_version'])->toBe('voter-control-number-1')
         ->and($record['code_hash'])->toHaveLength(64);
+});
+
+test('a voter control number must contain exactly four digits', function (): void {
+    $this->post(route('election.voter.claim'), ['code' => '12AB'])
+        ->assertSessionHasErrors('code');
+
+    $this->post(route('election.voter.claim'), ['code' => '123'])
+        ->assertSessionHasErrors('code');
+
+    $this->post(route('election.voter.claim'), ['code' => '12345'])
+        ->assertSessionHasErrors('code');
 });
 
 test('a voter code can be claimed once and expires', function (): void {

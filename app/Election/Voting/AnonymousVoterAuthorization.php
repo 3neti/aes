@@ -79,7 +79,7 @@ final class AnonymousVoterAuthorization
         $record = $this->storage->readJson("voter-authorizations/{$authorizationId}.json");
 
         if (($record['status'] ?? null) !== 'claimed') {
-            throw new RuntimeException('The voter authorization is not active.');
+            throw new RuntimeException('The voter control number is not active.');
         }
 
         $record['status'] = 'completed';
@@ -94,12 +94,12 @@ final class AnonymousVoterAuthorization
     {
         $previous = $this->replacementCandidate($previousAuthorizationId);
         $authorizationId = (string) Str::uuid();
-        $code = $this->code();
+        $code = $this->controlNumber();
         $expiresAt = $this->clock->now()->addSeconds(
             (int) config('election.voter.authorization_ttl_seconds', 300),
         );
         $record = [
-            'schema_version' => 'anonymous-voter-authorization-1',
+            'schema_version' => 'voter-control-number-1',
             'authorization_id' => $authorizationId,
             'code_hash' => $this->hash($code),
             'status' => 'issued',
@@ -152,13 +152,13 @@ final class AnonymousVoterAuthorization
             ));
 
         if (! is_array($record) || ($record['status'] ?? null) !== 'issued') {
-            throw new RuntimeException('The voter authorization is invalid or has already been used.');
+            throw new RuntimeException('The voter control number is invalid or has already been used.');
         }
 
         $record = $this->expireIfNeeded($record);
 
         if (($record['status'] ?? null) === 'expired') {
-            throw new RuntimeException('The voter authorization has expired.');
+            throw new RuntimeException('The voter control number has expired.');
         }
 
         $record['status'] = 'claimed';
@@ -243,15 +243,23 @@ final class AnonymousVoterAuthorization
         return hash_hmac('sha256', Str::upper(trim($code)), (string) config('app.key'));
     }
 
-    private function code(): string
+    private function controlNumber(): string
     {
-        $alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-        $characters = '';
+        $usedHashes = collect($this->storage->files('voter-authorizations'))
+            ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
+            ->pluck('code_hash')
+            ->filter(fn (mixed $hash): bool => is_string($hash))
+            ->flip();
+        $start = random_int(0, 9999);
 
-        for ($index = 0; $index < 8; $index++) {
-            $characters .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        for ($offset = 0; $offset < 10000; $offset++) {
+            $number = str_pad((string) (($start + $offset) % 10000), 4, '0', STR_PAD_LEFT);
+
+            if (! $usedHashes->has($this->hash($number))) {
+                return $number;
+            }
         }
 
-        return substr($characters, 0, 4).'-'.substr($characters, 4);
+        throw new RuntimeException('All voter control numbers have been issued for this precinct run.');
     }
 }

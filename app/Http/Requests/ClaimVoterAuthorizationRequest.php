@@ -23,7 +23,7 @@ final class ClaimVoterAuthorizationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:32'],
+            'code' => ['required', 'string', 'regex:/^[0-9]{4}$/'],
         ];
     }
 }

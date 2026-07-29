@@ -29,10 +29,12 @@ const reviewRoom = computed(
             <p class="text-sm font-bold text-blue-800">
                 Official voting station
             </p>
-            <h1 class="mt-2 text-3xl font-bold">Enter your voting code</h1>
+            <h1 class="mt-2 text-3xl font-bold">
+                Enter your Voter Control Number
+            </h1>
             <p class="mt-3 text-stone-700">
-                The Election Board gives one anonymous code to each admitted
-                voter. No voter name or identity is entered here.
+                The Election Board gives one four-digit control number to each
+                admitted voter. No voter name or identity is entered here.
             </p>
 
             <Form
@@ -43,16 +45,19 @@ const reviewRoom = computed(
             >
                 <label class="block">
                     <span class="text-sm font-bold text-stone-700"
-                        >Voting code</span
+                        >Voter Control Number</span
                     >
                     <input
-                        class="mt-1 min-h-14 w-full border-2 border-stone-400 px-4 text-center text-2xl font-bold uppercase"
+                        class="mt-1 min-h-14 w-full border-2 border-stone-400 px-4 text-center font-mono text-3xl font-bold"
                         name="code"
                         type="text"
                         required
                         autocomplete="off"
                         autofocus
-                        placeholder="ABCD-EFGH"
+                        inputmode="numeric"
+                        maxlength="4"
+                        pattern="[0-9]{4}"
+                        placeholder="0000"
                     />
                 </label>
                 <p v-if="errors.code" class="font-bold text-red-700">
@@ -66,7 +71,11 @@ const reviewRoom = computed(
                     type="submit"
                     :disabled="processing"
                 >
-                    {{ processing ? 'Checking code...' : 'Begin voting' }}
+                    {{
+                        processing
+                            ? 'Checking control number...'
+                            : 'Begin voting'
+                    }}
                 </button>
             </Form>
 
