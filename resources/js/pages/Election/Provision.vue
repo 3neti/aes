@@ -386,7 +386,7 @@ const readinessItems = [
                     Review the officer credentials and inventory fields.
                 </p>
                 <button
-                    class="primary-button justify-self-start"
+                    class="min-h-11 justify-self-start bg-blue-800 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
                     :class="{
                         'review-next-action-button':
                             electionReview.enabled &&
