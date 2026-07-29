@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -27,11 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'review-room-role' => RequireReviewRoomRole::class,
         ]);
 
-        $middleware->web(prepend: [
-            ProtectReviewEnvironment::class,
-        ]);
-
         $middleware->web(append: [
+            ProtectReviewEnvironment::class,
             BindBrowserWalkthroughRun::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
@@ -41,4 +39,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        $exceptions->respond(function (Response $response): Response {
+            if (! config('election.review.access.enabled', false)) {
+                return $response;
+            }
+
+            $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+            $response->headers->set('Cache-Control', 'no-store, private');
+            $response->headers->set('Pragma', 'no-cache');
+
+            return $response;
+        });
     })->create();

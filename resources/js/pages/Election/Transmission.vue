@@ -26,23 +26,49 @@ defineProps<{
     manualRecipientVerification: Record<string, any>;
 }>();
 
-const { defaults: reviewDefaults } = useElectionReview();
+const { review: electionReview, defaults: reviewDefaults } =
+    useElectionReview();
 </script>
 
 <template>
     <CeremonyLayout :snapshot="snapshot" title="Official Handoff">
         <section class="border border-stone-300 bg-white p-5">
-            <h2 class="text-lg font-semibold">Official Handoff</h2>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-lg font-semibold">Official Handoff</h2>
+                <span
+                    v-if="
+                        electionReview.enabled &&
+                        snapshot.stage !== 'close_precinct'
+                    "
+                    class="border border-yellow-500 bg-yellow-100 px-2.5 py-1 text-xs font-black text-stone-950 uppercase"
+                >
+                    Click the blinking action next
+                </span>
+            </div>
 
             <div class="mt-4 flex flex-wrap gap-3">
                 <Form v-bind="send.form()">
-                    <button class="primary-button" type="submit">
+                    <button
+                        class="primary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                !transmission.transmission_id,
+                        }"
+                        type="submit"
+                    >
                         Prepare Transmission Report
                     </button>
                 </Form>
                 <Form v-bind="preparePackage.form()">
                     <button
                         class="secondary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                Boolean(transmission.transmission_id) &&
+                                !deliveryPackage.exists,
+                        }"
                         type="submit"
                         :disabled="!transmission.transmission_id"
                     >
@@ -58,6 +84,13 @@ const { defaults: reviewDefaults } = useElectionReview();
                     />
                     <button
                         class="secondary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                Boolean(manualOfficerVerification.verified) &&
+                                Boolean(manualRecipientVerification.verified) &&
+                                !deliveryReceipt.exists,
+                        }"
                         type="submit"
                         :disabled="
                             !deliveryPackage.exists ||
@@ -87,6 +120,12 @@ const { defaults: reviewDefaults } = useElectionReview();
                     />
                     <button
                         class="secondary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                Boolean(deliveryReceipt.exists) &&
+                                !finalBackup.exists,
+                        }"
                         type="submit"
                         :disabled="!deliveryReceipt.exists"
                     >
@@ -96,6 +135,12 @@ const { defaults: reviewDefaults } = useElectionReview();
                 <Form v-bind="custodyAction.form()">
                     <button
                         class="secondary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                Boolean(finalBackup.exists) &&
+                                !custody.custody_id,
+                        }"
                         type="submit"
                         :disabled="!finalBackup.exists"
                     >
@@ -106,7 +151,15 @@ const { defaults: reviewDefaults } = useElectionReview();
                     v-if="snapshot.stage === 'custody'"
                     v-bind="closePrecinct.form()"
                 >
-                    <button class="danger-button" type="submit">
+                    <button
+                        class="danger-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                Boolean(custody.custody_id),
+                        }"
+                        type="submit"
+                    >
                         Close Precinct
                     </button>
                 </Form>
@@ -397,7 +450,16 @@ const { defaults: reviewDefaults } = useElectionReview();
                             />
                         </label>
                         <div class="sm:col-span-3">
-                            <button class="primary-button" type="submit">
+                            <button
+                                class="primary-button"
+                                :class="{
+                                    'review-next-action-button':
+                                        electionReview.enabled &&
+                                        Boolean(deliveryPackage.exists) &&
+                                        !manualOfficerVerification.verified,
+                                }"
+                                type="submit"
+                            >
                                 Record Officer Verification
                             </button>
                         </div>
@@ -502,6 +564,7 @@ const { defaults: reviewDefaults } = useElectionReview();
                                 name="recipient"
                                 class="mt-1 w-full border border-stone-300 p-2"
                                 placeholder="Election Board Officer"
+                                :value="reviewDefaults.handoff?.recipient ?? ''"
                             />
                         </label>
                         <label class="text-xs text-stone-700">
@@ -511,6 +574,9 @@ const { defaults: reviewDefaults } = useElectionReview();
                                 name="recipient_role"
                                 class="mt-1 w-full border border-stone-300 p-2"
                                 placeholder="Chairperson"
+                                :value="
+                                    reviewDefaults.handoff?.recipient_role ?? ''
+                                "
                             />
                         </label>
                         <label class="text-xs text-stone-700">
@@ -519,6 +585,10 @@ const { defaults: reviewDefaults } = useElectionReview();
                                 required
                                 name="delivery_method"
                                 class="mt-1 w-full border border-stone-300 p-2"
+                                :value="
+                                    reviewDefaults.handoff?.delivery_method ??
+                                    'manual'
+                                "
                             >
                                 <option value="manual">Manual Handoff</option>
                                 <option value="sd-card">SD Card</option>
@@ -562,10 +632,25 @@ const { defaults: reviewDefaults } = useElectionReview();
                                 name="acknowledgement_note"
                                 class="mt-1 w-full border border-stone-300 p-2"
                                 placeholder="Recipient accepted custody"
+                                :value="
+                                    reviewDefaults.handoff
+                                        ?.acknowledgement_note ?? ''
+                                "
                             />
                         </label>
                         <div class="sm:col-span-3">
-                            <button class="secondary-button" type="submit">
+                            <button
+                                class="secondary-button"
+                                :class="{
+                                    'review-next-action-button':
+                                        electionReview.enabled &&
+                                        Boolean(
+                                            manualOfficerVerification.verified,
+                                        ) &&
+                                        !manualRecipientVerification.verified,
+                                }"
+                                type="submit"
+                            >
                                 Record Recipient Verification
                             </button>
                         </div>

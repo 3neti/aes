@@ -14,8 +14,10 @@ import {
     transmission,
     voting,
 } from '@/routes/election';
+import { useElectionReview } from '@/stores/electionReview';
 
 const props = defineProps<{ snapshot: ElectionSnapshot }>();
+const { review: electionReview } = useElectionReview();
 
 const routeByStage = {
     provision,
@@ -58,6 +60,7 @@ const completedSteps = computed(() => {
             eyebrow="Operator handoff"
             status="Action required"
             tone="warning"
+            recommended
         >
             <div
                 class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
@@ -73,6 +76,9 @@ const completedSteps = computed(() => {
                 <Link
                     :href="currentCeremonyUrl"
                     class="inline-flex min-h-11 items-center justify-center bg-blue-800 px-5 py-3 text-sm font-bold text-white hover:bg-blue-900"
+                    :class="{
+                        'review-next-action-button': electionReview.enabled,
+                    }"
                 >
                     Open current ceremony
                 </Link>

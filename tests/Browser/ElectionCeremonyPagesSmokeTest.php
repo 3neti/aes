@@ -58,7 +58,12 @@ test('review mode loads and clears temporary operator defaults', function (): vo
     config()->set('election.review.enabled', true);
 
     visit('/election/provision')
-        ->assertSee('Temporary officer and setup defaults are loaded')
+        ->assertSee('Temporary presentation values are already loaded')
+        ->assertSee('Click this next')
+        ->assertSee('Chairperson ID')
+        ->assertSee('SIM-OFFICER-002')
+        ->assertSee('Review PIN')
+        ->assertSee('123456')
         ->assertValue('chairperson_code', 'SIM-OFFICER-001')
         ->assertValue('chairperson_pin', '123456')
         ->assertValue('device_serial', 'AES-PI-39010001-001')

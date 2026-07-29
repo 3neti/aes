@@ -54,7 +54,8 @@ const props = defineProps<{
     };
 }>();
 
-const { defaults: reviewDefaults } = useElectionReview();
+const { review: electionReview, defaults: reviewDefaults } =
+    useElectionReview();
 
 function contestTitle(contestId: string): string {
     return (
@@ -88,6 +89,11 @@ function candidateName(contestId: string, candidateId: string): string {
                     : 'Ready to generate'
             "
             :tone="returnArtifact.return_hash ? 'complete' : 'current'"
+            :recommended="
+                !returnArtifact.return_hash ||
+                (Boolean(returnCopyDistribution.exists) &&
+                    !returnApproval.passed)
+            "
         >
             <Form
                 v-if="returnCopyDistribution.exists && !returnApproval.passed"
@@ -131,6 +137,12 @@ function candidateName(contestId: string, candidateId: string): string {
                 </p>
                 <button
                     class="secondary-button sm:col-span-2"
+                    :class="{
+                        'review-next-action-button':
+                            electionReview.enabled &&
+                            Boolean(returnCopyDistribution.exists) &&
+                            !returnApproval.passed,
+                    }"
                     type="submit"
                     :disabled="processing"
                 >
@@ -162,6 +174,11 @@ function candidateName(contestId: string, candidateId: string): string {
                 <Form v-bind="generate.form()" #default="{ processing }">
                     <button
                         class="primary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                !returnArtifact.return_hash,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >
@@ -340,6 +357,7 @@ function candidateName(contestId: string, candidateId: string): string {
                     : 'Not yet prepared'
             "
             :tone="returnCopyDistribution.exists ? 'complete' : 'warning'"
+            :recommended="!returnCopyDistribution.exists"
         >
             <div
                 class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"
@@ -392,6 +410,11 @@ function candidateName(contestId: string, candidateId: string): string {
                 >
                     <button
                         class="secondary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                !returnCopyDistribution.exists,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >
@@ -412,6 +435,10 @@ function candidateName(contestId: string, candidateId: string): string {
             eyebrow="Ceremony completion"
             status="Electoral Board decision"
             tone="warning"
+            :recommended="
+                Boolean(returnCopyDistribution.exists) &&
+                Boolean(returnApproval.passed)
+            "
         >
             <div
                 v-if="snapshot.stage === 'election_return'"
@@ -425,6 +452,12 @@ function candidateName(contestId: string, candidateId: string): string {
                 <Form v-bind="close.form()" #default="{ processing, errors }">
                     <button
                         class="primary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                Boolean(returnCopyDistribution.exists) &&
+                                Boolean(returnApproval.passed),
+                        }"
                         type="submit"
                         :disabled="
                             processing ||
@@ -469,6 +502,9 @@ function candidateName(contestId: string, candidateId: string): string {
                 <Link
                     :href="transmission.url()"
                     class="mt-4 inline-flex min-h-11 items-center justify-center bg-blue-800 px-5 py-3 text-sm font-bold text-white"
+                    :class="{
+                        'review-next-action-button': electionReview.enabled,
+                    }"
                 >
                     Open official handoff
                 </Link>

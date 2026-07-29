@@ -1,5 +1,11 @@
 <?php
 
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
+use App\Election\ReviewRoom\ReviewRoomService;
+use App\Election\ReviewRoom\ReviewStationRole;
+use Illuminate\Support\Facades\URL;
+
 beforeEach(function (): void {
     $this->withoutVite();
 });
@@ -37,6 +43,108 @@ test('enabled review protection permits configured credentials and prohibits ind
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertHeader('Pragma', 'no-cache');
+});
+
+test('a valid station qr bypasses browser credentials and preserves role isolation', function (): void {
+    configureReviewAccess();
+    config()->set('election.review.enabled', true);
+    config()->set('election.review_room.enabled', true);
+
+    $room = app(ReviewRoomService::class)->create(
+        'Protected station review',
+        1,
+        '39010001',
+        'review-run',
+    );
+    $station = $room->stations->first(
+        fn ($station): bool => $station->role === ReviewStationRole::Voter,
+    );
+
+    expect($station)->not->toBeNull();
+
+    $joinUrl = URL::temporarySignedRoute(
+        'election.review-room.join',
+        now()->addMinutes(30),
+        [
+            'room' => $room,
+            'station' => $station,
+            'token' => $station->join_token,
+        ],
+    );
+
+    $this->get($joinUrl)
+        ->assertRedirect(route('election.voter'))
+        ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+    app(LifecycleState::class)->set(Lifecycle::Voting);
+
+    $this->get(route('election.voter'))
+        ->assertSuccessful()
+        ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+    $this->get(route('election.provision'))
+        ->assertForbidden()
+        ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+    $this->post(route('election.review-room.store'), [
+        'name' => 'Unauthorized replacement room',
+        'voter_stations' => 1,
+    ])->assertForbidden();
+});
+
+test('an invalid station qr still requires browser credentials', function (): void {
+    configureReviewAccess();
+    config()->set('election.review.enabled', true);
+    config()->set('election.review_room.enabled', true);
+
+    $room = app(ReviewRoomService::class)->create(
+        'Invalid station review',
+        1,
+        '39010001',
+        'review-run',
+    );
+    $station = $room->stations->first(
+        fn ($station): bool => $station->role === ReviewStationRole::Voter,
+    );
+
+    $this->get(route('election.review-room.join', [
+        'room' => $room,
+        'station' => $station,
+        'token' => $station?->join_token,
+    ]))
+        ->assertUnauthorized()
+        ->assertHeader('WWW-Authenticate', 'Basic realm="AES COMELEC Review", charset="UTF-8"');
+});
+
+test('a signed station qr fails closed when review credentials are missing', function (): void {
+    config()->set('election.review.enabled', true);
+    config()->set('election.review_room.enabled', true);
+    config()->set('election.review.access.enabled', true);
+    config()->set('election.review.access.username', '');
+    config()->set('election.review.access.password', '');
+
+    $room = app(ReviewRoomService::class)->create(
+        'Unconfigured access review',
+        1,
+        '39010001',
+        'review-run',
+    );
+    $station = $room->stations->first(
+        fn ($station): bool => $station->role === ReviewStationRole::Voter,
+    );
+    $joinUrl = URL::temporarySignedRoute(
+        'election.review-room.join',
+        now()->addMinutes(30),
+        [
+            'room' => $room,
+            'station' => $station,
+            'token' => $station?->join_token,
+        ],
+    );
+
+    $this->get($joinUrl)
+        ->assertServiceUnavailable()
+        ->assertSee('Review access is not configured.');
 });
 
 test('enabled review protection fails closed when credentials are missing', function (): void {

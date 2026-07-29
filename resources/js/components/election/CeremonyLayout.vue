@@ -205,20 +205,45 @@ onBeforeUnmount(() => {
         >
             <section
                 v-if="electionReview.enabled"
-                class="flex flex-col gap-3 border-l-4 border-blue-800 bg-blue-50 px-5 py-4 text-blue-950 sm:flex-row sm:items-center sm:justify-between"
+                class="grid gap-4 border-l-4 border-blue-800 bg-blue-50 px-5 py-4 text-blue-950 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
                 aria-label="Review environment"
             >
-                <div>
+                <div class="min-w-0">
                     <p class="text-xs font-bold uppercase">
                         {{ electionReview.label }}
                     </p>
                     <p class="mt-1 text-sm">
                         {{
                             reviewDefaultsLoaded
-                                ? 'Temporary officer and setup defaults are loaded. Signatures and approval actions remain manual.'
+                                ? 'Temporary presentation values are already loaded into every officer form.'
                                 : 'Temporary defaults are cleared for this browser page.'
                         }}
                     </p>
+                    <dl
+                        v-if="reviewDefaultsLoaded"
+                        class="mt-3 grid gap-2 text-sm sm:grid-cols-3"
+                    >
+                        <div class="border-l-2 border-blue-300 pl-3">
+                            <dt class="text-xs text-blue-700">
+                                Chairperson ID
+                            </dt>
+                            <dd class="font-mono font-bold">
+                                {{ reviewDefaults.chairperson?.code }}
+                            </dd>
+                        </div>
+                        <div class="border-l-2 border-blue-300 pl-3">
+                            <dt class="text-xs text-blue-700">Poll Clerk ID</dt>
+                            <dd class="font-mono font-bold">
+                                {{ reviewDefaults.poll_clerk?.code }}
+                            </dd>
+                        </div>
+                        <div class="border-l-2 border-yellow-500 pl-3">
+                            <dt class="text-xs text-blue-700">Review PIN</dt>
+                            <dd class="font-mono text-lg font-black">
+                                {{ reviewDefaults.primary_officer?.pin }}
+                            </dd>
+                        </div>
+                    </dl>
                 </div>
                 <button
                     v-if="reviewDefaultsLoaded"

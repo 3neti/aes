@@ -2,12 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use App\Election\ReviewRoom\ReviewRoomContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ProtectReviewEnvironment
 {
+    public function __construct(private readonly ReviewRoomContext $reviewRoom) {}
+
     /**
      * @param  Closure(Request): Response  $next
      */
@@ -26,6 +29,10 @@ final class ProtectReviewEnvironment
             );
         }
 
+        if ($this->hasStationAccess($request)) {
+            return $this->protectedResponse($next($request));
+        }
+
         if (! $this->credentialsMatch($request, $username, $password)) {
             return $this->protectedResponse(
                 response('Review access required.', Response::HTTP_UNAUTHORIZED)
@@ -34,6 +41,19 @@ final class ProtectReviewEnvironment
         }
 
         return $this->protectedResponse($next($request));
+    }
+
+    private function hasStationAccess(Request $request): bool
+    {
+        if (! config('election.review_room.enabled', false)) {
+            return false;
+        }
+
+        if ($request->routeIs('election.review-room.join')) {
+            return $request->isMethod('GET') && $request->hasValidSignature();
+        }
+
+        return $this->reviewRoom->station($request) !== null;
     }
 
     private function credentialsMatch(Request $request, string $username, string $password): bool

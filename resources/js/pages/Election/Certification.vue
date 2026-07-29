@@ -14,6 +14,7 @@ import { download as discrepancyReportDownload } from '@/routes/election/certifi
 import { download as manualVerificationDownload } from '@/routes/election/certification/manual-verification';
 import { download as sealingReportDownload } from '@/routes/election/certification/sealing-report';
 import { download as zeroOutReportDownload } from '@/routes/election/certification/zero-out';
+import { useElectionReview } from '@/stores/electionReview';
 
 type CertificationReport = {
     schema_version?: string | null;
@@ -170,6 +171,7 @@ const manualReturnTemplateJson = JSON.stringify(
     null,
     2,
 );
+const { review: electionReview } = useElectionReview();
 </script>
 
 <template>
@@ -192,9 +194,17 @@ const manualReturnTemplateJson = JSON.stringify(
                         : 'danger'
                     : 'warning'
             "
+            :recommended="!hasCertificationReport"
         >
             <Form v-bind="run.form()" class="mt-5">
-                <button class="primary-button" type="submit">
+                <button
+                    class="primary-button"
+                    :class="{
+                        'review-next-action-button':
+                            electionReview.enabled && !hasCertificationReport,
+                    }"
+                    type="submit"
+                >
                     Run Certification
                 </button>
             </Form>
@@ -301,6 +311,9 @@ const manualReturnTemplateJson = JSON.stringify(
                         : 'danger'
                     : 'warning'
             "
+            :recommended="
+                hasCertificationReport && !hasManualVerificationReport
+            "
         >
             <Form v-bind="manualVerification.form()" class="mt-5">
                 <label class="mb-2 block text-sm font-semibold text-stone-700">
@@ -312,7 +325,16 @@ const manualReturnTemplateJson = JSON.stringify(
                     name="manual_return"
                     :value="manualReturnTemplateJson"
                 ></textarea>
-                <button class="secondary-button mt-3" type="submit">
+                <button
+                    class="secondary-button mt-3"
+                    :class="{
+                        'review-next-action-button':
+                            electionReview.enabled &&
+                            hasCertificationReport &&
+                            !hasManualVerificationReport,
+                    }"
+                    type="submit"
+                >
                     Run Manual Verification
                 </button>
             </Form>
@@ -414,9 +436,19 @@ const manualReturnTemplateJson = JSON.stringify(
                         : 'complete'
                     : 'warning'
             "
+            :recommended="hasManualVerificationReport && !hasDiscrepancyReport"
         >
             <Form v-bind="discrepancy.form()" class="mt-5">
-                <button class="secondary-button" type="submit">
+                <button
+                    class="secondary-button"
+                    :class="{
+                        'review-next-action-button':
+                            electionReview.enabled &&
+                            hasManualVerificationReport &&
+                            !hasDiscrepancyReport,
+                    }"
+                    type="submit"
+                >
                     Run Discrepancy Analysis
                 </button>
             </Form>
@@ -521,9 +553,19 @@ const manualReturnTemplateJson = JSON.stringify(
                         : 'danger'
                     : 'warning'
             "
+            :recommended="hasDiscrepancyReport && !hasZeroOutReport"
         >
             <Form v-bind="zeroOut.form()" class="mt-5">
-                <button class="secondary-button" type="submit">
+                <button
+                    class="secondary-button"
+                    :class="{
+                        'review-next-action-button':
+                            electionReview.enabled &&
+                            hasDiscrepancyReport &&
+                            !hasZeroOutReport,
+                    }"
+                    type="submit"
+                >
                     Run Zero-Out
                 </button>
             </Form>
@@ -626,6 +668,7 @@ const manualReturnTemplateJson = JSON.stringify(
                         : 'danger'
                     : 'warning'
             "
+            :recommended="hasZeroOutReport && !hasSealingReport"
         >
             <Form
                 v-bind="runSealing.form()"
@@ -641,6 +684,12 @@ const manualReturnTemplateJson = JSON.stringify(
                 </p>
                 <button
                     class="secondary-button justify-self-start"
+                    :class="{
+                        'review-next-action-button':
+                            electionReview.enabled &&
+                            hasZeroOutReport &&
+                            !hasSealingReport,
+                    }"
                     type="submit"
                     :disabled="processing"
                 >

@@ -6,6 +6,7 @@ import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { voting } from '@/routes/election';
 import { print, spoil } from '@/routes/election/printing';
+import { useElectionReview } from '@/stores/electionReview';
 
 type BallotPayload = {
     ballot_id?: string;
@@ -21,6 +22,8 @@ defineProps<{
     payload: BallotPayload;
     qrImageDataUri: string;
 }>();
+
+const { review: electionReview } = useElectionReview();
 </script>
 
 <template>
@@ -31,6 +34,7 @@ defineProps<{
             eyebrow="Ballot preparation"
             :status="payload.ballot_id ? 'Ready to print' : 'No ballot waiting'"
             :tone="payload.ballot_id ? 'current' : 'neutral'"
+            :recommended="Boolean(payload.ballot_id)"
         >
             <div
                 v-if="payload.ballot_id"
@@ -89,6 +93,10 @@ defineProps<{
                         >
                             <button
                                 class="primary-button"
+                                :class="{
+                                    'review-next-action-button':
+                                        electionReview.enabled,
+                                }"
                                 type="submit"
                                 :disabled="processing"
                             >

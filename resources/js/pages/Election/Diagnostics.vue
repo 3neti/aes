@@ -6,6 +6,7 @@ import StatusBadge from '@/components/election/StatusBadge.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { beginAudit, certifyDevices } from '@/routes/election/diagnostics';
 import { inspect as inspectRecovery } from '@/routes/election/diagnostics/recovery';
+import { useElectionReview } from '@/stores/electionReview';
 
 type AttestationArtifact = {
     attestation_id: string;
@@ -252,6 +253,8 @@ defineProps<{
         [key: string]: unknown;
     };
 }>();
+
+const { review: electionReview } = useElectionReview();
 </script>
 
 <template>
@@ -263,10 +266,14 @@ defineProps<{
             eyebrow="Final ceremony"
             status="Ready for audit"
             tone="complete"
+            recommended
         >
             <Form v-bind="beginAudit.form()" #default="{ processing }">
                 <button
                     class="primary-button"
+                    :class="{
+                        'review-next-action-button': electionReview.enabled,
+                    }"
                     type="submit"
                     :disabled="processing"
                 >

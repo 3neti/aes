@@ -43,6 +43,10 @@ final class ReviewMode
                 'setup' => $setup,
                 'handoff' => [
                     'verification_note' => 'COMELEC review rehearsal officer verification.',
+                    'recipient' => 'City Board of Canvassers Receiving Officer',
+                    'recipient_role' => 'Receiving Officer',
+                    'delivery_method' => 'manual',
+                    'acknowledgement_note' => 'Recipient accepted custody of the sealed precinct evidence.',
                 ],
             ],
         ];

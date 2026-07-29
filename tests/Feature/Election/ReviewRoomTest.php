@@ -127,6 +127,26 @@ test('signed join pairs one station to one browser and enforces its route role',
         ->assertForbidden();
 });
 
+test('one browser cannot switch between assigned review stations', function (): void {
+    $room = createReviewRoom(2);
+    $stations = $room->stations()
+        ->where('role', ReviewStationRole::Voter)
+        ->orderBy('slot')
+        ->get();
+    $firstStation = $stations->firstOrFail();
+    $secondStation = $stations->last();
+
+    $this->get(reviewStationJoinUrl($room, $firstStation))
+        ->assertRedirect(route('election.voter'));
+
+    $this->get(reviewStationJoinUrl($room, $secondStation))
+        ->assertConflict()
+        ->assertSessionHas('election_review_station_id', $firstStation->id);
+
+    expect($firstStation->fresh()->session_id_hash)->not->toBeNull()
+        ->and($secondStation->fresh()->session_id_hash)->toBeNull();
+});
+
 test('presentation station receives a projection safe room view', function (): void {
     $room = createReviewRoom(2);
     $station = $room->stations()

@@ -78,7 +78,8 @@ const cameraMessage = ref('');
 const cameraForm = useForm({
     payload: '',
 });
-const { defaults: reviewDefaults } = useElectionReview();
+const { review: electionReview, defaults: reviewDefaults } =
+    useElectionReview();
 
 const canCapture = computed(
     () => cameraStatus.value === 'ready' && !cameraForm.processing,
@@ -261,6 +262,7 @@ onBeforeUnmount(() => stopCamera(false));
             eyebrow="Ballot box count"
             :status="canCount ? 'Scanner ready' : 'Counting unavailable'"
             :tone="canCount ? 'current' : 'neutral'"
+            :recommended="canCount && totalScans === 0"
         >
             <div
                 v-if="canCount"
@@ -284,6 +286,12 @@ onBeforeUnmount(() => stopCamera(false));
                     <div class="mt-3 flex flex-wrap gap-2">
                         <button
                             class="secondary-button"
+                            :class="{
+                                'review-next-action-button':
+                                    electionReview.enabled &&
+                                    totalScans === 0 &&
+                                    cameraStatus !== 'ready',
+                            }"
                             type="button"
                             :disabled="cameraStatus === 'starting'"
                             @click="startCamera"
@@ -292,6 +300,12 @@ onBeforeUnmount(() => stopCamera(false));
                         </button>
                         <button
                             class="primary-button"
+                            :class="{
+                                'review-next-action-button':
+                                    electionReview.enabled &&
+                                    totalScans === 0 &&
+                                    cameraStatus === 'ready',
+                            }"
                             type="button"
                             :disabled="!canCapture"
                             @click="captureAndSubmit"
@@ -388,6 +402,9 @@ onBeforeUnmount(() => stopCamera(false));
             eyebrow="Election Board control"
             :status="reconciliation.passed ? 'Reconciled' : 'Action required'"
             :tone="reconciliation.passed ? 'complete' : 'warning'"
+            :recommended="
+                totalScans > 0 && !reconciliation.physical_count_recorded
+            "
         >
             <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
                 <Form
@@ -402,7 +419,10 @@ onBeforeUnmount(() => stopCamera(false));
                             type="number"
                             min="0"
                             class="mt-1 min-h-11 w-full border border-stone-300 px-3"
-                            :value="reconciliation.physical_ballots ?? ''"
+                            :value="
+                                reconciliation.physical_ballots ??
+                                tally.accepted_ballots
+                            "
                         />
                     </label>
                     <label class="text-sm font-bold"
@@ -427,6 +447,12 @@ onBeforeUnmount(() => stopCamera(false));
                     </p>
                     <button
                         class="primary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                totalScans > 0 &&
+                                !reconciliation.physical_count_recorded,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >
@@ -552,6 +578,7 @@ onBeforeUnmount(() => stopCamera(false));
             eyebrow="Tally sheet"
             :status="`${totalScans} ballots processed`"
             tone="neutral"
+            :recommended="canCount && reconciliation.passed"
         >
             <div class="grid gap-3 sm:grid-cols-3">
                 <div class="border border-stone-200 p-4">
@@ -647,6 +674,10 @@ onBeforeUnmount(() => stopCamera(false));
                 >
                     <button
                         class="primary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled && reconciliation.passed,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >
@@ -667,6 +698,9 @@ onBeforeUnmount(() => stopCamera(false));
                     v-else-if="snapshot.stage === 'election_return'"
                     :href="returns.url()"
                     class="inline-flex min-h-11 items-center justify-center bg-blue-800 px-5 py-3 text-sm font-bold text-white"
+                    :class="{
+                        'review-next-action-button': electionReview.enabled,
+                    }"
                 >
                     Continue to Election Return
                 </Link>

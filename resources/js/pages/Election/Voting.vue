@@ -31,7 +31,8 @@ defineProps<{
     ballotBox: { deposited_ballots: number };
 }>();
 
-const { defaults: reviewDefaults } = useElectionReview();
+const { review: electionReview, defaults: reviewDefaults } =
+    useElectionReview();
 
 const canOpenPolls = (stage: string): boolean =>
     stage === 'open_precinct' || stage === 'open_polls';
@@ -68,6 +69,7 @@ const specialPollingTypes = [
                     : 'Officer confirmation required'
             "
             tone="warning"
+            recommended
         >
             <Form
                 v-bind="openPolls.form()"
@@ -125,6 +127,9 @@ const specialPollingTypes = [
                     </p>
                     <button
                         class="primary-button shrink-0"
+                        :class="{
+                            'review-next-action-button': electionReview.enabled,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >
@@ -202,6 +207,9 @@ const specialPollingTypes = [
                     : 'Officer authorization required'
             "
             :tone="voterAuthorization?.code ? 'complete' : 'warning'"
+            :recommended="
+                !voterAuthorization?.code && ballotBox.deposited_ballots === 0
+            "
         >
             <div
                 v-if="voterAuthorization?.code"
@@ -254,6 +262,11 @@ const specialPollingTypes = [
                 </p>
                 <button
                     class="primary-button sm:col-span-2"
+                    :class="{
+                        'review-next-action-button':
+                            electionReview.enabled &&
+                            ballotBox.deposited_ballots === 0,
+                    }"
                     type="submit"
                     :disabled="processing"
                 >
@@ -456,6 +469,7 @@ const specialPollingTypes = [
             eyebrow="Closing ceremony"
             status="Irreversible stage change"
             tone="danger"
+            :recommended="ballotBox.deposited_ballots > 0"
         >
             <Form
                 v-bind="closePolls.form()"
@@ -470,6 +484,11 @@ const specialPollingTypes = [
                 <div class="shrink-0">
                     <button
                         class="danger-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                ballotBox.deposited_ballots > 0,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >
@@ -497,6 +516,9 @@ const specialPollingTypes = [
             <Link
                 :href="counting.url()"
                 class="mt-4 inline-flex min-h-11 items-center justify-center bg-blue-800 px-5 py-3 text-sm font-bold text-white"
+                :class="{
+                    'review-next-action-button': electionReview.enabled,
+                }"
             >
                 Continue to Counting and Tally
             </Link>

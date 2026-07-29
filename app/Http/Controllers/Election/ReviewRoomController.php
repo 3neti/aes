@@ -50,9 +50,17 @@ final class ReviewRoomController extends Controller
     public function store(
         CreateReviewRoomRequest $request,
         ReviewRoomService $rooms,
+        ReviewRoomContext $context,
         ElectionSnapshot $snapshot,
         ElectionStorage $storage,
     ): RedirectResponse {
+        $station = $context->station($request);
+
+        abort_if(
+            $station !== null && $station->role !== ReviewStationRole::Officer,
+            403,
+        );
+
         $configuration = $snapshot->get()['configuration'];
         $currentRun = $storage->currentRun();
         try {
@@ -76,12 +84,21 @@ final class ReviewRoomController extends Controller
         ReviewRoom $room,
         ReviewStation $station,
         ReviewRoomService $rooms,
+        ReviewRoomContext $context,
     ): RedirectResponse {
         $this->ensureEnabled();
 
         if ($station->review_room_id !== $room->id) {
             abort(404);
         }
+
+        $currentStation = $context->station($request);
+
+        abort_if(
+            $currentStation !== null && $currentStation->id !== $station->id,
+            409,
+            'This browser is already assigned to another review station.',
+        );
 
         $token = (string) $request->query('token');
 

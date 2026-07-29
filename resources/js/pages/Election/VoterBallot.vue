@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { Form } from '@inertiajs/vue3';
+import { Form, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
-import type { Candidate, Contest } from '@/components/election/types';
+import type {
+    Candidate,
+    Contest,
+    ElectionReviewRoomContext,
+} from '@/components/election/types';
 import { finalize } from '@/routes/election/voter';
 
 defineProps<{
@@ -16,6 +20,10 @@ defineProps<{
 
 const step = ref<'ballot' | 'review'>('ballot');
 const selections = ref<Record<string, string[]>>({});
+const page = usePage();
+const reviewRoom = computed(
+    () => page.props.electionReviewRoom as ElectionReviewRoomContext,
+);
 
 onMounted(() => {
     const saved = sessionStorage.getItem('aes-voter-draft');
@@ -187,6 +195,10 @@ function clearDraft(): void {
                 >
                     <button
                         class="min-h-12 w-full bg-blue-800 px-6 py-3 text-base font-bold text-white"
+                        :class="{
+                            'review-next-action-button':
+                                reviewRoom.enabled && selectionCount > 0,
+                        }"
                         type="button"
                         @click="step = 'review'"
                     >
@@ -252,6 +264,9 @@ function clearDraft(): void {
                     </button>
                     <button
                         class="min-h-12 bg-emerald-700 px-5 py-3 font-bold text-white disabled:opacity-50"
+                        :class="{
+                            'review-next-action-button': reviewRoom.enabled,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >

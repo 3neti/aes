@@ -65,6 +65,10 @@ export type ElectionReviewDefaults = {
     };
     handoff?: {
         verification_note: string;
+        recipient: string;
+        recipient_role: string;
+        delivery_method: string;
+        acknowledgement_note: string;
     };
 };
 

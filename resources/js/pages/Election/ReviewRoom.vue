@@ -7,6 +7,7 @@ import {
     stationRelease,
     store as storeReviewRoom,
 } from '@/routes/election/review-room';
+import { useElectionReview } from '@/stores/electionReview';
 
 const props = defineProps<{
     room: ElectionReviewRoom | null;
@@ -19,6 +20,8 @@ const props = defineProps<{
 }>();
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+const { review: electionReview, defaults: reviewDefaults } =
+    useElectionReview();
 
 const connectedLabel = computed(() => {
     if (!props.room) {
@@ -105,6 +108,36 @@ onBeforeUnmount(() => {
             class="mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8"
         >
             <section
+                v-if="electionReview.enabled"
+                class="grid gap-4 border-l-4 border-blue-800 bg-blue-50 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
+            >
+                <div>
+                    <p class="text-xs font-bold text-blue-800 uppercase">
+                        Presentation access is ready
+                    </p>
+                    <p class="mt-1 text-sm text-blue-950">
+                        Station QR links open directly on each assigned tablet.
+                        The browser username and password are not required after
+                        scanning a station QR.
+                    </p>
+                </div>
+                <dl class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <dt class="text-xs text-blue-700">Officer ID</dt>
+                        <dd class="font-mono font-bold text-blue-950">
+                            {{ reviewDefaults.primary_officer?.code }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs text-blue-700">Review PIN</dt>
+                        <dd class="font-mono text-lg font-black text-blue-950">
+                            {{ reviewDefaults.primary_officer?.pin }}
+                        </dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section
                 v-if="!room || room.status === 'closed'"
                 class="border border-stone-300 bg-white"
             >
@@ -173,6 +206,9 @@ onBeforeUnmount(() => {
                         type="submit"
                         :disabled="processing"
                         class="min-h-11 bg-blue-800 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
+                        :class="{
+                            'review-next-action-button': electionReview.enabled,
+                        }"
                     >
                         {{ processing ? 'Preparing...' : 'Create review room' }}
                     </button>

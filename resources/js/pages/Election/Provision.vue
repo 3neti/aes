@@ -111,7 +111,8 @@ const props = defineProps<{
     precinctSetup: PrecinctSetup;
 }>();
 
-const { defaults: reviewDefaults } = useElectionReview();
+const { review: electionReview, defaults: reviewDefaults } =
+    useElectionReview();
 
 const readinessItems = [
     {
@@ -155,6 +156,7 @@ const readinessItems = [
                     : 'Not yet loaded'
             "
             :tone="snapshot.configuration.mapping_hash ? 'complete' : 'warning'"
+            :recommended="!snapshot.configuration.mapping_hash"
         >
             <div class="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
                 <dl class="grid gap-3 text-sm sm:grid-cols-2">
@@ -232,6 +234,11 @@ const readinessItems = [
                 <Form v-bind="activate.form()" #default="{ processing }">
                     <button
                         class="min-h-11 bg-blue-800 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                !snapshot.configuration.mapping_hash,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >
@@ -253,6 +260,10 @@ const readinessItems = [
             eyebrow="Step 2"
             :status="precinctSetup.passed ? 'Recorded' : 'Required'"
             :tone="precinctSetup.passed ? 'complete' : 'warning'"
+            :recommended="
+                Boolean(snapshot.configuration.mapping_hash) &&
+                !precinctSetup.passed
+            "
         >
             <Form
                 v-bind="setup.form()"
@@ -376,6 +387,12 @@ const readinessItems = [
                 </p>
                 <button
                     class="primary-button justify-self-start"
+                    :class="{
+                        'review-next-action-button':
+                            electionReview.enabled &&
+                            Boolean(snapshot.configuration.mapping_hash) &&
+                            !precinctSetup.passed,
+                    }"
                     type="submit"
                     :disabled="processing"
                 >
@@ -448,10 +465,20 @@ const readinessItems = [
                         : 'Pending'
                 "
                 :tone="electoralBoardBaseline.passed ? 'complete' : 'warning'"
+                :recommended="
+                    Boolean(precinctSetup.passed) &&
+                    !electoralBoardBaseline.passed
+                "
             >
                 <Form v-bind="ebRoleBaseline.form()" #default="{ processing }">
                     <button
                         class="secondary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                Boolean(precinctSetup.passed) &&
+                                !electoralBoardBaseline.passed,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >
@@ -494,6 +521,10 @@ const readinessItems = [
                 :tone="
                     supplyVerificationBaseline.passed ? 'complete' : 'warning'
                 "
+                :recommended="
+                    Boolean(electoralBoardBaseline.passed) &&
+                    !supplyVerificationBaseline.passed
+                "
             >
                 <Form
                     v-bind="supplyVerificationBaselineAction.form()"
@@ -501,6 +532,12 @@ const readinessItems = [
                 >
                     <button
                         class="secondary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                Boolean(electoralBoardBaseline.passed) &&
+                                !supplyVerificationBaseline.passed,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >
@@ -544,6 +581,10 @@ const readinessItems = [
                     : 'Not run'
             "
             :tone="legalScenarioSuite.passed ? 'complete' : 'neutral'"
+            :recommended="
+                Boolean(supplyVerificationBaseline.passed) &&
+                !legalScenarioSuite.passed
+            "
         >
             <div
                 class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
@@ -564,6 +605,12 @@ const readinessItems = [
                 >
                     <button
                         class="secondary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                Boolean(supplyVerificationBaseline.passed) &&
+                                !legalScenarioSuite.passed,
+                        }"
                         type="submit"
                         :disabled="processing"
                     >

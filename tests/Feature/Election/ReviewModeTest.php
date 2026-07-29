@@ -26,6 +26,11 @@ test('review mode supplies temporary defaults to operator pages', function (): v
             ->where('electionReview.defaults.primary_officer.pin', '123456')
             ->where('electionReview.defaults.setup.device_serial', 'AES-PI-39010001-001')
             ->where('electionReview.defaults.setup.ballot_box_id', 'AES-BOX-39010001-001')
+            ->where(
+                'electionReview.defaults.handoff.recipient',
+                'City Board of Canvassers Receiving Officer',
+            )
+            ->where('electionReview.defaults.handoff.recipient_role', 'Receiving Officer')
         );
 });
 

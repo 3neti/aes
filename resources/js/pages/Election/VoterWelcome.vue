@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { Form } from '@inertiajs/vue3';
+import { Form, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
+import type { ElectionReviewRoomContext } from '@/components/election/types';
 import { claim } from '@/routes/election/voter';
 
 defineProps<{
@@ -9,6 +11,11 @@ defineProps<{
         precinct_id: string;
     };
 }>();
+
+const page = usePage();
+const reviewRoom = computed(
+    () => page.props.electionReviewRoom as ElectionReviewRoomContext,
+);
 </script>
 
 <template>
@@ -53,6 +60,9 @@ defineProps<{
                 </p>
                 <button
                     class="min-h-14 w-full bg-blue-800 px-5 py-3 text-lg font-bold text-white disabled:opacity-50"
+                    :class="{
+                        'review-next-action-button': reviewRoom.enabled,
+                    }"
                     type="submit"
                     :disabled="processing"
                 >
