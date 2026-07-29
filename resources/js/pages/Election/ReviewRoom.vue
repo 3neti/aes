@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted } from 'vue';
 import type { ElectionReviewRoom } from '@/components/election/types';
 import {
     close as closeReviewRoom,
+    startFresh as startFreshReviewRoom,
     stationRelease,
     store as storeReviewRoom,
 } from '@/routes/election/review-room';
@@ -12,6 +13,7 @@ import { useElectionReview } from '@/stores/electionReview';
 const props = defineProps<{
     room: ElectionReviewRoom | null;
     isFacilitator: boolean;
+    canStartFresh: boolean;
     defaults: {
         name: string;
         voter_stations: number;
@@ -135,6 +137,41 @@ onBeforeUnmount(() => {
                         </dd>
                     </div>
                 </dl>
+            </section>
+
+            <section
+                v-if="canStartFresh"
+                class="grid gap-4 border-l-4 border-red-700 bg-white px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
+            >
+                <div>
+                    <p class="text-xs font-bold text-red-800 uppercase">
+                        Presentation recovery
+                    </p>
+                    <h2 class="mt-1 text-xl font-bold">
+                        Start fresh from any ceremony
+                    </h2>
+                    <p class="mt-2 max-w-3xl text-sm text-stone-700">
+                        Close the current room, release every tablet, and return
+                        the lifecycle to Precinct Setup. Previous run evidence
+                        remains preserved in its numbered folder.
+                    </p>
+                </div>
+                <Form
+                    v-bind="startFreshReviewRoom.form()"
+                    #default="{ processing }"
+                >
+                    <button
+                        type="submit"
+                        :disabled="processing"
+                        class="min-h-11 border border-red-700 bg-red-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
+                    >
+                        {{
+                            processing
+                                ? 'Preparing fresh run...'
+                                : 'Start fresh presentation'
+                        }}
+                    </button>
+                </Form>
             </section>
 
             <section

@@ -7,8 +7,10 @@ use App\Election\ReviewRoom\ReviewRoomContext;
 use App\Election\ReviewRoom\ReviewRoomPresenter;
 use App\Election\ReviewRoom\ReviewRoomService;
 use App\Election\ReviewRoom\ReviewStationRole;
+use App\Election\ReviewRoom\StartFreshReviewPresentation;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\ProtectReviewEnvironment;
 use App\Http\Requests\Election\CreateReviewRoomRequest;
 use App\Models\ReviewRoom;
 use App\Models\ReviewStation;
@@ -22,16 +24,28 @@ use RuntimeException;
 
 final class ReviewRoomController extends Controller
 {
+    /**
+     * @var array<int, string>
+     */
+    private const StationSessionKeys = [
+        'election_review_room_id',
+        'election_review_station_id',
+        'election_review_station_role',
+        'election_review_station_pairing_key',
+    ];
+
     public function index(
         Request $request,
         ReviewRoomPresenter $presenter,
         ReviewRoomContext $context,
     ): Response {
         $this->ensureEnabled();
-        $room = ReviewRoom::query()
-            ->with(['stations', 'events'])
-            ->latest('opened_at')
-            ->first();
+        $room = $this->latestRoom(withRelations: true);
+
+        if ($room !== null) {
+            $this->restoreBasicFacilitatorAccess($request, $room, $context);
+        }
+
         $isFacilitator = $room !== null && $this->isFacilitator($request, $room, $context);
 
         return Inertia::render('Election/ReviewRoom', [
@@ -44,6 +58,7 @@ final class ReviewRoomController extends Controller
                 'voter_stations' => (int) config('election.review_room.default_voter_stations', 5),
                 'max_voter_stations' => (int) config('election.review_room.max_voter_stations', 10),
             ],
+            'canStartFresh' => $this->canStartFresh($request, $room, $context),
         ]);
     }
 
@@ -77,6 +92,23 @@ final class ReviewRoomController extends Controller
 
         return to_route('election.review-room.index')
             ->with('success', "Review room {$room->code} is ready.");
+    }
+
+    public function startFresh(
+        Request $request,
+        StartFreshReviewPresentation $startFresh,
+        ReviewRoomContext $context,
+    ): RedirectResponse {
+        $this->ensureEnabled();
+        $room = $this->latestRoom();
+
+        abort_unless($this->canStartFresh($request, $room, $context), 403);
+
+        $result = $startFresh->handle();
+        $this->establishFacilitatorSession($request, $result['room']);
+
+        return to_route('election.review-room.index')
+            ->with('success', 'A fresh presentation run and review room are ready.');
     }
 
     public function join(
@@ -216,6 +248,62 @@ final class ReviewRoomController extends Controller
         return $station !== null
             && $station->review_room_id === $room->id
             && $station->role === ReviewStationRole::Officer;
+    }
+
+    private function canStartFresh(
+        Request $request,
+        ?ReviewRoom $room,
+        ReviewRoomContext $context,
+    ): bool {
+        if ($this->hasBasicFacilitatorAccess($request, $context)) {
+            return true;
+        }
+
+        return $room !== null && $this->isFacilitator($request, $room, $context);
+    }
+
+    private function restoreBasicFacilitatorAccess(
+        Request $request,
+        ReviewRoom $room,
+        ReviewRoomContext $context,
+    ): void {
+        if (
+            $room->status !== 'open'
+            || ! $this->hasBasicFacilitatorAccess($request, $context)
+            || $request->session()->get('election_review_facilitator_room_id') === $room->id
+        ) {
+            return;
+        }
+
+        $this->establishFacilitatorSession($request, $room);
+    }
+
+    private function hasBasicFacilitatorAccess(Request $request, ReviewRoomContext $context): bool
+    {
+        return $request->attributes->get(ProtectReviewEnvironment::BasicAuthenticatedAttribute) === true
+            && $context->station($request) === null;
+    }
+
+    private function establishFacilitatorSession(Request $request, ReviewRoom $room): void
+    {
+        $request->session()->regenerate();
+        $request->session()->forget(self::StationSessionKeys);
+        $request->session()->put('election_review_facilitator_room_id', $room->id);
+    }
+
+    private function latestRoom(bool $withRelations = false): ?ReviewRoom
+    {
+        $query = ReviewRoom::query();
+
+        if ($withRelations) {
+            $query->with(['stations', 'events']);
+        }
+
+        return (clone $query)
+            ->where('status', 'open')
+            ->latest('opened_at')
+            ->first()
+            ?? $query->latest('opened_at')->first();
     }
 
     private function ensureStationBelongsToRoom(ReviewRoom $room, ReviewStation $station): void

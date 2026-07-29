@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { home } from '@/routes';
 import { diagnostics } from '@/routes/election';
 import { store as storeAttestation } from '@/routes/election/attestations';
+import { index as reviewRoom } from '@/routes/election/review-room';
 import { useElectionReview } from '@/stores/electionReview';
 import CeremonyStepper from './CeremonyStepper.vue';
 import EvidenceSummary from './EvidenceSummary.vue';
@@ -245,22 +246,30 @@ onBeforeUnmount(() => {
                         </div>
                     </dl>
                 </div>
-                <button
-                    v-if="reviewDefaultsLoaded"
-                    type="button"
-                    class="min-h-10 shrink-0 border border-blue-800 bg-white px-4 py-2 text-sm font-bold text-blue-900"
-                    @click="clearDefaults"
-                >
-                    Clear review defaults
-                </button>
-                <button
-                    v-else
-                    type="button"
-                    class="min-h-10 shrink-0 bg-blue-800 px-4 py-2 text-sm font-bold text-white"
-                    @click="reloadDefaults"
-                >
-                    Reload review defaults
-                </button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <Link
+                        :href="reviewRoom.url()"
+                        class="inline-flex min-h-10 items-center border border-red-700 bg-white px-4 py-2 text-sm font-bold text-red-800"
+                    >
+                        Review room / Start fresh
+                    </Link>
+                    <button
+                        v-if="reviewDefaultsLoaded"
+                        type="button"
+                        class="min-h-10 shrink-0 border border-blue-800 bg-white px-4 py-2 text-sm font-bold text-blue-900"
+                        @click="clearDefaults"
+                    >
+                        Clear review defaults
+                    </button>
+                    <button
+                        v-else
+                        type="button"
+                        class="min-h-10 shrink-0 bg-blue-800 px-4 py-2 text-sm font-bold text-white"
+                        @click="reloadDefaults"
+                    >
+                        Reload review defaults
+                    </button>
+                </div>
             </section>
 
             <div

@@ -9,6 +9,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class ProtectReviewEnvironment
 {
+    public const BasicAuthenticatedAttribute = 'election_review_basic_authenticated';
+
     public function __construct(private readonly ReviewRoomContext $reviewRoom) {}
 
     /**
@@ -39,6 +41,8 @@ final class ProtectReviewEnvironment
                     ->header('WWW-Authenticate', 'Basic realm="AES COMELEC Review", charset="UTF-8"'),
             );
         }
+
+        $request->attributes->set(self::BasicAuthenticatedAttribute, true);
 
         return $this->protectedResponse($next($request));
     }

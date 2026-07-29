@@ -24,6 +24,8 @@ test('facilitator prepares all review stations from the browser', function (): v
         ->assertSee('Poll Watcher')
         ->assertSee('Presentation Screen')
         ->assertSee('0 of 9 connected')
+        ->assertSee('Start fresh from any ceremony')
+        ->assertSee('Start fresh presentation')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });

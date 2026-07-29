@@ -24,6 +24,8 @@ Route::get('/', HomeController::class)
 Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/review-room', [ReviewRoomController::class, 'index'])->name('review-room.index');
     Route::post('/review-room', [ReviewRoomController::class, 'store'])->name('review-room.store');
+    Route::post('/review-room/start-fresh', [ReviewRoomController::class, 'startFresh'])
+        ->name('review-room.start-fresh');
     Route::post('/review-room/{room:code}/close', [ReviewRoomController::class, 'close'])->name('review-room.close');
     Route::get('/review-room/{room:code}/stations/{station}/qr', [ReviewRoomController::class, 'stationQr'])
         ->middleware('throttle:60,1')

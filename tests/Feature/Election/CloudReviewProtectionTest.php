@@ -5,6 +5,7 @@ use App\Election\Lifecycle\LifecycleState;
 use App\Election\ReviewRoom\ReviewRoomService;
 use App\Election\ReviewRoom\ReviewStationRole;
 use Illuminate\Support\Facades\URL;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
     $this->withoutVite();
@@ -43,6 +44,40 @@ test('enabled review protection permits configured credentials and prohibits ind
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertHeader('Pragma', 'no-cache');
+});
+
+test('basic authenticated browser reclaims facilitator access to an open room', function (): void {
+    configureReviewAccess();
+    config()->set('election.review.enabled', true);
+    config()->set('election.review_room.enabled', true);
+    $room = app(ReviewRoomService::class)->create(
+        'Recoverable review room',
+        2,
+        '39010001',
+        'review-run',
+    );
+
+    $headers = [
+        'Authorization' => basicAuthorization('comelec-review', 'review-secret'),
+    ];
+
+    $this->withHeaders($headers)
+        ->get(route('election.review-room.index'))
+        ->assertSuccessful()
+        ->assertSessionHas('election_review_facilitator_room_id', $room->id)
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('isFacilitator', true)
+            ->where('canStartFresh', true)
+            ->has('room.stations.0.join_url')
+            ->has('room.stations.0.join_qr_url')
+        );
+
+    $station = $room->stations()->firstOrFail();
+
+    $this->withHeaders($headers)
+        ->get(route('election.review-room.station-qr', [$room, $station]))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'image/png');
 });
 
 test('a valid station qr bypasses browser credentials and preserves role isolation', function (): void {
@@ -86,10 +121,24 @@ test('a valid station qr bypasses browser credentials and preserves role isolati
         ->assertForbidden()
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
 
+    $this->withHeaders([
+        'Authorization' => basicAuthorization('comelec-review', 'review-secret'),
+    ])->get(route('election.review-room.index'))
+        ->assertSuccessful()
+        ->assertSessionMissing('election_review_facilitator_room_id')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('isFacilitator', false)
+            ->where('canStartFresh', false)
+            ->missing('room.stations.0.join_url')
+            ->missing('room.stations.0.join_qr_url')
+        );
+
     $this->post(route('election.review-room.store'), [
         'name' => 'Unauthorized replacement room',
         'voter_stations' => 1,
     ])->assertForbidden();
+
+    $this->post(route('election.review-room.start-fresh'))->assertForbidden();
 });
 
 test('an invalid station qr still requires browser credentials', function (): void {

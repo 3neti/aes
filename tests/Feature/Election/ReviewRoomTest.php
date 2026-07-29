@@ -1,6 +1,8 @@
 <?php
 
 use App\Election\Core\CanonicalJson;
+use App\Election\Lifecycle\Lifecycle;
+use App\Election\Lifecycle\LifecycleState;
 use App\Election\ReviewRoom\ReviewRoomPresenter;
 use App\Election\ReviewRoom\ReviewRoomService;
 use App\Election\ReviewRoom\ReviewStationRole;
@@ -201,6 +203,66 @@ test('only one review room may remain open', function (): void {
 
     expect(fn () => createReviewRoom())
         ->toThrow(RuntimeException::class, 'Close the active review room');
+});
+
+test('facilitator starts fresh while preserving the previous run evidence', function (): void {
+    $storage = app(ElectionStorage::class);
+    $previousRun = $storage->startRun(
+        'previous-presentation',
+        '39010001',
+        '20260729-090000',
+        creationSource: 'browser-provisioning',
+    );
+    $storage->writeJson('runtime/preserved-marker.json', ['preserved' => true]);
+    $preservedMarker = $storage->path('runtime/preserved-marker.json');
+    $oldRoom = createReviewRoom(2);
+
+    $this->withSession([
+        'election_review_facilitator_room_id' => $oldRoom->id,
+    ])->post(route('election.review-room.start-fresh'))
+        ->assertRedirect(route('election.review-room.index'))
+        ->assertSessionHas('success', 'A fresh presentation run and review room are ready.');
+
+    $oldRoom->refresh()->load('events');
+    $newRoom = ReviewRoom::query()->where('status', 'open')->sole();
+    $currentRun = $storage->currentRun();
+
+    expect($oldRoom->status)->toBe('closed')
+        ->and($oldRoom->events->last()->event_type)->toBe('review-room.closed')
+        ->and($newRoom->id)->not->toBe($oldRoom->id)
+        ->and($newRoom->stations)->toHaveCount(9)
+        ->and($newRoom->run_id)->toBe($currentRun['run_id'])
+        ->and($currentRun['scenario'])->toBe('presentation')
+        ->and($currentRun['run_path'])->not->toBe($previousRun['run_path'])
+        ->and(is_file($preservedMarker))->toBeTrue()
+        ->and(app(LifecycleState::class)->current())->toBe(Lifecycle::Provision);
+
+    $this->get(route('election.review-room.index'))
+        ->assertSuccessful()
+        ->assertSessionHas('election_review_facilitator_room_id', $newRoom->id)
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('isFacilitator', true)
+            ->where('canStartFresh', true)
+            ->where('room.code', $newRoom->code)
+            ->has('room.stations', 9)
+            ->has('room.stations.0.join_qr_url')
+        );
+});
+
+test('paired voter cannot start a fresh presentation', function (): void {
+    $room = createReviewRoom(1);
+    $station = $room->stations()
+        ->where('role', ReviewStationRole::Voter)
+        ->sole();
+
+    $this->get(reviewStationJoinUrl($room, $station))
+        ->assertRedirect(route('election.voter'));
+
+    $this->post(route('election.review-room.start-fresh'))
+        ->assertForbidden();
+
+    expect($room->fresh()->status)->toBe('open')
+        ->and(ReviewRoom::query()->where('status', 'open')->count())->toBe(1);
 });
 
 test('facilitator presentation uses lazy QR endpoints for every station', function (): void {
