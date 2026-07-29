@@ -78,6 +78,21 @@ test('review mode loads and clears temporary operator defaults', function (): vo
         ->assertNoConsoleLogs();
 });
 
+test('certification advances immediately after manual verification', function (): void {
+    config()->set('election.review.enabled', true);
+
+    visit('/election/certification')
+        ->click('Run Certification')
+        ->assertSee('3/3 checks passed')
+        ->click('Run Manual Verification')
+        ->assertSee('Matched')
+        ->assertSee('Manual Verification')
+        ->assertSee('PASS')
+        ->assertSee('Run Discrepancy Analysis')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
 test('official handoff unlocks the delivery receipt after both parties verify custody', function (): void {
     $this->artisan('election:scenario election-return-copy-distribution')
         ->assertSuccessful();

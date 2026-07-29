@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
@@ -157,19 +158,26 @@ const props = defineProps<{
     manualReturnTemplate: ManualReturnTemplate;
 }>();
 
-const hasCertificationReport =
-    Object.keys(props.certificationReport).length > 0;
-const hasPackageIntegrityReport =
-    Object.keys(props.packageIntegrityReport).length > 0;
-const hasManualVerificationReport =
-    Object.keys(props.manualVerificationReport).length > 0;
-const hasDiscrepancyReport = Object.keys(props.discrepancyReport).length > 0;
-const hasZeroOutReport = Object.keys(props.zeroOutReport).length > 0;
-const hasSealingReport = Object.keys(props.sealingReport).length > 0;
-const manualReturnTemplateJson = JSON.stringify(
-    props.manualReturnTemplate,
-    null,
-    2,
+const hasCertificationReport = computed(
+    () => Object.keys(props.certificationReport).length > 0,
+);
+const hasPackageIntegrityReport = computed(
+    () => Object.keys(props.packageIntegrityReport).length > 0,
+);
+const hasManualVerificationReport = computed(
+    () => Object.keys(props.manualVerificationReport).length > 0,
+);
+const hasDiscrepancyReport = computed(
+    () => Object.keys(props.discrepancyReport).length > 0,
+);
+const hasZeroOutReport = computed(
+    () => Object.keys(props.zeroOutReport).length > 0,
+);
+const hasSealingReport = computed(
+    () => Object.keys(props.sealingReport).length > 0,
+);
+const manualReturnTemplateJson = computed(() =>
+    JSON.stringify(props.manualReturnTemplate, null, 2),
 );
 const { review: electionReview } = useElectionReview();
 </script>
@@ -315,7 +323,11 @@ const { review: electionReview } = useElectionReview();
                 hasCertificationReport && !hasManualVerificationReport
             "
         >
-            <Form v-bind="manualVerification.form()" class="mt-5">
+            <Form
+                v-bind="manualVerification.form()"
+                #default="{ errors, processing }"
+                class="mt-5"
+            >
                 <label class="mb-2 block text-sm font-semibold text-stone-700">
                     Manual Return JSON
                 </label>
@@ -325,6 +337,13 @@ const { review: electionReview } = useElectionReview();
                     name="manual_return"
                     :value="manualReturnTemplateJson"
                 ></textarea>
+                <p
+                    v-if="errors.manual_return"
+                    role="alert"
+                    class="mt-3 border-l-4 border-red-700 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900"
+                >
+                    {{ errors.manual_return }}
+                </p>
                 <button
                     class="secondary-button mt-3"
                     :class="{
@@ -334,8 +353,13 @@ const { review: electionReview } = useElectionReview();
                             !hasManualVerificationReport,
                     }"
                     type="submit"
+                    :disabled="processing"
                 >
-                    Run Manual Verification
+                    {{
+                        processing
+                            ? 'Running verification...'
+                            : 'Run Manual Verification'
+                    }}
                 </button>
             </Form>
 
