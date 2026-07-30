@@ -46,6 +46,10 @@ return [
             'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED', false),
         ],
         'maximum_active_admissions' => (int) env('ELECTION_PUBLIC_SIMULATION_MAX_ACTIVE_ADMISSIONS', 10),
+        'vvdat_audit_export' => [
+            'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_ENABLED', true),
+            'minimum_records' => (int) env('ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_MINIMUM_RECORDS', 1),
+        ],
     ],
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),

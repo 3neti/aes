@@ -126,13 +126,15 @@ Implemented in the Public Simulation Server:
 - `php artisan election:public-simulation:verify-vvdat-export /path/to/export.json` independently checks a downloaded export's content hash, unique record hashes, count, and non-zero tally without reading the precinct ledger.
 - Admission issuance observes `ELECTION_PUBLIC_SIMULATION_MAX_ACTIVE_ADMISSIONS` (default `10`) inside a precinct-scoped election lock. The public admission endpoint is also throttled.
 - `election:public-simulation:archive {round}` archives only fully published rounds and preserves every precinct evidence namespace.
+- `election:public-simulation:reset {round}` is the controlled start-fresh operation: it archives a fully published round first, retains all evidence, then creates a new three-precinct lobby. It refuses to replace an unrelated live round.
+- Watcher VVDAT downloads now follow an explicit release policy. `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_ENABLED` enables the export and `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_MINIMUM_RECORDS` sets the minimum sealed-record count. A withheld export is not linked or downloadable.
 - A privacy-redacted God Mode page is scaffolded at `/election/play/{round}/god-mode`, disabled by default through `ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED`.
 
 Not yet implemented:
 
 - Public participant enrollment and safe invite links beyond the current anonymous control-number admission.
-- Officer-host creation flow, credential-handoff artifact, configurable public simulation schedules, and start-fresh policy.
-- Public release approval for the VVDAT export and a small-precinct publication threshold.
+- Officer-host creation flow, credential-handoff artifact, and configurable public simulation schedules.
+- A separate officer approval ceremony for the VVDAT export; the current policy is configured per environment.
 - Expanded God Mode authorization, classroom replay fixtures, and screen/capture controls.
 - Multi-precinct concurrency-race scenarios, queue/backpressure policy, and abuse controls beyond the current admission capacity/throttle.
 - Public education copy, consent, retention, and deletion policy.

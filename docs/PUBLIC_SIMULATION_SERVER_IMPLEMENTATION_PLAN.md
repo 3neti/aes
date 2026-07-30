@@ -119,14 +119,14 @@ The public simulation model must use a distinct `simulation_id` and storage name
 7. **Watcher publication package** - partial
    - Create a publication approval ceremony and a public result page.
    - Publish result PDFs, hashes, timeline, aggregate statistics, and approved downloader links.
-   - Delivered: an officer publication action, hash-addressed publication manifest, watcher gate, tally/ER PDF downloads, and a post-publication anonymized VVDAT export. Approval policy, independent verifier, and archive package remain pending.
+   - Delivered: an officer publication action, hash-addressed publication manifest, watcher gate, tally/ER PDF downloads, and a post-publication anonymized VVDAT export. The export has a configurable enabled flag and minimum-record threshold; a withheld export cannot be downloaded. Independent verifier and archive package remain pending.
 
 ### Wave 4: Paper Audit and Understanding
 
 8. **Anonymized VVDAT audit export** - partial
    - Generate a shuffled post-close export plus manifest and independent local tally command.
    - Make export policy configurable and disabled by default outside the public simulation profile.
-   - Delivered: deterministic record ordering, metadata stripping, and `election:public-simulation:verify-vvdat-export`, which independently checks the export hash, unique records, count, and tally. Public release approval and a small-precinct threshold remain pending.
+   - Delivered: deterministic record ordering, metadata stripping, a configurable small-precinct threshold, and `election:public-simulation:verify-vvdat-export`, which independently checks the export hash, unique records, count, and tally. A distinct officer release ceremony remains pending.
 
 9. **QR-assisted Random Manual Audit room**
    - Present a public tally comparison screen that scans paper QR selections into an audit-only tally and requires two officer approvals per sample.
@@ -144,7 +144,7 @@ The public simulation model must use a distinct `simulation_id` and storage name
 
 12. **Retention, consent, and review kit** - partial
     - Public consent page, retention schedule, deletion workflow, incident contact, accessibility review, and downloadable COMELEC Review Kit.
-   - Delivered: non-destructive archive command which permits a fresh lobby round while retaining evidence. Retention schedule, consent, and review kit remain pending.
+   - Delivered: non-destructive archive plus reset commands. Reset archives a fully published round before creating a fresh lobby, retaining every evidence namespace. Retention schedule, consent, and review kit remain pending.
 
 ## Scenario Runner Strategy
 

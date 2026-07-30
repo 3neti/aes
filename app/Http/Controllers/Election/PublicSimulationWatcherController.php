@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class PublicSimulationWatcherController extends Controller
 {
-    public function show(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): Response
+    public function show(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicVvdatAuditExport $exports, ElectionStorage $storage): Response
     {
         $this->scope($round, $precinct, $simulations);
         $configuration = $storage->readJson('runtime/active-precinct.json');
@@ -46,6 +46,7 @@ final class PublicSimulationWatcherController extends Controller
                     ->all(),
             ],
             'published' => $publication !== [],
+            'auditExportAvailable' => $publication !== [] && $exports->isAvailable(),
             'publication' => [
                 'manifest_hash' => $publication['manifest_hash'] ?? null,
                 'ledger_root' => $publication['vvdat_ledger_root'] ?? null,
@@ -80,7 +81,7 @@ final class PublicSimulationWatcherController extends Controller
     public function vvdatAuditExport(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicVvdatAuditExport $exports, ElectionStorage $storage): BinaryFileResponse
     {
         $this->scope($round, $precinct, $simulations);
-        abort_unless($this->isPublished($precinct, $storage), 404);
+        abort_unless($this->isPublished($precinct, $storage) && $exports->isAvailable(), 404);
         $export = $exports->generate();
 
         return response()->download((string) $export['artifact_path'], "{$precinct->code}-vvdat-audit-export.json");

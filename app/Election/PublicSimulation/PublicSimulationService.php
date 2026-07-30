@@ -89,6 +89,30 @@ final class PublicSimulationService
         }, attempts: 5);
     }
 
+    /**
+     * Archive a completed round before making a new public lobby available.
+     *
+     * @return array{archived: SimulationRound, fresh: SimulationRound}
+     */
+    public function reset(SimulationRound $round): array
+    {
+        $archived = $this->archive($round);
+
+        $existingLiveRound = SimulationRound::query()
+            ->where('status', 'open')
+            ->latest('id')
+            ->first();
+
+        if ($existingLiveRound !== null) {
+            throw new RuntimeException('Another public simulation round is already live. Archive or resolve it before resetting this round.');
+        }
+
+        return [
+            'archived' => $archived,
+            'fresh' => $this->createRound(),
+        ];
+    }
+
     private function createRound(): SimulationRound
     {
         return DB::transaction(function (): SimulationRound {

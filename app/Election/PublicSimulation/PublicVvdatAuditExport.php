@@ -25,16 +25,11 @@ final class PublicVvdatAuditExport
      */
     public function generate(): array
     {
+        $publication = $this->releasePublication();
         $existing = $this->storage->readJson('returns/vvdat-audit-export.json');
 
         if ($existing !== []) {
             return $existing;
-        }
-
-        $publication = $this->publication->summary();
-
-        if ($publication === []) {
-            throw new RuntimeException('Publish the post-close results before generating a public VVDAT audit export.');
         }
 
         $records = collect($this->ledger->recordsForTally())
@@ -69,5 +64,45 @@ final class PublicVvdatAuditExport
         ]);
 
         return $export;
+    }
+
+    public function isAvailable(): bool
+    {
+        if (! config('election.public_simulation.vvdat_audit_export.enabled', true)) {
+            return false;
+        }
+
+        if ($this->publication->summary() === []) {
+            return false;
+        }
+
+        return $this->ledger->summary()['recorded_ballots'] >= $this->minimumRecordCount();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function releasePublication(): array
+    {
+        if (! config('election.public_simulation.vvdat_audit_export.enabled', true)) {
+            throw new RuntimeException('The public VVDAT audit export is disabled by the release policy.');
+        }
+
+        $publication = $this->publication->summary();
+
+        if ($publication === []) {
+            throw new RuntimeException('Publish the post-close results before generating a public VVDAT audit export.');
+        }
+
+        if ($this->ledger->summary()['recorded_ballots'] < $this->minimumRecordCount()) {
+            throw new RuntimeException("The public VVDAT audit export requires at least {$this->minimumRecordCount()} deposited ballot records.");
+        }
+
+        return $publication;
+    }
+
+    private function minimumRecordCount(): int
+    {
+        return max(1, (int) config('election.public_simulation.vvdat_audit_export.minimum_records', 1));
     }
 }

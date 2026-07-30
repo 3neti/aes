@@ -721,14 +721,14 @@ Completed:
 - protected Laravel Cloud review mode with PHP 8.4, deployment migrations, continuous demonstration availability, PostgreSQL, Redis, and private evidence storage
 - role-paired Multi-Tablet Review Room for one officer, five default voter tablets, private printing, watcher observation, and a projection-safe presentation screen
 - signed QR joins, one-browser station binding, role-restricted routes, connectivity status, and an append-only hash-chained room journal
+- public three-precinct simulation lobby with isolated evidence roots, Device Tabulation with Paper Audit closeout, sealed VVDAT freeze, tally/ER watcher publication, policy-controlled anonymized VVDAT export, and a non-destructive archive/reset flow
 
 Next:
 
-Apply distributed locking and idempotency to every concurrent voting,
-printing, deposit, and counting mutation, then exercise five and ten
-independent voter flows through a verified evidence bundle. Package the
-results into the offline COMELEC Review Kit before the supervised hardware
-pilot.
+Exercise five and ten independent voter flows through verified evidence
+bundles, including close-versus-finalize races and backpressure behaviour.
+Then add the QR-assisted Random Manual Audit room and package the results
+into the offline COMELEC Review Kit before the supervised hardware pilot.
 
 ---
 

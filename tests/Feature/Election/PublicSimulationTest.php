@@ -4,6 +4,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\PublicSimulation\PublicVvdatAuditExportVerifier;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\DeviceTabulationLedger;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
@@ -113,6 +114,20 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
         ->and($return['accepted_ballots'])->toBe(1)
         ->and($return['tally_source'])->toContain('VVDAT');
 
+    expect(fn () => app(DeviceTabulationLedger::class)->recordDepositedBallot([]))
+        ->toThrow(RuntimeException::class, 'VVDAT ledger is frozen');
+
+    config()->set('election.public_simulation.vvdat_audit_export.minimum_records', 2);
+    $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('auditExportAvailable', false)
+        );
+    $this->get(route('election.public-simulation.watcher.vvdat-audit-export', [$round, $precinct]))
+        ->assertNotFound();
+
+    config()->set('election.public_simulation.vvdat_audit_export.minimum_records', 1);
+
     $this->get(route('election.public-simulation.watcher.vvdat-audit-export', [$round, $precinct]))
         ->assertSuccessful();
 
@@ -160,6 +175,22 @@ test('a public simulation round archives only after every precinct is published'
 
     expect($round->fresh()->status)->toBe('archived')
         ->and($round->fresh()->archived_at)->not->toBeNull();
+});
+
+test('a controlled reset archives a published public round before creating a fresh lobby', function (): void {
+    $round = SimulationRound::factory()->create();
+    SimulationPrecinct::factory()->count(3)->for($round, 'round')->create(['status' => 'published']);
+
+    $this->artisan('election:public-simulation:reset', ['round' => $round->code])
+        ->expectsOutputToContain("Archived {$round->code}; created fresh public simulation round")
+        ->assertSuccessful();
+
+    $fresh = SimulationRound::query()->where('status', 'open')->sole();
+
+    expect($round->fresh()->status)->toBe('archived')
+        ->and($round->fresh()->archived_at)->not->toBeNull()
+        ->and($fresh->code)->not->toBe($round->code)
+        ->and($fresh->precincts()->count())->toBe(3);
 });
 
 test('the facilitator god mode remains disabled until explicitly enabled', function (): void {
