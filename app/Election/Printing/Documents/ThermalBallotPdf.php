@@ -69,7 +69,7 @@ final class ThermalBallotPdf
             $selection = $selected === '' ? 'UNDERVOTE - No candidate selected.' : $selected;
             $titleLines = $document->wrap((string) ($contest['title'] ?? $contestId), $width - 12, 7.2);
             $selectionLines = $document->wrap($selection, $width - 12, 6.8);
-            $height = 12 + (count($titleLines) * 9) + (count($selectionLines) * 8.5);
+            $height = 10 + (count($titleLines) * 11) + (count($selectionLines) * 10);
 
             if ($y - $height < $document->contentBottom()) {
                 $page = $document->addPage('Selections continued');
@@ -78,12 +78,12 @@ final class ThermalBallotPdf
 
             $document->rectangle($page, $document->left(), $y - $height, $width, $height, 0.96);
             foreach ($titleLines as $line) {
-                $document->text($page, $line, $document->left() + 6, $y - 9, 7.2, true);
-                $y -= 9;
+                $document->text($page, $line, $document->left() + 6, $y - 10, 7.2, true);
+                $y -= 11;
             }
             foreach ($selectionLines as $line) {
-                $document->text($page, $line, $document->left() + 6, $y - 4, 6.8);
-                $y -= 8.5;
+                $document->text($page, $line, $document->left() + 6, $y - 10, 6.8);
+                $y -= 10;
             }
             $y -= 10;
         }
