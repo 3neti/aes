@@ -6,6 +6,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionIntake;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationContentionReport;
 use App\Election\PublicSimulation\PublicSimulationParticipation;
+use App\Election\PublicSimulation\PublicSimulationReviewKit;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\PublicSimulation\PublicVvdatAuditExportVerifier;
 use App\Election\Support\ElectionStorage;
@@ -427,6 +428,33 @@ test('a public voter acknowledges the simulation policy without creating identit
         ->and(app(PublicSimulationParticipation::class)->policy()['policy_hash'])->toBe($policy['policy_hash'])
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
         ->toContain('public_simulation.participation_policy_published', 'public_simulation.participation_accepted');
+});
+
+test('a review kit indexes only privacy-safe public simulation artifacts', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)->assertRedirect();
+    $this->get(route('election.public-simulation.voter.show', [$round, $precinct]))->assertSuccessful();
+
+    $kit = app(PublicSimulationReviewKit::class)->build($round->fresh('precincts'));
+    expect($kit['round'])->toMatchArray(['code' => $round->code, 'status' => 'open'])
+        ->and($kit['precincts'])->toHaveCount(3)
+        ->and($kit['privacy_notice'])->toContain('excludes voter identities')
+        ->and($kit['precincts'][0]['review_artifacts'])
+        ->toContain(fn (array $artifact): bool => str_ends_with($artifact['path'], '/public-simulation-participation-policy.json'))
+        ->and($kit['artifact_path'])->toBeReadableFile();
+
+    $this->artisan('election:public-simulation:review-kit', ['round' => $round->code])
+        ->expectsOutputToContain("Review Kit generated for {$round->code}")
+        ->assertSuccessful();
+
+    $persisted = json_decode(file_get_contents($kit['artifact_path']), true, flags: JSON_THROW_ON_ERROR);
+    expect($persisted['kit_hash'])->toBe($kit['kit_hash'])
+        ->and($persisted['precincts'][0])->not->toHaveKeys(['officer_code', 'authorization_id', 'ballot_id', 'session_id']);
 });
 
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {

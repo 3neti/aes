@@ -7,7 +7,7 @@
 - Completed Slice: Public Admission Queue, Browser Ticket Privacy Coverage, Officer Contention Reporting, Anonymous Intake Pause Control, and Public Participation Policy
 - Active Program: Public Election Simulation Server
 - Current Slice: Controlled public-simulation retention review
-- Next Slice: Retention-review reporting and the offline COMELEC Review Kit
+- Next Slice: Retention-review reporting and formal evidence-disposition policy
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -729,13 +729,14 @@ Completed:
 - officer-only redacted contention reporting with aggregate admission, queue, expiry, and closeout-block counts; each report is journaled and stored in the voting evidence bundle without voter, ballot, code, ticket, QR, or browser/session data
 - officer-controlled pause and resume of new anonymous waiting tickets, with journaled voting evidence; existing tickets and issued four-digit control numbers remain valid while intake is paused
 - session-only public simulation participation acknowledgment before the voter code screen, backed by a policy artifact with a configurable retention window and no identity, authorization, ballot, or session evidence
+- `election:public-simulation:review-kit {round}` creates a self-contained `REVIEW-KIT` folder with a readable guide and hash-addressed index of ceremony-level public simulation evidence, excluding private voter and ballot material
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then add controlled retention-review reporting and package the results into the
-offline COMELEC Review Kit.
+Then add controlled retention-review reporting and a formal evidence-disposition
+policy for the public simulation.
 
 ---
 
