@@ -46,6 +46,8 @@ return [
             'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED', false),
         ],
         'maximum_active_admissions' => (int) env('ELECTION_PUBLIC_SIMULATION_MAX_ACTIVE_ADMISSIONS', 10),
+        'retention_days' => (int) env('ELECTION_PUBLIC_SIMULATION_RETENTION_DAYS', 30),
+        'participation_required' => (bool) env('ELECTION_PUBLIC_SIMULATION_PARTICIPATION_REQUIRED', true),
         'admission_queue' => [
             'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_QUEUE_ENABLED', true),
             'maximum_waiting_voters' => (int) env('ELECTION_PUBLIC_SIMULATION_QUEUE_MAXIMUM_WAITING_VOTERS', 25),

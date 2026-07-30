@@ -11,6 +11,7 @@ use App\Models\SimulationPrecinct;
 beforeEach(function (): void {
     config()->set('election.review.access.enabled', false);
     config()->set('election.public_simulation.enabled', true);
+    config()->set('election.public_simulation.participation_required', false);
 });
 
 test('two isolated browser voters finalize private releases in the same public precinct', function (): void {
@@ -138,6 +139,23 @@ test('an officer pause makes the public waiting line unavailable without affecti
     visit(route('election.public-simulation.voter.show', [$round, $precinct]))
         ->assertSee('Admission line temporarily paused')
         ->assertDontSee('Take waiting ticket')
+        ->assertSee('Enter your Voter Control Number')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});
+
+test('a browser voter reviews the public simulation retention notice before reaching the voter code screen', function (): void {
+    config()->set('election.public_simulation.participation_required', true);
+    $simulations = app(PublicSimulationService::class);
+    $round = $simulations->currentRound();
+    $precinct = $round->precincts()->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $simulations->open($precinct, $precinct->officer_code, '123456');
+    visit(route('election.public-simulation.voter.show', [$round, $precinct]))
+        ->assertSee('Public election simulation')
+        ->assertSee('Simulation evidence is scheduled for review for 30 days.')
+        ->click('Continue to voting station')
         ->assertSee('Enter your Voter Control Number')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();

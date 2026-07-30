@@ -50,6 +50,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/{round:code}/{precinct:code}/audit/evidence-pack', [PublicSimulationRandomManualAuditController::class, 'download'])->name('audit.download');
 
         Route::get('/{round:code}/{precinct:code}/vote', [PublicSimulationVoterController::class, 'show'])->name('voter.show');
+        Route::post('/{round:code}/{precinct:code}/vote/participation', [PublicSimulationVoterController::class, 'acceptParticipation'])->middleware('throttle:10,1')->name('voter.participation.accept');
         Route::post('/{round:code}/{precinct:code}/vote/queue', [PublicSimulationVoterController::class, 'joinQueue'])->middleware('throttle:5,1')->name('voter.join-queue');
         Route::post('/{round:code}/{precinct:code}/vote/claim', [PublicSimulationVoterController::class, 'claim'])->middleware('throttle:10,1')->name('voter.claim');
         Route::get('/{round:code}/{precinct:code}/vote/ballot', [PublicSimulationVoterController::class, 'ballot'])->name('voter.ballot');

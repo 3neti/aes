@@ -5,6 +5,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationAdmissionIntake;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationContentionReport;
+use App\Election\PublicSimulation\PublicSimulationParticipation;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\PublicSimulation\PublicVvdatAuditExportVerifier;
 use App\Election\Support\ElectionStorage;
@@ -19,6 +20,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 beforeEach(function (): void {
     config()->set('election.review.access.enabled', false);
     config()->set('election.public_simulation.enabled', true);
+    config()->set('election.public_simulation.participation_required', false);
     $this->withoutVite();
 });
 
@@ -393,6 +395,38 @@ test('an officer can pause new anonymous tickets without invalidating issued con
     expect(app(PublicSimulationAdmissionQueue::class)->join()['status'])->toBe('waiting')
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
         ->toContain('public_simulation.admission_intake_paused', 'public_simulation.admission_intake_resumed');
+});
+
+test('a public voter acknowledges the simulation policy without creating identity evidence', function (): void {
+    config()->set('election.public_simulation.participation_required', true);
+    config()->set('election.public_simulation.retention_days', 30);
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)->assertRedirect();
+
+    $this->get(route('election.public-simulation.voter.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/PublicSimulationParticipation')
+            ->where('policy.retention_days', 30)
+        );
+    $this->post(route('election.public-simulation.voter.participation.accept', [$round, $precinct]))
+        ->assertRedirect(route('election.public-simulation.voter.show', [$round, $precinct]));
+    $this->get(route('election.public-simulation.voter.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->component('Election/VoterWelcome'));
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $policy = app(ElectionStorage::class)->readJson('public-simulation-participation-policy.json');
+    expect($policy['retention_days'])->toBe(30)
+        ->and($policy)->not->toHaveKeys(['voter_id', 'authorization_id', 'ballot_id', 'session_id'])
+        ->and(app(PublicSimulationParticipation::class)->policy()['policy_hash'])->toBe($policy['policy_hash'])
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('public_simulation.participation_policy_published', 'public_simulation.participation_accepted');
 });
 
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {

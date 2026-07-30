@@ -145,7 +145,7 @@ Not yet implemented:
 - Officer-host creation flow, credential-handoff artifact, and configurable public simulation schedules.
 - A separate officer approval ceremony for the VVDAT export; the current policy is configured per environment.
 - Expanded God Mode authorization, classroom replay fixtures, and screen/capture controls.
-- Public-simulation retention, consent, deletion policy, and a downloadable COMELEC Review Kit. Anonymous intake currently has capacity, queue bounds, endpoint throttles, aggregate officer reporting, and an officer pause/resume control.
+- Controlled public-simulation retention-review reporting, a formal deletion policy, and a downloadable COMELEC Review Kit. Anonymous intake currently has capacity, queue bounds, endpoint throttles, aggregate officer reporting, and an officer pause/resume control. Voter participation is acknowledged in-session before the code screen and governed by a retained policy artifact.
 - Public education copy, consent, retention, and deletion policy.
 
 ## Update Rule

@@ -6,6 +6,7 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Printing\BallotPrinter;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
+use App\Election\PublicSimulation\PublicSimulationParticipation;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\Support\ElectionStorage;
@@ -27,11 +28,19 @@ use RuntimeException;
 
 final class PublicSimulationVoterController extends Controller
 {
-    public function show(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, LifecycleState $lifecycle, PublicSimulationAdmissionQueue $queue): Response
+    public function show(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, LifecycleState $lifecycle, PublicSimulationAdmissionQueue $queue, PublicSimulationParticipation $participation): Response
     {
         $this->scope($round, $precinct, $simulations);
         abort_unless($lifecycle->current() === Lifecycle::Voting, 409);
         $configuration = $storage->readJson('runtime/active-precinct.json');
+        $policy = $participation->policy();
+
+        if ($this->participationRequired() && ! $this->hasAcceptedParticipation($request, $precinct, $policy)) {
+            return Inertia::render('Election/PublicSimulationParticipation', [
+                'policy' => $policy,
+                'acceptAction' => route('election.public-simulation.voter.participation.accept', [$round, $precinct]),
+            ]);
+        }
 
         return Inertia::render('Election/VoterWelcome', [
             'precinct' => [
@@ -45,9 +54,22 @@ final class PublicSimulationVoterController extends Controller
         ]);
     }
 
+    public function acceptParticipation(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationParticipation $participation): RedirectResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        $policy = $participation->accept();
+        $request->session()->put($this->participationSessionKey($precinct), $policy['policy_hash']);
+
+        return to_route('election.public-simulation.voter.show', [$round, $precinct]);
+    }
+
     public function joinQueue(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationAdmissionQueue $queue, PublicSimulationVotingGate $voting): RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
+
+        if (! $this->hasAcceptedParticipation($request, $precinct)) {
+            throw ValidationException::withMessages(['queue' => 'Review the public simulation participation notice before taking a waiting ticket.']);
+        }
 
         try {
             $ticket = $voting->execute(fn (): array => $queue->join($request->session()->get($this->queueSessionKey($precinct))));
@@ -63,6 +85,10 @@ final class PublicSimulationVoterController extends Controller
     public function claim(ClaimVoterAuthorizationRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting): RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
+
+        if (! $this->hasAcceptedParticipation($request, $precinct)) {
+            throw ValidationException::withMessages(['code' => 'Review the public simulation participation notice before entering a control number.']);
+        }
 
         try {
             $authorization = $voting->execute(fn (): array => $authorizations->claim($request->validated('code')));
@@ -217,6 +243,31 @@ final class PublicSimulationVoterController extends Controller
     private function queueSessionKey(SimulationPrecinct $precinct): string
     {
         return "public_simulation.{$precinct->id}.admission_queue_ticket";
+    }
+
+    /** @param array<string, mixed>|null $policy */
+    private function hasAcceptedParticipation(Request $request, SimulationPrecinct $precinct, ?array $policy = null): bool
+    {
+        if (! $this->participationRequired()) {
+            return true;
+        }
+
+        $policy ??= app(PublicSimulationParticipation::class)->policy();
+
+        return hash_equals(
+            (string) ($policy['policy_hash'] ?? ''),
+            (string) $request->session()->get($this->participationSessionKey($precinct), ''),
+        );
+    }
+
+    private function participationRequired(): bool
+    {
+        return (bool) config('election.public_simulation.participation_required', true);
+    }
+
+    private function participationSessionKey(SimulationPrecinct $precinct): string
+    {
+        return "public_simulation.{$precinct->id}.participation_policy_hash";
     }
 
     private function printSessionKey(SimulationPrecinct $precinct): string
