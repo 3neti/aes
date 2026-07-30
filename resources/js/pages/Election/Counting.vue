@@ -14,6 +14,7 @@ import {
     physicalCount,
     scan,
 } from '@/routes/election/counting';
+import { download as downloadTallySheet } from '@/routes/election/counting/tally-sheet';
 import {
     approve as approveRandomManualAudit,
     discrepancy as recordRandomManualAuditDiscrepancy,
@@ -107,6 +108,12 @@ type RandomManualAudit = {
     tally: Record<string, Record<string, number>>;
 };
 
+type PrintProfile = {
+    value: string;
+    label: string;
+    width_mm: number;
+};
+
 const props = defineProps<{
     snapshot: ElectionSnapshot;
     tally: {
@@ -137,6 +144,7 @@ const props = defineProps<{
         }>;
         adjudications: Array<{ sequence: number }>;
     };
+    printProfiles: PrintProfile[];
 }>();
 
 const video = ref<HTMLVideoElement | null>(null);
@@ -491,11 +499,16 @@ onBeforeUnmount(() => stopCamera(false));
                         {{ snapshot.tabulationProfile.label }}
                     </p>
                     <p class="mt-2 text-sm text-emerald-900">
-                        Tally source: {{ snapshot.tabulationProfile.tally_source }}.
+                        Tally source:
+                        {{ snapshot.tabulationProfile.tally_source }}.
                     </p>
                 </div>
-                <div class="border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-                    The ballot box remains the paper-audit record. Count the physical ballots removed from the box before completing the tally.
+                <div
+                    class="border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+                >
+                    The ballot box remains the paper-audit record. Count the
+                    physical ballots removed from the box before completing the
+                    tally.
                 </div>
             </div>
         </CeremonyActionPanel>
@@ -507,7 +520,11 @@ onBeforeUnmount(() => stopCamera(false));
             eyebrow="Paper audit control"
             :status="`${randomManualAudit.approved_ballots} ballots approved`"
             :tone="pendingAudit ? 'warning' : 'neutral'"
-            :recommended="canCount && !pendingAudit && randomManualAudit.approved_ballots === 0"
+            :recommended="
+                canCount &&
+                !pendingAudit &&
+                randomManualAudit.approved_ballots === 0
+            "
         >
             <section
                 v-if="rmaFeedback"
@@ -522,7 +539,8 @@ onBeforeUnmount(() => stopCamera(false));
                               ? 'Random manual audit record approved'
                               : rmaFeedback.status === 'discrepancy-recorded'
                                 ? 'Paper discrepancy recorded for review'
-                                : rmaFeedback.status === 'reconciliation-generated'
+                                : rmaFeedback.status ===
+                                    'reconciliation-generated'
                                   ? 'Audit reconciliation report generated'
                                   : rmaFeedback.status === 'evidence-pack-built'
                                     ? 'Random manual audit evidence pack built'
@@ -541,42 +559,72 @@ onBeforeUnmount(() => stopCamera(false));
                 class="mt-5 flex flex-col gap-4 border border-blue-300 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between"
             >
                 <div>
-                    <h3 class="text-sm font-bold text-blue-950">Freeze the audit sample</h3>
+                    <h3 class="text-sm font-bold text-blue-950">
+                        Freeze the audit sample
+                    </h3>
                     <p class="mt-1 text-sm text-blue-900">
-                        The device ranks sealed VVDAT records with a deterministic SHA-256 seed. The resulting sample and its source count are preserved before any audit scan.
+                        The device ranks sealed VVDAT records with a
+                        deterministic SHA-256 seed. The resulting sample and its
+                        source count are preserved before any audit scan.
                     </p>
-                    <p v-if="errors.sample" class="mt-2 text-sm font-bold text-red-700">
+                    <p
+                        v-if="errors.sample"
+                        class="mt-2 text-sm font-bold text-red-700"
+                    >
                         {{ errors.sample }}
                     </p>
                 </div>
                 <button
                     class="primary-button shrink-0"
-                    :class="{ 'review-next-action-button': electionReview.enabled }"
+                    :class="{
+                        'review-next-action-button': electionReview.enabled,
+                    }"
                     type="submit"
                     :disabled="processing"
                 >
-                    {{ processing ? 'Selecting sample...' : 'Select random audit sample' }}
+                    {{
+                        processing
+                            ? 'Selecting sample...'
+                            : 'Select random audit sample'
+                    }}
                 </button>
             </Form>
 
-            <section v-else-if="auditSample" class="mt-5 border border-blue-300 bg-blue-50 p-4">
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <section
+                v-else-if="auditSample"
+                class="mt-5 border border-blue-300 bg-blue-50 p-4"
+            >
+                <div
+                    class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <div>
-                        <h3 class="text-sm font-bold text-blue-950">Recorded audit sample</h3>
+                        <h3 class="text-sm font-bold text-blue-950">
+                            Recorded audit sample
+                        </h3>
                         <p class="mt-1 text-sm text-blue-900">
-                            {{ auditSample.sample_size }} of {{ auditSample.source_record_count }} sealed device records selected.
+                            {{ auditSample.sample_size }} of
+                            {{ auditSample.source_record_count }} sealed device
+                            records selected.
                         </p>
                     </div>
-                    <span class="text-xs font-bold uppercase text-blue-800">Sample frozen</span>
+                    <span class="text-xs font-bold text-blue-800 uppercase"
+                        >Sample frozen</span
+                    >
                 </div>
-                <ul class="mt-3 divide-y divide-blue-200 border border-blue-200 bg-white text-sm">
+                <ul
+                    class="mt-3 divide-y divide-blue-200 border border-blue-200 bg-white text-sm"
+                >
                     <li
                         v-for="ballot in auditSample.selected_ballots"
                         :key="ballot.payload_hash"
                         class="flex items-center justify-between gap-3 px-3 py-2"
                     >
                         <span class="font-bold text-stone-950">
-                            Paper ballot {{ ballot.paper_ballot_serial ?? 'serial unavailable' }}
+                            Paper ballot
+                            {{
+                                ballot.paper_ballot_serial ??
+                                'serial unavailable'
+                            }}
                         </span>
                         <span class="font-mono text-xs text-stone-600">
                             {{ ballot.payload_hash.slice(0, 12) }}
@@ -585,7 +633,9 @@ onBeforeUnmount(() => stopCamera(false));
                 </ul>
             </section>
 
-            <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            <div
+                class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
+            >
                 <Form
                     v-if="canCount && auditSample && !pendingAudit"
                     v-bind="proposeRandomManualAudit.form()"
@@ -597,7 +647,8 @@ onBeforeUnmount(() => stopCamera(false));
                             Scan sampled ballot
                         </h3>
                         <p class="mt-1 text-sm text-stone-600">
-                            Use a handheld QR scanner or paste a simulation payload.
+                            Use a handheld QR scanner or paste a simulation
+                            payload.
                         </p>
                     </div>
                     <label class="block">
@@ -609,7 +660,10 @@ onBeforeUnmount(() => stopCamera(false));
                             required
                         />
                     </label>
-                    <p v-if="errors.payload" class="text-sm font-bold text-red-700">
+                    <p
+                        v-if="errors.payload"
+                        class="text-sm font-bold text-red-700"
+                    >
                         {{ errors.payload }}
                     </p>
                     <button
@@ -622,7 +676,11 @@ onBeforeUnmount(() => stopCamera(false));
                         type="submit"
                         :disabled="processing"
                     >
-                        {{ processing ? 'Reading QR...' : 'Propose paper comparison' }}
+                        {{
+                            processing
+                                ? 'Reading QR...'
+                                : 'Propose paper comparison'
+                        }}
                     </button>
                 </Form>
 
@@ -631,24 +689,34 @@ onBeforeUnmount(() => stopCamera(false));
                     class="border border-amber-400 bg-amber-50 p-4"
                 >
                     <header class="border-b border-amber-200 pb-3">
-                        <p class="text-xs font-bold uppercase text-amber-900">
+                        <p class="text-xs font-bold text-amber-900 uppercase">
                             Pending dual approval
                         </p>
                         <h3 class="mt-1 font-bold text-amber-950">
-                            Paper ballot {{ pendingAudit.paper_ballot_serial ?? pendingAudit.ballot_id }}
+                            Paper ballot
+                            {{
+                                pendingAudit.paper_ballot_serial ??
+                                pendingAudit.ballot_id
+                            }}
                         </h3>
                         <p class="mt-1 text-sm text-amber-900">
-                            Read the printed ballot face. Confirm each selection below matches the paper before both officers approve.
+                            Read the printed ballot face. Confirm each selection
+                            below matches the paper before both officers
+                            approve.
                         </p>
                     </header>
 
                     <div class="mt-4 space-y-3">
                         <section
-                            v-for="(candidateIds, contest) in pendingAudit.selections"
+                            v-for="(
+                                candidateIds, contest
+                            ) in pendingAudit.selections"
                             :key="contest"
                             class="border border-amber-200 bg-white"
                         >
-                            <h4 class="border-b border-amber-100 px-3 py-2 text-sm font-bold text-stone-950">
+                            <h4
+                                class="border-b border-amber-100 px-3 py-2 text-sm font-bold text-stone-950"
+                            >
                                 {{ contestTitle(String(contest)) }}
                             </h4>
                             <ul class="divide-y divide-stone-100">
@@ -657,7 +725,12 @@ onBeforeUnmount(() => stopCamera(false));
                                     :key="candidateId"
                                     class="px-3 py-2 text-sm text-stone-800"
                                 >
-                                    {{ candidateName(String(contest), candidateId) }}
+                                    {{
+                                        candidateName(
+                                            String(contest),
+                                            candidateId,
+                                        )
+                                    }}
                                 </li>
                                 <li
                                     v-if="candidateIds.length === 0"
@@ -679,20 +752,25 @@ onBeforeUnmount(() => stopCamera(false));
                             type="hidden"
                             :value="pendingAudit.payload_hash"
                         />
-                        <label class="flex gap-2 text-sm font-bold text-stone-900 sm:col-span-2">
+                        <label
+                            class="flex gap-2 text-sm font-bold text-stone-900 sm:col-span-2"
+                        >
                             <input
                                 name="paper_matches_payload"
                                 type="checkbox"
                                 value="1"
                                 required
                             />
-                            The printed paper ballot matches these decoded selections.
+                            The printed paper ballot matches these decoded
+                            selections.
                         </label>
                         <label class="text-sm font-bold"
                             >First officer code<input
                                 name="first_officer_code"
                                 class="mt-1 min-h-11 w-full border border-stone-300 px-3"
-                                :value="reviewDefaults.primary_officer?.code ?? ''"
+                                :value="
+                                    reviewDefaults.primary_officer?.code ?? ''
+                                "
                         /></label>
                         <label class="text-sm font-bold"
                             >First officer PIN<input
@@ -700,7 +778,9 @@ onBeforeUnmount(() => stopCamera(false));
                                 type="password"
                                 inputmode="numeric"
                                 class="mt-1 min-h-11 w-full border border-stone-300 px-3"
-                                :value="reviewDefaults.primary_officer?.pin ?? ''"
+                                :value="
+                                    reviewDefaults.primary_officer?.pin ?? ''
+                                "
                         /></label>
                         <label class="text-sm font-bold"
                             >Second officer code<input
@@ -720,17 +800,23 @@ onBeforeUnmount(() => stopCamera(false));
                             v-if="Object.keys(errors).length"
                             class="text-sm font-bold text-red-700 sm:col-span-2"
                         >
-                            Check the paper comparison and both officer credentials.
+                            Check the paper comparison and both officer
+                            credentials.
                         </p>
                         <button
                             class="primary-button sm:col-span-2"
                             :class="{
-                                'review-next-action-button': electionReview.enabled,
+                                'review-next-action-button':
+                                    electionReview.enabled,
                             }"
                             type="submit"
                             :disabled="processing"
                         >
-                            {{ processing ? 'Recording approval...' : 'Record dual approval' }}
+                            {{
+                                processing
+                                    ? 'Recording approval...'
+                                    : 'Record dual approval'
+                            }}
                         </button>
                     </Form>
 
@@ -739,7 +825,9 @@ onBeforeUnmount(() => stopCamera(false));
                             Record a paper discrepancy instead
                         </summary>
                         <p class="mt-2 text-sm text-red-900">
-                            This records the discrepancy for Electoral Board review. It does not alter the device tally, audit tally, or Election Return.
+                            This records the discrepancy for Electoral Board
+                            review. It does not alter the device tally, audit
+                            tally, or Election Return.
                         </p>
                         <Form
                             v-bind="recordRandomManualAuditDiscrepancy.form()"
@@ -756,12 +844,16 @@ onBeforeUnmount(() => stopCamera(false));
                                     name="reason"
                                     class="mt-1 h-20 w-full border border-stone-300 bg-white p-3"
                                     required
-                            /></label>
+                                />
+                            </label>
                             <label class="text-sm font-bold"
                                 >First officer code<input
                                     name="first_officer_code"
                                     class="mt-1 min-h-11 w-full border border-stone-300 px-3"
-                                    :value="reviewDefaults.primary_officer?.code ?? ''"
+                                    :value="
+                                        reviewDefaults.primary_officer?.code ??
+                                        ''
+                                    "
                             /></label>
                             <label class="text-sm font-bold"
                                 >First officer PIN<input
@@ -769,13 +861,18 @@ onBeforeUnmount(() => stopCamera(false));
                                     type="password"
                                     inputmode="numeric"
                                     class="mt-1 min-h-11 w-full border border-stone-300 px-3"
-                                    :value="reviewDefaults.primary_officer?.pin ?? ''"
+                                    :value="
+                                        reviewDefaults.primary_officer?.pin ??
+                                        ''
+                                    "
                             /></label>
                             <label class="text-sm font-bold"
                                 >Second officer code<input
                                     name="second_officer_code"
                                     class="mt-1 min-h-11 w-full border border-stone-300 px-3"
-                                    :value="reviewDefaults.poll_clerk?.code ?? ''"
+                                    :value="
+                                        reviewDefaults.poll_clerk?.code ?? ''
+                                    "
                             /></label>
                             <label class="text-sm font-bold"
                                 >Second officer PIN<input
@@ -783,13 +880,26 @@ onBeforeUnmount(() => stopCamera(false));
                                     type="password"
                                     inputmode="numeric"
                                     class="mt-1 min-h-11 w-full border border-stone-300 px-3"
-                                    :value="reviewDefaults.poll_clerk?.pin ?? ''"
+                                    :value="
+                                        reviewDefaults.poll_clerk?.pin ?? ''
+                                    "
                             /></label>
-                            <p v-if="Object.keys(errors).length" class="text-sm font-bold text-red-700 sm:col-span-2">
+                            <p
+                                v-if="Object.keys(errors).length"
+                                class="text-sm font-bold text-red-700 sm:col-span-2"
+                            >
                                 Check the reason and both officer credentials.
                             </p>
-                            <button class="secondary-button border-red-700 text-red-900 sm:col-span-2" type="submit" :disabled="processing">
-                                {{ processing ? 'Recording discrepancy...' : 'Record paper discrepancy' }}
+                            <button
+                                class="secondary-button border-red-700 text-red-900 sm:col-span-2"
+                                type="submit"
+                                :disabled="processing"
+                            >
+                                {{
+                                    processing
+                                        ? 'Recording discrepancy...'
+                                        : 'Record paper discrepancy'
+                                }}
                             </button>
                         </Form>
                     </details>
@@ -810,7 +920,8 @@ onBeforeUnmount(() => stopCamera(false));
             <div v-if="randomManualAudit.approved_ballots > 0" class="mt-6">
                 <h3 class="text-sm font-bold text-stone-950">Audit tally</h3>
                 <p class="mt-1 text-sm text-stone-600">
-                    Totals from dual-approved paper comparisons only. These figures do not replace the device tabulation tally.
+                    Totals from dual-approved paper comparisons only. These
+                    figures do not replace the device tabulation tally.
                 </p>
                 <div class="mt-3 grid gap-3 sm:grid-cols-2">
                     <section
@@ -818,7 +929,9 @@ onBeforeUnmount(() => stopCamera(false));
                         :key="contest"
                         class="border border-stone-200"
                     >
-                        <h4 class="border-b border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-950">
+                        <h4
+                            class="border-b border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-950"
+                        >
                             {{ contestTitle(String(contest)) }}
                         </h4>
                         <dl class="divide-y divide-stone-100 text-sm">
@@ -827,7 +940,14 @@ onBeforeUnmount(() => stopCamera(false));
                                 :key="candidate"
                                 class="flex justify-between gap-3 px-3 py-2"
                             >
-                                <dt>{{ candidateName(String(contest), String(candidate)) }}</dt>
+                                <dt>
+                                    {{
+                                        candidateName(
+                                            String(contest),
+                                            String(candidate),
+                                        )
+                                    }}
+                                </dt>
                                 <dd class="font-bold">{{ votes }}</dd>
                             </div>
                         </dl>
@@ -835,72 +955,165 @@ onBeforeUnmount(() => stopCamera(false));
                 </div>
             </div>
 
-            <section v-if="auditSample" class="mt-6 border-t border-stone-300 pt-5">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <section
+                v-if="auditSample"
+                class="mt-6 border-t border-stone-300 pt-5"
+            >
+                <div
+                    class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <div>
-                        <h3 class="text-sm font-bold text-stone-950">Audit reconciliation report</h3>
+                        <h3 class="text-sm font-bold text-stone-950">
+                            Audit reconciliation report
+                        </h3>
                         <p class="mt-1 text-sm text-stone-600">
-                            Compares every selected paper-audit result to its sealed device record. The report is evidence only and never changes tabulation.
+                            Compares every selected paper-audit result to its
+                            sealed device record. The report is evidence only
+                            and never changes tabulation.
                         </p>
                     </div>
                     <Form
-                        v-bind="generateRandomManualAuditReconciliationReport.form()"
+                        v-bind="
+                            generateRandomManualAuditReconciliationReport.form()
+                        "
                         #default="{ processing }"
                     >
-                        <button class="secondary-button" type="submit" :disabled="processing">
-                            {{ processing ? 'Generating report...' : 'Generate reconciliation report' }}
+                        <button
+                            class="secondary-button"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{
+                                processing
+                                    ? 'Generating report...'
+                                    : 'Generate reconciliation report'
+                            }}
                         </button>
                     </Form>
                 </div>
 
                 <div v-if="auditReconciliation" class="mt-4">
                     <div class="grid gap-3 sm:grid-cols-4">
-                        <div class="border border-emerald-300 bg-emerald-50 p-3">
-                            <span class="text-xs font-bold uppercase text-emerald-800">Verified</span>
-                            <strong class="mt-1 block text-2xl text-emerald-950">{{ auditReconciliation.verified_ballots }}</strong>
+                        <div
+                            class="border border-emerald-300 bg-emerald-50 p-3"
+                        >
+                            <span
+                                class="text-xs font-bold text-emerald-800 uppercase"
+                                >Verified</span
+                            >
+                            <strong
+                                class="mt-1 block text-2xl text-emerald-950"
+                                >{{
+                                    auditReconciliation.verified_ballots
+                                }}</strong
+                            >
                         </div>
                         <div class="border border-red-300 bg-red-50 p-3">
-                            <span class="text-xs font-bold uppercase text-red-800">Discrepancies</span>
-                            <strong class="mt-1 block text-2xl text-red-950">{{ auditReconciliation.discrepancy_ballots }}</strong>
+                            <span
+                                class="text-xs font-bold text-red-800 uppercase"
+                                >Discrepancies</span
+                            >
+                            <strong class="mt-1 block text-2xl text-red-950">{{
+                                auditReconciliation.discrepancy_ballots
+                            }}</strong>
                         </div>
                         <div class="border border-amber-300 bg-amber-50 p-3">
-                            <span class="text-xs font-bold uppercase text-amber-800">Pending</span>
-                            <strong class="mt-1 block text-2xl text-amber-950">{{ auditReconciliation.pending_ballots }}</strong>
+                            <span
+                                class="text-xs font-bold text-amber-800 uppercase"
+                                >Pending</span
+                            >
+                            <strong
+                                class="mt-1 block text-2xl text-amber-950"
+                                >{{
+                                    auditReconciliation.pending_ballots
+                                }}</strong
+                            >
                         </div>
                         <div class="border border-stone-300 p-3">
-                            <span class="text-xs font-bold uppercase text-stone-600">Device issues</span>
-                            <strong class="mt-1 block text-2xl text-stone-950">{{ auditReconciliation.device_record_issues }}</strong>
+                            <span
+                                class="text-xs font-bold text-stone-600 uppercase"
+                                >Device issues</span
+                            >
+                            <strong
+                                class="mt-1 block text-2xl text-stone-950"
+                                >{{
+                                    auditReconciliation.device_record_issues
+                                }}</strong
+                            >
                         </div>
                     </div>
-                    <p class="mt-3 text-sm font-bold" :class="auditReconciliation.passed ? 'text-emerald-800' : 'text-amber-800'">
-                        {{ auditReconciliation.passed ? 'All sampled paper comparisons verify against the sealed device records.' : 'The audit sample has unresolved, discrepant, or device-record issues.' }}
+                    <p
+                        class="mt-3 text-sm font-bold"
+                        :class="
+                            auditReconciliation.passed
+                                ? 'text-emerald-800'
+                                : 'text-amber-800'
+                        "
+                    >
+                        {{
+                            auditReconciliation.passed
+                                ? 'All sampled paper comparisons verify against the sealed device records.'
+                                : 'The audit sample has unresolved, discrepant, or device-record issues.'
+                        }}
                     </p>
-                    <ul class="mt-3 divide-y divide-stone-200 border border-stone-200 text-sm">
-                        <li v-for="entry in auditReconciliation.entries" :key="entry.payload_hash" class="flex items-center justify-between gap-3 px-3 py-2">
-                            <span>Paper ballot {{ entry.paper_ballot_serial ?? 'serial unavailable' }}</span>
-                            <span class="font-bold text-stone-800">{{ entry.status }}</span>
+                    <ul
+                        class="mt-3 divide-y divide-stone-200 border border-stone-200 text-sm"
+                    >
+                        <li
+                            v-for="entry in auditReconciliation.entries"
+                            :key="entry.payload_hash"
+                            class="flex items-center justify-between gap-3 px-3 py-2"
+                        >
+                            <span
+                                >Paper ballot
+                                {{
+                                    entry.paper_ballot_serial ??
+                                    'serial unavailable'
+                                }}</span
+                            >
+                            <span class="font-bold text-stone-800">{{
+                                entry.status
+                            }}</span>
                         </li>
                     </ul>
 
-                    <div class="mt-5 flex flex-col gap-3 border-t border-stone-300 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div
+                        class="mt-5 flex flex-col gap-3 border-t border-stone-300 pt-5 sm:flex-row sm:items-center sm:justify-between"
+                    >
                         <div>
-                            <h4 class="text-sm font-bold text-stone-950">Evidence pack</h4>
+                            <h4 class="text-sm font-bold text-stone-950">
+                                Evidence pack
+                            </h4>
                             <p class="mt-1 text-sm text-stone-600">
-                                Portable JSON containing the sample, reconciliation, approvals, and discrepancies, with a companion print form.
+                                Portable JSON containing the sample,
+                                reconciliation, approvals, and discrepancies,
+                                with a companion print form.
                             </p>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <Form
-                                v-bind="buildRandomManualAuditEvidencePack.form()"
+                                v-bind="
+                                    buildRandomManualAuditEvidencePack.form()
+                                "
                                 #default="{ processing }"
                             >
-                                <button class="secondary-button" type="submit" :disabled="processing">
-                                    {{ processing ? 'Building pack...' : 'Build evidence pack' }}
+                                <button
+                                    class="secondary-button"
+                                    type="submit"
+                                    :disabled="processing"
+                                >
+                                    {{
+                                        processing
+                                            ? 'Building pack...'
+                                            : 'Build evidence pack'
+                                    }}
                                 </button>
                             </Form>
                             <a
                                 v-if="auditEvidencePack"
-                                :href="downloadRandomManualAuditEvidencePack.url()"
+                                :href="
+                                    downloadRandomManualAuditEvidencePack.url()
+                                "
                                 class="secondary-button"
                             >
                                 Download JSON
@@ -920,14 +1133,17 @@ onBeforeUnmount(() => stopCamera(false));
 
         <CeremonyActionPanel
             title="Physical reconciliation"
-            :description="routineScanningEnabled
-                ? 'Declare the paper ballots removed from the box and resolve every rejected scan in public before completing the tally.'
-                : 'Declare the paper ballots removed from the box and reconcile them to the sealed device tabulation record before completing the tally.'"
+            :description="
+                routineScanningEnabled
+                    ? 'Declare the paper ballots removed from the box and resolve every rejected scan in public before completing the tally.'
+                    : 'Declare the paper ballots removed from the box and reconcile them to the sealed device tabulation record before completing the tally.'
+            "
             eyebrow="Election Board control"
             :status="reconciliation.passed ? 'Reconciled' : 'Action required'"
             :tone="reconciliation.passed ? 'complete' : 'warning'"
             :recommended="
-                tally.accepted_ballots > 0 && !reconciliation.physical_count_recorded
+                tally.accepted_ballots > 0 &&
+                !reconciliation.physical_count_recorded
             "
         >
             <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -1150,9 +1366,21 @@ onBeforeUnmount(() => stopCamera(false));
                     <table class="w-full table-fixed text-sm">
                         <thead>
                             <tr>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-stone-500">Candidate</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold text-stone-500">Tally marks</th>
-                                <th class="w-24 px-4 py-2 text-right text-xs font-semibold text-stone-500">Votes</th>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-semibold text-stone-500"
+                                >
+                                    Candidate
+                                </th>
+                                <th
+                                    class="px-4 py-2 text-left text-xs font-semibold text-stone-500"
+                                >
+                                    Tally marks
+                                </th>
+                                <th
+                                    class="w-24 px-4 py-2 text-right text-xs font-semibold text-stone-500"
+                                >
+                                    Votes
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-stone-200">
@@ -1188,11 +1416,33 @@ onBeforeUnmount(() => stopCamera(false));
                 </p>
             </div>
 
+            <section class="mt-5 border border-stone-300 bg-stone-50 p-4">
+                <h3 class="text-sm font-bold text-stone-950">
+                    Print-ready tally sheet
+                </h3>
+                <p class="mt-1 text-sm text-stone-600">
+                    Review the same tally in the form factor installed at this
+                    precinct.
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <a
+                        v-for="profile in printProfiles"
+                        :key="profile.value"
+                        class="secondary-button"
+                        :href="downloadTallySheet.url(profile.value)"
+                        target="_blank"
+                    >
+                        View {{ profile.label }}
+                    </a>
+                </div>
+            </section>
+
             <div
                 class="mt-5 flex flex-col gap-4 border-t border-stone-300 pt-5 sm:flex-row sm:items-center sm:justify-between"
             >
                 <p class="max-w-2xl text-sm text-stone-600">
-                    Complete counting only after the ballot box and configured tabulation record have been reconciled.
+                    Complete counting only after the ballot box and configured
+                    tabulation record have been reconciled.
                 </p>
                 <Form
                     v-if="canCount"

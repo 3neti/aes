@@ -13,6 +13,7 @@ import {
     copyDistribution,
     generate,
 } from '@/routes/election/returns';
+import { download as downloadReturnForm } from '@/routes/election/returns/forms';
 import { useElectionReview } from '@/stores/electionReview';
 
 type ReturnArtifact = {
@@ -43,6 +44,12 @@ type ReturnLegalEvidence = {
     artifact?: string;
 };
 
+type PrintProfile = {
+    value: string;
+    label: string;
+    width_mm: number;
+};
+
 const props = defineProps<{
     snapshot: ElectionSnapshot;
     returnArtifact: ReturnArtifact;
@@ -53,6 +60,7 @@ const props = defineProps<{
         approval_hash?: string;
         approvers?: Array<{ name: string; role: string }>;
     };
+    printProfiles: PrintProfile[];
 }>();
 
 const { review: electionReview, defaults: reviewDefaults } =
@@ -278,6 +286,27 @@ function candidateName(contestId: string, candidateId: string): string {
                             : []),
                     ]"
                 />
+
+                <section class="mt-5 border border-stone-300 bg-stone-50 p-4">
+                    <h3 class="text-sm font-bold text-stone-950">
+                        Election Return form factors
+                    </h3>
+                    <p class="mt-1 text-sm text-stone-600">
+                        The posted result is available as a full-page copy and
+                        compact thermal-roll copies from the same sealed return.
+                    </p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <a
+                            v-for="profile in printProfiles"
+                            :key="profile.value"
+                            class="secondary-button"
+                            :href="downloadReturnForm.url(profile.value)"
+                            target="_blank"
+                        >
+                            View {{ profile.label }}
+                        </a>
+                    </div>
+                </section>
             </div>
         </CeremonyActionPanel>
 

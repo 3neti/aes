@@ -223,6 +223,13 @@ type ApplianceRecovery = {
     report_hash?: string;
 };
 
+type PrintForms = {
+    default_profile: string;
+    profiles: Array<{ value: string; label: string; width_mm: number }>;
+    tally_sheet: { exists: boolean; profile_count?: number };
+    election_return: { exists: boolean; profile_count?: number };
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
     diagnostics: {
@@ -235,6 +242,7 @@ defineProps<{
         attestations?: number;
         printer?: string;
         scanner?: string;
+        print_forms?: PrintForms;
         device_certification?: {
             passed?: boolean;
         };
@@ -326,6 +334,34 @@ const { review: electionReview } = useElectionReview();
                         <dd class="mt-1 text-2xl font-bold text-stone-950">
                             {{ diagnostics.attestations ?? 0 }}
                         </dd>
+                    </div>
+                    <div
+                        v-if="diagnostics.print_forms"
+                        class="border border-stone-200 p-3 sm:col-span-2"
+                    >
+                        <dt class="text-stone-500">Configured print forms</dt>
+                        <dd class="mt-1 font-bold text-stone-950">
+                            {{
+                                diagnostics.print_forms.profiles
+                                    .map((profile) => profile.label)
+                                    .join(', ')
+                            }}
+                        </dd>
+                        <p class="mt-1 text-xs text-stone-600">
+                            Default:
+                            {{ diagnostics.print_forms.default_profile }}. Tally
+                            sheet:
+                            {{
+                                diagnostics.print_forms.tally_sheet.exists
+                                    ? 'generated'
+                                    : 'pending'
+                            }}. Election Return:
+                            {{
+                                diagnostics.print_forms.election_return.exists
+                                    ? 'generated'
+                                    : 'pending'
+                            }}.
+                        </p>
                     </div>
                 </dl>
                 <Form v-bind="certifyDevices.form()" #default="{ processing }">

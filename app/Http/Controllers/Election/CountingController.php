@@ -10,6 +10,7 @@ use App\Election\Counting\CountingService;
 use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
+use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\Scanning\BallotScanner;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfileResolver;
@@ -31,6 +32,7 @@ final class CountingController extends Controller
         CountingLegalEvidenceService $legalEvidence,
         CountingReconciliationService $reconciliation,
         RandomManualAuditService $randomManualAudit,
+        PrintFormProfileResolver $printProfiles,
     ): Response {
         return Inertia::render('Election/Counting', [
             'snapshot' => $snapshot->get(),
@@ -41,6 +43,7 @@ final class CountingController extends Controller
             'rmaFeedback' => $request->session()->get('rma_feedback'),
             'reconciliation' => $reconciliation->summary(),
             'randomManualAudit' => $randomManualAudit->summary(),
+            'printProfiles' => $printProfiles->options(),
         ]);
     }
 
@@ -263,6 +266,16 @@ final class CountingController extends Controller
         abort_unless(file_exists($path), 404);
 
         return response()->download($path, 'random-manual-audit-evidence-pack.pdf');
+    }
+
+    public function downloadTallySheet(string $profile, ElectionStorage $storage, PrintFormProfileResolver $profiles): BinaryFileResponse
+    {
+        $resolved = $profiles->from($profile);
+        $path = $storage->path("print-forms/tally-sheet/{$resolved->value}.pdf");
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->file($path, ['Content-Type' => 'application/pdf']);
     }
 
     public function complete(

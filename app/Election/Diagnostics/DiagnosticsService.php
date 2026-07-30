@@ -4,6 +4,7 @@ namespace App\Election\Diagnostics;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
+use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Filesystem\Filesystem;
@@ -16,6 +17,7 @@ final class DiagnosticsService
         private readonly CanonicalJson $json,
         private readonly ElectionClock $clock,
         private readonly Filesystem $files,
+        private readonly PrintFormProfileResolver $printProfiles,
     ) {}
 
     /**
@@ -44,8 +46,34 @@ final class DiagnosticsService
             'initialization_report' => $this->initializationReportSummary(),
             'printer' => config('election.devices.printer.adapter', 'simulated'),
             'scanner' => config('election.devices.scanner.adapter', 'simulated'),
+            'print_forms' => [
+                'default_profile' => $this->printProfiles->default()->value,
+                'profiles' => $this->printProfiles->options(),
+                'tally_sheet' => $this->printFormManifest('print-forms/tally-sheet/manifest.json'),
+                'election_return' => $this->printFormManifest('print-forms/election-return/'.($this->storage->readJson('runtime/active-precinct.json')['precinct_id'] ?? 'unknown').'/manifest.json'),
+            ],
             'device_certification' => $this->storage->readJson('certification/device-certification-report.json'),
             'appliance_recovery' => $this->storage->readJson('diagnostics/appliance-recovery-report.json'),
+        ];
+    }
+
+    /**
+     * @return array{exists: bool, source_hash?: string, profile_count?: int}
+     */
+    private function printFormManifest(string $relative): array
+    {
+        $path = $this->storage->path($relative);
+
+        if (! $this->files->exists($path)) {
+            return ['exists' => false];
+        }
+
+        $manifest = $this->storage->readJson($relative);
+
+        return [
+            'exists' => true,
+            'source_hash' => $manifest['source_hash'] ?? '',
+            'profile_count' => count($manifest['profiles'] ?? []),
         ];
     }
 

@@ -6,6 +6,7 @@ import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { voting } from '@/routes/election';
 import { print, spoil } from '@/routes/election/printing';
+import { download as downloadPrintForm } from '@/routes/election/printing/forms';
 import { useElectionReview } from '@/stores/electionReview';
 
 type BallotPayload = {
@@ -17,10 +18,26 @@ type BallotPayload = {
     paper_ballot_serial?: string;
 };
 
+type PrintProfile = {
+    value: string;
+    label: string;
+    description: string;
+    width_mm: number;
+    thermal: boolean;
+};
+
+type PrintJob = {
+    print_form_profile?: string;
+    form_artifacts?: Record<string, { label: string; width_mm: number }>;
+};
+
 defineProps<{
     snapshot: ElectionSnapshot;
     payload: BallotPayload;
     qrImageDataUri: string;
+    printProfiles: PrintProfile[];
+    defaultPrintProfile: string;
+    printJob: PrintJob;
 }>();
 
 const { review: electionReview } = useElectionReview();
@@ -86,11 +103,43 @@ const { review: electionReview } = useElectionReview();
                         </div>
                     </dl>
 
-                    <div class="mt-5 flex flex-wrap gap-3">
+                    <div class="mt-5 border border-stone-300 bg-stone-50 p-4">
+                        <p class="text-sm font-bold text-stone-950">
+                            Paper form for this print
+                        </p>
+                        <p class="mt-1 text-sm text-stone-700">
+                            The ballot payload and QR mark do not change. Select
+                            the printer paper width only.
+                        </p>
                         <Form
                             v-bind="print.form(payload.ballot_id)"
                             #default="{ errors, processing }"
+                            class="mt-3 flex flex-wrap items-end gap-3"
                         >
+                            <label
+                                class="grid min-w-56 gap-1 text-sm font-bold text-stone-800"
+                            >
+                                Printer form
+                                <select
+                                    name="profile"
+                                    class="min-h-11 border border-stone-300 bg-white px-3 font-normal text-stone-900"
+                                    :value="
+                                        printJob.print_form_profile ||
+                                        defaultPrintProfile
+                                    "
+                                >
+                                    <option
+                                        v-for="profile in printProfiles"
+                                        :key="profile.value"
+                                        :value="profile.value"
+                                    >
+                                        {{ profile.label }} ({{
+                                            profile.width_mm
+                                        }}
+                                        mm)
+                                    </option>
+                                </select>
+                            </label>
                             <button
                                 class="primary-button"
                                 :class="{
@@ -113,6 +162,8 @@ const { review: electionReview } = useElectionReview();
                                 {{ errors.printer }}
                             </p>
                         </Form>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-3">
                         <Form
                             v-bind="spoil.form(payload.ballot_id)"
                             #default="{ processing }"
@@ -140,6 +191,37 @@ const { review: electionReview } = useElectionReview();
                             },
                         ]"
                     />
+
+                    <section
+                        v-if="Object.keys(printJob.form_artifacts ?? {}).length"
+                        class="mt-5 border border-stone-300 p-4"
+                    >
+                        <h3 class="text-sm font-bold text-stone-950">
+                            Available ballot renditions
+                        </h3>
+                        <p class="mt-1 text-sm text-stone-600">
+                            Each view is rendered from the same sealed ballot
+                            payload.
+                        </p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <a
+                                v-for="(
+                                    artifact, profile
+                                ) in printJob.form_artifacts"
+                                :key="profile"
+                                class="secondary-button"
+                                :href="
+                                    downloadPrintForm.url({
+                                        ballot: payload.ballot_id!,
+                                        profile: String(profile),
+                                    })
+                                "
+                                target="_blank"
+                            >
+                                View {{ artifact.label }}
+                            </a>
+                        </div>
+                    </section>
 
                     <details class="mt-4 border border-stone-200">
                         <summary
@@ -196,6 +278,16 @@ const { review: electionReview } = useElectionReview();
     padding: 0.7rem 1rem;
     font-size: 0.875rem;
     font-weight: 700;
+}
+
+.secondary-button {
+    min-height: 2.75rem;
+    border: 1px solid rgb(87 83 78);
+    background: white;
+    padding: 0.7rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: rgb(28 25 23);
 }
 
 .primary-button {

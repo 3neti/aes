@@ -71,6 +71,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
 
         Route::get('/printing/{ballot?}', [PrintingController::class, 'show'])->name('printing');
         Route::post('/printing/{ballot}/print', [PrintingController::class, 'print'])->name('printing.print');
+        Route::get('/printing/{ballot}/forms/{profile}', [PrintingController::class, 'downloadForm'])->name('printing.forms.download');
         Route::post('/printing/{ballot}/spoil', [PrintingController::class, 'spoil'])->name('printing.spoil');
 
         Route::get('/counting', [CountingController::class, 'show'])->name('counting');
@@ -86,12 +87,14 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/counting/physical-count', [CountingController::class, 'recordPhysicalCount'])->name('counting.physical-count');
         Route::post('/counting/adjudicate', [CountingController::class, 'adjudicate'])->name('counting.adjudicate');
         Route::post('/counting/complete', [CountingController::class, 'complete'])->name('counting.complete');
+        Route::get('/counting/tally-sheet/{profile}', [CountingController::class, 'downloadTallySheet'])->name('counting.tally-sheet.download');
 
         Route::get('/returns', [ReturnsController::class, 'show'])->name('returns');
         Route::post('/returns/generate', [ReturnsController::class, 'generate'])->name('returns.generate');
         Route::post('/returns/copy-distribution', [ReturnsController::class, 'copyDistribution'])->name('returns.copy-distribution');
         Route::post('/returns/approve', [ReturnsController::class, 'approve'])->name('returns.approve');
         Route::post('/returns/close', [ReturnsController::class, 'close'])->name('returns.close');
+        Route::get('/returns/forms/{profile}', [ReturnsController::class, 'downloadForm'])->name('returns.forms.download');
 
         Route::get('/transmission', [TransmissionController::class, 'show'])->name('transmission');
         Route::post('/transmission/package', [TransmissionController::class, 'preparePackage'])->name('transmission.prepare');

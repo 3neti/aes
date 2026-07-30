@@ -6,6 +6,7 @@ use App\Election\Core\ElectionSnapshot;
 use App\Election\Counting\CountingReconciliationService;
 use App\Election\Counting\CountingService;
 use App\Election\Lifecycle\CeremonyActions;
+use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\Returns\ElectionReturnApprovalService;
 use App\Election\Returns\ElectionReturnCopyDistributionService;
 use App\Election\Returns\ElectionReturnLegalEvidenceService;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class ReturnsController extends Controller
 {
@@ -26,6 +28,7 @@ final class ReturnsController extends Controller
         ElectionReturnLegalEvidenceService $legalEvidence,
         ElectionReturnCopyDistributionService $copyDistribution,
         ElectionReturnApprovalService $approval,
+        PrintFormProfileResolver $printProfiles,
     ): Response {
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $precinctId = $configuration['precinct_id'] ?? '0421-A';
@@ -36,6 +39,7 @@ final class ReturnsController extends Controller
             'returnCopyDistribution' => $copyDistribution->summary(),
             'electionReturnLegalEvidence' => $legalEvidence->summary(),
             'returnApproval' => $approval->summary(),
+            'printProfiles' => $printProfiles->options(),
         ]);
     }
 
@@ -91,5 +95,19 @@ final class ReturnsController extends Controller
         $distribution->prepare();
 
         return redirect()->route('election.returns');
+    }
+
+    public function downloadForm(string $profile, ElectionStorage $storage, PrintFormProfileResolver $profiles): BinaryFileResponse
+    {
+        $configuration = $storage->readJson('runtime/active-precinct.json');
+        $precinctId = (string) ($configuration['precinct_id'] ?? '');
+        abort_if($precinctId === '', 404);
+
+        $resolved = $profiles->from($profile);
+        $path = $storage->path("print-forms/election-return/{$precinctId}/{$resolved->value}.pdf");
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->file($path, ['Content-Type' => 'application/pdf']);
     }
 }
