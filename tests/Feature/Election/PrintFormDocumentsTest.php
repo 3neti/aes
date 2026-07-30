@@ -94,8 +94,12 @@ test('tally and election return paginate complete candidate listings determinist
         ->and(substr_count($returnPdf, 'COMMISSION ON ELECTIONS'))->toBe(pdfPageCount($returnPdf))
         ->and($tallyPdf)->toContain('CANDIDATE 001')
         ->and($tallyPdf)->toContain('CANDIDATE 098')
+        ->and($tallyPdf)->toContain('TALLY MARKS')
+        ->and($tallyPdf)->toContain('% AES-TALLY-MARKS count=6 groups=1 remainder=1')
         ->and($returnPdf)->toContain('CANDIDATE 001')
         ->and($returnPdf)->toContain('CANDIDATE 098')
+        ->and($returnPdf)->toContain('TALLY MARKS')
+        ->and($returnPdf)->toContain('% AES-TALLY-MARKS count=6 groups=1 remainder=1')
         ->and($returnPdf)->toContain('ELECTORAL BOARD CERTIFICATION')
         ->and($tallyPdf)->toBe(app(TallySheetPdf::class)->render($configuration, $tally))
         ->and($returnPdf)->toBe(app(ElectionReturnPdf::class)->render($configuration, $return));

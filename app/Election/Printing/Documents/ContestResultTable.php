@@ -41,8 +41,13 @@ final class ContestResultTable
 
                 $candidateId = (string) ($candidate['id'] ?? '');
                 $name = (string) ($candidate['name'] ?? $candidateId);
-                $nameLines = $document->wrap($name, 355, 8.2);
-                $rowHeight = max(17, (count($nameLines) * 10) + 6);
+                $nameLines = $document->wrap($name, 225, 8.2);
+                $votes = (int) ($tally[$contestId][$candidateId] ?? 0);
+                $rowHeight = max(
+                    17,
+                    (count($nameLines) * 10) + 6,
+                    $document->tallyMarkHeight($votes, 180),
+                );
 
                 if ($y - $rowHeight < ElectionPdfDocument::ContentBottom) {
                     $page = $document->addPage($title.' - continued');
@@ -63,7 +68,7 @@ final class ContestResultTable
                     $nameY -= 10;
                 }
 
-                $votes = (int) ($tally[$contestId][$candidateId] ?? 0);
+                $document->tallyMarks($page, $votes, 316, $y, 180);
                 $document->text($page, (string) $votes, 535, $y - 12, 9, true, 'right');
                 $document->line($page, 42, $y - $rowHeight, 553, $y - $rowHeight, 0.35, 0.82);
                 $y -= $rowHeight;
@@ -118,6 +123,7 @@ final class ContestResultTable
         $document->rectangle($page, 42, $y - 18, 511, 18, 0.82);
         $document->text($page, 'NO.', 58, $y - 12, 7.5, true, 'center');
         $document->text($page, 'CANDIDATE / PARTY AS PRINTED', 82, $y - 12, 7.5, true);
+        $document->text($page, 'TALLY MARKS', 316, $y - 12, 7.5, true);
         $document->text($page, 'VOTES', 535, $y - 12, 7.5, true, 'right');
 
         return [$page, $y - 18];

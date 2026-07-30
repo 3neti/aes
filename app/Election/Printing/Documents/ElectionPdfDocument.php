@@ -167,6 +167,59 @@ final class ElectionPdfDocument
         );
     }
 
+    public function tallyMarkHeight(int $count, float $width): float
+    {
+        $groupCount = $this->tallyMarkGroupCount($count);
+
+        if ($groupCount === 0) {
+            return 0;
+        }
+
+        $groupsPerLine = max(1, (int) floor($width / 11));
+
+        return (ceil($groupCount / $groupsPerLine) * 10) + 4;
+    }
+
+    public function tallyMarks(
+        int $page,
+        int $count,
+        float $x,
+        float $y,
+        float $width,
+    ): void {
+        $count = max(0, $count);
+        $fullGroups = intdiv($count, 5);
+        $remainder = $count % 5;
+        $groupCount = $fullGroups + ($remainder > 0 ? 1 : 0);
+
+        if ($groupCount === 0) {
+            return;
+        }
+
+        $groupsPerLine = max(1, (int) floor($width / 11));
+        $this->command(
+            $page,
+            sprintf('%% AES-TALLY-MARKS count=%d groups=%d remainder=%d', $count, $fullGroups, $remainder),
+        );
+
+        for ($group = 0; $group < $groupCount; $group++) {
+            $line = intdiv($group, $groupsPerLine);
+            $column = $group % $groupsPerLine;
+            $groupX = $x + ($column * 11);
+            $centerY = $y - 8 - ($line * 10);
+            $marks = $group < $fullGroups ? 4 : $remainder;
+
+            for ($mark = 0; $mark < $marks; $mark++) {
+                $markX = $groupX + ($mark * 2.25);
+                $this->line($page, $markX, $centerY - 4, $markX, $centerY + 4, 0.7, 0.08);
+            }
+
+            if ($group < $fullGroups) {
+                $this->line($page, $groupX - 1, $centerY + 4, $groupX + 7.75, $centerY - 4, 0.7, 0.08);
+            }
+        }
+    }
+
     public function rectangle(
         int $page,
         float $x,
@@ -369,6 +422,13 @@ final class ElectionPdfDocument
         }
 
         $this->pages[$page]['commands'][] = $command;
+    }
+
+    private function tallyMarkGroupCount(int $count): int
+    {
+        $count = max(0, $count);
+
+        return intdiv($count, 5) + ($count % 5 > 0 ? 1 : 0);
     }
 
     private function textWidth(string $text, float $size, bool $monospace = false): float
