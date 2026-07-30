@@ -16,6 +16,8 @@ defineProps<{
         ballot_style_id: string;
         contests: Contest[];
     };
+    finalizeAction?: string;
+    publicSimulation?: boolean;
 }>();
 
 const step = ref<'ballot' | 'review'>('ballot');
@@ -109,7 +111,7 @@ function clearDraft(): void {
         </header>
 
         <Form
-            v-bind="finalize.form()"
+            v-bind="finalizeAction ? { action: finalizeAction, method: 'post' } : finalize.form()"
             #default="{ processing, errors }"
             class="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6"
             @success="clearDraft"

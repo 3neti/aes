@@ -1,0 +1,32 @@
+<script setup lang="ts">
+import { Form, Head, Link } from '@inertiajs/vue3';
+
+defineProps<{
+    round: { code: string; name: string };
+    precinct: {
+        code: string; label: string; clustered_precinct: string; city_municipality: string | null; province: string | null; status: string; officer_name: string; tally_available: boolean; accepted_ballots: number | null;
+        snapshot: { stageLabel: string; journal: Array<{ event_type: string; occurred_at: string }> } | null;
+    };
+    commonVoterUrl: string;
+    commonVoterQr: string;
+    actions: { open: string; admit: string; close: string; print: string; watch: string };
+    officerFeedback?: string | null;
+    controlNumber?: { code: string; expires_at: string } | null;
+}>();
+</script>
+
+<template>
+    <Head :title="`${precinct.code} public simulation`" />
+    <main class="min-h-screen bg-stone-100 text-stone-950">
+        <div class="grid h-1.5 grid-cols-3"><span class="bg-blue-800" /><span class="bg-yellow-400" /><span class="bg-red-700" /></div>
+        <header class="border-b border-stone-300 bg-white"><div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8"><div><Link :href="'/election/play'" class="text-sm font-bold text-blue-800">All precincts</Link><h1 class="mt-1 text-2xl font-bold">{{ precinct.label }}</h1><p class="text-sm text-stone-600">{{ precinct.city_municipality }} · {{ precinct.province }} · Cluster {{ precinct.clustered_precinct }}</p></div><span class="border px-3 py-2 text-sm font-bold" :class="precinct.status === 'open' ? 'border-emerald-600 bg-emerald-50 text-emerald-900' : precinct.status === 'closed' ? 'border-stone-400 bg-stone-100' : 'border-amber-500 bg-amber-50 text-amber-900'">{{ precinct.status }}</span></div></header>
+        <div class="mx-auto grid max-w-6xl gap-5 px-5 py-6 lg:grid-cols-[1.35fr_.9fr] sm:px-8">
+            <section class="space-y-5">
+                <section class="border border-stone-300 bg-white p-5"><p class="text-sm font-bold text-blue-800">Voter entrance</p><h2 class="mt-1 text-xl font-bold">Common tablet entry point</h2><p class="mt-2 text-sm text-stone-700">The Election Officer verifies the voter outside the application, hands over a four-digit control number, and the voter opens this common link in the voting booth.</p><div class="mt-4 flex flex-wrap items-center gap-4"><img :src="commonVoterQr" alt="Common precinct voter QR code" class="h-36 w-36 border border-stone-300 bg-white p-2" /><a :href="commonVoterUrl" class="secondary-button">Open voter tablet</a><a :href="actions.print" class="secondary-button">Open private print station</a><a :href="actions.watch" class="secondary-button">Open watcher view</a></div></section>
+                <section v-if="precinct.status === 'open'" class="border border-stone-300 bg-white p-5"><p class="text-sm font-bold text-blue-800">Election Officer</p><h2 class="mt-1 text-xl font-bold">Admit next voter</h2><Form :action="actions.admit" method="post" #default="{ errors, processing }" class="mt-4 grid gap-3 sm:grid-cols-3"><input name="officer_code" placeholder="Officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="PIN" class="min-h-11 border border-stone-400 px-3" required /><button class="min-h-11 bg-blue-800 px-4 font-bold text-white" type="submit" :disabled="processing">{{ processing ? 'Issuing...' : 'Issue control number' }}</button><p v-if="errors.officer_pin" class="text-sm font-bold text-red-700 sm:col-span-3">{{ errors.officer_pin }}</p></Form><div v-if="controlNumber" class="mt-5 border-l-4 border-emerald-700 bg-emerald-50 p-4"><p class="text-sm font-bold text-emerald-900">Give this number to the admitted voter</p><p class="mt-1 font-mono text-4xl font-bold text-emerald-950">{{ controlNumber.code }}</p><p class="mt-2 text-sm text-emerald-900">Expires {{ controlNumber.expires_at }}</p></div></section>
+                <section v-if="precinct.status === 'closed'" class="border border-emerald-600 bg-emerald-50 p-5"><p class="text-sm font-bold text-emerald-800">Published results</p><h2 class="mt-1 text-xl font-bold">{{ precinct.accepted_ballots ?? 0 }} VVDAT records tabulated</h2><p class="mt-2 text-sm text-emerald-950">The tally sheet and Election Return are available from the watcher view.</p><a :href="actions.watch" class="mt-4 inline-flex min-h-11 items-center bg-emerald-700 px-4 font-bold text-white">View published artifacts</a></section>
+            </section>
+            <aside class="space-y-5"><section class="border border-stone-300 bg-white p-5"><p class="text-sm font-bold text-blue-800">Officer control</p><h2 class="mt-1 text-xl font-bold">{{ precinct.status === 'ready' ? 'Open this precinct' : 'Close this precinct' }}</h2><p class="mt-2 text-sm text-stone-700">Assigned to {{ precinct.officer_name }}. Credentials are distributed privately by the facilitator.</p><Form v-if="precinct.status !== 'closed'" :action="precinct.status === 'ready' ? actions.open : actions.close" method="post" #default="{ errors, processing }" class="mt-4 space-y-3"><input name="officer_code" placeholder="Officer code" class="min-h-11 w-full border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="Six-digit PIN" class="min-h-11 w-full border border-stone-400 px-3" required /><p v-if="errors.officer_pin" class="text-sm font-bold text-red-700">{{ errors.officer_pin }}</p><button class="min-h-12 w-full px-4 font-bold text-white" :class="precinct.status === 'ready' ? 'bg-emerald-700' : 'bg-red-700'" type="submit" :disabled="processing">{{ processing ? 'Recording...' : precinct.status === 'ready' ? 'Open polls' : 'Close polls and publish results' }}</button></Form></section><section v-if="officerFeedback" class="border-l-4 border-blue-800 bg-blue-50 p-4 text-sm font-semibold text-blue-950">{{ officerFeedback }}</section><section v-if="precinct.snapshot" class="border border-stone-300 bg-white p-5"><p class="text-sm font-bold text-blue-800">Evidence timeline</p><p class="mt-1 font-bold">{{ precinct.snapshot.stageLabel }}</p><ol class="mt-4 space-y-3 text-sm"><li v-for="event in precinct.snapshot.journal" :key="`${event.occurred_at}-${event.event_type}`" class="border-l-2 border-stone-300 pl-3"><span class="block font-semibold">{{ event.event_type }}</span><span class="text-stone-600">{{ event.occurred_at }}</span></li></ol></section></aside>
+        </div>
+    </main>
+</template>

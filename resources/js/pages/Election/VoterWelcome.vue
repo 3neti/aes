@@ -10,6 +10,8 @@ defineProps<{
         election_id: string;
         precinct_id: string;
     };
+    claimAction?: string;
+    publicSimulation?: boolean;
 }>();
 
 const page = usePage();
@@ -38,7 +40,7 @@ const reviewRoom = computed(
             </p>
 
             <Form
-                v-bind="claim.form()"
+                v-bind="claimAction ? { action: claimAction, method: 'post' } : claim.form()"
                 #default="{ errors, processing }"
                 class="mt-7 space-y-4"
                 reset-on-success

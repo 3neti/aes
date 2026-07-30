@@ -34,6 +34,15 @@ return [
         'join_link_ttl_minutes' => (int) env('ELECTION_REVIEW_ROOM_JOIN_TTL', 480),
         'online_window_seconds' => (int) env('ELECTION_REVIEW_ROOM_ONLINE_WINDOW', 30),
     ],
+    'public_simulation' => [
+        'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_ENABLED', true),
+        'default_name' => (string) env('ELECTION_PUBLIC_SIMULATION_NAME', 'Public Election Simulation'),
+        'precincts' => [
+            ['code' => 'TONDO-01', 'clustered_precinct' => '39010001', 'district' => 'FIRST DIST', 'label' => 'Tondo Precinct 01'],
+            ['code' => 'TONDO-02', 'clustered_precinct' => '39010001', 'district' => 'FIRST DIST', 'label' => 'Tondo Precinct 02'],
+            ['code' => 'TONDO-03', 'clustered_precinct' => '39010001', 'district' => 'FIRST DIST', 'label' => 'Tondo Precinct 03'],
+        ],
+    ],
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),
         'print_release_ttl_seconds' => (int) env('ELECTION_PRINT_RELEASE_TTL', 600),

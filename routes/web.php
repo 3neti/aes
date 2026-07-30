@@ -8,6 +8,9 @@ use App\Http\Controllers\Election\HomeController;
 use App\Http\Controllers\Election\PrintingController;
 use App\Http\Controllers\Election\PrintStationController;
 use App\Http\Controllers\Election\ProvisionController;
+use App\Http\Controllers\Election\PublicSimulationController;
+use App\Http\Controllers\Election\PublicSimulationVoterController;
+use App\Http\Controllers\Election\PublicSimulationWatcherController;
 use App\Http\Controllers\Election\ReturnsController;
 use App\Http\Controllers\Election\ReviewRoomController;
 use App\Http\Controllers\Election\TransmissionController;
@@ -22,6 +25,28 @@ Route::get('/', HomeController::class)
     ->name('home');
 
 Route::prefix('election')->name('election.')->group(function (): void {
+    Route::prefix('play')->name('public-simulation.')->group(function (): void {
+        Route::get('/', [PublicSimulationController::class, 'index'])->name('index');
+        Route::get('/{round:code}/{precinct:code}', [PublicSimulationController::class, 'show'])->name('show');
+        Route::post('/{round:code}/{precinct:code}/open', [PublicSimulationController::class, 'open'])->name('open');
+        Route::post('/{round:code}/{precinct:code}/admit', [PublicSimulationController::class, 'admit'])->name('admit');
+        Route::post('/{round:code}/{precinct:code}/close', [PublicSimulationController::class, 'close'])->name('close');
+
+        Route::get('/{round:code}/{precinct:code}/vote', [PublicSimulationVoterController::class, 'show'])->name('voter.show');
+        Route::post('/{round:code}/{precinct:code}/vote/claim', [PublicSimulationVoterController::class, 'claim'])->middleware('throttle:10,1')->name('voter.claim');
+        Route::get('/{round:code}/{precinct:code}/vote/ballot', [PublicSimulationVoterController::class, 'ballot'])->name('voter.ballot');
+        Route::post('/{round:code}/{precinct:code}/vote/ballot', [PublicSimulationVoterController::class, 'finalize'])->name('voter.finalize');
+        Route::get('/{round:code}/{precinct:code}/vote/complete', [PublicSimulationVoterController::class, 'complete'])->name('voter.complete');
+        Route::get('/{round:code}/{precinct:code}/print', [PublicSimulationVoterController::class, 'printStation'])->name('print.station');
+        Route::post('/{round:code}/{precinct:code}/print/redeem', [PublicSimulationVoterController::class, 'redeem'])->name('print.redeem');
+        Route::post('/{round:code}/{precinct:code}/print/print', [PublicSimulationVoterController::class, 'print'])->name('print.print');
+        Route::post('/{round:code}/{precinct:code}/print/deposit', [PublicSimulationVoterController::class, 'deposit'])->name('print.deposit');
+
+        Route::get('/{round:code}/{precinct:code}/watch', [PublicSimulationWatcherController::class, 'show'])->name('watcher.show');
+        Route::get('/{round:code}/{precinct:code}/watch/tally-sheet', [PublicSimulationWatcherController::class, 'tally'])->name('watcher.tally');
+        Route::get('/{round:code}/{precinct:code}/watch/election-return', [PublicSimulationWatcherController::class, 'electionReturn'])->name('watcher.return');
+    });
+
     Route::get('/review-room', [ReviewRoomController::class, 'index'])->name('review-room.index');
     Route::post('/review-room', [ReviewRoomController::class, 'store'])->name('review-room.store');
     Route::post('/review-room/start-fresh', [ReviewRoomController::class, 'startFresh'])

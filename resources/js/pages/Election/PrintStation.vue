@@ -16,6 +16,12 @@ defineProps<{
         status: string;
         paper_ballot_serial: string;
     };
+    actions?: {
+        redeem: string;
+        print: string;
+        deposit: string;
+    };
+    publicSimulation?: boolean;
 }>();
 
 const page = usePage();
@@ -56,7 +62,7 @@ const reviewRoom = computed(
                     selections on screen.
                 </p>
                 <Form
-                    v-bind="redeem.form()"
+                    v-bind="actions ? { action: actions.redeem, method: 'post' } : redeem.form()"
                     #default="{ errors, processing }"
                     class="mt-7 space-y-4"
                 >
@@ -107,7 +113,7 @@ const reviewRoom = computed(
 
                 <Form
                     v-if="release.status === 'pending'"
-                    v-bind="print.form()"
+                    v-bind="actions ? { action: actions.print, method: 'post' } : print.form()"
                     #default="{ errors, processing }"
                     class="mt-7"
                 >
@@ -131,7 +137,7 @@ const reviewRoom = computed(
 
                 <Form
                     v-else
-                    v-bind="deposit.form()"
+                    v-bind="actions ? { action: actions.deposit, method: 'post' } : deposit.form()"
                     #default="{ errors, processing }"
                     class="mt-7"
                 >
