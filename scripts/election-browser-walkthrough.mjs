@@ -733,7 +733,7 @@ try {
             await openPath('/election/counting');
             await page
                 .getByRole('heading', {
-                    name: 'Scan paper ballots',
+                    name: 'Counting and Tally',
                     exact: true,
                 })
                 .waitFor();
@@ -809,6 +809,7 @@ try {
     await runStep(
         'generate-election-return',
         async () => {
+            await openPath('/election/returns');
             await postButton(
                 'Generate Election Return',
                 '/election/returns/generate',
