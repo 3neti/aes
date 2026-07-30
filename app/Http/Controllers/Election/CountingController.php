@@ -218,6 +218,20 @@ final class CountingController extends Controller
             ]);
     }
 
+    public function generateRandomManualAuditReconciliationReport(
+        RandomManualAuditService $randomManualAudit,
+    ): RedirectResponse {
+        $report = $randomManualAudit->generateReconciliationReport();
+
+        return redirect()
+            ->route('election.counting')
+            ->with('rma_feedback', [
+                'status' => 'reconciliation-generated',
+                'ballot_id' => null,
+                'payload_hash' => $report['report_hash'],
+            ]);
+    }
+
     public function complete(
         CeremonyActions $ceremonies,
         CountingService $counting,

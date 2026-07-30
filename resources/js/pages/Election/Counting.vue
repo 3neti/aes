@@ -17,6 +17,7 @@ import {
     approve as approveRandomManualAudit,
     discrepancy as recordRandomManualAuditDiscrepancy,
     propose as proposeRandomManualAudit,
+    reconciliationReport as generateRandomManualAuditReconciliationReport,
     selectSample as selectRandomManualAuditSample,
 } from '@/routes/election/counting/rma';
 import { useElectionReview } from '@/stores/electionReview';
@@ -46,7 +47,12 @@ type LegalEvidence = {
 };
 
 type RandomManualAuditFeedback = {
-    status: 'sample-selected' | 'proposed' | 'approved' | 'discrepancy-recorded';
+    status:
+        | 'sample-selected'
+        | 'proposed'
+        | 'approved'
+        | 'discrepancy-recorded'
+        | 'reconciliation-generated';
     ballot_id: string | null;
     payload_hash: string;
 };
@@ -70,6 +76,19 @@ type RandomManualAudit = {
         payload_hash: string;
         paper_ballot_serial: number | null;
         selections: Record<string, string[]>;
+    } | null;
+    reconciliation_report: {
+        complete: boolean;
+        passed: boolean;
+        verified_ballots: number;
+        discrepancy_ballots: number;
+        pending_ballots: number;
+        device_record_issues: number;
+        entries: Array<{
+            payload_hash: string;
+            paper_ballot_serial: number | null;
+            status: string;
+        }>;
     } | null;
     tally: Record<string, Record<string, number>>;
 };
@@ -130,6 +149,9 @@ const totalScans = computed(
 );
 const pendingAudit = computed(() => props.randomManualAudit.pending_proposal);
 const auditSample = computed(() => props.randomManualAudit.sample_selection);
+const auditReconciliation = computed(
+    () => props.randomManualAudit.reconciliation_report,
+);
 
 async function startCamera(): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -485,7 +507,9 @@ onBeforeUnmount(() => stopCamera(false));
                               ? 'Random manual audit record approved'
                               : rmaFeedback.status === 'discrepancy-recorded'
                                 ? 'Paper discrepancy recorded for review'
-                                : 'Paper comparison ready for dual approval'
+                                : rmaFeedback.status === 'reconciliation-generated'
+                                  ? 'Audit reconciliation report generated'
+                                  : 'Paper comparison ready for dual approval'
                     }}
                 </p>
                 <p v-if="rmaFeedback.ballot_id" class="mt-1">
@@ -793,6 +817,55 @@ onBeforeUnmount(() => stopCamera(false));
                     </section>
                 </div>
             </div>
+
+            <section v-if="auditSample" class="mt-6 border-t border-stone-300 pt-5">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-stone-950">Audit reconciliation report</h3>
+                        <p class="mt-1 text-sm text-stone-600">
+                            Compares every selected paper-audit result to its sealed device record. The report is evidence only and never changes tabulation.
+                        </p>
+                    </div>
+                    <Form
+                        v-bind="generateRandomManualAuditReconciliationReport.form()"
+                        #default="{ processing }"
+                    >
+                        <button class="secondary-button" type="submit" :disabled="processing">
+                            {{ processing ? 'Generating report...' : 'Generate reconciliation report' }}
+                        </button>
+                    </Form>
+                </div>
+
+                <div v-if="auditReconciliation" class="mt-4">
+                    <div class="grid gap-3 sm:grid-cols-4">
+                        <div class="border border-emerald-300 bg-emerald-50 p-3">
+                            <span class="text-xs font-bold uppercase text-emerald-800">Verified</span>
+                            <strong class="mt-1 block text-2xl text-emerald-950">{{ auditReconciliation.verified_ballots }}</strong>
+                        </div>
+                        <div class="border border-red-300 bg-red-50 p-3">
+                            <span class="text-xs font-bold uppercase text-red-800">Discrepancies</span>
+                            <strong class="mt-1 block text-2xl text-red-950">{{ auditReconciliation.discrepancy_ballots }}</strong>
+                        </div>
+                        <div class="border border-amber-300 bg-amber-50 p-3">
+                            <span class="text-xs font-bold uppercase text-amber-800">Pending</span>
+                            <strong class="mt-1 block text-2xl text-amber-950">{{ auditReconciliation.pending_ballots }}</strong>
+                        </div>
+                        <div class="border border-stone-300 p-3">
+                            <span class="text-xs font-bold uppercase text-stone-600">Device issues</span>
+                            <strong class="mt-1 block text-2xl text-stone-950">{{ auditReconciliation.device_record_issues }}</strong>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-sm font-bold" :class="auditReconciliation.passed ? 'text-emerald-800' : 'text-amber-800'">
+                        {{ auditReconciliation.passed ? 'All sampled paper comparisons verify against the sealed device records.' : 'The audit sample has unresolved, discrepant, or device-record issues.' }}
+                    </p>
+                    <ul class="mt-3 divide-y divide-stone-200 border border-stone-200 text-sm">
+                        <li v-for="entry in auditReconciliation.entries" :key="entry.payload_hash" class="flex items-center justify-between gap-3 px-3 py-2">
+                            <span>Paper ballot {{ entry.paper_ballot_serial ?? 'serial unavailable' }}</span>
+                            <span class="font-bold text-stone-800">{{ entry.status }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </section>
         </CeremonyActionPanel>
 
         <CeremonyActionPanel

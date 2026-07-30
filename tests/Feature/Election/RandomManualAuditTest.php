@@ -76,11 +76,26 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
         ->toContain('rma.ballot_proposed', 'rma.ballot_approved');
 
+    $this->post(route('election.counting.rma.reconciliation-report'))
+        ->assertRedirect(route('election.counting'))
+        ->assertSessionHas('rma_feedback.status', 'reconciliation-generated');
+
+    $reconciliation = $storage->readJson('rma/reconciliation-report.json');
+
+    expect($reconciliation['passed'])->toBeTrue()
+        ->and($reconciliation['complete'])->toBeTrue()
+        ->and($reconciliation['verified_ballots'])->toBe(1)
+        ->and($reconciliation['entries'][0]['status'])->toBe('verified')
+        ->and($reconciliation['artifact_path'])->toContain('12-audit-and-reconciliation/random-manual-audit')
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('rma.reconciliation_report_generated');
+
     $this->get(route('election.counting'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('randomManualAudit.proposed_ballots', 0)
             ->where('randomManualAudit.approved_ballots', 1)
             ->where('randomManualAudit.tally.president.pres-ada', 1)
+            ->where('randomManualAudit.reconciliation_report.passed', true)
         );
 });
 
@@ -187,4 +202,12 @@ test('a paper discrepancy is dual-approved and remains outside the audit tally',
         ->and($record['artifact_path'])->toContain('12-audit-and-reconciliation/random-manual-audit/discrepancies')
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
         ->toContain('rma.paper_discrepancy_recorded');
+
+    $this->post(route('election.counting.rma.reconciliation-report'));
+    $reconciliation = $storage->readJson('rma/reconciliation-report.json');
+
+    expect($reconciliation['passed'])->toBeFalse()
+        ->and($reconciliation['complete'])->toBeTrue()
+        ->and($reconciliation['discrepancy_ballots'])->toBe(1)
+        ->and($reconciliation['entries'][0]['status'])->toBe('paper-discrepancy-recorded');
 });

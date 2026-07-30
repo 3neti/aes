@@ -79,6 +79,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/counting/rma/propose', [CountingController::class, 'proposeRandomManualAudit'])->name('counting.rma.propose');
         Route::post('/counting/rma/approve', [CountingController::class, 'approveRandomManualAudit'])->name('counting.rma.approve');
         Route::post('/counting/rma/discrepancy', [CountingController::class, 'recordRandomManualAuditDiscrepancy'])->name('counting.rma.discrepancy');
+        Route::post('/counting/rma/reconciliation-report', [CountingController::class, 'generateRandomManualAuditReconciliationReport'])->name('counting.rma.reconciliation-report');
         Route::post('/counting/physical-count', [CountingController::class, 'recordPhysicalCount'])->name('counting.physical-count');
         Route::post('/counting/adjudicate', [CountingController::class, 'adjudicate'])->name('counting.adjudicate');
         Route::post('/counting/complete', [CountingController::class, 'complete'])->name('counting.complete');

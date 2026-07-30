@@ -326,6 +326,90 @@ final class RandomManualAuditService
     /**
      * @return array<string, mixed>
      */
+    public function generateReconciliationReport(): array
+    {
+        return $this->lock->execute('random-manual-audit', function (): array {
+            $this->ensureEnabled();
+            $sample = $this->sampleSelection();
+
+            if ($sample === []) {
+                throw ValidationException::withMessages([
+                    'sample' => 'Select and record the random manual audit sample before generating its reconciliation report.',
+                ]);
+            }
+
+            $deviceRecords = collect($this->deviceLedger->recordsForTally())->keyBy('payload_hash');
+            $approved = collect($this->acceptedRecords())->keyBy('payload_hash');
+            $discrepancies = collect($this->discrepancyRecords())->keyBy('payload_hash');
+            $entries = collect($sample['selected_ballots'])
+                ->map(function (array $selected) use ($deviceRecords, $approved, $discrepancies): array {
+                    $payloadHash = (string) $selected['payload_hash'];
+                    $deviceRecord = $deviceRecords->get($payloadHash);
+                    $approvedRecord = $approved->get($payloadHash);
+                    $discrepancy = $discrepancies->get($payloadHash);
+                    $status = 'pending-paper-comparison';
+                    $selectionsMatch = null;
+
+                    if (! is_array($deviceRecord)) {
+                        $status = 'device-record-missing';
+                    } elseif (is_array($approvedRecord)) {
+                        $selectionsMatch = $this->json->hash($deviceRecord['selections']) === $this->json->hash($approvedRecord['selections']);
+                        $status = $selectionsMatch ? 'verified' : 'device-record-selection-mismatch';
+                    } elseif (is_array($discrepancy)) {
+                        $status = 'paper-discrepancy-recorded';
+                    }
+
+                    return [
+                        'payload_hash' => $payloadHash,
+                        'paper_ballot_serial' => $selected['paper_ballot_serial'] ?? null,
+                        'device_record_hash' => is_array($deviceRecord) ? $deviceRecord['record_hash'] : null,
+                        'audit_record_hash' => is_array($approvedRecord) ? $approvedRecord['record_hash'] : null,
+                        'discrepancy_record_hash' => is_array($discrepancy) ? $discrepancy['record_hash'] : null,
+                        'status' => $status,
+                        'selections_match' => $selectionsMatch,
+                    ];
+                })
+                ->values()
+                ->all();
+            $statusCounts = collect($entries)
+                ->countBy('status')
+                ->all();
+            $report = [
+                'schema_version' => 'random-manual-audit-reconciliation-1',
+                'sample_hash' => $sample['sample_hash'],
+                'sample_size' => $sample['sample_size'],
+                'source_record_count' => $sample['source_record_count'],
+                'verified_ballots' => $statusCounts['verified'] ?? 0,
+                'discrepancy_ballots' => $statusCounts['paper-discrepancy-recorded'] ?? 0,
+                'pending_ballots' => $statusCounts['pending-paper-comparison'] ?? 0,
+                'device_record_issues' => ($statusCounts['device-record-missing'] ?? 0) + ($statusCounts['device-record-selection-mismatch'] ?? 0),
+                'complete' => count($entries) === (int) $sample['sample_size']
+                    && (($statusCounts['pending-paper-comparison'] ?? 0) === 0),
+                'passed' => count($entries) === (int) $sample['sample_size']
+                    && (($statusCounts['verified'] ?? 0) === (int) $sample['sample_size']),
+                'entries' => $entries,
+                'generated_at' => $this->clock->now()->toIso8601String(),
+            ];
+            $report['report_hash'] = $this->json->hash($report);
+            $report['artifact_path'] = $this->storage->path('rma/reconciliation-report.json');
+            $this->storage->writeJson('rma/reconciliation-report.json', $report);
+
+            $this->journal->record('rma.reconciliation_report_generated', [
+                'sample_hash' => $report['sample_hash'],
+                'report_hash' => $report['report_hash'],
+                'verified_ballots' => $report['verified_ballots'],
+                'discrepancy_ballots' => $report['discrepancy_ballots'],
+                'pending_ballots' => $report['pending_ballots'],
+                'passed' => $report['passed'],
+            ]);
+
+            return $report;
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function summary(): array
     {
         $records = $this->acceptedRecords();
@@ -355,6 +439,7 @@ final class RandomManualAuditService
             'approved_ballots' => count($records),
             'discrepancy_ballots' => count($this->discrepancyRecords()),
             'pending_proposal' => $this->pendingProposals()[0] ?? null,
+            'reconciliation_report' => $this->storage->readJson('rma/reconciliation-report.json'),
             'tally' => $tally,
         ];
     }
