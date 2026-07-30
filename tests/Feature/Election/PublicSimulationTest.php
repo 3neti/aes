@@ -2,6 +2,7 @@
 
 use App\Election\Core\ActivityJournal;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
+use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\PublicSimulation\PublicVvdatAuditExportVerifier;
 use App\Election\Support\ElectionStorage;
@@ -211,6 +212,38 @@ test('a precinct admission capacity is reserved atomically inside the scoped ele
     expect($first['code'])->toMatch('/^[0-9]{4}$/')
         ->and(fn () => app(PublicSimulationAdmissionCapacity::class)->issue(app(AnonymousVoterAuthorization::class)))
         ->toThrow(RuntimeException::class, 'active voter-admission limit');
+});
+
+test('an anonymous waiting ticket is released in order without exposing a control number', function (): void {
+    config()->set('election.public_simulation.maximum_active_admissions', 1);
+    config()->set('election.public_simulation.admission_queue.maximum_waiting_voters', 2);
+
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)->assertRedirect();
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+
+    $queue = app(PublicSimulationAdmissionQueue::class);
+    $first = $queue->join();
+    $second = $queue->join();
+    $release = $queue->releaseNext(app(AnonymousVoterAuthorization::class));
+
+    expect($first['ticket_number'])->toBe('001')
+        ->and($second['ticket_number'])->toBe('002')
+        ->and($release['ticket']['ticket_number'])->toBe('001')
+        ->and($release['authorization']['code'])->toMatch('/^[0-9]{4}$/')
+        ->and($queue->status($release['ticket']['ticket_id']))->toHaveKeys(['ticket_id', 'ticket_number', 'status', 'expires_at'])
+        ->and($queue->status($release['ticket']['ticket_id']))->not->toHaveKey('code')
+        ->and($queue->status($second['ticket_id'])['position'])->toBe(1)
+        ->and(fn (): array => $queue->releaseNext(app(AnonymousVoterAuthorization::class)))
+        ->toThrow(RuntimeException::class, 'active voter-admission limit');
+
+    expect(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('public_simulation.admission_queue_joined', 'public_simulation.admission_queue_released');
 });
 
 test('closeout serializes public voter work and refuses unresolved sessions', function (): void {

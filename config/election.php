@@ -46,6 +46,11 @@ return [
             'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED', false),
         ],
         'maximum_active_admissions' => (int) env('ELECTION_PUBLIC_SIMULATION_MAX_ACTIVE_ADMISSIONS', 10),
+        'admission_queue' => [
+            'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_QUEUE_ENABLED', true),
+            'maximum_waiting_voters' => (int) env('ELECTION_PUBLIC_SIMULATION_QUEUE_MAXIMUM_WAITING_VOTERS', 25),
+            'ticket_ttl_seconds' => (int) env('ELECTION_PUBLIC_SIMULATION_QUEUE_TICKET_TTL', 900),
+        ],
         'vvdat_audit_export' => [
             'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_ENABLED', true),
             'minimum_records' => (int) env('ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_MINIMUM_RECORDS', 1),

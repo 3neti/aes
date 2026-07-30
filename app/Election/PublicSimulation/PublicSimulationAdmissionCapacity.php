@@ -40,7 +40,7 @@ final class PublicSimulationAdmissionCapacity
     }
 
     /**
-     * @return array{active_admissions: int, maximum_active_admissions: int}
+     * @return array{active_admissions: int, maximum_active_admissions: int, available_admissions: int}
      */
     public function summary(): array
     {
@@ -49,9 +49,12 @@ final class PublicSimulationAdmissionCapacity
             ->whereIn('status', ['issued', 'claimed'])
             ->count();
 
+        $maximum = max(1, (int) config('election.public_simulation.maximum_active_admissions', 10));
+
         return [
             'active_admissions' => $active,
-            'maximum_active_admissions' => max(1, (int) config('election.public_simulation.maximum_active_admissions', 10)),
+            'maximum_active_admissions' => $maximum,
+            'available_admissions' => max(0, $maximum - $active),
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ElectionSnapshot;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
+use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationCloseout;
 use App\Election\PublicSimulation\PublicSimulationPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
@@ -39,6 +40,8 @@ final class PublicSimulationController extends Controller
         ElectionStorage $storage,
         ElectionSnapshot $snapshot,
         StandardQrCode $qrCode,
+        PublicSimulationAdmissionCapacity $capacity,
+        PublicSimulationAdmissionQueue $queue,
         Request $request,
     ): Response {
         $this->ensurePrecinctInRound($round, $precinct);
@@ -47,11 +50,16 @@ final class PublicSimulationController extends Controller
         return Inertia::render('Election/PublicSimulationPrecinct', [
             'round' => $this->round($round),
             'precinct' => $this->precinct($precinct, $storage, $snapshot),
+            'admission' => [
+                ...$capacity->summary(),
+                'queue' => $queue->summary(),
+            ],
             'commonVoterUrl' => route('election.public-simulation.voter.show', [$round, $precinct]),
             'commonVoterQr' => 'data:image/png;base64,'.base64_encode($qrCode->renderPng(route('election.public-simulation.voter.show', [$round, $precinct]))),
             'actions' => [
                 'open' => route('election.public-simulation.open', [$round, $precinct]),
                 'admit' => route('election.public-simulation.admit', [$round, $precinct]),
+                'admitQueued' => route('election.public-simulation.admit-queued', [$round, $precinct]),
                 'close' => route('election.public-simulation.close', [$round, $precinct]),
                 'publish' => route('election.public-simulation.publish', [$round, $precinct]),
                 'audit' => route('election.public-simulation.audit.show', [$round, $precinct]),
@@ -102,6 +110,29 @@ final class PublicSimulationController extends Controller
 
         return to_route('election.public-simulation.show', [$round, $precinct])
             ->with('public_simulation.control_number', $authorization);
+    }
+
+    public function admitQueued(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationAdmissionQueue $queue, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting): RedirectResponse
+    {
+        $this->ensurePrecinctInRound($round, $precinct);
+        $validated = $this->officerCredentials($request);
+
+        try {
+            $simulations->verifyOfficer($precinct, $validated['officer_code'], $validated['officer_pin']);
+
+            if ($precinct->status !== 'open') {
+                throw new RuntimeException('Open the precinct before admitting voters.');
+            }
+
+            $simulations->applyScope($precinct);
+            $release = $voting->execute(fn (): array => $queue->releaseNext($authorizations));
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
+        }
+
+        return to_route('election.public-simulation.show', [$round, $precinct])
+            ->with('public_simulation.control_number', $release['authorization'])
+            ->with('public_simulation.officer_feedback', "Waiting ticket {$release['ticket']['ticket_number']} has been admitted. Hand over the four-digit control number.");
     }
 
     public function close(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationCloseout $closeout): RedirectResponse

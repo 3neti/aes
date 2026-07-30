@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Public Concurrent Voter Gate and Browser Race Coverage
+- Completed Slice: Public Admission Queue and Browser Ticket Privacy Coverage
 - Active Program: Public Election Simulation Server
-- Current Slice: Queue/backpressure policy and contention reporting
-- Next Slice: Deterministic multi-voter contention scenario, queue/backpressure policy, and broader public abuse controls
+- Current Slice: Operator contention reporting and anonymous-entry abuse controls
+- Next Slice: Deterministic multi-voter contention reporting and broader public abuse controls
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -725,14 +725,14 @@ Completed:
 - public precinct Random Manual Audit room: deterministic sample selection, browser-camera or scanner QR comparison, dual officer approval or written discrepancy, reconciliation, detailed officer evidence, and redacted watcher summary without mutation of official result artifacts
 - deterministic three-voter public precinct exercise that proves repeated admission, private vote, print/deposit, device closeout, tally, and neighbouring-precinct storage isolation
 - shared public voting gate that blocks closeout on unresolved voter/print work, plus a two-browser workflow proving isolated private voter sessions and closeout refusal while voters are active
+- optional bounded anonymous admission queue with expiring tickets, officer-only release into the existing four-digit control-number flow, and browser proof that a voter never sees a released code
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then define queue/backpressure behaviour, add contention reporting and broader
-public abuse controls, and package the results into the offline COMELEC Review
-Kit.
+Then add operator contention reporting and broader anonymous-entry abuse
+controls, and package the results into the offline COMELEC Review Kit.
 
 ---
 

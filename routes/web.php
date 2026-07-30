@@ -33,6 +33,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/{round:code}/{precinct:code}', [PublicSimulationController::class, 'show'])->name('show');
         Route::post('/{round:code}/{precinct:code}/open', [PublicSimulationController::class, 'open'])->name('open');
         Route::post('/{round:code}/{precinct:code}/admit', [PublicSimulationController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
+        Route::post('/{round:code}/{precinct:code}/admit-queued', [PublicSimulationController::class, 'admitQueued'])->middleware('throttle:20,1')->name('admit-queued');
         Route::post('/{round:code}/{precinct:code}/close', [PublicSimulationController::class, 'close'])->name('close');
         Route::post('/{round:code}/{precinct:code}/publish', [PublicSimulationController::class, 'publish'])->name('publish');
 
@@ -47,6 +48,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/{round:code}/{precinct:code}/audit/evidence-pack', [PublicSimulationRandomManualAuditController::class, 'download'])->name('audit.download');
 
         Route::get('/{round:code}/{precinct:code}/vote', [PublicSimulationVoterController::class, 'show'])->name('voter.show');
+        Route::post('/{round:code}/{precinct:code}/vote/queue', [PublicSimulationVoterController::class, 'joinQueue'])->middleware('throttle:5,1')->name('voter.join-queue');
         Route::post('/{round:code}/{precinct:code}/vote/claim', [PublicSimulationVoterController::class, 'claim'])->middleware('throttle:10,1')->name('voter.claim');
         Route::get('/{round:code}/{precinct:code}/vote/ballot', [PublicSimulationVoterController::class, 'ballot'])->name('voter.ballot');
         Route::post('/{round:code}/{precinct:code}/vote/ballot', [PublicSimulationVoterController::class, 'finalize'])->name('voter.finalize');

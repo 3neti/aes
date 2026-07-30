@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Election;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Printing\BallotPrinter;
+use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\Support\ElectionStorage;
@@ -26,7 +27,7 @@ use RuntimeException;
 
 final class PublicSimulationVoterController extends Controller
 {
-    public function show(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, LifecycleState $lifecycle): Response
+    public function show(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, LifecycleState $lifecycle, PublicSimulationAdmissionQueue $queue): Response
     {
         $this->scope($round, $precinct, $simulations);
         abort_unless($lifecycle->current() === Lifecycle::Voting, 409);
@@ -38,8 +39,25 @@ final class PublicSimulationVoterController extends Controller
                 'precinct_id' => $configuration['precinct_id'] ?? null,
             ],
             'claimAction' => route('election.public-simulation.voter.claim', [$round, $precinct]),
+            'joinQueueAction' => route('election.public-simulation.voter.join-queue', [$round, $precinct]),
+            'admissionQueue' => $queue->status($request->session()->get($this->queueSessionKey($precinct))),
             'publicSimulation' => true,
         ]);
+    }
+
+    public function joinQueue(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationAdmissionQueue $queue, PublicSimulationVotingGate $voting): RedirectResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+
+        try {
+            $ticket = $voting->execute(fn (): array => $queue->join($request->session()->get($this->queueSessionKey($precinct))));
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['queue' => $exception->getMessage()]);
+        }
+
+        $request->session()->put($this->queueSessionKey($precinct), $ticket['ticket_id']);
+
+        return to_route('election.public-simulation.voter.show', [$round, $precinct]);
     }
 
     public function claim(ClaimVoterAuthorizationRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting): RedirectResponse
@@ -194,6 +212,11 @@ final class PublicSimulationVoterController extends Controller
     private function releaseSessionKey(SimulationPrecinct $precinct): string
     {
         return "public_simulation.{$precinct->id}.release";
+    }
+
+    private function queueSessionKey(SimulationPrecinct $precinct): string
+    {
+        return "public_simulation.{$precinct->id}.admission_queue_ticket";
     }
 
     private function printSessionKey(SimulationPrecinct $precinct): string

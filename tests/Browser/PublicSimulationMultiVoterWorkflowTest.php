@@ -1,6 +1,7 @@
 <?php
 
 use App\Election\PublicSimulation\PublicSimulationCloseout;
+use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\Support\ElectionStorage;
@@ -69,4 +70,29 @@ test('two isolated browser voters finalize private releases in the same public p
     expect($releases)->toHaveCount(2)
         ->and(app(AnonymousVoterAuthorization::class)->inspect($firstAuthorization['authorization_id'])['status'])->toBe('completed')
         ->and(app(AnonymousVoterAuthorization::class)->inspect($secondAuthorization['authorization_id'])['status'])->toBe('completed');
+});
+
+test('a browser voter sees an anonymous waiting ticket but never its released control number', function (): void {
+    $simulations = app(PublicSimulationService::class);
+    $round = $simulations->currentRound();
+    $precinct = $round->precincts()->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $simulations->open($precinct, $precinct->officer_code, '123456');
+    $voter = visit(route('election.public-simulation.voter.show', [$round, $precinct]))
+        ->assertSee('Take waiting ticket')
+        ->click('Take waiting ticket')
+        ->assertSee('Waiting ticket 001')
+        ->assertDontSee('0000')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    app(PublicSimulationAdmissionQueue::class)->releaseNext(app(AnonymousVoterAuthorization::class));
+
+    $voter->refresh()
+        ->assertSee('Waiting ticket 001 has been released.')
+        ->assertSee('This page never displays the control number.')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
 });
