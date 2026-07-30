@@ -598,6 +598,38 @@ test('a facilitator observation review isolates follow-up notes in private audit
         ->and(app(PublicSimulationObservationReview::class)->build()['sequence'])->toBe(2);
 });
 
+test('a ready public precinct receives a privacy-safe external usability session kit', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class)
+        ->and($precinct->status)->toBe('ready');
+
+    $this->artisan('election:public-simulation:usability-session-kit', [
+        'round' => $round->code,
+        'precinct' => $precinct->code,
+    ])->expectsOutputToContain("Usability session kit prepared for {$round->code}/{$precinct->code}")
+        ->assertSuccessful();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $storage = app(ElectionStorage::class);
+    $kit = $storage->readJson('usability-session-kit/session-kit.json');
+    $guide = $storage->readText('usability-session-kit/facilitator-guide.md');
+    $sheet = $storage->readText('usability-session-kit/participant-observation-sheet.md');
+
+    expect($kit)->toMatchArray([
+        'round_code' => $round->code,
+        'precinct_code' => $precinct->code,
+        'purpose' => 'Facilitated external usability session for the public election simulation.',
+    ])
+        ->and($kit['privacy_notice'])->toContain('Do not collect participant names')
+        ->and($kit)->not->toHaveKeys(['officer_code', 'officer_pin', 'authorization_id', 'ballot_id'])
+        ->and($guide)->toContain('## Success Criteria')
+        ->and($sheet)->toContain('Record no participant name')
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('public_simulation.usability_session_kit_prepared');
+});
+
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {
     $this->get(route('election.public-simulation.index'))->assertSuccessful();
 
