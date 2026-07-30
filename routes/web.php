@@ -156,5 +156,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
             ->name('watchers.rma.evidence-pack.download');
         Route::get('/watchers/rma/evidence-pack/print', [WatcherController::class, 'downloadRandomManualAuditEvidencePackPdf'])
             ->name('watchers.rma.evidence-pack.print');
+        Route::post('/watchers/rma/evidence-pack/verify', [WatcherController::class, 'verifyRandomManualAuditEvidencePack'])
+            ->name('watchers.rma.evidence-pack.verify');
     });
 });

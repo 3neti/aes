@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { Form } from '@inertiajs/vue3';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import {
     download as downloadRandomManualAuditEvidencePack,
     print as printRandomManualAuditEvidencePack,
+    verify as verifyRandomManualAuditEvidencePack,
 } from '@/routes/election/watchers/rma/evidence-pack';
 
 defineProps<{
@@ -29,6 +31,14 @@ defineProps<{
         evidence_pack_available: boolean;
         evidence_pack_hash: string | null;
     };
+    randomManualAuditVerification?: {
+        passed: boolean;
+        errors: string[];
+        evidence_pack_hash: string | null;
+        sample_size: number | null;
+        verified_ballots: number;
+        discrepancy_ballots: number;
+    } | null;
 }>();
 </script>
 
@@ -167,6 +177,53 @@ defineProps<{
                         <a :href="printRandomManualAuditEvidencePack.url()" class="secondary-button">Download print form</a>
                     </div>
                 </div>
+
+                <section class="mt-5 border-t border-stone-300 pt-5">
+                    <h3 class="text-sm font-bold text-stone-950">Verify a downloaded evidence pack</h3>
+                    <p class="mt-1 text-sm text-stone-700">
+                        Upload a JSON pack to recompute its embedded hashes and reconciliation counts. This check does not alter precinct evidence.
+                    </p>
+                    <Form
+                        v-bind="verifyRandomManualAuditEvidencePack.form()"
+                        #default="{ errors, processing }"
+                        class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end"
+                        enctype="multipart/form-data"
+                    >
+                        <label class="block flex-1 text-sm font-bold">
+                            Evidence pack JSON
+                            <input
+                                name="evidence_pack"
+                                type="file"
+                                accept="application/json,.json"
+                                class="mt-1 block min-h-11 w-full border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
+                                required
+                            />
+                        </label>
+                        <button class="secondary-button" type="submit" :disabled="processing">
+                            {{ processing ? 'Verifying...' : 'Verify evidence pack' }}
+                        </button>
+                        <p v-if="errors.evidence_pack" class="text-sm font-bold text-red-700">
+                            {{ errors.evidence_pack }}
+                        </p>
+                    </Form>
+
+                    <div
+                        v-if="randomManualAuditVerification"
+                        class="mt-4 border-l-4 px-4 py-3 text-sm"
+                        :class="randomManualAuditVerification.passed ? 'border-emerald-700 bg-emerald-50 text-emerald-950' : 'border-red-700 bg-red-50 text-red-950'"
+                        role="status"
+                    >
+                        <p class="font-bold">
+                            {{ randomManualAuditVerification.passed ? 'Evidence pack verified' : 'Evidence pack verification failed' }}
+                        </p>
+                        <p class="mt-1">
+                            {{ randomManualAuditVerification.verified_ballots }} verified comparisons, {{ randomManualAuditVerification.discrepancy_ballots }} discrepancies.
+                        </p>
+                        <ul v-if="randomManualAuditVerification.errors.length" class="mt-2 list-disc pl-5">
+                            <li v-for="error in randomManualAuditVerification.errors" :key="error">{{ error }}</li>
+                        </ul>
+                    </div>
+                </section>
             </template>
         </section>
     </CeremonyLayout>

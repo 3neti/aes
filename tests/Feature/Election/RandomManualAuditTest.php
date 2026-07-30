@@ -1,6 +1,7 @@
 <?php
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Core\CanonicalJson;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
@@ -11,6 +12,7 @@ use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\SealedBallotBox;
+use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
@@ -124,6 +126,46 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
         ->assertDownload('random-manual-audit-evidence-pack.json');
     $this->get(route('election.watchers.rma.evidence-pack.print'))
         ->assertDownload('random-manual-audit-evidence-pack.pdf');
+
+    $this->post(route('election.watchers.rma.evidence-pack.verify'), [
+        'evidence_pack' => UploadedFile::fake()->createWithContent(
+            'random-manual-audit-evidence-pack.json',
+            json_encode($evidencePack, JSON_THROW_ON_ERROR),
+        ),
+    ])->assertRedirect(route('election.watchers'))
+        ->assertSessionHas('rma_verification.passed', true);
+
+    $this->get(route('election.watchers'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('randomManualAuditVerification.passed', true)
+            ->where('randomManualAuditVerification.verified_ballots', 1)
+        );
+
+    $tamperedPack = [...$evidencePack, 'evidence_pack_hash' => str_repeat('0', 64)];
+
+    $this->post(route('election.watchers.rma.evidence-pack.verify'), [
+        'evidence_pack' => UploadedFile::fake()->createWithContent(
+            'tampered-random-manual-audit-evidence-pack.json',
+            json_encode($tamperedPack, JSON_THROW_ON_ERROR),
+        ),
+    ])->assertRedirect(route('election.watchers'))
+        ->assertSessionHas('rma_verification.passed', false)
+        ->assertSessionHas('rma_verification.errors', fn (array $errors): bool => str_contains($errors[0], 'hash'));
+
+    $internallyTamperedPack = $evidencePack;
+    $internallyTamperedPack['approved_paper_comparisons'][0]['selections']['president'] = ['tampered-candidate'];
+    $internallyTamperedPack['evidence_pack_hash'] = app(CanonicalJson::class)->hash(
+        array_diff_key($internallyTamperedPack, ['evidence_pack_hash' => true]),
+    );
+
+    $this->post(route('election.watchers.rma.evidence-pack.verify'), [
+        'evidence_pack' => UploadedFile::fake()->createWithContent(
+            'internally-tampered-random-manual-audit-evidence-pack.json',
+            json_encode($internallyTamperedPack, JSON_THROW_ON_ERROR),
+        ),
+    ])->assertRedirect(route('election.watchers'))
+        ->assertSessionHas('rma_verification.passed', false)
+        ->assertSessionHas('rma_verification.errors', fn (array $errors): bool => str_contains($errors[0], 'approved'));
 
     $this->get(route('election.counting'))
         ->assertInertia(fn (Assert $page) => $page

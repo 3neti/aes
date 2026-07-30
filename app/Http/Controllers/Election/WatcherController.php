@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Audit\RandomManualAuditEvidencePackVerifier;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\SealedBallotBox;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -15,6 +18,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 final class WatcherController extends Controller
 {
     public function __invoke(
+        Request $request,
         ElectionSnapshot $snapshot,
         LifecycleState $lifecycle,
         ElectionStorage $storage,
@@ -56,7 +60,24 @@ final class WatcherController extends Controller
                 'evidence_pack_available' => $evidencePack !== [],
                 'evidence_pack_hash' => $evidencePack['evidence_pack_hash'] ?? null,
             ],
+            'randomManualAuditVerification' => $request->session()->get('rma_verification'),
         ]);
+    }
+
+    public function verifyRandomManualAuditEvidencePack(
+        Request $request,
+        LifecycleState $lifecycle,
+        RandomManualAuditEvidencePackVerifier $verifier,
+    ): RedirectResponse {
+        abort_unless($this->auditAvailable($lifecycle), 404);
+        $validated = $request->validate([
+            'evidence_pack' => ['required', 'file', 'max:5120'],
+        ]);
+        $contents = $validated['evidence_pack']->get();
+
+        return redirect()
+            ->route('election.watchers')
+            ->with('rma_verification', $verifier->verify($contents));
     }
 
     public function downloadRandomManualAuditEvidencePack(
