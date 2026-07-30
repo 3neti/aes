@@ -49,6 +49,19 @@ final class RandomManualAuditService
                 'payload' => 'The scanned QR code is not present in this precinct device tabulation record.',
             ]);
         }
+        $sample = $this->sampleSelection();
+
+        if ($sample === []) {
+            throw ValidationException::withMessages([
+                'payload' => 'Select and record the random manual audit sample before scanning a paper ballot.',
+            ]);
+        }
+
+        if (! collect($sample['selected_ballots'] ?? [])->contains('payload_hash', $payloadHash)) {
+            throw ValidationException::withMessages([
+                'payload' => 'This ballot is not part of the recorded random manual audit sample.',
+            ]);
+        }
 
         $existing = $this->proposal($payloadHash);
 
@@ -85,6 +98,80 @@ final class RandomManualAuditService
         ]);
 
         return $proposal;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function selectSample(): array
+    {
+        return $this->lock->execute('random-manual-audit', function (): array {
+            $this->ensureEnabled();
+            $existing = $this->sampleSelection();
+
+            if ($existing !== []) {
+                return $existing;
+            }
+
+            $records = $this->deviceLedger->records();
+
+            if ($records === []) {
+                throw ValidationException::withMessages([
+                    'sample' => 'No sealed device tabulation records are available for random manual audit.',
+                ]);
+            }
+
+            $configuration = $this->storage->readJson('runtime/active-precinct.json');
+            $ledgerRecords = collect($records)
+                ->map(fn (array $record): array => [
+                    'payload_hash' => $record['payload_hash'],
+                    'record_hash' => $record['record_hash'],
+                ])
+                ->sortBy('payload_hash')
+                ->values()
+                ->all();
+            $seed = $this->json->hash([
+                'schema_version' => 'random-manual-audit-sample-seed-1',
+                'election_id' => $configuration['election_id'] ?? null,
+                'precinct_id' => $configuration['precinct_id'] ?? null,
+                'mapping_hash' => $configuration['mapping_hash'] ?? null,
+                'device_ledger' => $ledgerRecords,
+            ]);
+            $rate = max(1, (int) config('election.random_manual_audit.sample_percent', 10));
+            $sampleSize = min(count($records), max(1, (int) ceil(count($records) * ($rate / 100))));
+            $selected = collect($records)
+                ->map(fn (array $record): array => [
+                    'payload_hash' => $record['payload_hash'],
+                    'paper_ballot_serial' => $record['paper_ballot_serial'] ?? null,
+                    'record_hash' => $record['record_hash'],
+                    'selection_rank' => hash('sha256', $seed.'|'.$record['payload_hash']),
+                ])
+                ->sortBy('selection_rank')
+                ->take($sampleSize)
+                ->values()
+                ->all();
+            $sample = [
+                'schema_version' => 'random-manual-audit-sample-1',
+                'selection_method' => 'deterministic-sha-256-rank-1',
+                'sample_percent' => $rate,
+                'seed' => $seed,
+                'source_record_count' => count($records),
+                'sample_size' => $sampleSize,
+                'selected_ballots' => $selected,
+                'selected_at' => $this->clock->now()->toIso8601String(),
+            ];
+            $sample['sample_hash'] = $this->json->hash($sample);
+            $sample['artifact_path'] = $this->storage->path('rma/sample-selection.json');
+            $this->storage->writeJson('rma/sample-selection.json', $sample);
+
+            $this->journal->record('rma.sample_selected', [
+                'sample_hash' => $sample['sample_hash'],
+                'sample_size' => $sampleSize,
+                'source_record_count' => count($records),
+            ]);
+
+            return $sample;
+        });
     }
 
     /**
@@ -165,6 +252,80 @@ final class RandomManualAuditService
     /**
      * @return array<string, mixed>
      */
+    public function recordDiscrepancy(
+        string $payloadHash,
+        string $reason,
+        string $firstOfficerCode,
+        string $firstOfficerPin,
+        string $secondOfficerCode,
+        string $secondOfficerPin,
+    ): array {
+        return $this->lock->execute('random-manual-audit', function () use ($payloadHash, $reason, $firstOfficerCode, $firstOfficerPin, $secondOfficerCode, $secondOfficerPin): array {
+            $this->ensureEnabled();
+            $proposal = $this->proposal($payloadHash);
+
+            if (($proposal['status'] ?? null) !== 'pending-dual-approval') {
+                throw ValidationException::withMessages([
+                    'payload_hash' => 'There is no pending random manual audit proposal for this ballot.',
+                ]);
+            }
+
+            $firstOfficer = $this->verifiedOfficer($firstOfficerCode, $firstOfficerPin, 'first_officer_pin');
+            $secondOfficer = $this->verifiedOfficer($secondOfficerCode, $secondOfficerPin, 'second_officer_pin');
+
+            if ($firstOfficer['code'] === $secondOfficer['code']) {
+                throw ValidationException::withMessages([
+                    'second_officer_code' => 'A second, distinct Election Board officer must confirm the paper discrepancy.',
+                ]);
+            }
+
+            $sequence = count($this->discrepancyRecords()) + 1;
+            $record = [
+                'schema_version' => 'random-manual-audit-discrepancy-1',
+                'sequence' => $sequence,
+                'status' => 'paper-discrepancy-recorded',
+                'ballot_id' => $proposal['ballot_id'],
+                'payload_hash' => $payloadHash,
+                'paper_ballot_serial' => $proposal['paper_ballot_serial'],
+                'proposal_hash' => $proposal['proposal_hash'],
+                'reason' => trim($reason),
+                'recorded_at' => $this->clock->now()->toIso8601String(),
+                'approvals' => [
+                    $this->officerEvidence($firstOfficer),
+                    $this->officerEvidence($secondOfficer),
+                ],
+            ];
+            $record['record_hash'] = $this->json->hash($record);
+            $record['artifact_path'] = $this->storage->path(
+                sprintf('rma/discrepancies/%06d-%s.json', $sequence, $payloadHash),
+            );
+            $this->storage->writeJson(
+                sprintf('rma/discrepancies/%06d-%s.json', $sequence, $payloadHash),
+                $record,
+            );
+
+            $proposal = [
+                ...$proposal,
+                'status' => 'paper-discrepancy-recorded',
+                'discrepancy_record_path' => $record['artifact_path'],
+                'discrepancy_record_hash' => $record['record_hash'],
+            ];
+            $this->storage->writeJson("rma/proposals/{$payloadHash}.json", $proposal);
+            $this->journal->record('rma.paper_discrepancy_recorded', [
+                'sequence' => $sequence,
+                'ballot_id' => $record['ballot_id'],
+                'payload_hash' => $payloadHash,
+                'record_hash' => $record['record_hash'],
+                'officer_code_hashes' => array_column($record['approvals'], 'code_hash'),
+            ]);
+
+            return $record;
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function summary(): array
     {
         $records = $this->acceptedRecords();
@@ -189,8 +350,10 @@ final class RandomManualAuditService
 
         return [
             'enabled' => ! $this->tabulation->current()->routineScanningEnabled(),
+            'sample_selection' => $this->sampleSelection(),
             'proposed_ballots' => count($this->pendingProposals()),
             'approved_ballots' => count($records),
+            'discrepancy_ballots' => count($this->discrepancyRecords()),
             'pending_proposal' => $this->pendingProposals()[0] ?? null,
             'tally' => $tally,
         ];
@@ -271,6 +434,14 @@ final class RandomManualAuditService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function sampleSelection(): array
+    {
+        return $this->storage->readJson('rma/sample-selection.json');
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     private function pendingProposals(): array
@@ -289,6 +460,18 @@ final class RandomManualAuditService
     private function acceptedRecords(): array
     {
         return collect($this->storage->files('rma/accepted'))
+            ->map(fn (string $path): array => $this->readRecord($path))
+            ->sortBy('sequence')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function discrepancyRecords(): array
+    {
+        return collect($this->storage->files('rma/discrepancies'))
             ->map(fn (string $path): array => $this->readRecord($path))
             ->sortBy('sequence')
             ->values()

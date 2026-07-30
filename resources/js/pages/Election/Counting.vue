@@ -15,7 +15,9 @@ import {
 } from '@/routes/election/counting';
 import {
     approve as approveRandomManualAudit,
+    discrepancy as recordRandomManualAuditDiscrepancy,
     propose as proposeRandomManualAudit,
+    selectSample as selectRandomManualAuditSample,
 } from '@/routes/election/counting/rma';
 import { useElectionReview } from '@/stores/electionReview';
 
@@ -44,8 +46,8 @@ type LegalEvidence = {
 };
 
 type RandomManualAuditFeedback = {
-    status: 'proposed' | 'approved';
-    ballot_id: string;
+    status: 'sample-selected' | 'proposed' | 'approved' | 'discrepancy-recorded';
+    ballot_id: string | null;
     payload_hash: string;
 };
 
@@ -53,6 +55,16 @@ type RandomManualAudit = {
     enabled: boolean;
     proposed_ballots: number;
     approved_ballots: number;
+    discrepancy_ballots: number;
+    sample_selection: {
+        sample_size: number;
+        source_record_count: number;
+        selected_ballots: Array<{
+            payload_hash: string;
+            paper_ballot_serial: number | null;
+            selection_rank: string;
+        }>;
+    } | null;
     pending_proposal: {
         ballot_id: string;
         payload_hash: string;
@@ -117,6 +129,7 @@ const totalScans = computed(
     () => props.tally.accepted_ballots + props.tally.rejected_ballots,
 );
 const pendingAudit = computed(() => props.randomManualAudit.pending_proposal);
+const auditSample = computed(() => props.randomManualAudit.sample_selection);
 
 async function startCamera(): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -466,19 +479,74 @@ onBeforeUnmount(() => stopCamera(false));
             >
                 <p class="font-bold">
                     {{
-                        rmaFeedback.status === 'approved'
-                            ? 'Random manual audit record approved'
-                            : 'Paper comparison ready for dual approval'
+                        rmaFeedback.status === 'sample-selected'
+                            ? 'Random manual audit sample recorded'
+                            : rmaFeedback.status === 'approved'
+                              ? 'Random manual audit record approved'
+                              : rmaFeedback.status === 'discrepancy-recorded'
+                                ? 'Paper discrepancy recorded for review'
+                                : 'Paper comparison ready for dual approval'
                     }}
                 </p>
-                <p class="mt-1">
+                <p v-if="rmaFeedback.ballot_id" class="mt-1">
                     Ballot {{ rmaFeedback.ballot_id }}
                 </p>
             </section>
 
+            <Form
+                v-if="canCount && !auditSample"
+                v-bind="selectRandomManualAuditSample.form()"
+                #default="{ errors, processing }"
+                class="mt-5 flex flex-col gap-4 border border-blue-300 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+                <div>
+                    <h3 class="text-sm font-bold text-blue-950">Freeze the audit sample</h3>
+                    <p class="mt-1 text-sm text-blue-900">
+                        The device ranks sealed VVDAT records with a deterministic SHA-256 seed. The resulting sample and its source count are preserved before any audit scan.
+                    </p>
+                    <p v-if="errors.sample" class="mt-2 text-sm font-bold text-red-700">
+                        {{ errors.sample }}
+                    </p>
+                </div>
+                <button
+                    class="primary-button shrink-0"
+                    :class="{ 'review-next-action-button': electionReview.enabled }"
+                    type="submit"
+                    :disabled="processing"
+                >
+                    {{ processing ? 'Selecting sample...' : 'Select random audit sample' }}
+                </button>
+            </Form>
+
+            <section v-else-if="auditSample" class="mt-5 border border-blue-300 bg-blue-50 p-4">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-blue-950">Recorded audit sample</h3>
+                        <p class="mt-1 text-sm text-blue-900">
+                            {{ auditSample.sample_size }} of {{ auditSample.source_record_count }} sealed device records selected.
+                        </p>
+                    </div>
+                    <span class="text-xs font-bold uppercase text-blue-800">Sample frozen</span>
+                </div>
+                <ul class="mt-3 divide-y divide-blue-200 border border-blue-200 bg-white text-sm">
+                    <li
+                        v-for="ballot in auditSample.selected_ballots"
+                        :key="ballot.payload_hash"
+                        class="flex items-center justify-between gap-3 px-3 py-2"
+                    >
+                        <span class="font-bold text-stone-950">
+                            Paper ballot {{ ballot.paper_ballot_serial ?? 'serial unavailable' }}
+                        </span>
+                        <span class="font-mono text-xs text-stone-600">
+                            {{ ballot.payload_hash.slice(0, 12) }}
+                        </span>
+                    </li>
+                </ul>
+            </section>
+
             <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
                 <Form
-                    v-if="canCount && !pendingAudit"
+                    v-if="canCount && auditSample && !pendingAudit"
                     v-bind="proposeRandomManualAudit.form()"
                     #default="{ errors, processing }"
                     class="grid content-start gap-3 border border-stone-300 p-4"
@@ -624,13 +692,77 @@ onBeforeUnmount(() => stopCamera(false));
                             {{ processing ? 'Recording approval...' : 'Record dual approval' }}
                         </button>
                     </Form>
+
+                    <details class="mt-4 border border-red-300 bg-red-50 p-4">
+                        <summary class="cursor-pointer font-bold text-red-950">
+                            Record a paper discrepancy instead
+                        </summary>
+                        <p class="mt-2 text-sm text-red-900">
+                            This records the discrepancy for Electoral Board review. It does not alter the device tally, audit tally, or Election Return.
+                        </p>
+                        <Form
+                            v-bind="recordRandomManualAuditDiscrepancy.form()"
+                            #default="{ errors, processing }"
+                            class="mt-4 grid gap-3 sm:grid-cols-2"
+                        >
+                            <input
+                                name="payload_hash"
+                                type="hidden"
+                                :value="pendingAudit.payload_hash"
+                            />
+                            <label class="text-sm font-bold sm:col-span-2"
+                                >Reason<textarea
+                                    name="reason"
+                                    class="mt-1 h-20 w-full border border-stone-300 bg-white p-3"
+                                    required
+                            /></label>
+                            <label class="text-sm font-bold"
+                                >First officer code<input
+                                    name="first_officer_code"
+                                    class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                    :value="reviewDefaults.primary_officer?.code ?? ''"
+                            /></label>
+                            <label class="text-sm font-bold"
+                                >First officer PIN<input
+                                    name="first_officer_pin"
+                                    type="password"
+                                    inputmode="numeric"
+                                    class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                    :value="reviewDefaults.primary_officer?.pin ?? ''"
+                            /></label>
+                            <label class="text-sm font-bold"
+                                >Second officer code<input
+                                    name="second_officer_code"
+                                    class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                    :value="reviewDefaults.poll_clerk?.code ?? ''"
+                            /></label>
+                            <label class="text-sm font-bold"
+                                >Second officer PIN<input
+                                    name="second_officer_pin"
+                                    type="password"
+                                    inputmode="numeric"
+                                    class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                    :value="reviewDefaults.poll_clerk?.pin ?? ''"
+                            /></label>
+                            <p v-if="Object.keys(errors).length" class="text-sm font-bold text-red-700 sm:col-span-2">
+                                Check the reason and both officer credentials.
+                            </p>
+                            <button class="secondary-button border-red-700 text-red-900 sm:col-span-2" type="submit" :disabled="processing">
+                                {{ processing ? 'Recording discrepancy...' : 'Record paper discrepancy' }}
+                            </button>
+                        </Form>
+                    </details>
                 </section>
 
                 <div
                     v-else
                     class="border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600"
                 >
-                    Scan a sampled paper ballot to begin a new comparison.
+                    {{
+                        auditSample
+                            ? 'Scan a sampled paper ballot to begin a new comparison.'
+                            : 'Select the audit sample before scanning a paper ballot.'
+                    }}
                 </div>
             </div>
 

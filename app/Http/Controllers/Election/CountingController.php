@@ -144,6 +144,19 @@ final class CountingController extends Controller
             ]);
     }
 
+    public function selectRandomManualAuditSample(RandomManualAuditService $randomManualAudit): RedirectResponse
+    {
+        $sample = $randomManualAudit->selectSample();
+
+        return redirect()
+            ->route('election.counting')
+            ->with('rma_feedback', [
+                'status' => 'sample-selected',
+                'ballot_id' => null,
+                'payload_hash' => $sample['sample_hash'],
+            ]);
+    }
+
     public function approveRandomManualAudit(
         Request $request,
         RandomManualAuditService $randomManualAudit,
@@ -169,6 +182,37 @@ final class CountingController extends Controller
             ->route('election.counting')
             ->with('rma_feedback', [
                 'status' => 'approved',
+                'ballot_id' => $record['ballot_id'],
+                'payload_hash' => $record['payload_hash'],
+            ]);
+    }
+
+    public function recordRandomManualAuditDiscrepancy(
+        Request $request,
+        RandomManualAuditService $randomManualAudit,
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'payload_hash' => ['required', 'string', 'size:64'],
+            'reason' => ['required', 'string', 'max:500'],
+            'first_officer_code' => ['required', 'string'],
+            'first_officer_pin' => ['required', 'digits:6'],
+            'second_officer_code' => ['required', 'string'],
+            'second_officer_pin' => ['required', 'digits:6'],
+        ]);
+
+        $record = $randomManualAudit->recordDiscrepancy(
+            $validated['payload_hash'],
+            $validated['reason'],
+            $validated['first_officer_code'],
+            $validated['first_officer_pin'],
+            $validated['second_officer_code'],
+            $validated['second_officer_pin'],
+        );
+
+        return redirect()
+            ->route('election.counting')
+            ->with('rma_feedback', [
+                'status' => 'discrepancy-recorded',
                 'ballot_id' => $record['ballot_id'],
                 'payload_hash' => $record['payload_hash'],
             ]);

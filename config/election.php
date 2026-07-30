@@ -169,6 +169,9 @@ return [
     'tabulation' => [
         'profile' => env('ELECTION_TABULATION_PROFILE', 'device-tabulation-with-paper-audit'),
     ],
+    'random_manual_audit' => [
+        'sample_percent' => (int) env('ELECTION_RMA_SAMPLE_PERCENT', 10),
+    ],
     'removable_media' => [
         'path' => env('ELECTION_REMOVABLE_MEDIA_PATH', ''),
     ],

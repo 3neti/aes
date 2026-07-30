@@ -33,6 +33,10 @@ beforeEach(function (): void {
 });
 
 test('a QR-assisted random manual audit writes a separately dual-approved audit record', function (): void {
+    $this->post(route('election.counting.rma.select-sample'))
+        ->assertRedirect(route('election.counting'))
+        ->assertSessionHas('rma_feedback.status', 'sample-selected');
+
     $this->post(route('election.counting.rma.propose'), [
         'payload' => $this->auditPayload['qr_payload'],
     ])->assertRedirect(route('election.counting'))
@@ -43,6 +47,7 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/Counting')
             ->where('randomManualAudit.enabled', true)
+            ->where('randomManualAudit.sample_selection.sample_size', 1)
             ->where('randomManualAudit.proposed_ballots', 1)
             ->where('randomManualAudit.pending_proposal.ballot_id', 'rma-ballot-001')
             ->where('randomManualAudit.pending_proposal.selections.president.0', 'pres-ada')
@@ -80,6 +85,8 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
 });
 
 test('a random manual audit requires two distinct valid officer approvals', function (): void {
+    $this->post(route('election.counting.rma.select-sample'));
+
     $this->post(route('election.counting.rma.propose'), [
         'payload' => $this->auditPayload['qr_payload'],
     ])->assertRedirect(route('election.counting'));
@@ -103,6 +110,8 @@ test('a random manual audit rejects QR codes absent from the device tabulation r
         'council' => ['council-ana'],
     ], 'rma-unrecorded-001');
 
+    $this->post(route('election.counting.rma.select-sample'));
+
     $this->post(route('election.counting.rma.propose'), [
         'payload' => $unrecordedPayload['qr_payload'],
     ])->assertSessionHasErrors('payload');
@@ -118,4 +127,64 @@ test('a random manual audit is available only during the counting ceremony', fun
     ])->assertSessionHasErrors('lifecycle');
 
     expect(app(ElectionStorage::class)->files('rma/proposals'))->toBeEmpty();
+});
+
+test('the recorded audit sample is deterministic and excludes non-selected ballots', function (): void {
+    $secondPayload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ], 'rma-ballot-002');
+    app(BallotPrinter::class)->print($secondPayload);
+    app(SealedBallotBox::class)->depositPrintedPayload($secondPayload);
+
+    $this->post(route('election.counting.rma.select-sample'))
+        ->assertRedirect(route('election.counting'));
+
+    $storage = app(ElectionStorage::class);
+    $firstSelection = $storage->readJson('rma/sample-selection.json');
+
+    $this->post(route('election.counting.rma.select-sample'))
+        ->assertRedirect(route('election.counting'));
+
+    $secondSelection = $storage->readJson('rma/sample-selection.json');
+    $selectedHash = $firstSelection['selected_ballots'][0]['payload_hash'];
+    $unselectedPayload = $selectedHash === $this->auditPayload['payload_hash']
+        ? $secondPayload
+        : $this->auditPayload;
+
+    expect($firstSelection['source_record_count'])->toBe(2)
+        ->and($firstSelection['sample_size'])->toBe(1)
+        ->and($secondSelection['sample_hash'])->toBe($firstSelection['sample_hash']);
+
+    $this->post(route('election.counting.rma.propose'), [
+        'payload' => $unselectedPayload['qr_payload'],
+    ])->assertSessionHasErrors('payload');
+});
+
+test('a paper discrepancy is dual-approved and remains outside the audit tally', function (): void {
+    $this->post(route('election.counting.rma.select-sample'));
+    $this->post(route('election.counting.rma.propose'), [
+        'payload' => $this->auditPayload['qr_payload'],
+    ]);
+
+    $this->post(route('election.counting.rma.discrepancy'), [
+        'payload_hash' => $this->auditPayload['payload_hash'],
+        'reason' => 'The printed contest mark does not match the decoded selection.',
+        'first_officer_code' => 'SIM-OFFICER-001',
+        'first_officer_pin' => '123456',
+        'second_officer_code' => 'SIM-OFFICER-002',
+        'second_officer_pin' => '123456',
+    ])->assertRedirect(route('election.counting'))
+        ->assertSessionHas('rma_feedback.status', 'discrepancy-recorded');
+
+    $storage = app(ElectionStorage::class);
+    $record = json_decode(file_get_contents($storage->files('rma/discrepancies')[0]), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($storage->files('rma/accepted'))->toBeEmpty()
+        ->and($record['schema_version'])->toBe('random-manual-audit-discrepancy-1')
+        ->and($record['approvals'])->toHaveCount(2)
+        ->and($record['artifact_path'])->toContain('12-audit-and-reconciliation/random-manual-audit/discrepancies')
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('rma.paper_discrepancy_recorded');
 });
