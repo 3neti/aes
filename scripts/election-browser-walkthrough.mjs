@@ -785,6 +785,20 @@ try {
         '21-counting-complete.png',
     );
 
+    await runStep(
+        'review-live-precinct-tally',
+        async () => {
+            await openPath('/election/counting');
+            await page
+                .getByRole('heading', {
+                    name: 'Precinct tally',
+                    exact: true,
+                })
+                .waitFor();
+        },
+        '21a-live-precinct-tally.png',
+    );
+
     recordAction('counting-adjudication-and-tally', 'passed', {
         final_url: page.url(),
         accepted_ballots: walkthroughStatistics.ballots_accepted,
