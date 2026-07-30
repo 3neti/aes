@@ -4,11 +4,11 @@
 
 ## Implementation Status
 
-- Completed Slice: Review Room Pairing Recovery
-- Active Program: COMELEC Review Deployment
-- Current Slice: Concurrent Voting Hardening
-- Next Slice: COMELEC Review Kit
-- Program Compass: `docs/REALISM_COMPASS.md`
+- Completed Slice: Configurable Print Form Profiles
+- Active Program: Public Election Simulation Server
+- Current Slice: Simulation Foundation and VVDAT Close Semantics
+- Next Slice: Public simulation catalog and isolated run ownership
+- Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
 
