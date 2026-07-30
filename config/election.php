@@ -42,6 +42,9 @@ return [
             ['code' => 'TONDO-02', 'clustered_precinct' => '39010001', 'district' => 'FIRST DIST', 'label' => 'Tondo Precinct 02'],
             ['code' => 'TONDO-03', 'clustered_precinct' => '39010001', 'district' => 'FIRST DIST', 'label' => 'Tondo Precinct 03'],
         ],
+        'god_mode' => [
+            'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED', false),
+        ],
     ],
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),

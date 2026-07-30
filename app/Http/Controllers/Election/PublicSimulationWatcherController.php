@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Election;
 
 use App\Election\PublicSimulation\PublicSimulationService;
+use App\Election\PublicSimulation\PublicVvdatAuditExport;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
 use App\Models\SimulationPrecinct;
@@ -18,6 +19,7 @@ final class PublicSimulationWatcherController extends Controller
         $this->scope($round, $precinct, $simulations);
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $return = $configuration === [] ? [] : $storage->readJson("returns/{$configuration['precinct_id']}-return.json");
+        $publication = $storage->readJson('returns/publication-manifest.json');
 
         return Inertia::render('Election/PublicSimulationWatcher', [
             'precinct' => [
@@ -43,10 +45,15 @@ final class PublicSimulationWatcherController extends Controller
                     ->values()
                     ->all(),
             ],
-            'published' => $return !== [],
+            'published' => $publication !== [],
+            'publication' => [
+                'manifest_hash' => $publication['manifest_hash'] ?? null,
+                'ledger_root' => $publication['vvdat_ledger_root'] ?? null,
+            ],
             'downloads' => [
                 'tally' => route('election.public-simulation.watcher.tally', [$round, $precinct]),
                 'return' => route('election.public-simulation.watcher.return', [$round, $precinct]),
+                'vvdat_audit_export' => route('election.public-simulation.watcher.vvdat-audit-export', [$round, $precinct]),
             ],
         ]);
     }
@@ -54,7 +61,7 @@ final class PublicSimulationWatcherController extends Controller
     public function tally(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse
     {
         $this->scope($round, $precinct, $simulations);
-        abort_unless($precinct->status === 'closed' && file_exists($storage->path('runtime/tally-sheet.pdf')), 404);
+        abort_unless($this->isPublished($precinct, $storage) && file_exists($storage->path('runtime/tally-sheet.pdf')), 404);
 
         return response()->download($storage->path('runtime/tally-sheet.pdf'), "{$precinct->code}-tally-sheet.pdf");
     }
@@ -65,14 +72,29 @@ final class PublicSimulationWatcherController extends Controller
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $precinctId = (string) ($configuration['precinct_id'] ?? '');
         $path = $storage->path("returns/{$precinctId}-return.pdf");
-        abort_unless($precinct->status === 'closed' && $precinctId !== '' && file_exists($path), 404);
+        abort_unless($this->isPublished($precinct, $storage) && $precinctId !== '' && file_exists($path), 404);
 
         return response()->download($path, "{$precinct->code}-election-return.pdf");
+    }
+
+    public function vvdatAuditExport(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicVvdatAuditExport $exports, ElectionStorage $storage): BinaryFileResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        abort_unless($this->isPublished($precinct, $storage), 404);
+        $export = $exports->generate();
+
+        return response()->download((string) $export['artifact_path'], "{$precinct->code}-vvdat-audit-export.json");
     }
 
     private function scope(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations): void
     {
         abort_unless($precinct->simulation_round_id === $round->id, 404);
         $simulations->applyScope($precinct);
+    }
+
+    private function isPublished(SimulationPrecinct $precinct, ElectionStorage $storage): bool
+    {
+        return $precinct->status === 'published'
+            && $storage->readJson('returns/publication-manifest.json') !== [];
     }
 }

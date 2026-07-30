@@ -21,6 +21,7 @@ final class PublicSimulationCloseout
         private readonly CountingReconciliationService $reconciliation,
         private readonly CountingService $counting,
         private readonly ElectionReturnService $returns,
+        private readonly VvdatLedgerFreeze $freeze,
     ) {}
 
     /**
@@ -30,6 +31,13 @@ final class PublicSimulationCloseout
     {
         $this->ceremonies->closePolls($precinct->officer_name);
         $this->legalEvidence->writeForClosePolls();
+        $freeze = $this->freeze->freeze();
+        $validation = $this->freeze->validation();
+
+        if (! $validation['passed']) {
+            throw new \RuntimeException('The VVDAT ledger freeze validation failed: '.implode(' ', $validation['errors']));
+        }
+
         $this->ceremonies->startCounting();
         $this->ballotBox->openForCounting($this->counting);
 
@@ -41,10 +49,10 @@ final class PublicSimulationCloseout
         $return = $this->returns->generate($tally);
 
         $precinct->forceFill([
-            'status' => 'closed',
+            'status' => 'results_ready',
             'closed_at' => now(),
         ])->save();
 
-        return ['tally' => $tally, 'return' => $return];
+        return ['tally' => $tally, 'return' => $return, 'freeze' => $freeze];
     }
 }

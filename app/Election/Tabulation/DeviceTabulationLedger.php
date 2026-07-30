@@ -27,6 +27,9 @@ final class DeviceTabulationLedger
     public function recordDepositedBallot(array $payload): array
     {
         return $this->lock->execute('device-tabulation-ledger', function () use ($payload): array {
+            if ($this->storage->readJson('counting/vvdat-ledger-freeze.json') !== []) {
+                throw new RuntimeException('The VVDAT ledger is frozen and cannot accept another deposited ballot.');
+            }
             foreach ($this->records() as $record) {
                 if (($record['payload_hash'] ?? null) === ($payload['payload_hash'] ?? null)) {
                     throw new RuntimeException('This ballot already has a device tabulation record.');

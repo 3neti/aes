@@ -74,6 +74,19 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
     $this->post(route('election.public-simulation.close', [$round, $precinct]), $credentials)
         ->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
 
+    $precinct->refresh();
+    expect($precinct->status)->toBe('results_ready');
+
+    $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/PublicSimulationWatcher')
+            ->where('published', false)
+        );
+
+    $this->post(route('election.public-simulation.publish', [$round, $precinct]), $credentials)
+        ->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
+
     $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
@@ -83,7 +96,7 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
         );
 
     $precinct->refresh();
-    expect($precinct->status)->toBe('closed');
+    expect($precinct->status)->toBe('published');
 
     app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
     $storage = app(ElectionStorage::class);
@@ -91,7 +104,17 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
     $return = $storage->readJson("returns/{$configuration['precinct_id']}-return.json");
 
     expect($storage->files('device-tabulation-ledger'))->toHaveCount(1)
+        ->and($storage->readJson('counting/vvdat-ledger-freeze.json')['record_count'])->toBe(1)
+        ->and($storage->readJson('returns/publication-manifest.json')['precinct_code'])->toBe($precinct->code)
         ->and($storage->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
         ->and($return['accepted_ballots'])->toBe(1)
         ->and($return['tally_source'])->toContain('VVDAT');
+
+    $this->get(route('election.public-simulation.watcher.vvdat-audit-export', [$round, $precinct]))
+        ->assertSuccessful();
+
+    $export = $storage->readJson('returns/vvdat-audit-export.json');
+    expect($export['record_count'])->toBe(1)
+        ->and($export['records'][0])->toHaveKeys(['record_hash', 'selections'])
+        ->and($export['records'][0])->not->toHaveKeys(['ballot_id', 'paper_ballot_serial', 'recorded_at']);
 });

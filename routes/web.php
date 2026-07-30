@@ -9,6 +9,7 @@ use App\Http\Controllers\Election\PrintingController;
 use App\Http\Controllers\Election\PrintStationController;
 use App\Http\Controllers\Election\ProvisionController;
 use App\Http\Controllers\Election\PublicSimulationController;
+use App\Http\Controllers\Election\PublicSimulationGodModeController;
 use App\Http\Controllers\Election\PublicSimulationVoterController;
 use App\Http\Controllers\Election\PublicSimulationWatcherController;
 use App\Http\Controllers\Election\ReturnsController;
@@ -27,10 +28,12 @@ Route::get('/', HomeController::class)
 Route::prefix('election')->name('election.')->group(function (): void {
     Route::prefix('play')->name('public-simulation.')->group(function (): void {
         Route::get('/', [PublicSimulationController::class, 'index'])->name('index');
+        Route::get('/{round:code}/god-mode', PublicSimulationGodModeController::class)->name('god-mode');
         Route::get('/{round:code}/{precinct:code}', [PublicSimulationController::class, 'show'])->name('show');
         Route::post('/{round:code}/{precinct:code}/open', [PublicSimulationController::class, 'open'])->name('open');
         Route::post('/{round:code}/{precinct:code}/admit', [PublicSimulationController::class, 'admit'])->name('admit');
         Route::post('/{round:code}/{precinct:code}/close', [PublicSimulationController::class, 'close'])->name('close');
+        Route::post('/{round:code}/{precinct:code}/publish', [PublicSimulationController::class, 'publish'])->name('publish');
 
         Route::get('/{round:code}/{precinct:code}/vote', [PublicSimulationVoterController::class, 'show'])->name('voter.show');
         Route::post('/{round:code}/{precinct:code}/vote/claim', [PublicSimulationVoterController::class, 'claim'])->middleware('throttle:10,1')->name('voter.claim');
@@ -45,6 +48,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/{round:code}/{precinct:code}/watch', [PublicSimulationWatcherController::class, 'show'])->name('watcher.show');
         Route::get('/{round:code}/{precinct:code}/watch/tally-sheet', [PublicSimulationWatcherController::class, 'tally'])->name('watcher.tally');
         Route::get('/{round:code}/{precinct:code}/watch/election-return', [PublicSimulationWatcherController::class, 'electionReturn'])->name('watcher.return');
+        Route::get('/{round:code}/{precinct:code}/watch/vvdat-audit-export', [PublicSimulationWatcherController::class, 'vvdatAuditExport'])->name('watcher.vvdat-audit-export');
     });
 
     Route::get('/review-room', [ReviewRoomController::class, 'index'])->name('review-room.index');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ElectionSnapshot;
 use App\Election\PublicSimulation\PublicSimulationCloseout;
+use App\Election\PublicSimulation\PublicSimulationPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\AnonymousVoterAuthorization;
@@ -50,6 +51,7 @@ final class PublicSimulationController extends Controller
                 'open' => route('election.public-simulation.open', [$round, $precinct]),
                 'admit' => route('election.public-simulation.admit', [$round, $precinct]),
                 'close' => route('election.public-simulation.close', [$round, $precinct]),
+                'publish' => route('election.public-simulation.publish', [$round, $precinct]),
                 'print' => route('election.public-simulation.print.station', [$round, $precinct]),
                 'watch' => route('election.public-simulation.watcher.show', [$round, $precinct]),
             ],
@@ -109,7 +111,25 @@ final class PublicSimulationController extends Controller
         }
 
         return to_route('election.public-simulation.show', [$round, $precinct])
-            ->with('public_simulation.officer_feedback', 'Polls are closed. The VVDAT tally sheet and Election Return are published for watchers.');
+            ->with('public_simulation.officer_feedback', 'Polls are closed. Review the VVDAT freeze, tally, and Election Return before publishing the watcher package.');
+    }
+
+    public function publish(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationPublication $publication): RedirectResponse
+    {
+        $this->ensurePrecinctInRound($round, $precinct);
+        $validated = $this->officerCredentials($request);
+
+        try {
+            $simulations->verifyOfficer($precinct, $validated['officer_code'], $validated['officer_pin']);
+            $simulations->applyScope($precinct);
+            $publication->publish($precinct);
+            $precinct->forceFill(['status' => 'published'])->save();
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
+        }
+
+        return to_route('election.public-simulation.show', [$round, $precinct])
+            ->with('public_simulation.officer_feedback', 'The watcher publication manifest is sealed and post-close result artifacts are available.');
     }
 
     /** @return array{officer_code: string, officer_pin: string} */
@@ -148,6 +168,7 @@ final class PublicSimulationController extends Controller
     {
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $return = $configuration === [] ? [] : $storage->readJson("returns/{$configuration['precinct_id']}-return.json");
+        $publication = $storage->readJson('returns/publication-manifest.json');
 
         return [
             'code' => $precinct->code,
@@ -158,7 +179,7 @@ final class PublicSimulationController extends Controller
             'status' => $precinct->status,
             'officer_name' => $precinct->officer_name,
             'snapshot' => $configuration === [] ? null : $snapshot->get(),
-            'tally_available' => $return !== [],
+            'tally_available' => $publication !== [],
             'accepted_ballots' => $return['accepted_ballots'] ?? null,
         ];
     }

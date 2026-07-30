@@ -67,6 +67,28 @@ final class PublicSimulationService
         $this->ensureOfficer($precinct, $code, $pin);
     }
 
+    public function archive(SimulationRound $round): SimulationRound
+    {
+        return DB::transaction(function () use ($round): SimulationRound {
+            $round = SimulationRound::query()->with('precincts')->lockForUpdate()->findOrFail($round->id);
+
+            if ($round->status === 'archived') {
+                return $round;
+            }
+
+            if ($round->precincts->contains(fn (SimulationPrecinct $precinct): bool => $precinct->status !== 'published')) {
+                throw new RuntimeException('Every precinct must publish or be explicitly resolved before this simulation round can be archived.');
+            }
+
+            $round->forceFill([
+                'status' => 'archived',
+                'archived_at' => now(),
+            ])->save();
+
+            return $round;
+        }, attempts: 5);
+    }
+
     private function createRound(): SimulationRound
     {
         return DB::transaction(function (): SimulationRound {
