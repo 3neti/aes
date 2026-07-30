@@ -88,7 +88,7 @@ final class ReviewMode
         return $request->routeIs(
             'election.voter*',
             'election.print-station*',
-            'election.watchers',
+            'election.watchers*',
         );
     }
 }

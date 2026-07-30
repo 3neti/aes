@@ -150,7 +150,11 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/print-station/deposit', [PrintStationController::class, 'deposit'])->name('print-station.deposit');
     });
 
-    Route::get('/watchers', WatcherController::class)
-        ->middleware('review-room-role:watcher')
-        ->name('watchers');
+    Route::middleware('review-room-role:watcher')->group(function (): void {
+        Route::get('/watchers', WatcherController::class)->name('watchers');
+        Route::get('/watchers/rma/evidence-pack/download', [WatcherController::class, 'downloadRandomManualAuditEvidencePack'])
+            ->name('watchers.rma.evidence-pack.download');
+        Route::get('/watchers/rma/evidence-pack/print', [WatcherController::class, 'downloadRandomManualAuditEvidencePackPdf'])
+            ->name('watchers.rma.evidence-pack.print');
+    });
 });

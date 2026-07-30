@@ -109,6 +109,22 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
     $this->get(route('election.counting.rma.evidence-pack.print'))
         ->assertDownload('random-manual-audit-evidence-pack.pdf');
 
+    $this->get(route('election.watchers'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/Watcher')
+            ->where('randomManualAudit.available', true)
+            ->where('randomManualAudit.sample_size', 1)
+            ->where('randomManualAudit.reconciliation.passed', true)
+            ->where('randomManualAudit.evidence_pack_available', true)
+            ->missing('randomManualAudit.sample_selection')
+            ->missing('randomManualAudit.approved_paper_comparisons')
+        );
+    $this->get(route('election.watchers.rma.evidence-pack.download'))
+        ->assertDownload('random-manual-audit-evidence-pack.json');
+    $this->get(route('election.watchers.rma.evidence-pack.print'))
+        ->assertDownload('random-manual-audit-evidence-pack.pdf');
+
     $this->get(route('election.counting'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('randomManualAudit.proposed_ballots', 0)
