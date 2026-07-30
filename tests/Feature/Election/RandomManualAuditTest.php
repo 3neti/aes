@@ -119,6 +119,9 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
             ->where('randomManualAudit.sample_size', 1)
             ->where('randomManualAudit.reconciliation.passed', true)
             ->where('randomManualAudit.evidence_pack_available', true)
+            ->where('tallyAvailable', true)
+            ->where('tally.accepted_ballots', 1)
+            ->where('tally.tally.president.pres-ada', 1)
             ->missing('randomManualAudit.sample_selection')
             ->missing('randomManualAudit.approved_paper_comparisons')
         );
@@ -126,6 +129,8 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
         ->assertDownload('random-manual-audit-evidence-pack.json');
     $this->get(route('election.watchers.rma.evidence-pack.print'))
         ->assertDownload('random-manual-audit-evidence-pack.pdf');
+    $this->get(route('election.watchers.tally-sheet.download'))->assertDownload('precinct-tally-sheet.pdf');
+    $this->get(route('election.watchers.tally.download'))->assertDownload('precinct-tally.json');
 
     $this->post(route('election.watchers.rma.evidence-pack.verify'), [
         'evidence_pack' => UploadedFile::fake()->createWithContent(

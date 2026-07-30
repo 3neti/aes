@@ -152,6 +152,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
 
     Route::middleware('review-room-role:watcher')->group(function (): void {
         Route::get('/watchers', WatcherController::class)->name('watchers');
+        Route::get('/watchers/tally-sheet/download', [WatcherController::class, 'downloadTallySheetPdf'])->name('watchers.tally-sheet.download');
+        Route::get('/watchers/tally/download', [WatcherController::class, 'downloadTallyJson'])->name('watchers.tally.download');
         Route::get('/watchers/rma/evidence-pack/download', [WatcherController::class, 'downloadRandomManualAuditEvidencePack'])
             ->name('watchers.rma.evidence-pack.download');
         Route::get('/watchers/rma/evidence-pack/print', [WatcherController::class, 'downloadRandomManualAuditEvidencePackPdf'])

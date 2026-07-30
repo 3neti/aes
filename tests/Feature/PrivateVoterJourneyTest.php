@@ -216,6 +216,7 @@ test('the private voter journey seals choices until polls close', function (): v
             ->component('Election/Watcher')
             ->where('operations.deposited_ballots', 1)
             ->where('resultsAvailable', false)
+            ->where('tallyAvailable', false)
             ->where('randomManualAudit.available', false)
             ->where('tally', [])
         );

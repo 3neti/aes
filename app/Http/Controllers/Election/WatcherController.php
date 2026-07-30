@@ -33,6 +33,7 @@ final class WatcherController extends Controller
             Lifecycle::Audit,
         ], true);
         $auditAvailable = $this->auditAvailable($lifecycle);
+        $tallyAvailable = $this->tallyAvailable($lifecycle);
         $sample = $auditAvailable ? $storage->readJson('rma/sample-selection.json') : [];
         $reconciliation = $auditAvailable ? $storage->readJson('rma/reconciliation-report.json') : [];
         $evidencePack = $auditAvailable ? $storage->readJson('rma/evidence-pack.json') : [];
@@ -41,7 +42,8 @@ final class WatcherController extends Controller
             'snapshot' => $snapshot->get(),
             'operations' => $ballotBox->operationalSummary(),
             'resultsAvailable' => $resultsAvailable,
-            'tally' => $resultsAvailable ? $storage->readJson('runtime/tally.json') : [],
+            'tallyAvailable' => $tallyAvailable,
+            'tally' => $tallyAvailable ? $storage->readJson('runtime/tally.json') : [],
             'electionReturn' => $resultsAvailable ? $storage->readJson('returns/election-return.json') : [],
             'randomManualAudit' => [
                 'available' => $auditAvailable,
@@ -104,12 +106,44 @@ final class WatcherController extends Controller
         );
     }
 
+    public function downloadTallySheetPdf(LifecycleState $lifecycle, ElectionStorage $storage): BinaryFileResponse
+    {
+        $this->ensureTallyAvailable($lifecycle, $storage, 'runtime/tally-sheet.pdf');
+
+        return response()->download($storage->path('runtime/tally-sheet.pdf'), 'precinct-tally-sheet.pdf');
+    }
+
+    public function downloadTallyJson(LifecycleState $lifecycle, ElectionStorage $storage): BinaryFileResponse
+    {
+        $this->ensureTallyAvailable($lifecycle, $storage, 'runtime/tally.json');
+
+        return response()->download($storage->path('runtime/tally.json'), 'precinct-tally.json');
+    }
+
     private function ensureAuditEvidenceAvailable(
         LifecycleState $lifecycle,
         ElectionStorage $storage,
         string $relativePath,
     ): void {
         abort_unless($this->auditAvailable($lifecycle) && file_exists($storage->path($relativePath)), 404);
+    }
+
+    private function ensureTallyAvailable(LifecycleState $lifecycle, ElectionStorage $storage, string $relativePath): void
+    {
+        abort_unless($this->tallyAvailable($lifecycle) && file_exists($storage->path($relativePath)), 404);
+    }
+
+    private function tallyAvailable(LifecycleState $lifecycle): bool
+    {
+        return in_array($lifecycle->current(), [
+            Lifecycle::Counting,
+            Lifecycle::ElectionReturn,
+            Lifecycle::Transmission,
+            Lifecycle::FinalBackup,
+            Lifecycle::Custody,
+            Lifecycle::ClosePrecinct,
+            Lifecycle::Audit,
+        ], true);
     }
 
     private function auditAvailable(LifecycleState $lifecycle): bool

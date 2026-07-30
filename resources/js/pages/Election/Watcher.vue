@@ -7,12 +7,18 @@ import {
     print as printRandomManualAuditEvidencePack,
     verify as verifyRandomManualAuditEvidencePack,
 } from '@/routes/election/watchers/rma/evidence-pack';
+import { download as downloadTallyJson } from '@/routes/election/watchers/tally';
+import { download as downloadTallySheet } from '@/routes/election/watchers/tally-sheet';
 
-defineProps<{
+const props = defineProps<{
     snapshot: ElectionSnapshot;
     operations: { deposited_ballots: number };
     resultsAvailable: boolean;
-    tally: Record<string, unknown>;
+    tallyAvailable: boolean;
+    tally: {
+        accepted_ballots?: number;
+        tally?: Record<string, Record<string, number>>;
+    };
     electionReturn: Record<string, unknown>;
     randomManualAudit: {
         available: boolean;
@@ -40,6 +46,14 @@ defineProps<{
         discrepancy_ballots: number;
     } | null;
 }>();
+
+function contestTitle(contestId: string): string {
+    return props.snapshot.configuration.contests?.find((contest) => contest.id === contestId)?.title ?? contestId;
+}
+
+function candidateName(contestId: string, candidateId: string): string {
+    return props.snapshot.configuration.contests?.find((contest) => contest.id === contestId)?.candidates.find((candidate) => candidate.id === candidateId)?.name ?? candidateId;
+}
 </script>
 
 <template>
@@ -61,6 +75,32 @@ defineProps<{
                     </dd>
                 </div>
             </dl>
+        </section>
+
+        <section class="border border-stone-300 bg-white p-5">
+            <template v-if="!tallyAvailable">
+                <p class="text-sm font-bold text-amber-800">Tally remains sealed</p>
+                <h2 class="mt-1 text-xl font-bold">Candidate totals are not published during voting</h2>
+            </template>
+            <template v-else>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm font-bold text-emerald-800">Post-close tally</p>
+                        <h2 class="mt-1 text-xl font-bold">Precinct candidate totals</h2>
+                        <p class="mt-2 text-stone-700">{{ tally.accepted_ballots ?? 0 }} deposited ballots represented in the published tally.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <a :href="downloadTallySheet.url()" class="secondary-button">Download tally sheet PDF</a>
+                        <a :href="downloadTallyJson.url()" class="secondary-button">Download tally JSON</a>
+                    </div>
+                </div>
+                <div class="mt-5 space-y-4">
+                    <section v-for="(totals, contest) in tally.tally ?? {}" :key="contest" class="border border-stone-300">
+                        <h3 class="border-b border-stone-200 bg-stone-50 px-4 py-3 font-bold">{{ contestTitle(String(contest)) }}</h3>
+                        <table class="w-full text-sm"><tbody class="divide-y divide-stone-200"><tr v-for="(votes, candidate) in totals" :key="candidate"><td class="px-4 py-2.5">{{ candidateName(String(contest), String(candidate)) }}</td><td class="w-24 px-4 py-2.5 text-right text-base font-bold">{{ votes }}</td></tr></tbody></table>
+                    </section>
+                </div>
+            </template>
         </section>
 
         <section class="border border-stone-300 bg-white p-5">
