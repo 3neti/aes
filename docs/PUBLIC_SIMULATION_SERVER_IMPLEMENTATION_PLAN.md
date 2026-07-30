@@ -140,7 +140,7 @@ The public simulation model must use a distinct `simulation_id` and storage name
 
 11. **Concurrent multi-precinct controls** - partial
     - Distributed locks, idempotency keys, capacity limits, session expiry, queue/backpressure policy, and abuse controls.
-   - Delivered: election operation locks include the scoped evidence root, avoiding cross-precinct lock contention. Admission issuance has an atomic active-capacity limit and endpoint throttle. A deterministic feature flow now exercises three complete voter paths in one precinct and proves a neighbouring precinct remains empty. One shared voting gate serializes public admission, claim, finalization, print, deposit, and closeout; closeout journals and refuses unresolved sessions/releases. A two-browser workflow proves isolated voter contexts and active-voter closeout refusal. The optional anonymous waiting line is bounded and expiring; only an officer can release the earliest ticket into a control number. Operator-facing contention reporting and broader abuse controls remain pending.
+   - Delivered: election operation locks include the scoped evidence root, avoiding cross-precinct lock contention. Admission issuance has an atomic active-capacity limit and endpoint throttle. A deterministic feature flow now exercises three complete voter paths in one precinct and proves a neighbouring precinct remains empty. One shared voting gate serializes public admission, claim, finalization, print, deposit, and closeout; closeout journals and refuses unresolved sessions/releases. A two-browser workflow proves isolated voter contexts and active-voter closeout refusal. The optional anonymous waiting line is bounded and expiring; only an officer can release the earliest ticket into a control number. An officer can now record a redacted contention report with aggregate capacity, queue, expiry, and blocked-close counts. Broader anonymous-entry abuse controls remain pending.
 
 12. **Retention, consent, and review kit** - partial
     - Public consent page, retention schedule, deletion workflow, incident contact, accessibility review, and downloadable COMELEC Review Kit.
@@ -197,7 +197,7 @@ Each scenario must persist a run summary with:
 7. Add anonymized VVDAT audit export plus independent verification command.
 8. Add QR-assisted RMA tally room and public audit report. Completed.
 9. Add redacted God Mode and training-fixture replay.
-10. Add concurrent multi-precinct scenarios, browser tests, retention policy, and Review Kit. Next: operator contention reporting and broader anonymous-entry abuse controls.
+10. Add concurrent multi-precinct scenarios, browser tests, retention policy, and Review Kit. Next: bounded anonymous-entry abuse response and public-simulation retention/consent policy.
 
 ## Definition of Done
 

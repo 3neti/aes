@@ -6,6 +6,7 @@ use App\Election\Core\ElectionSnapshot;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationCloseout;
+use App\Election\PublicSimulation\PublicSimulationContentionReport;
 use App\Election\PublicSimulation\PublicSimulationPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
@@ -42,6 +43,7 @@ final class PublicSimulationController extends Controller
         StandardQrCode $qrCode,
         PublicSimulationAdmissionCapacity $capacity,
         PublicSimulationAdmissionQueue $queue,
+        PublicSimulationContentionReport $contentionReport,
         Request $request,
     ): Response {
         $this->ensurePrecinctInRound($round, $precinct);
@@ -54,12 +56,14 @@ final class PublicSimulationController extends Controller
                 ...$capacity->summary(),
                 'queue' => $queue->summary(),
             ],
+            'contention' => $contentionReport->summary(),
             'commonVoterUrl' => route('election.public-simulation.voter.show', [$round, $precinct]),
             'commonVoterQr' => 'data:image/png;base64,'.base64_encode($qrCode->renderPng(route('election.public-simulation.voter.show', [$round, $precinct]))),
             'actions' => [
                 'open' => route('election.public-simulation.open', [$round, $precinct]),
                 'admit' => route('election.public-simulation.admit', [$round, $precinct]),
                 'admitQueued' => route('election.public-simulation.admit-queued', [$round, $precinct]),
+                'contentionReport' => route('election.public-simulation.contention-report', [$round, $precinct]),
                 'close' => route('election.public-simulation.close', [$round, $precinct]),
                 'publish' => route('election.public-simulation.publish', [$round, $precinct]),
                 'audit' => route('election.public-simulation.audit.show', [$round, $precinct]),
@@ -133,6 +137,23 @@ final class PublicSimulationController extends Controller
         return to_route('election.public-simulation.show', [$round, $precinct])
             ->with('public_simulation.control_number', $release['authorization'])
             ->with('public_simulation.officer_feedback', "Waiting ticket {$release['ticket']['ticket_number']} has been admitted. Hand over the four-digit control number.");
+    }
+
+    public function generateContentionReport(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationContentionReport $contentionReport): RedirectResponse
+    {
+        $this->ensurePrecinctInRound($round, $precinct);
+        $validated = $this->officerCredentials($request);
+
+        try {
+            $simulations->verifyOfficer($precinct, $validated['officer_code'], $validated['officer_pin']);
+            $simulations->applyScope($precinct);
+            $report = $contentionReport->generate();
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
+        }
+
+        return to_route('election.public-simulation.show', [$round, $precinct])
+            ->with('public_simulation.officer_feedback', "Redacted contention report {$report['sequence']} has been recorded in the voting evidence bundle.");
     }
 
     public function close(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationCloseout $closeout): RedirectResponse

@@ -34,6 +34,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/{round:code}/{precinct:code}/open', [PublicSimulationController::class, 'open'])->name('open');
         Route::post('/{round:code}/{precinct:code}/admit', [PublicSimulationController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
         Route::post('/{round:code}/{precinct:code}/admit-queued', [PublicSimulationController::class, 'admitQueued'])->middleware('throttle:20,1')->name('admit-queued');
+        Route::post('/{round:code}/{precinct:code}/contention-report', [PublicSimulationController::class, 'generateContentionReport'])->middleware('throttle:10,1')->name('contention-report');
         Route::post('/{round:code}/{precinct:code}/close', [PublicSimulationController::class, 'close'])->name('close');
         Route::post('/{round:code}/{precinct:code}/publish', [PublicSimulationController::class, 'publish'])->name('publish');
 

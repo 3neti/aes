@@ -3,6 +3,7 @@
 use App\Election\Core\ActivityJournal;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
+use App\Election\PublicSimulation\PublicSimulationContentionReport;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\PublicSimulation\PublicVvdatAuditExportVerifier;
 use App\Election\Support\ElectionStorage;
@@ -308,6 +309,51 @@ test('closeout serializes public voter work and refuses unresolved sessions', fu
         ->and(app(ElectionStorage::class)->files('device-tabulation-ledger'))->toHaveCount(1)
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
         ->toContain('public_simulation.close_blocked_pending_voters');
+});
+
+test('an officer contention report preserves only aggregate public simulation pressure', function (): void {
+    config()->set('election.public_simulation.maximum_active_admissions', 10);
+    config()->set('election.public_simulation.admission_queue.maximum_waiting_voters', 25);
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+
+    $queue = app(PublicSimulationAdmissionQueue::class);
+    $ticket = $queue->join();
+    $release = $queue->releaseNext(app(AnonymousVoterAuthorization::class));
+    app(AnonymousVoterAuthorization::class)->claim($release['authorization']['code']);
+
+    $this->post(route('election.public-simulation.close', [$round, $precinct]), $credentials)
+        ->assertRedirect()
+        ->assertSessionHasErrors('officer_pin');
+    $this->post(route('election.public-simulation.contention-report', [$round, $precinct]), $credentials)
+        ->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('contention-reports/000001-contention-report.json');
+
+    expect($report['capacity'])->toMatchArray(['active_admissions' => 1, 'maximum_active_admissions' => 10, 'available_admissions' => 9])
+        ->and($report['waiting_line'])->toMatchArray(['waiting_voters' => 0, 'maximum_waiting_voters' => 25])
+        ->and($report['activity'])->toMatchArray([
+            'control_numbers_issued' => 1,
+            'tickets_joined' => 1,
+            'tickets_released' => 1,
+            'tickets_expired' => 0,
+            'close_attempts_blocked' => 1,
+        ])
+        ->and($report['privacy_notice'])->toContain('aggregate counts only')
+        ->and(json_encode($report, JSON_THROW_ON_ERROR))->not->toContain($ticket['ticket_id'], $release['authorization']['authorization_id'], $release['authorization']['code'])
+        ->and(app(PublicSimulationContentionReport::class)->summary()['activity']['close_attempts_blocked'])->toBe(1)
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('public_simulation.contention_report_generated');
 });
 
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {

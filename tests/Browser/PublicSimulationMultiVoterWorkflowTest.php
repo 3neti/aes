@@ -1,7 +1,7 @@
 <?php
 
-use App\Election\PublicSimulation\PublicSimulationCloseout;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
+use App\Election\PublicSimulation\PublicSimulationCloseout;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\Support\ElectionStorage;
@@ -95,4 +95,26 @@ test('a browser voter sees an anonymous waiting ticket but never its released co
         ->assertSee('This page never displays the control number.')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
+});
+
+test('an officer can record a redacted contention report from the public precinct screen', function (): void {
+    $simulations = app(PublicSimulationService::class);
+    $round = $simulations->currentRound();
+    $precinct = $round->precincts()->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $simulations->open($precinct, $precinct->officer_code, '123456');
+
+    visit(route('election.public-simulation.show', [$round, $precinct]))
+        ->assertSee('Contention monitor')
+        ->assertSee('The saved report contains aggregate counts only')
+        ->fill('@contention-officer-code', $precinct->officer_code)
+        ->fill('@contention-officer-pin', '123456')
+        ->click('@generate-contention-report')
+        ->assertSee('Redacted contention report 1 has been recorded')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    expect(app(ElectionStorage::class)->files('contention-reports'))->toHaveCount(1);
 });
