@@ -144,7 +144,7 @@ The public simulation model must use a distinct `simulation_id` and storage name
 
 12. **Retention, consent, and review kit** - partial
     - Public consent page, retention schedule, deletion workflow, incident contact, accessibility review, and downloadable COMELEC Review Kit.
-   - Delivered: non-destructive archive plus reset commands. Reset archives a fully published round before creating a fresh lobby, retaining every evidence namespace. A voter now sees and accepts a session-only public-simulation notice before the control-number screen. Each precinct writes a participation-policy artifact with a configurable retention window; neither the policy nor acceptance journal event contains a voter identity, authorization, ballot, or browser session reference. `election:public-simulation:review-kit {round}` now creates an inspectable `REVIEW-KIT` folder with a hash-addressed JSON index and readable guide for ceremony-level artifacts only. Formal retention-review reporting remains pending.
+   - Delivered: non-destructive archive plus reset commands. Reset archives a fully published round before creating a fresh lobby, retaining every evidence namespace. A voter now sees and accepts a session-only public-simulation notice before the control-number screen. Each precinct writes a participation-policy artifact with a configurable retention window; neither the policy nor acceptance journal event contains a voter identity, authorization, ballot, or browser session reference. `election:public-simulation:review-kit {round}` creates an inspectable `REVIEW-KIT` folder with a hash-addressed JSON index and readable guide for ceremony-level artifacts only. `election:public-simulation:retention-review {round}` writes a no-delete retention-review report that marks due evidence for a human retain, external archive, or separately authorized deletion decision.
 
 ## Scenario Runner Strategy
 
@@ -197,7 +197,7 @@ Each scenario must persist a run summary with:
 7. Add anonymized VVDAT audit export plus independent verification command.
 8. Add QR-assisted RMA tally room and public audit report. Completed.
 9. Add redacted God Mode and training-fixture replay.
-10. Add concurrent multi-precinct scenarios, browser tests, retention policy, and Review Kit. Next: controlled retention-review reporting.
+10. Add concurrent multi-precinct scenarios, browser tests, retention policy, and Review Kit. Completed.
 
 ## Definition of Done
 

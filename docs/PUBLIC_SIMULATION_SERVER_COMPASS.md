@@ -145,7 +145,7 @@ Not yet implemented:
 - Officer-host creation flow, credential-handoff artifact, and configurable public simulation schedules.
 - A separate officer approval ceremony for the VVDAT export; the current policy is configured per environment.
 - Expanded God Mode authorization, classroom replay fixtures, and screen/capture controls.
-- Controlled public-simulation retention-review reporting and a formal deletion policy. `election:public-simulation:review-kit {round}` creates a privacy-safe COMELEC Review Kit index for each round. Anonymous intake currently has capacity, queue bounds, endpoint throttles, aggregate officer reporting, and an officer pause/resume control. Voter participation is acknowledged in-session before the code screen and governed by a retained policy artifact.
+- `election:public-simulation:retention-review {round}` creates a privacy-safe, no-delete review report that identifies the required human disposition decision. `election:public-simulation:review-kit {round}` creates a privacy-safe COMELEC Review Kit index for each round. Anonymous intake currently has capacity, queue bounds, endpoint throttles, aggregate officer reporting, and an officer pause/resume control. Voter participation is acknowledged in-session before the code screen and governed by a retained policy artifact.
 - Public education copy, consent, retention, and deletion policy.
 
 ## Update Rule

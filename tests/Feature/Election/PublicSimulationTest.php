@@ -6,6 +6,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionIntake;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationContentionReport;
 use App\Election\PublicSimulation\PublicSimulationParticipation;
+use App\Election\PublicSimulation\PublicSimulationRetentionReview;
 use App\Election\PublicSimulation\PublicSimulationReviewKit;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\PublicSimulation\PublicVvdatAuditExportVerifier;
@@ -455,6 +456,32 @@ test('a review kit indexes only privacy-safe public simulation artifacts', funct
     $persisted = json_decode(file_get_contents($kit['artifact_path']), true, flags: JSON_THROW_ON_ERROR);
     expect($persisted['kit_hash'])->toBe($kit['kit_hash'])
         ->and($persisted['precincts'][0])->not->toHaveKeys(['officer_code', 'authorization_id', 'ballot_id', 'session_id']);
+});
+
+test('a retention review requires a human evidence-disposition decision without deleting anything', function (): void {
+    config()->set('election.public_simulation.retention_days', 30);
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $round->forceFill([
+        'status' => 'archived',
+        'archived_at' => now()->subDays(31),
+    ])->save();
+
+    $report = app(PublicSimulationRetentionReview::class)->review($round->fresh('precincts'));
+    expect($report)->toMatchArray([
+        'round_code' => $round->code,
+        'round_status' => 'archived',
+        'retention_days' => 30,
+        'review_status' => 'review_due',
+        'disposition_policy' => 'manual-review-required-no-automatic-deletion',
+    ])
+        ->and($report['next_required_action'])->toContain('never deletes evidence automatically')
+        ->and($report['artifact_path'])->toBeReadableFile()
+        ->and($report)->not->toHaveKeys(['voter_id', 'authorization_id', 'ballot_id', 'session_id']);
+
+    $this->artisan('election:public-simulation:retention-review', ['round' => $round->code])
+        ->expectsOutputToContain("Retention review review_due for {$round->code}")
+        ->assertSuccessful();
 });
 
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {
