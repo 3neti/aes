@@ -31,6 +31,8 @@ final class ElectionReturnService
             'election_id' => $configuration['election_id'] ?? null,
             'precinct_id' => $configuration['precinct_id'] ?? null,
             'mapping_hash' => $configuration['mapping_hash'] ?? null,
+            'tabulation_profile' => $tally['tabulation_profile'] ?? null,
+            'tally_source' => $tally['tally_source'] ?? null,
             'accepted_ballots' => $tally['accepted_ballots'],
             'rejected_ballots' => $tally['rejected_ballots'],
             'tally' => $tally['tally'],

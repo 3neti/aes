@@ -7,6 +7,8 @@ use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
 use App\Election\Printing\Documents\TallySheetPdf;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\DeviceTabulationLedger;
+use App\Election\Tabulation\TabulationProfileResolver;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\PaperBallotLedger;
 use RuntimeException;
@@ -21,6 +23,8 @@ final class CountingService
         private readonly TallySheetPdf $pdf,
         private readonly BallotConfigurationLabels $labels,
         private readonly PaperBallotLedger $paperBallots,
+        private readonly TabulationProfileResolver $tabulation,
+        private readonly DeviceTabulationLedger $deviceLedger,
     ) {}
 
     /**
@@ -91,7 +95,56 @@ final class CountingService
     /**
      * @return array<string, mixed>
      */
+    public function recordRoutineScanBlocked(string $rawInput): array
+    {
+        $record = [
+            'adapter' => 'routine-scan-blocked',
+            'raw_payload_hash' => hash('sha256', $rawInput),
+            'reason' => 'Routine QR scanning is reserved for random manual audit under the configured tabulation profile.',
+            'status' => 'rejected',
+        ];
+        $this->journal->record('counting.routine_scan_blocked', $record);
+
+        return [
+            ...$record,
+            'sequence' => null,
+            'ballot_id' => null,
+            'payload_hash' => null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function tally(): array
+    {
+        $profile = $this->tabulation->current();
+        $records = $profile->routineScanningEnabled()
+            ? $this->acceptedRecords()
+            : $this->deviceLedger->recordsForTally();
+
+        return $this->tallyRecords($records, $profile->value, $profile->tallySource());
+    }
+
+    /**
+     * Certification ballots are controlled test records and never become device tabulation records.
+     *
+     * @return array<string, mixed>
+     */
+    public function tallyCertificationRecords(): array
+    {
+        return $this->tallyRecords(
+            $this->acceptedRecords(),
+            $this->tabulation->current()->value,
+            'certification accepted ballot scans',
+        );
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $records
+     * @return array<string, mixed>
+     */
+    private function tallyRecords(array $records, string $profile, string $source): array
     {
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
         $tally = [];
@@ -104,7 +157,7 @@ final class CountingService
             }
         }
 
-        foreach ($this->acceptedRecords() as $record) {
+        foreach ($records as $record) {
             foreach ($record['selections'] as $contestId => $candidateIds) {
                 foreach ($candidateIds as $candidateId) {
                     $tally[$contestId][$candidateId] = ($tally[$contestId][$candidateId] ?? 0) + 1;
@@ -114,10 +167,13 @@ final class CountingService
 
         $result = [
             'schema_version' => 'tally-1',
-            'accepted_ballots' => count($this->storage->files('counting/accepted')),
+            'accepted_ballots' => count($records),
             'rejected_ballots' => count($this->storage->files('counting/rejected')),
+            'tabulation_profile' => $profile,
+            'tally_source' => $source,
             'tally' => $tally,
             'paper_ballot_accounting' => $this->paperBallots->summary(),
+            'device_tabulation' => $this->deviceLedger->summary(),
         ];
         $result['tally_hash'] = $this->json->hash($result);
         $this->storage->writeJson('runtime/tally.json', $result);
@@ -146,6 +202,10 @@ final class CountingService
 
         if (($payload['mapping_hash'] ?? null) !== ($configuration['mapping_hash'] ?? null)) {
             throw new RuntimeException('Mapping hash mismatch.');
+        }
+
+        if (($payload['tabulation_profile'] ?? null) !== ($configuration['tabulation_profile'] ?? null)) {
+            throw new RuntimeException('Tabulation profile mismatch.');
         }
 
         if (($payload['payload_hash'] ?? null) !== $this->json->hash(array_diff_key($payload, [

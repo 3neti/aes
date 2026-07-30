@@ -7,6 +7,8 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\DeviceTabulationLedger;
+use App\Election\Tabulation\TabulationProfileResolver;
 use Illuminate\Validation\ValidationException;
 
 final class CountingReconciliationService
@@ -17,6 +19,8 @@ final class CountingReconciliationService
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
         private readonly OfficerRegistry $officers,
+        private readonly TabulationProfileResolver $tabulation,
+        private readonly DeviceTabulationLedger $deviceLedger,
     ) {}
 
     /**
@@ -94,26 +98,34 @@ final class CountingReconciliationService
     public function summary(): array
     {
         $control = $this->storage->readJson('counting/physical-ballot-control.json');
+        $profile = $this->tabulation->current();
         $accepted = count($this->storage->files('counting/accepted'));
         $rejected = $this->rejectedRecords();
         $adjudications = $this->adjudications();
         $excludedPaper = collect($adjudications)->where('disposition', 'excluded-paper-ballot')->count();
         $physical = $control['physical_ballots_removed_from_box'] ?? null;
-        $represented = $accepted + $excludedPaper;
+        $deviceRecords = $this->deviceLedger->summary()['recorded_ballots'];
+        $represented = $profile->routineScanningEnabled()
+            ? $accepted + $excludedPaper
+            : $deviceRecords;
         $unresolved = max(0, count($rejected) - count($adjudications));
 
         return [
             'schema_version' => 'counting-reconciliation-1',
             'physical_count_recorded' => $control !== [],
             'physical_ballots' => $physical,
-            'accepted_ballots' => $accepted,
+            'accepted_ballots' => $profile->routineScanningEnabled() ? $accepted : $deviceRecords,
+            'tabulation_profile' => $profile->value,
+            'tally_source' => $profile->tallySource(),
+            'device_tabulation_records' => $deviceRecords,
             'rejected_scans' => count($rejected),
             'adjudicated_rejections' => count($adjudications),
             'excluded_paper_ballots' => $excludedPaper,
             'represented_paper_ballots' => $represented,
             'unresolved_rejections' => $unresolved,
             'difference' => is_int($physical) ? $physical - $represented : null,
-            'passed' => is_int($physical) && $physical === $represented && $unresolved === 0,
+            'passed' => is_int($physical) && $physical === $represented
+                && ($profile->routineScanningEnabled() ? $unresolved === 0 : true),
             'control_hash' => $control['control_hash'] ?? null,
             'adjudications' => $adjudications,
             'rejected_records' => $rejected,

@@ -20,6 +20,7 @@ final class PrivateBallotRelease
         private readonly BallotSelectionValidator $selections,
         private readonly PaperBallotLedger $paperBallots,
         private readonly StandardQrCode $qrCode,
+        private readonly BallotQrPayload $qrPayload,
         private readonly ActivityJournal $journal,
     ) {}
 
@@ -48,11 +49,12 @@ final class PrivateBallotRelease
             'precinct_id' => $configuration['precinct_id'],
             'ballot_style_id' => $configuration['ballot_style_id'],
             'mapping_hash' => $configuration['mapping_hash'],
+            'tabulation_profile' => $configuration['tabulation_profile'],
             'selections' => $selections,
             'paper_ballot_serial' => $paperBallotSerial,
         ];
         $payload['payload_hash'] = $this->json->hash($payload);
-        $payload['qr_payload'] = base64_encode($this->json->encode($payload));
+        $payload['qr_payload'] = $this->qrPayload->encode($payload);
         $expiresAt = $this->clock->now()->addSeconds(
             (int) config('election.voter.print_release_ttl_seconds', 600),
         );

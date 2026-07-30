@@ -31,6 +31,7 @@ use App\Election\Printing\SpoilBallot;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Scanning\BallotScanner;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\PaperBallotLedger;
 use App\Election\Voting\StandardQrCode;
@@ -39,6 +40,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
+    config()->set('election.tabulation.profile', TabulationProfile::PaperFirst->value);
     app(ElectionStorage::class)->reset();
 });
 
@@ -715,6 +717,7 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
 
     expect($payload['payload_hash'])->toBeString()
         ->and($payload['qr_payload'])->toBeString()
+        ->and($payload['qr_payload'])->toStartWith('aes-ballot-zlib-1:')
         ->and($payload['qr_artifact_path'])->toBeString()
         ->and(file_exists($payload['qr_artifact_path']))->toBeTrue()
         ->and($job['status'])->toBe('printed')

@@ -11,11 +11,13 @@ use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\SpoilBallot;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
 use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
+    config()->set('election.tabulation.profile', TabulationProfile::PaperFirst->value);
     app(ElectionStorage::class)->reset();
     app(ElectionClock::class)->unfreeze();
     $this->withoutVite();

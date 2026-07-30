@@ -85,6 +85,9 @@ const canCapture = computed(
     () => cameraStatus.value === 'ready' && !cameraForm.processing,
 );
 const canCount = computed(() => props.snapshot.stage === 'counting');
+const routineScanningEnabled = computed(
+    () => props.snapshot.tabulationProfile.routine_scanning_enabled,
+);
 const totalScans = computed(
     () => props.tally.accepted_ballots + props.tally.rejected_ballots,
 );
@@ -257,6 +260,7 @@ onBeforeUnmount(() => stopCamera(false));
         </section>
 
         <CeremonyActionPanel
+            v-if="routineScanningEnabled"
             title="Scan paper ballots"
             description="Present the QR mark from each physical ballot. Every accepted ballot is appended as a separate evidence file."
             eyebrow="Ballot box count"
@@ -397,13 +401,39 @@ onBeforeUnmount(() => stopCamera(false));
         </CeremonyActionPanel>
 
         <CeremonyActionPanel
+            v-else
+            title="Device tabulation record"
+            description="Deposited paper ballots are represented by sealed device VVDAT records. Routine QR scanning is retained for a later random manual audit, not this tally."
+            eyebrow="Configured tally source"
+            :status="canCount ? 'Device record ready' : 'Counting unavailable'"
+            :tone="canCount ? 'current' : 'neutral'"
+            :recommended="canCount && !reconciliation.physical_count_recorded"
+        >
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="border border-emerald-300 bg-emerald-50 p-4">
+                    <p class="text-sm font-bold text-emerald-950">
+                        {{ snapshot.tabulationProfile.label }}
+                    </p>
+                    <p class="mt-2 text-sm text-emerald-900">
+                        Tally source: {{ snapshot.tabulationProfile.tally_source }}.
+                    </p>
+                </div>
+                <div class="border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                    The ballot box remains the paper-audit record. Count the physical ballots removed from the box before completing the tally.
+                </div>
+            </div>
+        </CeremonyActionPanel>
+
+        <CeremonyActionPanel
             title="Physical reconciliation"
-            description="Declare the paper ballots removed from the box and resolve every rejected scan in public before completing the tally."
+            :description="routineScanningEnabled
+                ? 'Declare the paper ballots removed from the box and resolve every rejected scan in public before completing the tally.'
+                : 'Declare the paper ballots removed from the box and reconcile them to the sealed device tabulation record before completing the tally.'"
             eyebrow="Election Board control"
             :status="reconciliation.passed ? 'Reconciled' : 'Action required'"
             :tone="reconciliation.passed ? 'complete' : 'warning'"
             :recommended="
-                totalScans > 0 && !reconciliation.physical_count_recorded
+                tally.accepted_ballots > 0 && !reconciliation.physical_count_recorded
             "
         >
             <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
@@ -574,7 +604,7 @@ onBeforeUnmount(() => stopCamera(false));
 
         <CeremonyActionPanel
             title="Precinct tally"
-            description="Live totals from accepted ballot evidence files. Reconcile these figures against the physical paper ballots."
+            :description="`Live totals from ${snapshot.tabulationProfile.tally_source}. Reconcile these figures against the physical paper ballots.`"
             eyebrow="Tally sheet"
             :status="`${totalScans} ballots processed`"
             tone="neutral"
@@ -664,8 +694,7 @@ onBeforeUnmount(() => stopCamera(false));
                 class="mt-5 flex flex-col gap-4 border-t border-stone-300 pt-5 sm:flex-row sm:items-center sm:justify-between"
             >
                 <p class="max-w-2xl text-sm text-stone-600">
-                    Complete counting only after the ballot box, accepted files,
-                    rejected ballots, and tally have been reconciled.
+                    Complete counting only after the ballot box and configured tabulation record have been reconciled.
                 </p>
                 <Form
                     v-if="canCount"

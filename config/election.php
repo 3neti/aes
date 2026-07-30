@@ -166,6 +166,9 @@ return [
             ],
         ],
     ],
+    'tabulation' => [
+        'profile' => env('ELECTION_TABULATION_PROFILE', 'device-tabulation-with-paper-audit'),
+    ],
     'removable_media' => [
         'path' => env('ELECTION_REMOVABLE_MEDIA_PATH', ''),
     ],
@@ -206,7 +209,7 @@ return [
             [
                 'id' => 'counting',
                 'label' => 'Counting and Tally',
-                'description' => 'Scan paper ballots and reconcile the precinct tally.',
+                'description' => 'Tabulate the configured record source and reconcile the paper ballot box.',
                 'stages' => ['counting'],
             ],
             [

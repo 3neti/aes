@@ -10,6 +10,7 @@ use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Scanning\BallotScanner;
+use App\Election\Tabulation\TabulationProfileResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -73,10 +74,20 @@ final class CountingController extends Controller
         return redirect()->route('election.counting');
     }
 
-    public function scan(Request $request, CountingService $counting, BallotScanner $scanner): RedirectResponse
-    {
+    public function scan(
+        Request $request,
+        CountingService $counting,
+        BallotScanner $scanner,
+        TabulationProfileResolver $tabulation,
+    ): RedirectResponse {
         $validated = $request->validate(['payload' => ['required', 'string']]);
         $rawInput = $validated['payload'];
+
+        if (! $tabulation->current()->routineScanningEnabled()) {
+            return redirect()
+                ->route('election.counting')
+                ->with('scan_feedback', $counting->recordRoutineScanBlocked($rawInput));
+        }
 
         try {
             $scan = $scanner->scan($rawInput);
@@ -118,7 +129,7 @@ final class CountingController extends Controller
 
         if (! $reconciliation->summary()['passed']) {
             throw ValidationException::withMessages([
-                'reconciliation' => 'Physical paper ballots and adjudicated scan records do not reconcile.',
+                'reconciliation' => 'Physical paper ballots and the configured tabulation record do not reconcile.',
             ]);
         }
 

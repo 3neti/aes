@@ -14,6 +14,7 @@ final class BallotPayloadService
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
         private readonly StandardQrCode $qrCode,
+        private readonly BallotQrPayload $qrPayload,
         private readonly PaperBallotLedger $paperBallots,
         private readonly BallotSelectionValidator $selections,
     ) {}
@@ -34,6 +35,7 @@ final class BallotPayloadService
             'precinct_id' => $configuration['precinct_id'],
             'ballot_style_id' => $configuration['ballot_style_id'],
             'mapping_hash' => $configuration['mapping_hash'],
+            'tabulation_profile' => $configuration['tabulation_profile'],
             'selections' => $selections,
         ];
 
@@ -44,7 +46,7 @@ final class BallotPayloadService
         }
 
         $payload['payload_hash'] = $this->json->hash($payload);
-        $payload['qr_payload'] = base64_encode($this->json->encode($payload));
+        $payload['qr_payload'] = $this->qrPayload->encode($payload);
         $payload['qr_artifact_path'] = $this->storage->writeText(
             "ballots/{$payload['ballot_id']}-qr.png",
             $this->qrCode->renderPng($payload['qr_payload']),
@@ -75,10 +77,7 @@ final class BallotPayloadService
             $payload = $this->qrCode->decodePngBytes($payload);
         }
 
-        $decoded = base64_decode($payload, true);
-        $json = $decoded === false ? $payload : $decoded;
-
-        return json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+        return $this->qrPayload->decode($payload);
     }
 
     /**

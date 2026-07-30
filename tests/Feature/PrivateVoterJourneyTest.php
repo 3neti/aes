@@ -6,9 +6,15 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Preparation\PrecinctSetupService;
+use App\Election\Printing\BallotPrinter;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\DeviceTabulationLedger;
+use App\Election\Tabulation\TabulationProfile;
+use App\Election\Tabulation\TabulationProfileResolver;
 use App\Election\Voting\AnonymousVoterAuthorization;
+use App\Election\Voting\PrivateBallotRelease;
+use App\Election\Voting\SealedBallotBox;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
@@ -217,8 +223,47 @@ test('the private voter journey seals choices until polls close', function (): v
         ->assertRedirect(route('election.counting'));
 
     expect(app(LifecycleState::class)->current())->toBe(Lifecycle::Counting)
-        ->and($storage->files('counting/accepted'))->toHaveCount(1)
-        ->and(app(CountingService::class)->tally()['accepted_ballots'])->toBe(1);
+        ->and($storage->files('counting/accepted'))->toBeEmpty()
+        ->and(app(DeviceTabulationLedger::class)->records())->toHaveCount(1)
+        ->and(app(CountingService::class)->tally()['accepted_ballots'])->toBe(1)
+        ->and(app(CountingService::class)->tally()['tabulation_profile'])
+        ->toBe(TabulationProfile::DeviceTabulationWithPaperAudit->value);
+
+    $this->post(route('election.counting.scan'), ['payload' => 'not-a-routine-count'])
+        ->assertRedirect(route('election.counting'))
+        ->assertSessionHas('scan_feedback', fn (array $feedback): bool => $feedback['adapter'] === 'routine-scan-blocked');
+
+    expect($storage->files('counting/rejected'))->toBeEmpty()
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+        ->toContain('counting.routine_scan_blocked');
+});
+
+test('a paper-first profile remains available for a newly activated run', function (): void {
+    config()->set('election.tabulation.profile', TabulationProfile::PaperFirst->value);
+    app(ElectionStorage::class)->reset();
+    app(ActivateSamplePackage::class)->handle();
+    app(PrecinctSetupService::class)->record(config('election.simulation.precinct_setup'));
+    app(LifecycleState::class)->set(Lifecycle::Voting);
+
+    expect(app(TabulationProfileResolver::class)->current())->toBe(TabulationProfile::PaperFirst);
+
+    $release = app(PrivateBallotRelease::class)->create('test-authorization', [
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ]);
+    app(PrivateBallotRelease::class)->print($release['release_id'], app(BallotPrinter::class));
+    app(SealedBallotBox::class)->deposit($release['release_id']);
+
+    app(LifecycleState::class)->set(Lifecycle::ClosePolls);
+    app(LifecycleState::class)->set(Lifecycle::Counting);
+    app(SealedBallotBox::class)->openForCounting(app(CountingService::class));
+
+    expect(app(ElectionStorage::class)->files('counting/accepted'))->toHaveCount(1)
+        ->and(app(DeviceTabulationLedger::class)->records())->toBeEmpty()
+        ->and(app(CountingService::class)->tally()['accepted_ballots'])->toBe(1)
+        ->and(app(CountingService::class)->tally()['tabulation_profile'])
+        ->toBe(TabulationProfile::PaperFirst->value);
 });
 
 test('the server rejects ballot selections above a contest maximum', function (): void {

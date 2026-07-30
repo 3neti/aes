@@ -54,6 +54,7 @@ final class ActivateConfiguredPrecinct
             'contest_count' => $activation['report']['contest_count'] ?? 0,
             'candidate_count' => $activation['report']['candidate_count'] ?? 0,
             'mapping_hash' => $activation['configuration']['mapping_hash'] ?? null,
+            'tabulation_profile' => $activation['configuration']['tabulation_profile'] ?? null,
             'package_hash' => $activation['report']['package_hash'] ?? null,
             'ballot_registry_hash' => $activation['report']['registry_hash'] ?? null,
             'pop' => [

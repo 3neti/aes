@@ -8,6 +8,8 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\DeviceTabulationLedger;
+use App\Election\Tabulation\TabulationProfileResolver;
 
 final class CountingLegalEvidenceService
 {
@@ -18,6 +20,8 @@ final class CountingLegalEvidenceService
         private readonly LifecycleState $lifecycle,
         private readonly ActivityJournal $journal,
         private readonly CountingReconciliationService $reconciliation,
+        private readonly TabulationProfileResolver $tabulation,
+        private readonly DeviceTabulationLedger $deviceLedger,
     ) {}
 
     public function writeForClosePolls(): array
@@ -25,6 +29,7 @@ final class CountingLegalEvidenceService
         $runId = basename($this->storage->activeRunPath());
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
         $artifactPath = 'closing/close-polls-legal-evidence.json';
+        $profile = $this->tabulation->current();
         $acceptedBallots = count($this->storage->files('counting/accepted'));
         $rejectedBallots = count($this->storage->files('counting/rejected'));
 
@@ -37,7 +42,10 @@ final class CountingLegalEvidenceService
             'stage' => $this->lifecycle->current(),
             'election_id' => $configuration['election_id'] ?? null,
             'mapping_hash' => $configuration['mapping_hash'] ?? null,
+            'tabulation_profile' => $profile->value,
+            'tally_source' => $profile->tallySource(),
             'accepted_ballots_before_counting' => $acceptedBallots,
+            'device_tabulation_records_before_counting' => $this->deviceLedger->summary()['recorded_ballots'],
             'rejected_ballots_before_counting' => $rejectedBallots,
             'tally_sheet_exists' => $this->storage->readJson('runtime/tally.json') !== [],
         ];
@@ -60,6 +68,7 @@ final class CountingLegalEvidenceService
         $runId = basename($this->storage->activeRunPath());
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
         $artifactPath = 'counting/counting-legal-evidence.json';
+        $profile = $this->tabulation->current();
         $acceptedBallots = (int) ($tally['accepted_ballots'] ?? count($this->storage->files('counting/accepted')));
         $rejectedBallots = (int) ($tally['rejected_ballots'] ?? count($this->storage->files('counting/rejected')));
         $reconciliation = $this->reconciliation->summary();
@@ -73,6 +82,8 @@ final class CountingLegalEvidenceService
             'stage' => $this->lifecycle->current(),
             'election_id' => $configuration['election_id'] ?? null,
             'mapping_hash' => $configuration['mapping_hash'] ?? null,
+            'tabulation_profile' => $profile->value,
+            'tally_source' => $profile->tallySource(),
             'accepted_ballots' => $acceptedBallots,
             'rejected_ballots' => $rejectedBallots,
             'tally_hash' => $tally['tally_hash'] ?? null,

@@ -4,9 +4,11 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
 
 beforeEach(function (): void {
+    config()->set('election.tabulation.profile', TabulationProfile::PaperFirst->value);
     app(ElectionStorage::class)->reset();
 });
 

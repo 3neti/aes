@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\TabulationProfileResolver;
 
 final class ActivatePrecinctBallotPackage
 {
@@ -15,6 +16,7 @@ final class ActivatePrecinctBallotPackage
         private readonly ElectionStorage $storage,
         private readonly LifecycleState $lifecycle,
         private readonly ActivityJournal $journal,
+        private readonly TabulationProfileResolver $tabulation,
     ) {}
 
     /**
@@ -23,7 +25,7 @@ final class ActivatePrecinctBallotPackage
     public function handle(string $clusteredPrecinct, ?string $district = null): array
     {
         $definition = $this->builder->build($clusteredPrecinct, $district);
-        $configuration = $this->mapper->derive($definition['registries'], $definition['package']);
+        $configuration = $this->tabulation->freeze($this->mapper->derive($definition['registries'], $definition['package']));
 
         $this->storage->writeJson('registries/sample.json', $definition['registries']);
         $this->storage->writeJson('packages/active-package.json', $definition['package']);
@@ -33,6 +35,7 @@ final class ActivatePrecinctBallotPackage
         $this->journal->record('pop_clc.lifecycle_package_activated', [
             'precinct_id' => $configuration['precinct_id'],
             'mapping_hash' => $configuration['mapping_hash'],
+            'tabulation_profile' => $configuration['tabulation_profile'],
             'registry_hash' => $definition['report']['registry_hash'],
             'package_hash' => $definition['report']['package_hash'],
         ]);

@@ -43,6 +43,7 @@ use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\ReviewMode;
+use App\Election\Tabulation\TabulationProfileResolver;
 use App\Election\Transmission\DeliveryPackageService;
 use App\Election\Transmission\DeliveryReceiptService;
 use App\Election\Transmission\FinalBackupService;
@@ -50,6 +51,7 @@ use App\Election\Transmission\ManualHandoffService;
 use App\Election\Transmission\TransmissionService;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\PaperBallotLedger;
+use App\Election\Voting\SealedBallotBox;
 use App\Election\Voting\SpecialPollingIntakeService;
 use InvalidArgumentException;
 use RuntimeException;
@@ -104,6 +106,8 @@ final class ScenarioRunner
         private readonly EvidenceBundleArchiveVerifier $archiveVerifier,
         private readonly ReviewMode $reviewMode,
         private readonly CloudEvidenceMirror $cloudEvidence,
+        private readonly SealedBallotBox $ballotBox,
+        private readonly TabulationProfileResolver $tabulation,
     ) {}
 
     /**
@@ -306,6 +310,7 @@ final class ScenarioRunner
 
         $payload = $this->payloads->finalize($this->deckBuilder->selections($configuration), 'demo-ballot-001');
         $printJob = $this->printer->print($payload);
+        $deposit = $this->ballotBox->depositPrintedPayload($payload);
 
         $spoiledPayload = $this->payloads->finalize($this->deckBuilder->selections($configuration, 1), 'demo-ballot-spoiled');
         $this->printer->print($spoiledPayload);
@@ -317,20 +322,28 @@ final class ScenarioRunner
         $this->ceremonies->closePolls('Simulation Election Board Chairperson');
         $closePollsEvidence = $this->countingLegalEvidence->writeForClosePolls();
         $this->ceremonies->startCounting();
-        $accepted = $this->counting->accept($payload['qr_payload']);
-        $rejected = $this->counting->accept($spoiledPayload['qr_payload']);
+        $opened = $this->ballotBox->openForCounting($this->counting);
+        $paperFirst = $this->tabulation->current()->routineScanningEnabled();
+        $accepted = [
+            'status' => $paperFirst ? ($opened['opened'] === 1 ? 'accepted' : 'rejected') : 'accepted',
+        ];
+        $rejected = $paperFirst
+            ? $this->counting->accept($spoiledPayload['qr_payload'])
+            : ['status' => 'not-applicable', 'sequence' => null];
         $physicalControl = $this->countingReconciliation->recordPhysicalCount(
             1,
             'SIM-OFFICER-001',
             '123456',
         );
-        $adjudication = $this->countingReconciliation->adjudicate(
-            (int) $rejected['sequence'],
-            'spoiled-ballot-separated',
-            'The Election Board confirmed that the spoiled paper ballot was segregated and was not deposited in the ballot box.',
-            'SIM-OFFICER-001',
-            '123456',
-        );
+        $adjudication = $paperFirst
+            ? $this->countingReconciliation->adjudicate(
+                (int) $rejected['sequence'],
+                'spoiled-ballot-separated',
+                'The Election Board confirmed that the spoiled paper ballot was segregated and was not deposited in the ballot box.',
+                'SIM-OFFICER-001',
+                '123456',
+            )
+            : null;
         $reconciliation = $this->countingReconciliation->summary();
         $tally = $this->counting->tally();
         $countingEvidence = $this->countingLegalEvidence->writeForCompletion($tally);
@@ -401,9 +414,9 @@ final class ScenarioRunner
             'sealing_report' => $sealing['artifact_path'],
             'certification_attestation' => $certificationAttestation['artifact_path'],
             'printed_ballot' => $printJob['artifact_path'],
+            'ballot_deposit' => $deposit['artifact_path'],
             'close_polls_evidence' => $closePollsEvidence['artifact_path'],
             'physical_ballot_control' => $physicalControl['artifact_path'],
-            'rejected_scan_adjudication' => $adjudication['artifact_path'],
             'counting_evidence' => $countingEvidence['artifact_path'],
             'tally_sheet' => $this->storage->path('runtime/tally-sheet.pdf'),
             'election_return' => $this->storage->path("returns/{$configuration['precinct_id']}-return.pdf"),
@@ -423,6 +436,9 @@ final class ScenarioRunner
             'evidence_archive' => $archive['archive_path'],
             'archive_verification' => $archiveVerification['artifact_path'],
         ];
+        if (is_array($adjudication)) {
+            $artifacts['rejected_scan_adjudication'] = $adjudication['artifact_path'];
+        }
         $artifactFilesExist = collect($artifacts)
             ->every(fn (string $path): bool => is_file($path));
 
@@ -436,7 +452,7 @@ final class ScenarioRunner
             'sealing_passed' => (bool) $sealing['passed'],
             'opening_initialization_passed' => (bool) $openingInitialization['passed'],
             'accepted_ballot_counted' => $accepted['status'] === 'accepted',
-            'spoiled_ballot_rejected' => $rejected['status'] === 'rejected',
+            'spoiled_ballot_rejected' => ! $paperFirst || $rejected['status'] === 'rejected',
             'counting_reconciliation_passed' => (bool) $reconciliation['passed'],
             'return_dual_approval_passed' => (bool) $returnApproval['passed'],
             'transmission_passed' => (bool) $transmission['passed'],

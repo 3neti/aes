@@ -69,7 +69,7 @@ final class CertificationService
             $this->counting->accept($payload['qr_payload']);
         }
 
-        $tally = $this->counting->tally();
+        $tally = $this->counting->tallyCertificationRecords();
         $passed = $tally['tally'] === $deck['expected_tally'];
         $report = [
             'schema_version' => 'certification-report-1',

@@ -7,6 +7,7 @@ use App\Election\Core\CanonicalJson;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
+use App\Election\Tabulation\TabulationProfileResolver;
 
 final class ActivateSamplePackage
 {
@@ -17,6 +18,7 @@ final class ActivateSamplePackage
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
         private readonly LifecycleState $lifecycle,
+        private readonly TabulationProfileResolver $tabulation,
     ) {}
 
     /**
@@ -26,7 +28,7 @@ final class ActivateSamplePackage
     {
         $registries = $this->sample->registries();
         $package = $this->sample->package();
-        $configuration = $this->mapper->derive($registries, $package);
+        $configuration = $this->tabulation->freeze($this->mapper->derive($registries, $package));
 
         if ($this->storage->currentRun() === []) {
             $this->storage->startRun('operator', (string) $configuration['precinct_id'], now()->format('Ymd-His'));
@@ -44,6 +46,7 @@ final class ActivateSamplePackage
             'election_id' => $configuration['election_id'],
             'precinct_id' => $configuration['precinct_id'],
             'mapping_hash' => $configuration['mapping_hash'],
+            'tabulation_profile' => $configuration['tabulation_profile'],
         ]);
         $this->journal->record('lifecycle.stage_set', ['stage' => Lifecycle::Certification]);
 

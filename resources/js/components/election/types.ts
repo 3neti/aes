@@ -149,7 +149,15 @@ export type ElectionSnapshot = {
         precinct_id?: string;
         ballot_style_id?: string;
         mapping_hash?: string;
+        tabulation_profile?: string;
         contests?: Contest[];
+    };
+    tabulationProfile: {
+        key: string;
+        label: string;
+        tally_source: string;
+        routine_scanning_enabled: boolean;
+        paper_audit_required: boolean;
     };
     journal: JournalEntry[];
     counts: {
@@ -160,6 +168,7 @@ export type ElectionSnapshot = {
         attestations: number;
         transmissions?: number;
         custody_records?: number;
+        device_tabulation_records?: number;
     };
     paperBallots: {
         total_stock: number;

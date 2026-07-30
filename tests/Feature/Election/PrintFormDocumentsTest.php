@@ -9,9 +9,11 @@ use App\Election\Printing\Documents\TallySheetPdf;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
+use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
 
 beforeEach(function (): void {
+    config()->set('election.tabulation.profile', TabulationProfile::PaperFirst->value);
     app(ElectionStorage::class)->reset();
 });
 
