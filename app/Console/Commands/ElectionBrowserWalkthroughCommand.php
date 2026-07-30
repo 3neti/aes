@@ -6,18 +6,21 @@ use App\Election\Core\CanonicalJson;
 use App\Election\Diagnostics\EvidenceBundleArchiveBuilder;
 use App\Election\Diagnostics\EvidenceBundleArchiveVerifier;
 use App\Election\Lifecycle\ElectionRunType;
+use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\Scenarios\BrowserWalkthroughControl;
 use App\Election\Scenarios\BrowserWalkthroughEvidenceReport;
 use App\Election\Scenarios\BrowserWalkthroughRecorder;
 use App\Election\Support\ElectionStorage;
+use App\Models\SimulationPrecinct;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use RuntimeException;
 use Throwable;
 
 #[Signature('election:browser-walkthrough
-    {scenario : full-election}
+    {scenario : full-election or public-simulation}
     {--ballots=3 : Number of voter ballots to cast}
     {--headed : Show the browser while the walkthrough runs}
     {--slow-mo=150 : Delay browser actions by this many milliseconds}
@@ -32,6 +35,7 @@ final class ElectionBrowserWalkthroughCommand extends Command
         EvidenceBundleArchiveBuilder $archiveBuilder,
         EvidenceBundleArchiveVerifier $archiveVerifier,
         ElectionStorage $storage,
+        PublicSimulationService $publicSimulations,
         CanonicalJson $json,
         Filesystem $files,
     ): int {
@@ -40,7 +44,7 @@ final class ElectionBrowserWalkthroughCommand extends Command
         $slowMotion = filter_var($this->option('slow-mo'), FILTER_VALIDATE_INT);
         $baseUrl = rtrim((string) ($this->option('base-url') ?: config('app.url')), '/');
 
-        if ($scenario !== 'full-election') {
+        if (! in_array($scenario, ['full-election', 'public-simulation'], true)) {
             $this->error("Unsupported browser walkthrough [{$scenario}].");
 
             return self::INVALID;
@@ -65,11 +69,12 @@ final class ElectionBrowserWalkthroughCommand extends Command
         }
 
         $previousRunType = config('election.runtime.run_type');
+        $context = $this->scenarioContext($scenario, $publicSimulations);
 
         try {
             $walkthrough = $control->begin(
                 $scenario,
-                (string) config('election.pop.clustered_precinct', '39010001'),
+                $context['precinct_id'],
             );
             $artifactDirectory = $walkthrough['run_path'].'/12-audit-and-reconciliation/browser-recordings';
             $files->ensureDirectoryExists($artifactDirectory);
@@ -82,6 +87,7 @@ final class ElectionBrowserWalkthroughCommand extends Command
                 $ballots,
                 (bool) $this->option('headed'),
                 $slowMotion,
+                $context['environment'],
             );
             $storage->selectRunType(ElectionRunType::Rehearsal);
 
@@ -91,7 +97,8 @@ final class ElectionBrowserWalkthroughCommand extends Command
                 'passed' => ($result['passed'] ?? false) === true,
                 'run_id' => $walkthrough['run_id'],
                 'run_type' => ElectionRunType::Rehearsal->value,
-                'precinct_id' => config('election.pop.clustered_precinct', '39010001'),
+                'precinct_id' => $context['precinct_id'],
+                'context' => $context['report'],
                 'base_url' => $baseUrl,
                 'ballots_requested' => $ballots,
                 'walkthrough_id' => $walkthrough['walkthrough_id'],
@@ -195,6 +202,45 @@ final class ElectionBrowserWalkthroughCommand extends Command
         }
 
         return $report['passed'] ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * @return array{precinct_id: string, environment: array<string, string>, report: array<string, mixed>}
+     */
+    private function scenarioContext(string $scenario, PublicSimulationService $publicSimulations): array
+    {
+        if ($scenario === 'full-election') {
+            return [
+                'precinct_id' => (string) config('election.pop.clustered_precinct', '39010001'),
+                'environment' => [],
+                'report' => [],
+            ];
+        }
+
+        $round = $publicSimulations->createWalkthroughRound()->load('precincts');
+        $precinct = $round->precincts
+            ->sortBy('code')
+            ->first(fn (SimulationPrecinct $precinct): bool => $precinct->status === 'ready');
+
+        if (! $precinct instanceof SimulationPrecinct) {
+            throw new RuntimeException('No ready public simulation precinct is available for a browser walkthrough. Reset the public simulation round or publish an unfinished precinct first.');
+        }
+
+        return [
+            'precinct_id' => $precinct->clustered_precinct,
+            'environment' => [
+                'ELECTION_WALKTHROUGH_PUBLIC_ROUND' => $round->code,
+                'ELECTION_WALKTHROUGH_PUBLIC_PRECINCT' => $precinct->code,
+                'ELECTION_WALKTHROUGH_PUBLIC_OFFICER_CODE' => $precinct->officer_code,
+                'ELECTION_WALKTHROUGH_PUBLIC_OFFICER_PIN' => '123456',
+            ],
+            'report' => [
+                'round_code' => $round->code,
+                'precinct_code' => $precinct->code,
+                'precinct_label' => $precinct->label,
+                'officer_name' => $precinct->officer_name,
+            ],
+        ];
     }
 
     private function isLocalUrl(string $url): bool

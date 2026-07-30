@@ -31,6 +31,11 @@ final class PublicSimulationService
         return $round ?? $this->createRound();
     }
 
+    public function createWalkthroughRound(): SimulationRound
+    {
+        return $this->createRound();
+    }
+
     public function open(SimulationPrecinct $precinct, string $code, string $pin): SimulationPrecinct
     {
         $this->ensureOfficer($precinct, $code, $pin);

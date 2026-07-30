@@ -914,3 +914,27 @@ Known limitations:
 - Pairing recovery verification passed: 15 focused feature/browser tests with 148 assertions, PHPStan with zero errors, TypeScript, ESLint, Prettier, Pint, and the production frontend build.
 - Next, apply distributed locking and idempotency to concurrent authorization, ballot finalization, printing, deposit, journal sequencing, and counting actions; then run full five- and ten-voter evidence-producing rehearsals.
 - The supervised printer/scanner/paper-stock pilot remains required after the review deployment.
+
+## Public Simulation Browser Walkthrough Slice
+
+Completed:
+
+- `php artisan election:browser-walkthrough public-simulation` is now a supported recorder scenario alongside `full-election`.
+- The command creates a fresh public simulation round for each recording, selects a ready precinct, and passes the generated officer credentials privately to the local browser recorder process.
+- The browser runner records the public lobby, precinct opening, four-digit voter control-number handoff, public voter ballot, private print station, paper-ballot deposit, closeout, watcher publication, watcher result view, and facilitator debrief observation.
+- Public runs produce `public-simulation.webm`, storyboard HTML/PDF/JSON, screenshots, action logs, metadata, lifecycle reports, and the final verified evidence archive.
+- Public walkthrough post-processing skips the full-election-only printed-artifact renderer because public precinct print evidence lives in the public simulation namespace and is reviewed through watcher publication links.
+
+Verification:
+
+- `vendor/bin/pint --dirty --format agent`: passed.
+- `node --check scripts/election-browser-walkthrough.mjs`: passed.
+- `php artisan test --compact tests/Feature/Election/BrowserWalkthroughRecorderTest.php`: 4 tests, 56 assertions passed.
+- Real browser walkthrough passed: `storage/app/election/runs/20260730-130940-566506-39010001-browser-public-simulation`.
+- Video: `storage/app/election/runs/20260730-130940-566506-39010001-browser-public-simulation/12-audit-and-reconciliation/browser-recordings/public-simulation.webm`.
+- Storyboard PDF: `storage/app/election/runs/20260730-130940-566506-39010001-browser-public-simulation/12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.pdf`.
+- Final archive verification passed through `storage/app/election/runs/20260730-130940-566506-39010001-browser-public-simulation/12-audit-and-reconciliation/evidence-bundle-archive-verification.json`.
+
+Known limitation:
+
+- Public-simulation storyboard does not yet render the public namespace ballot/tally/ER PDFs as image pages. It shows the watcher result page and links instead; a follow-up slice should copy or index the public precinct evidence namespace into the walkthrough report.

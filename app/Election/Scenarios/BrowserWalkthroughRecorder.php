@@ -8,6 +8,7 @@ use Throwable;
 final class BrowserWalkthroughRecorder
 {
     /**
+     * @param  array<string, string>  $extraEnvironment
      * @return array<string, mixed>
      */
     public function record(
@@ -18,6 +19,7 @@ final class BrowserWalkthroughRecorder
         int $ballots,
         bool $headed,
         int $slowMotion,
+        array $extraEnvironment = [],
     ): array {
         try {
             $process = Process::path(base_path())
@@ -31,6 +33,7 @@ final class BrowserWalkthroughRecorder
                     'ELECTION_WALKTHROUGH_HEADED' => $headed ? '1' : '0',
                     'ELECTION_WALKTHROUGH_SLOW_MO' => (string) $slowMotion,
                     'ELECTION_WALKTHROUGH_GHOSTSCRIPT' => (string) config('election.pdf.ghostscript_binary', 'gs'),
+                    ...$extraEnvironment,
                 ])
                 ->run([
                     'node',

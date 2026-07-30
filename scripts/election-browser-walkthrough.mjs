@@ -29,11 +29,18 @@ const videoStagingDirectory = path.join(artifactDirectory, '.video-staging');
 const actionLogPath = path.join(artifactDirectory, 'action-log.jsonl');
 const tracePath = path.join(artifactDirectory, 'playwright-trace.zip');
 const metadataPath = path.join(artifactDirectory, 'recording-metadata.json');
-const videoPath = path.join(artifactDirectory, 'full-election.webm');
+const videoPath = path.join(artifactDirectory, `${scenario}.webm`);
 const storyboardFrameDirectory = path.join(
     artifactDirectory,
     'storyboard-frames',
 );
+const publicRoundCode = process.env.ELECTION_WALKTHROUGH_PUBLIC_ROUND ?? '';
+const publicPrecinctCode =
+    process.env.ELECTION_WALKTHROUGH_PUBLIC_PRECINCT ?? '';
+const publicOfficerCode =
+    process.env.ELECTION_WALKTHROUGH_PUBLIC_OFFICER_CODE ?? '';
+const publicOfficerPin =
+    process.env.ELECTION_WALKTHROUGH_PUBLIC_OFFICER_PIN ?? '';
 const viewport = { width: 1440, height: 900 };
 const actions = [];
 const browserMessages = [];
@@ -382,6 +389,417 @@ async function printAndDepositPreparedBallot(release) {
     return release;
 }
 
+function publicSimulationPath(suffix = '') {
+    if (!publicRoundCode || !publicPrecinctCode) {
+        throw new Error(
+            'The public-simulation walkthrough requires a round and precinct context.',
+        );
+    }
+
+    return `/election/play/${publicRoundCode}/${publicPrecinctCode}${suffix}`;
+}
+
+async function postPublicOfficerAction(buttonName, pathname, reload = true) {
+    const button = page.getByRole('button', {
+        name: buttonName,
+        exact: true,
+    });
+    const form = page.locator('form').filter({ has: button }).first();
+
+    await form.locator('input[name="officer_code"]').fill(publicOfficerCode);
+    await form.locator('input[name="officer_pin"]').fill(publicOfficerPin);
+    await Promise.all([
+        page.waitForResponse(
+            (response) =>
+                response.request().method() === 'POST' &&
+                new URL(response.url()).pathname === pathname,
+            { timeout: 120_000 },
+        ),
+        form.getByRole('button', { name: buttonName, exact: true }).click(),
+    ]);
+    await page.waitForLoadState('networkidle');
+
+    if (reload) {
+        await page.reload({ waitUntil: 'networkidle', timeout: 120_000 });
+    }
+}
+
+async function acceptPublicParticipationIfPresent() {
+    const button = page.getByRole('button', {
+        name: 'Continue to voting station',
+        exact: true,
+    });
+
+    if ((await button.count()) === 0) {
+        return false;
+    }
+
+    await postButton(
+        'Continue to voting station',
+        publicSimulationPath('/vote/participation'),
+        60_000,
+        false,
+    );
+    await page.waitForURL(`**${publicSimulationPath('/vote')}`);
+
+    return true;
+}
+
+async function selectBallotCandidates(ballotNumber, screenshotPrefix) {
+    const contests = page.locator('fieldset');
+    const contestCount = await contests.count();
+
+    if (contestCount === 0) {
+        throw new Error('The voter ballot contains no contests.');
+    }
+
+    let selectionSequence = 0;
+
+    for (let contestIndex = 0; contestIndex < contestCount; contestIndex++) {
+        const contest = contests.nth(contestIndex);
+        const contestTitle = (
+            await contest.locator('legend').textContent()
+        ).trim();
+        const instruction = await contest
+            .locator('p')
+            .filter({ hasText: 'Select up to' })
+            .first()
+            .textContent();
+        const maximumSelections = Number(instruction?.match(/\d+/)?.[0] ?? 0);
+        const candidates = contest.locator('button[type="button"]');
+        const candidateCount = await candidates.count();
+        const selections = Math.min(maximumSelections, candidateCount);
+
+        for (let selection = 0; selection < selections; selection++) {
+            const candidate = candidates.nth(
+                (ballotNumber + selection - 1) % candidateCount,
+            );
+            const candidateName = (
+                await candidate.locator('strong').textContent()
+            ).trim();
+
+            await candidate.click();
+            selectionSequence++;
+            walkthroughStatistics.voter_selection_checkpoints++;
+
+            const selectionCapture = await captureViewport(
+                `${screenshotPrefix}-selection-${String(selectionSequence).padStart(2, '0')}.png`,
+            );
+            recordAction(
+                `${screenshotPrefix}-selection-${selectionSequence}`,
+                'passed',
+                {
+                    ballot_number: ballotNumber,
+                    contest: contestTitle,
+                    candidate: candidateName,
+                    contest_selection: selection + 1,
+                    contest_maximum: maximumSelections,
+                    selection_sequence: selectionSequence,
+                    url: page.url(),
+                    heading: await page.locator('h1').first().textContent(),
+                    screenshot: selectionCapture.screenshot,
+                    storyboard_frame: selectionCapture.storyboardFrame,
+                },
+            );
+        }
+    }
+
+    return {
+        contest_count: contestCount,
+        total_selections: selectionSequence,
+    };
+}
+
+async function finalizePublicSimulationBallot(ballotNumber) {
+    await openPath(publicSimulationPath('/vote'));
+    await acceptPublicParticipationIfPresent();
+    await page.locator('input[name="code"]').fill(publicControlNumber);
+    await postButton(
+        'Begin voting',
+        publicSimulationPath('/vote/claim'),
+        60_000,
+        false,
+    );
+    await page.waitForURL(`**${publicSimulationPath('/vote/ballot')}`);
+
+    const openingCapture = await capture(
+        `05-public-voter-ballot-${ballotNumber}-opened.png`,
+    );
+    recordAction(`public-voter-ballot-${ballotNumber}-opened`, 'passed', {
+        ballot_number: ballotNumber,
+        url: page.url(),
+        heading: await page.locator('h1').first().textContent(),
+        screenshot: openingCapture.screenshot,
+        storyboard_frame: openingCapture.storyboardFrame,
+    });
+
+    const selectionSummary = await selectBallotCandidates(
+        ballotNumber,
+        `06-public-voter-ballot-${ballotNumber}`,
+    );
+
+    await page
+        .getByRole('button', { name: /^Review \d+ selections?$/ })
+        .click();
+    const reviewCapture = await capture(
+        `07-public-voter-ballot-${ballotNumber}-review.png`,
+    );
+    recordAction(`public-voter-ballot-${ballotNumber}-reviewed`, 'passed', {
+        ballot_number: ballotNumber,
+        ...selectionSummary,
+        url: page.url(),
+        heading: await page.locator('h1').first().textContent(),
+        screenshot: reviewCapture.screenshot,
+        storyboard_frame: reviewCapture.storyboardFrame,
+    });
+
+    await postButton(
+        'Finalize and get print code',
+        publicSimulationPath('/vote/ballot'),
+        60_000,
+        false,
+    );
+    await page.waitForURL(`**${publicSimulationPath('/vote/complete')}`);
+    await page
+        .getByText('Ballot finalized privately', { exact: true })
+        .waitFor();
+    walkthroughStatistics.ballots_finalized++;
+
+    return {
+        release_code: (await page.locator('p.font-mono').textContent()).trim(),
+    };
+}
+
+async function printAndDepositPublicSimulationBallot(release) {
+    await openPath(publicSimulationPath('/print'));
+    await page.locator('input[name="code"]').fill(release.release_code);
+    await postButton(
+        'Prepare paper ballot',
+        publicSimulationPath('/print/redeem'),
+    );
+    await postButton(
+        'Print paper ballot',
+        publicSimulationPath('/print/print'),
+    );
+    walkthroughStatistics.ballots_printed++;
+    await postButton(
+        'Scan and deposit verified ballot',
+        publicSimulationPath('/print/deposit'),
+        60_000,
+        false,
+    );
+    await page.getByText('Ballot accepted', { exact: true }).waitFor();
+    walkthroughStatistics.ballots_accepted++;
+
+    return release;
+}
+
+let publicControlNumber = '';
+
+async function runPublicSimulationScenario() {
+    if (!publicOfficerCode || !publicOfficerPin) {
+        throw new Error(
+            'The public-simulation walkthrough requires officer credentials.',
+        );
+    }
+
+    await runStep(
+        'open-public-simulation-lobby',
+        async () => {
+            await openPath('/election/play');
+            await page.getByText(publicPrecinctCode, { exact: true }).waitFor();
+
+            return {
+                round_code: publicRoundCode,
+                precinct_code: publicPrecinctCode,
+            };
+        },
+        '01-public-simulation-lobby.png',
+    );
+
+    await runStep(
+        'open-public-simulation-precinct',
+        async () => {
+            await openPath(publicSimulationPath());
+            await page
+                .getByRole('heading', {
+                    name: /Open this precinct|Close this precinct|Publish watcher package|Published/,
+                })
+                .waitFor();
+        },
+        '02-public-simulation-precinct-ready.png',
+    );
+
+    await runStep(
+        'open-public-simulation-polls',
+        async () => {
+            await postPublicOfficerAction(
+                'Open polls',
+                publicSimulationPath('/open'),
+            );
+            await page
+                .getByRole('heading', {
+                    name: 'Admit next voter',
+                    exact: true,
+                })
+                .waitFor();
+        },
+        '03-public-simulation-polls-open.png',
+    );
+
+    const requestedBallots = Number(
+        process.env.ELECTION_WALKTHROUGH_BALLOTS ?? 1,
+    );
+
+    for (
+        let ballotNumber = 1;
+        ballotNumber <= requestedBallots;
+        ballotNumber++
+    ) {
+        await runStep(
+            `issue-public-simulation-control-number-${ballotNumber}`,
+            async () => {
+                await postPublicOfficerAction(
+                    'Issue control number',
+                    publicSimulationPath('/admit'),
+                    false,
+                );
+                publicControlNumber = (
+                    await page.locator('p.font-mono').first().textContent()
+                ).trim();
+
+                return {
+                    control_number_visible: publicControlNumber.length === 4,
+                };
+            },
+            `04-public-control-number-${ballotNumber}.png`,
+        );
+
+        let release;
+        await runStep(
+            `finalize-public-simulation-ballot-${ballotNumber}`,
+            async () => {
+                release = await finalizePublicSimulationBallot(ballotNumber);
+
+                return {
+                    release_ready: true,
+                };
+            },
+            `08-public-voter-ballot-${ballotNumber}-finalized.png`,
+        );
+
+        await runStep(
+            `print-and-deposit-public-simulation-ballot-${ballotNumber}`,
+            async () => {
+                return printAndDepositPublicSimulationBallot(release);
+            },
+            `09-public-voter-ballot-${ballotNumber}-deposited.png`,
+        );
+
+        await openPath(publicSimulationPath());
+    }
+
+    await runStep(
+        'close-public-simulation-polls',
+        async () => {
+            await postPublicOfficerAction(
+                'Close polls and generate results',
+                publicSimulationPath('/close'),
+            );
+            await page
+                .getByRole('button', {
+                    name: 'Publish watcher package',
+                    exact: true,
+                })
+                .waitFor();
+            walkthroughStatistics.return_generated = true;
+            walkthroughStatistics.precinct_closed = true;
+        },
+        '10-public-results-ready.png',
+    );
+
+    await runStep(
+        'publish-public-simulation-watcher-package',
+        async () => {
+            await postPublicOfficerAction(
+                'Publish watcher package',
+                publicSimulationPath('/publish'),
+            );
+            await page
+                .getByRole('link', {
+                    name: 'View published artifacts',
+                    exact: true,
+                })
+                .waitFor();
+            walkthroughStatistics.return_approved = true;
+        },
+        '11-public-results-published.png',
+    );
+
+    await runStep(
+        'review-public-simulation-watcher-view',
+        async () => {
+            await openPath(publicSimulationPath('/watch'));
+            await page.getByText('POLL WATCHER VIEW', { exact: true }).waitFor();
+            await page
+                .getByRole('link', {
+                    name: 'Download tally sheet PDF',
+                    exact: true,
+                })
+                .waitFor();
+            await page
+                .getByRole('link', {
+                    name: 'Download Election Return PDF',
+                    exact: true,
+                })
+                .waitFor();
+        },
+        '12-public-watcher-results.png',
+    );
+
+    await runStep(
+        'record-public-simulation-observation',
+        async () => {
+            await openPath(publicSimulationPath());
+            const form = page.locator('form').filter({
+                has: page.getByRole('button', {
+                    name: 'Record observation',
+                    exact: true,
+                }),
+            });
+            await form.locator('select[name="reported_role"]').selectOption('facilitator');
+            await form.locator('select[name="ceremony"]').selectOption('results');
+            await form.locator('select[name="assessment"]').selectOption('clear');
+            await form
+                .locator('textarea[name="note"]')
+                .fill(
+                    'Facilitated public simulation walkthrough completed through watcher publication with no personal voter data displayed.',
+                );
+            await form
+                .locator('input[name="officer_code"]')
+                .fill(publicOfficerCode);
+            await form.locator('input[name="officer_pin"]').fill(publicOfficerPin);
+            await postButton(
+                'Record observation',
+                publicSimulationPath('/observation'),
+                60_000,
+                false,
+            );
+            await page
+                .getByText(/Operational observation \d+ has been recorded/)
+                .waitFor();
+        },
+        '13-public-observation-recorded.png',
+    );
+
+    recordAction('public-simulation-lobby-officer-voter-watcher-flow', 'passed', {
+        final_url: page.url(),
+        round_code: publicRoundCode,
+        precinct_code: publicPrecinctCode,
+        ...walkthroughStatistics,
+    });
+}
+
 try {
     recordAction('launch-browser', 'started', {
         headless: process.env.ELECTION_WALKTHROUGH_HEADED !== '1',
@@ -423,6 +841,9 @@ try {
     });
     recordAction('launch-browser', 'passed');
 
+    if (scenario === 'public-simulation') {
+        await runPublicSimulationScenario();
+    } else {
     await runStep(
         'open-election-home',
         async () => {
@@ -1123,6 +1544,7 @@ try {
         final_url: page.url(),
         ...walkthroughStatistics,
     });
+    }
 } catch (error) {
     errorMessage = error instanceof Error ? error.message : String(error);
     recordAction('walkthrough', 'failed', { error: errorMessage });
@@ -1162,7 +1584,7 @@ if (nativeVideoPath) {
 
 await rm(videoStagingDirectory, { force: true, recursive: true });
 
-if (errorMessage === null) {
+if (errorMessage === null && scenario !== 'public-simulation') {
     try {
         recordAction('render-printed-artifacts', 'started');
         const runPath = path.resolve(artifactDirectory, '../..');
@@ -1207,6 +1629,10 @@ if (errorMessage === null) {
             error: errorMessage,
         });
     }
+} else if (errorMessage === null) {
+    recordAction('render-printed-artifacts', 'not-applicable', {
+        reason: 'Public simulation precinct print artifacts live in the public simulation evidence namespace and are reviewed through watcher publication links.',
+    });
 }
 
 if (errorMessage === null) {

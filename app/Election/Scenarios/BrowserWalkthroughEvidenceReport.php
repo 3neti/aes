@@ -114,6 +114,9 @@ final class BrowserWalkthroughEvidenceReport
      */
     private function principalArtifacts(string $runPath, string $precinctId): array
     {
+        $scenario = str_contains($runPath, 'browser-public-simulation')
+            ? 'public-simulation'
+            : 'full-election';
         $paths = [
             '01-precinct-package-and-configuration/configured-precinct-activation.json',
             '01-precinct-package-and-configuration/precinct-setup.json',
@@ -127,7 +130,7 @@ final class BrowserWalkthroughEvidenceReport
             '09-final-backup/final-backup-report.pdf',
             '10-custody-turnover/custody-turnover-report.pdf',
             '12-audit-and-reconciliation/evidence-manifest.json',
-            '12-audit-and-reconciliation/browser-recordings/full-election.webm',
+            "12-audit-and-reconciliation/browser-recordings/{$scenario}.webm",
             '12-audit-and-reconciliation/browser-recordings/playwright-trace.zip',
             '12-audit-and-reconciliation/browser-recordings/browser-walkthrough-report.json',
             '12-audit-and-reconciliation/browser-recordings/action-log.jsonl',

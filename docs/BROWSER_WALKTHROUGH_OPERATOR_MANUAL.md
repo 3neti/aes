@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`election:browser-walkthrough full-election` opens the local Alternative Election System in Chromium and performs a complete precinct rehearsal through the visible ceremony pages. It records the browser, preserves every ceremony artifact in an isolated rehearsal run, builds the final evidence TAR after recording stops, and verifies that TAR before locking the run.
+`election:browser-walkthrough full-election` opens the local Alternative Election System in Chromium and performs a complete precinct rehearsal through the visible ceremony pages. `election:browser-walkthrough public-simulation` records the public lobby, Election Officer, voter, private print station, watcher, and debrief flow. Each scenario records the browser, preserves every walkthrough artifact in an isolated rehearsal run, builds the final evidence TAR after recording stops, and verifies that TAR before locking the run.
 
 This command is for demonstrations, training, acceptance checks, and field rehearsals. It does not create or replace the election-day operator run. Paper ballots remain the legal source of truth.
 
@@ -40,6 +40,14 @@ Fast unattended verification:
 ```bash
 php artisan election:browser-walkthrough full-election --ballots=1 --slow-mo=0
 ```
+
+Public simulation walkthrough:
+
+```bash
+php artisan election:browser-walkthrough public-simulation --ballots=1 --slow-mo=0
+```
+
+The public simulation scenario creates a fresh three-precinct public round for the recording, selects one ready precinct, opens polls with the generated officer credentials, issues a four-digit voter control number, casts and deposits the ballot, closes the precinct, publishes watcher artifacts, and records one facilitator observation.
 
 Options:
 
@@ -108,6 +116,7 @@ Inside `12-audit-and-reconciliation/browser-recordings`:
 | File                                            | Purpose                                                                                                           |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `full-election.webm`                            | Complete browser video.                                                                                           |
+| `public-simulation.webm`                        | Complete public-simulation browser video when that scenario is run.                                                |
 | `playwright-trace.zip`                          | Playwright trace for replay and element-level debugging.                                                          |
 | `01-*.png` through `46-*.png`                   | Ceremony checkpoints, including `16-voter-ballot-*-opened`, every `selection-NN`, review, and finalization frame. |
 | `storyboard-frames/01-*.png` through `46-*.png` | Readable viewport captures from the same checkpoints, used by the storyboard.                                     |
