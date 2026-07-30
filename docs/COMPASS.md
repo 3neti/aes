@@ -10,8 +10,9 @@
 - Completed Slice: Facilitated public-simulation debrief observations
 - Completed Slice: Facilitator observation review
 - Completed Slice: External usability session preparation
-- Current Slice: Conduct external usability session and review findings
-- Next Slice: Prioritize external findings into a public-simulation improvement backlog
+- Completed Slice: Public-simulation improvement backlog
+- Current Slice: Conduct external usability session with real participants
+- Next Slice: Convert prioritized backlog items into product fixes
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -739,13 +740,15 @@ Completed:
 - after watcher publication, the Election Officer may record a structured facilitator, officer, voter, or watcher observation in `12-audit-and-reconciliation/operational-observations`; the public page shows aggregate assessments only and the journal excludes observation notes
 - `election:public-simulation:observation-review {round} {precinct}` writes a facilitator-only audit report with role, ceremony, and severity summaries plus private follow-up notes; its journal record contains counts and the review hash, never the notes
 - `election:public-simulation:usability-session-kit {round} {precinct}` prepares a ready precinct with a privacy-safe facilitator guide, participant observation sheet, and structured success criteria without storing officer credentials or participant data
+- `election:public-simulation:improvement-backlog {round} {precinct}` converts the latest private observation review into open, prioritized improvement items in `12-audit-and-reconciliation/improvement-backlog`; its journal record contains counts and the backlog hash, never the private problem statements
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then conduct an external usability session and prioritize the findings with
-Election Officers, voters, and watchers.
+Then conduct an external usability session with actual Election Officers,
+voters, and watchers, record their observations, and convert the prioritized
+backlog into product fixes.
 
 ---
 

@@ -150,6 +150,7 @@ Not yet implemented:
 - After watcher publication, the assigned officer may record a structured operational observation from the facilitator, officer, voter, or watcher perspective. Detailed notes are private audit evidence; the public precinct page exposes only aggregate clear, needs-attention, and blocking counts.
 - `election:public-simulation:observation-review {round} {precinct}` builds a private audit-ceremony facilitator review with aggregate breakdowns and only the needs-attention or blocking notes. Its journal event retains counts and a review hash, not the notes.
 - `election:public-simulation:usability-session-kit {round} {precinct}` prepares a ready precinct with a privacy-safe facilitator guide, participant observation sheet, and success criteria. It does not store or reveal officer credentials or participant data.
+- `election:public-simulation:improvement-backlog {round} {precinct}` converts the latest private observation review into an audit-ceremony improvement backlog with open prioritized items. Its journal event stores only counts and a backlog hash, not the private problem statements.
 - Public education copy, consent, retention, and deletion policy.
 
 ## Update Rule

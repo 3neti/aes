@@ -447,8 +447,8 @@ test('a review kit indexes only privacy-safe public simulation artifacts', funct
     expect($kit['round'])->toMatchArray(['code' => $round->code, 'status' => 'open'])
         ->and($kit['precincts'])->toHaveCount(3)
         ->and($kit['privacy_notice'])->toContain('excludes voter identities')
-        ->and($kit['precincts'][0]['review_artifacts'])
-        ->toContain(fn (array $artifact): bool => str_ends_with($artifact['path'], '/public-simulation-participation-policy.json'))
+        ->and(collect($kit['precincts'][0]['review_artifacts'])->contains(fn (array $artifact): bool => str_ends_with($artifact['path'], '/public-simulation-participation-policy.json')))
+        ->toBeTrue()
         ->and($kit['artifact_path'])->toBeReadableFile();
 
     $this->artisan('election:public-simulation:review-kit', ['round' => $round->code])
@@ -596,6 +596,49 @@ test('a facilitator observation review isolates follow-up notes in private audit
         ->and($journalEntry['payload'])->not->toHaveKey('note')
         ->and($journalEntry['payload']['follow_up_count'])->toBe(1)
         ->and(app(PublicSimulationObservationReview::class)->build()['sequence'])->toBe(2);
+});
+
+test('a facilitator improvement backlog prioritizes reviewed public simulation findings', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+    $precinct->forceFill(['status' => 'published'])->save();
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+
+    $observations = app(PublicSimulationOperationalObservation::class);
+    $observations->record('election_officer', 'admission', 'clear', 'Control-number handoff was clear.');
+    $observations->record('watcher', 'results', 'needs_attention', 'The published tally should use a larger projected display.');
+    app(PublicSimulationObservationReview::class)->build();
+
+    $this->artisan('election:public-simulation:improvement-backlog', [
+        'round' => $round->code,
+        'precinct' => $precinct->code,
+    ])->expectsOutputToContain("Improvement backlog 1 created for {$round->code}/{$precinct->code}")
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $backlog = $storage->readJson('improvement-backlog/000001-improvement-backlog.json');
+    $journalEntry = collect(app(ActivityJournal::class)->entries())
+        ->firstWhere('event_type', 'public_simulation.improvement_backlog_created');
+
+    expect($backlog['summary'])->toMatchArray([
+        'total_items' => 1,
+        'by_priority' => ['medium' => 1],
+        'by_ceremony' => ['results' => 1],
+    ])
+        ->and($backlog['items'][0])->toMatchArray([
+            'source_observation_sequence' => 2,
+            'reported_role' => 'watcher',
+            'ceremony' => 'results',
+            'assessment' => 'needs_attention',
+            'priority' => 'medium',
+            'status' => 'open',
+            'recommended_owner' => 'transparency-and-audit',
+            'problem_statement' => 'The published tally should use a larger projected display.',
+        ])
+        ->and($journalEntry['payload'])->not->toHaveKey('problem_statement')
+        ->and($journalEntry['payload']['total_items'])->toBe(1);
 });
 
 test('a ready public precinct receives a privacy-safe external usability session kit', function (): void {
