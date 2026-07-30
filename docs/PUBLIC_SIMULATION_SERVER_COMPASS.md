@@ -120,14 +120,19 @@ Implemented in the Public Simulation Server:
 - A voter enters through a common precinct QR/link, claims a control number, marks the existing POP/CLC ballot, obtains a private print release, and never sees any tally.
 - The private print station redeems the release, prints with the existing adapter, and deposits a sealed ballot. Deposit records one VVDAT ledger entry.
 - Close records physical-ballot reconciliation, tallies the sealed VVDAT ledger, generates the existing tally and Election Return PDFs, and exposes a human-readable watcher view with download links.
+- Close writes `06-counting-and-tally/vvdat-ledger-freeze.json`, binding the exact ledger record count and root hash before tabulation. The ledger rejects any later deposit.
+- Watcher publication is a distinct officer action. It writes `07-election-return/publication-manifest.json` with hashes for the frozen ledger, tally, PDFs, and Election Return; no watcher result is available before it exists.
+- Watchers can download a post-publication VVDAT audit export. It retains only record hashes and selections in deterministic order, and removes ballot IDs, paper serials, timestamps, authorization data, and print-release data.
+- `election:public-simulation:archive {round}` archives only fully published rounds and preserves every precinct evidence namespace.
+- A privacy-redacted God Mode page is scaffolded at `/election/play/{round}/god-mode`, disabled by default through `ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED`.
 
 Not yet implemented:
 
 - Public participant enrollment and safe invite links beyond the current anonymous control-number admission.
-- Officer-host creation flow, credential-handoff artifact, configurable public simulation schedules, and archive/start-fresh policy.
-- Explicit VVDAT freeze/validation artifact, watcher publication approval, and anonymized audit-export ceremony.
-- Privacy-safe God Mode command center.
-- Multi-precinct concurrent simulation controls and abuse protection.
+- Officer-host creation flow, credential-handoff artifact, configurable public simulation schedules, and start-fresh policy.
+- Public release approval for the VVDAT export, independent export verification, and small-precinct publication threshold.
+- Expanded God Mode authorization, classroom replay fixtures, and screen/capture controls.
+- Multi-precinct admission capacity limits, rate controls, and concurrency-race scenarios.
 - Public education copy, consent, retention, and deletion policy.
 
 ## Update Rule

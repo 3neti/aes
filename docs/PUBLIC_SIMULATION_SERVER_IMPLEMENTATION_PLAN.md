@@ -106,10 +106,10 @@ The public simulation model must use a distinct `simulation_id` and storage name
 
 ### Wave 3: VVDAT Close and Results
 
-5. **Explicit VVDAT freeze and validation**
+5. **Explicit VVDAT freeze and validation** - completed for public simulation close
    - Add `vvdat-ledger-freeze.json`, root hash, expected/deposited count, validation report, and `vvdat.ledger_frozen` journal event.
    - Fail close if records are duplicated, incomplete, invalid, or changed after freeze.
-   - Done when close polls deterministically freezes a ledger and prevents further voting mutations.
+   - Delivered: `vvdat-ledger-freeze.json` binds record count and root hash, close validates it before tally, and later device-ledger deposits fail.
 
 6. **Device tabulation tally and result printing** - completed for simulation closeout
    - Derive tally directly from the frozen ledger.
@@ -119,32 +119,32 @@ The public simulation model must use a distinct `simulation_id` and storage name
 7. **Watcher publication package** - partial
    - Create a publication approval ceremony and a public result page.
    - Publish result PDFs, hashes, timeline, aggregate statistics, and approved downloader links.
-   - Delivered: post-close watcher page and tally/ER PDF downloads. Approval, hash-checkable public package, and audit export remain pending.
+   - Delivered: an officer publication action, hash-addressed publication manifest, watcher gate, tally/ER PDF downloads, and a post-publication anonymized VVDAT export. Approval policy, independent verifier, and archive package remain pending.
 
 ### Wave 4: Paper Audit and Understanding
 
-8. **Anonymized VVDAT audit export**
+8. **Anonymized VVDAT audit export** - scaffolded
    - Generate a shuffled post-close export plus manifest and independent local tally command.
    - Make export policy configurable and disabled by default outside the public simulation profile.
-   - Done when a watcher can reproduce the published aggregate result without receiving correlatable voter metadata.
+   - Delivered: deterministic record ordering and metadata stripping. An independent tally/verification command and small-precinct threshold remain pending.
 
 9. **QR-assisted Random Manual Audit room**
    - Present a public tally comparison screen that scans paper QR selections into an audit-only tally and requires two officer approvals per sample.
    - Done when the audit evidence either confirms the sample or publishes an unresolved discrepancy without changing official results.
 
-10. **Privacy-safe God Mode**
+10. **Privacy-safe God Mode** - scaffolded
     - Build an explainer command center with lifecycle map, room/station status, redacted journal, artifact board, and training-fixture replay.
-    - Done when a facilitator can explain every role without exposing participant selections.
+   - Delivered: disabled-by-default aggregate operational board with redacted journals and no voter-selection fields. Facilitator authorization and replay fixtures remain pending.
 
 ### Wave 5: Public Hardening
 
-11. **Concurrent multi-precinct controls**
+11. **Concurrent multi-precinct controls** - partial
     - Distributed locks, idempotency keys, capacity limits, session expiry, queue/backpressure policy, and abuse controls.
-    - Done when parallel precinct simulations cannot cross-contaminate records or exhaust shared resources.
+   - Delivered: election operation locks now include the scoped evidence root, avoiding cross-precinct lock contention. Capacity, rate, and race testing remain pending.
 
-12. **Retention, consent, and review kit**
+12. **Retention, consent, and review kit** - partial
     - Public consent page, retention schedule, deletion workflow, incident contact, accessibility review, and downloadable COMELEC Review Kit.
-    - Done when a reviewer can understand the simulation boundaries, inspect evidence, and request expiry/deletion through documented controls.
+   - Delivered: non-destructive archive command which permits a fresh lobby round while retaining evidence. Retention schedule, consent, and review kit remain pending.
 
 ## Scenario Runner Strategy
 

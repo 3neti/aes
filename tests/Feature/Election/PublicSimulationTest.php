@@ -118,3 +118,38 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
         ->and($export['records'][0])->toHaveKeys(['record_hash', 'selections'])
         ->and($export['records'][0])->not->toHaveKeys(['ballot_id', 'paper_ballot_serial', 'recorded_at']);
 });
+
+test('a public simulation round archives only after every precinct is published', function (): void {
+    $round = SimulationRound::factory()->create();
+    $unfinished = SimulationPrecinct::factory()->for($round, 'round')->create(['status' => 'open']);
+
+    $this->artisan('election:public-simulation:archive', ['round' => $round->code])
+        ->expectsOutputToContain('Every precinct must publish')
+        ->assertFailed();
+
+    $unfinished->forceFill(['status' => 'published'])->save();
+    SimulationPrecinct::factory()->for($round, 'round')->create(['status' => 'published']);
+
+    $this->artisan('election:public-simulation:archive', ['round' => $round->code])
+        ->expectsOutputToContain("Public simulation round {$round->code} archived")
+        ->assertSuccessful();
+
+    expect($round->fresh()->status)->toBe('archived')
+        ->and($round->fresh()->archived_at)->not->toBeNull();
+});
+
+test('the facilitator god mode remains disabled until explicitly enabled', function (): void {
+    $round = SimulationRound::factory()->create();
+    SimulationPrecinct::factory()->for($round, 'round')->create();
+
+    $this->get(route('election.public-simulation.god-mode', $round))->assertNotFound();
+
+    config()->set('election.public_simulation.god_mode.enabled', true);
+
+    $this->get(route('election.public-simulation.god-mode', $round))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/PublicSimulationGodMode')
+            ->where('privacyNotice', 'This facilitator screen intentionally excludes voter selections, control numbers, print releases, paper serials, QR payloads, and participant identity.')
+        );
+});

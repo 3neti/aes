@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Public Multi-Precinct Simulation Happy Path
+- Completed Slice: Public VVDAT Freeze, Publication, and Audit-Export Scaffolds
 - Active Program: Public Election Simulation Server
-- Current Slice: Public watcher publication and ledger-freeze hardening
-- Next Slice: Explicit VVDAT freeze/validation artifact and publication approval
+- Current Slice: Public simulation concurrency, independent audit verification, and controlled reset
+- Next Slice: Concurrent-voter capacity/race scenarios and independent VVDAT export verification
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
