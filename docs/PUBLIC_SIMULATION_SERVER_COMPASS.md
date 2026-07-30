@@ -125,6 +125,7 @@ Implemented in the Public Simulation Server:
 - Watchers can download a post-publication VVDAT audit export. It retains only record hashes and selections in deterministic order, and removes ballot IDs, paper serials, timestamps, authorization data, and print-release data.
 - `php artisan election:public-simulation:verify-vvdat-export /path/to/export.json` independently checks a downloaded export's content hash, unique record hashes, count, and non-zero tally without reading the precinct ledger.
 - Admission issuance observes `ELECTION_PUBLIC_SIMULATION_MAX_ACTIVE_ADMISSIONS` (default `10`) inside a precinct-scoped election lock. The public admission endpoint is also throttled.
+- The public feature suite executes three complete voter admissions, private ballots, prints, deposits, and closeout in one precinct, then proves the neighbouring precinct's VVDAT evidence root is empty.
 - `election:public-simulation:archive {round}` archives only fully published rounds and preserves every precinct evidence namespace.
 - `election:public-simulation:reset {round}` is the controlled start-fresh operation: it archives a fully published round first, retains all evidence, then creates a new three-precinct lobby. It refuses to replace an unrelated live round.
 - Watcher VVDAT downloads now follow an explicit release policy. `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_ENABLED` enables the export and `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_MINIMUM_RECORDS` sets the minimum sealed-record count. A withheld export is not linked or downloadable.

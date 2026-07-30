@@ -140,7 +140,7 @@ The public simulation model must use a distinct `simulation_id` and storage name
 
 11. **Concurrent multi-precinct controls** - partial
     - Distributed locks, idempotency keys, capacity limits, session expiry, queue/backpressure policy, and abuse controls.
-   - Delivered: election operation locks include the scoped evidence root, avoiding cross-precinct lock contention. Admission issuance has an atomic active-capacity limit and endpoint throttle. Concurrent browser/race scenarios, queue/backpressure, and broader abuse controls remain pending.
+   - Delivered: election operation locks include the scoped evidence root, avoiding cross-precinct lock contention. Admission issuance has an atomic active-capacity limit and endpoint throttle. A deterministic feature flow now exercises three complete voter paths in one precinct and proves a neighbouring precinct remains empty. Concurrent browser/race scenarios, queue/backpressure, and broader abuse controls remain pending.
 
 12. **Retention, consent, and review kit** - partial
     - Public consent page, retention schedule, deletion workflow, incident contact, accessibility review, and downloadable COMELEC Review Kit.

@@ -723,6 +723,7 @@ Completed:
 - signed QR joins, one-browser station binding, role-restricted routes, connectivity status, and an append-only hash-chained room journal
 - public three-precinct simulation lobby with isolated evidence roots, Device Tabulation with Paper Audit closeout, sealed VVDAT freeze, tally/ER watcher publication, policy-controlled anonymized VVDAT export, and a non-destructive archive/reset flow
 - public precinct Random Manual Audit room: deterministic sample selection, selected paper QR comparison, dual officer approval, reconciliation, and separate PDF evidence without mutation of official result artifacts
+- deterministic three-voter public precinct exercise that proves repeated admission, private vote, print/deposit, device closeout, tally, and neighbouring-precinct storage isolation
 
 Next:
 

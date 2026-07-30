@@ -190,6 +190,65 @@ test('a precinct admission capacity is reserved atomically inside the scoped ele
         ->toThrow(RuntimeException::class, 'active voter-admission limit');
 });
 
+test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    $otherPrecinct = $round->precincts->skip(1)->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class)
+        ->and($otherPrecinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
+    $selections = collect($configuration['contests'])
+        ->mapWithKeys(fn (array $contest): array => [
+            $contest['id'] => collect($contest['candidates'])
+                ->take(min(1, (int) $contest['max_selections']))
+                ->pluck('id')
+                ->all(),
+        ])
+        ->all();
+
+    foreach (range(1, 3) as $voter) {
+        $this->post(route('election.public-simulation.admit', [$round, $precinct]), $credentials)
+            ->assertRedirect();
+        $authorization = session('public_simulation.control_number');
+
+        $this->post(route('election.public-simulation.voter.claim', [$round, $precinct]), ['code' => $authorization['code']])
+            ->assertRedirect();
+        $this->post(route('election.public-simulation.voter.finalize', [$round, $precinct]), ['selections' => $selections])
+            ->assertRedirect();
+        $release = session("public_simulation.{$precinct->id}.release");
+
+        $this->post(route('election.public-simulation.print.redeem', [$round, $precinct]), ['code' => $release['release_code']])
+            ->assertRedirect();
+        $this->post(route('election.public-simulation.print.print', [$round, $precinct]))->assertRedirect();
+        $this->post(route('election.public-simulation.print.deposit', [$round, $precinct]))->assertRedirect();
+    }
+
+    $this->post(route('election.public-simulation.close', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $storage = app(ElectionStorage::class);
+    $configuration = $storage->readJson('runtime/active-precinct.json');
+    $return = $storage->readJson("returns/{$configuration['precinct_id']}-return.json");
+    $contestId = array_key_first($selections);
+    $candidateId = $selections[$contestId][0];
+
+    expect($storage->files('device-tabulation-ledger'))->toHaveCount(3)
+        ->and($return['accepted_ballots'])->toBe(3)
+        ->and($return['tally'][$contestId][$candidateId])->toBe(3);
+
+    app(PublicSimulationScope::class)->apply($otherPrecinct->fresh('round'));
+    expect(app(ElectionStorage::class)->files('device-tabulation-ledger'))->toBeEmpty();
+});
+
 test('a public simulation round archives only after every precinct is published', function (): void {
     $round = SimulationRound::factory()->create();
     $unfinished = SimulationPrecinct::factory()->for($round, 'round')->create(['status' => 'open']);
