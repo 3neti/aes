@@ -53,6 +53,7 @@ final class PublicSimulationController extends Controller
                 'admit' => route('election.public-simulation.admit', [$round, $precinct]),
                 'close' => route('election.public-simulation.close', [$round, $precinct]),
                 'publish' => route('election.public-simulation.publish', [$round, $precinct]),
+                'audit' => route('election.public-simulation.audit.show', [$round, $precinct]),
                 'print' => route('election.public-simulation.print.station', [$round, $precinct]),
                 'watch' => route('election.public-simulation.watcher.show', [$round, $precinct]),
             ],

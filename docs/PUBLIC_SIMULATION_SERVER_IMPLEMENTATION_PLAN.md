@@ -128,9 +128,9 @@ The public simulation model must use a distinct `simulation_id` and storage name
    - Make export policy configurable and disabled by default outside the public simulation profile.
    - Delivered: deterministic record ordering, metadata stripping, a configurable small-precinct threshold, and `election:public-simulation:verify-vvdat-export`, which independently checks the export hash, unique records, count, and tally. A distinct officer release ceremony remains pending.
 
-9. **QR-assisted Random Manual Audit room**
+9. **QR-assisted Random Manual Audit room** - scaffolded for public simulation
    - Present a public tally comparison screen that scans paper QR selections into an audit-only tally and requires two officer approvals per sample.
-   - Done when the audit evidence either confirms the sample or publishes an unresolved discrepancy without changing official results.
+   - Delivered: the public precinct audit room selects a deterministic post-close sample, accepts a selected paper QR, performs dual approval, writes reconciliation, and produces a separate PDF evidence pack without changing official results. Camera capture, discrepancy handling, and watcher-safe RMA publication remain pending.
 
 10. **Privacy-safe God Mode** - scaffolded
     - Build an explainer command center with lifecycle map, room/station status, redacted journal, artifact board, and training-fixture replay.

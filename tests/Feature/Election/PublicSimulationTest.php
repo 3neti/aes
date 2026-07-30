@@ -8,6 +8,7 @@ use App\Election\Tabulation\DeviceTabulationLedger;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
+use Illuminate\Support\Facades\Crypt;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
@@ -67,6 +68,10 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
     $release = session("public_simulation.{$precinct->id}.release");
     expect($release)->toBeArray()->and($release['release_code'])->toBeString();
 
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $privateRelease = app(ElectionStorage::class)->readJson("print-releases/{$release['release_id']}.json");
+    $auditQrPayload = json_decode(Crypt::decryptString($privateRelease['encrypted_payload']), true, flags: JSON_THROW_ON_ERROR)['qr_payload'];
+
     $this->post(route('election.public-simulation.print.redeem', [$round, $precinct]), [
         'code' => $release['release_code'],
     ])->assertRedirect(route('election.public-simulation.print.station', [$round, $precinct]));
@@ -80,6 +85,33 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
 
     $precinct->refresh();
     expect($precinct->status)->toBe('results_ready');
+
+    $this->get(route('election.public-simulation.audit.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/PublicSimulationRandomManualAudit')
+            ->where('audit.sample', [])
+        );
+    $this->post(route('election.public-simulation.audit.select', [$round, $precinct]), $credentials)
+        ->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
+    $this->post(route('election.public-simulation.audit.propose', [$round, $precinct]), [
+        ...$credentials,
+        'payload' => $auditQrPayload,
+    ])->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
+    $this->post(route('election.public-simulation.audit.approve', [$round, $precinct]), [
+        ...$credentials,
+        'payload_hash' => $privateRelease['payload_hash'],
+        'first_officer_code' => 'SIM-OFFICER-001',
+        'first_officer_pin' => '123456',
+        'second_officer_code' => 'SIM-OFFICER-002',
+        'second_officer_pin' => '123456',
+    ])->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
+    $this->post(route('election.public-simulation.audit.reconcile', [$round, $precinct]), $credentials)
+        ->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
+    $this->post(route('election.public-simulation.audit.evidence-pack', [$round, $precinct]), $credentials)
+        ->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
+    $this->get(route('election.public-simulation.audit.download', [$round, $precinct]))
+        ->assertDownload("{$precinct->code}-random-manual-audit.pdf");
 
     $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
         ->assertSuccessful()

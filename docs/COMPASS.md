@@ -722,13 +722,14 @@ Completed:
 - role-paired Multi-Tablet Review Room for one officer, five default voter tablets, private printing, watcher observation, and a projection-safe presentation screen
 - signed QR joins, one-browser station binding, role-restricted routes, connectivity status, and an append-only hash-chained room journal
 - public three-precinct simulation lobby with isolated evidence roots, Device Tabulation with Paper Audit closeout, sealed VVDAT freeze, tally/ER watcher publication, policy-controlled anonymized VVDAT export, and a non-destructive archive/reset flow
+- public precinct Random Manual Audit room: deterministic sample selection, selected paper QR comparison, dual officer approval, reconciliation, and separate PDF evidence without mutation of official result artifacts
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then add the QR-assisted Random Manual Audit room and package the results
-into the offline COMELEC Review Kit before the supervised hardware pilot.
+Then add RMA camera capture, discrepancy handling, watcher-safe audit
+publication, and package the results into the offline COMELEC Review Kit.
 
 ---
 

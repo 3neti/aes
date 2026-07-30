@@ -129,6 +129,7 @@ Implemented in the Public Simulation Server:
 - `election:public-simulation:reset {round}` is the controlled start-fresh operation: it archives a fully published round first, retains all evidence, then creates a new three-precinct lobby. It refuses to replace an unrelated live round.
 - Watcher VVDAT downloads now follow an explicit release policy. `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_ENABLED` enables the export and `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_MINIMUM_RECORDS` sets the minimum sealed-record count. A withheld export is not linked or downloadable.
 - A privacy-redacted God Mode page is scaffolded at `/election/play/{round}/god-mode`, disabled by default through `ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED`.
+- The precinct operator can now open `/election/play/{round}/{precinct}/audit` after closeout. It selects a deterministic paper-ballot sample, accepts only a sampled QR payload, requires two distinct board approvals, writes a separate reconciliation, and produces a Random Manual Audit PDF. The audit never changes the official VVDAT tally or Election Return.
 
 Not yet implemented:
 

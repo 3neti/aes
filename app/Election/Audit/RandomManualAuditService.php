@@ -501,9 +501,9 @@ final class RandomManualAuditService
 
     private function ensureEnabled(): void
     {
-        if ($this->lifecycle->current() !== Lifecycle::Counting) {
+        if (! in_array($this->lifecycle->current(), [Lifecycle::Counting, Lifecycle::ElectionReturn, Lifecycle::Audit], true)) {
             throw ValidationException::withMessages([
-                'lifecycle' => 'Random manual audit is available only during counting.',
+                'lifecycle' => 'Random manual audit is available only after counting has started.',
             ]);
         }
 

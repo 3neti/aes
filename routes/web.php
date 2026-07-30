@@ -10,6 +10,7 @@ use App\Http\Controllers\Election\PrintStationController;
 use App\Http\Controllers\Election\ProvisionController;
 use App\Http\Controllers\Election\PublicSimulationController;
 use App\Http\Controllers\Election\PublicSimulationGodModeController;
+use App\Http\Controllers\Election\PublicSimulationRandomManualAuditController;
 use App\Http\Controllers\Election\PublicSimulationVoterController;
 use App\Http\Controllers\Election\PublicSimulationWatcherController;
 use App\Http\Controllers\Election\ReturnsController;
@@ -34,6 +35,14 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/{round:code}/{precinct:code}/admit', [PublicSimulationController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
         Route::post('/{round:code}/{precinct:code}/close', [PublicSimulationController::class, 'close'])->name('close');
         Route::post('/{round:code}/{precinct:code}/publish', [PublicSimulationController::class, 'publish'])->name('publish');
+
+        Route::get('/{round:code}/{precinct:code}/audit', [PublicSimulationRandomManualAuditController::class, 'show'])->name('audit.show');
+        Route::post('/{round:code}/{precinct:code}/audit/select', [PublicSimulationRandomManualAuditController::class, 'select'])->name('audit.select');
+        Route::post('/{round:code}/{precinct:code}/audit/propose', [PublicSimulationRandomManualAuditController::class, 'propose'])->name('audit.propose');
+        Route::post('/{round:code}/{precinct:code}/audit/approve', [PublicSimulationRandomManualAuditController::class, 'approve'])->name('audit.approve');
+        Route::post('/{round:code}/{precinct:code}/audit/reconcile', [PublicSimulationRandomManualAuditController::class, 'reconcile'])->name('audit.reconcile');
+        Route::post('/{round:code}/{precinct:code}/audit/evidence-pack', [PublicSimulationRandomManualAuditController::class, 'evidencePack'])->name('audit.evidence-pack');
+        Route::get('/{round:code}/{precinct:code}/audit/evidence-pack', [PublicSimulationRandomManualAuditController::class, 'download'])->name('audit.download');
 
         Route::get('/{round:code}/{precinct:code}/vote', [PublicSimulationVoterController::class, 'show'])->name('voter.show');
         Route::post('/{round:code}/{precinct:code}/vote/claim', [PublicSimulationVoterController::class, 'claim'])->middleware('throttle:10,1')->name('voter.claim');
