@@ -7,7 +7,8 @@
 - Completed Slice: Public Admission Queue, Browser Ticket Privacy Coverage, Officer Contention Reporting, Anonymous Intake Pause Control, and Public Participation Policy
 - Active Program: Public Election Simulation Server
 - Completed Slice: Controlled public-simulation retention review and formal evidence-disposition policy
-- Next Slice: Public-simulation field rehearsal with concurrent voter-load and operational observation
+- Current Slice: Public-simulation field rehearsal with cohort-load and operational observation
+- Next Slice: Facilitated browser field rehearsal and operational observations
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -731,13 +732,14 @@ Completed:
 - session-only public simulation participation acknowledgment before the voter code screen, backed by a policy artifact with a configurable retention window and no identity, authorization, ballot, or session evidence
 - `election:public-simulation:review-kit {round}` creates a self-contained `REVIEW-KIT` folder with a readable guide and hash-addressed index of ceremony-level public simulation evidence, excluding private voter and ballot material
 - `election:public-simulation:retention-review {round}` creates a no-delete `RETENTION-REVIEW` report that identifies whether an archived round is due for a human retain, external archive, or separately authorized deletion decision
+- `election:public-simulation:field-rehearsal {round} {precinct} --voters=5` runs a ready public precinct through a bounded voter cohort, proves closeout is held while voters are active, then publishes VVDAT results and a privacy-safe rehearsal report
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then run a public-simulation field rehearsal with concurrent voter load and
-operational observation.
+Then run a facilitated browser field rehearsal and record operational observations
+from Election Officers, voters, and watchers.
 
 ---
 

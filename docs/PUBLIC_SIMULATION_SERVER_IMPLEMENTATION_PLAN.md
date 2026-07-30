@@ -199,6 +199,8 @@ Each scenario must persist a run summary with:
 9. Add redacted God Mode and training-fixture replay.
 10. Add concurrent multi-precinct scenarios, browser tests, retention policy, and Review Kit. Completed.
 
+11. Run facilitated browser field rehearsals and collect operational observations. Next.
+
 ## Definition of Done
 
 A simulation is complete when a host can select a precinct, invite participants, open polls, issue codes, collect private votes, close polls, freeze and count the VVDAT ledger, reconcile paper count, print tally and Election Return, publish a safe watcher package, perform an audit-only QR sample, and export an evidence bundle. Every output must be reproducible, privacy-checked, scenario-tested, and visibly labelled as a simulation.

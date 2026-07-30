@@ -146,6 +146,7 @@ Not yet implemented:
 - A separate officer approval ceremony for the VVDAT export; the current policy is configured per environment.
 - Expanded God Mode authorization, classroom replay fixtures, and screen/capture controls.
 - `election:public-simulation:retention-review {round}` creates a privacy-safe, no-delete review report that identifies the required human disposition decision. `election:public-simulation:review-kit {round}` creates a privacy-safe COMELEC Review Kit index for each round. Anonymous intake currently has capacity, queue bounds, endpoint throttles, aggregate officer reporting, and an officer pause/resume control. Voter participation is acknowledged in-session before the code screen and governed by a retained policy artifact.
+- `election:public-simulation:field-rehearsal {round} {precinct} --voters=5` now exercises a bounded voter cohort through admission, claimed-voter closeout protection, private printing, VVDAT deposit, closeout, and post-close publication. It writes a privacy-safe audit-ceremony report with aggregate observations and evidence hashes.
 - Public education copy, consent, retention, and deletion policy.
 
 ## Update Rule

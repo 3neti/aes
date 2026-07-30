@@ -484,6 +484,42 @@ test('a retention review requires a human evidence-disposition decision without 
         ->assertSuccessful();
 });
 
+test('a field rehearsal proves active-cohort closeout protection and publishes a cohort result', function (): void {
+    config()->set('election.public_simulation.maximum_active_admissions', 3);
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $this->artisan('election:public-simulation:field-rehearsal', [
+        'round' => $round->code,
+        'precinct' => $precinct->code,
+        '--voters' => 3,
+    ])->expectsOutputToContain("Field rehearsal completed for {$round->code}/{$precinct->code}")
+        ->assertSuccessful();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $storage = app(ElectionStorage::class);
+    $report = $storage->readJson('field-rehearsals/field-rehearsal-000001.json');
+    $configuration = $storage->readJson('runtime/active-precinct.json');
+    $return = $storage->readJson("returns/{$configuration['precinct_id']}-return.json");
+
+    expect($precinct->fresh()->status)->toBe('published')
+        ->and($report['observations'])->toMatchArray([
+            'cohort_claimed_before_completion' => 3,
+            'closeout_blocked_while_active' => true,
+            'private_releases_completed' => 3,
+            'device_tabulated_ballots' => 3,
+            'results_published' => true,
+        ])
+        ->and($report['evidence']['publication_manifest_hash'])->toBeString()
+        ->and($report)->not->toHaveKeys(['voter_id', 'authorization_id', 'ballot_id', 'session_id', 'selections'])
+        ->and($return['accepted_ballots'])->toBe(3)
+        ->and($storage->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('public_simulation.close_blocked_pending_voters', 'public_simulation.field_rehearsal_completed');
+});
+
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {
     $this->get(route('election.public-simulation.index'))->assertSuccessful();
 
