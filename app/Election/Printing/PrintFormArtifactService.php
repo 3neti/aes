@@ -28,15 +28,21 @@ final class PrintFormArtifactService
      * @param  array<string, mixed>  $configuration
      * @return array<string, array{profile: string, label: string, width_mm: int, artifact_path: string, sha256: string}>
      */
-    public function writeBallot(array $payload, array $configuration): array
+    public function writeBallot(array $payload, array $configuration, PrintFormProfile $selectedProfile): array
     {
         $ballotId = (string) $payload['ballot_id'];
 
-        return $this->writeAll("print-forms/ballots/{$ballotId}", 'ballot', (string) ($payload['payload_hash'] ?? ''), function (PrintFormProfile $profile) use ($payload, $configuration): string {
-            return $profile === PrintFormProfile::A4
-                ? $this->a4Ballot->render($payload, $configuration)
-                : $this->thermalBallot->render($payload, $configuration, $profile);
-        });
+        return $this->writeAll(
+            "print-forms/ballots/{$ballotId}",
+            'ballot',
+            (string) ($payload['payload_hash'] ?? ''),
+            function (PrintFormProfile $profile) use ($payload, $configuration): string {
+                return $profile === PrintFormProfile::A4
+                    ? $this->a4Ballot->render($payload, $configuration)
+                    : $this->thermalBallot->render($payload, $configuration, $profile);
+            },
+            [PrintFormProfile::A4, $selectedProfile],
+        );
     }
 
     /**
@@ -71,13 +77,15 @@ final class PrintFormArtifactService
 
     /**
      * @param  callable(PrintFormProfile): string  $render
+     * @param  array<int, PrintFormProfile>|null  $profiles
      * @return array<string, array{profile: string, label: string, width_mm: int, artifact_path: string, sha256: string}>
      */
-    private function writeAll(string $directory, string $documentType, string $sourceHash, callable $render): array
+    private function writeAll(string $directory, string $documentType, string $sourceHash, callable $render, ?array $profiles = null): array
     {
         $artifacts = [];
 
-        foreach ($this->profiles->available() as $profile) {
+        foreach (collect($profiles ?? $this->profiles->available())
+            ->unique(fn (PrintFormProfile $profile): string => $profile->value) as $profile) {
             $contents = $render($profile);
             $path = $this->storage->writeText("{$directory}/{$profile->value}.pdf", $contents);
             $artifacts[$profile->value] = [

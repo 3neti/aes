@@ -38,7 +38,7 @@ final class FileBallotPrinter implements BallotPrinter
 
         $artifactPath = $this->storage->writeText("ballots/{$ballotId}.txt", $contents);
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
-        $forms = $this->forms->writeBallot($payload, $configuration);
+        $forms = $this->forms->writeBallot($payload, $configuration, $profile);
         $pdfPath = $this->storage->writeText("ballots/{$ballotId}.pdf", file_get_contents($forms[PrintFormProfile::A4->value]['artifact_path']) ?: '');
         $selectedForm = $forms[$profile->value];
         $job = [

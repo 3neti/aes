@@ -58,7 +58,7 @@ test('print-form profiles render A4 and thermal evidence from the same sealed re
     expect($job['print_form_profile'])->toBe('thermal-80')
         ->and($job['selected_pdf_artifact_path'])->toEndWith('thermal-80.pdf')
         ->and(file_get_contents($job['selected_pdf_artifact_path']))->toContain('/MediaBox [0 0 226.77 792]')
-        ->and($job['form_artifacts'])->toHaveKeys(['a4', 'thermal-80', 'thermal-58'])
+        ->and($job['form_artifacts'])->toHaveKeys(['a4', 'thermal-80'])
         ->and($storage->readJson('print-forms/ballots/thermal-print-form-ballot/manifest.json')['source_hash'])
         ->toBe($payload['payload_hash']);
 
