@@ -11,6 +11,7 @@ use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Scanning\BallotScanner;
+use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfileResolver;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 final class CountingController extends Controller
@@ -230,6 +232,37 @@ final class CountingController extends Controller
                 'ballot_id' => null,
                 'payload_hash' => $report['report_hash'],
             ]);
+    }
+
+    public function buildRandomManualAuditEvidencePack(RandomManualAuditService $randomManualAudit): RedirectResponse
+    {
+        $pack = $randomManualAudit->buildEvidencePack();
+
+        return redirect()
+            ->route('election.counting')
+            ->with('rma_feedback', [
+                'status' => 'evidence-pack-built',
+                'ballot_id' => null,
+                'payload_hash' => $pack['evidence_pack_hash'],
+            ]);
+    }
+
+    public function downloadRandomManualAuditEvidencePack(ElectionStorage $storage): BinaryFileResponse
+    {
+        $path = $storage->path('rma/evidence-pack.json');
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download($path, 'random-manual-audit-evidence-pack.json');
+    }
+
+    public function downloadRandomManualAuditEvidencePackPdf(ElectionStorage $storage): BinaryFileResponse
+    {
+        $path = $storage->path('rma/evidence-pack.pdf');
+
+        abort_unless(file_exists($path), 404);
+
+        return response()->download($path, 'random-manual-audit-evidence-pack.pdf');
     }
 
     public function complete(

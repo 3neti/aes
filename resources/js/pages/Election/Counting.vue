@@ -20,6 +20,11 @@ import {
     reconciliationReport as generateRandomManualAuditReconciliationReport,
     selectSample as selectRandomManualAuditSample,
 } from '@/routes/election/counting/rma';
+import {
+    build as buildRandomManualAuditEvidencePack,
+    download as downloadRandomManualAuditEvidencePack,
+    print as printRandomManualAuditEvidencePack,
+} from '@/routes/election/counting/rma/evidence-pack';
 import { useElectionReview } from '@/stores/electionReview';
 
 type ScanFeedback = {
@@ -52,7 +57,8 @@ type RandomManualAuditFeedback = {
         | 'proposed'
         | 'approved'
         | 'discrepancy-recorded'
-        | 'reconciliation-generated';
+        | 'reconciliation-generated'
+        | 'evidence-pack-built';
     ballot_id: string | null;
     payload_hash: string;
 };
@@ -89,6 +95,13 @@ type RandomManualAudit = {
             paper_ballot_serial: number | null;
             status: string;
         }>;
+    } | null;
+    evidence_pack: {
+        evidence_pack_hash: string;
+        artifact_count: number;
+        reconciliation_report: {
+            passed: boolean;
+        };
     } | null;
     tally: Record<string, Record<string, number>>;
 };
@@ -152,6 +165,7 @@ const auditSample = computed(() => props.randomManualAudit.sample_selection);
 const auditReconciliation = computed(
     () => props.randomManualAudit.reconciliation_report,
 );
+const auditEvidencePack = computed(() => props.randomManualAudit.evidence_pack);
 
 async function startCamera(): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -509,7 +523,9 @@ onBeforeUnmount(() => stopCamera(false));
                                 ? 'Paper discrepancy recorded for review'
                                 : rmaFeedback.status === 'reconciliation-generated'
                                   ? 'Audit reconciliation report generated'
-                                  : 'Paper comparison ready for dual approval'
+                                  : rmaFeedback.status === 'evidence-pack-built'
+                                    ? 'Random manual audit evidence pack built'
+                                    : 'Paper comparison ready for dual approval'
                     }}
                 </p>
                 <p v-if="rmaFeedback.ballot_id" class="mt-1">
@@ -864,6 +880,39 @@ onBeforeUnmount(() => stopCamera(false));
                             <span class="font-bold text-stone-800">{{ entry.status }}</span>
                         </li>
                     </ul>
+
+                    <div class="mt-5 flex flex-col gap-3 border-t border-stone-300 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h4 class="text-sm font-bold text-stone-950">Evidence pack</h4>
+                            <p class="mt-1 text-sm text-stone-600">
+                                Portable JSON containing the sample, reconciliation, approvals, and discrepancies, with a companion print form.
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <Form
+                                v-bind="buildRandomManualAuditEvidencePack.form()"
+                                #default="{ processing }"
+                            >
+                                <button class="secondary-button" type="submit" :disabled="processing">
+                                    {{ processing ? 'Building pack...' : 'Build evidence pack' }}
+                                </button>
+                            </Form>
+                            <a
+                                v-if="auditEvidencePack"
+                                :href="downloadRandomManualAuditEvidencePack.url()"
+                                class="secondary-button"
+                            >
+                                Download JSON
+                            </a>
+                            <a
+                                v-if="auditEvidencePack"
+                                :href="printRandomManualAuditEvidencePack.url()"
+                                class="secondary-button"
+                            >
+                                Download print form
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </section>
         </CeremonyActionPanel>

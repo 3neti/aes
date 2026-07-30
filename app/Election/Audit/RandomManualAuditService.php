@@ -10,6 +10,7 @@ use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionOperationLock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\SimplePdf;
 use App\Election\Tabulation\DeviceTabulationLedger;
 use App\Election\Tabulation\TabulationProfileResolver;
 use App\Election\Voting\BallotPayloadService;
@@ -31,6 +32,7 @@ final class RandomManualAuditService
         private readonly TabulationProfileResolver $tabulation,
         private readonly ElectionOperationLock $lock,
         private readonly LifecycleState $lifecycle,
+        private readonly SimplePdf $pdf,
     ) {}
 
     /**
@@ -410,6 +412,58 @@ final class RandomManualAuditService
     /**
      * @return array<string, mixed>
      */
+    public function buildEvidencePack(): array
+    {
+        return $this->lock->execute('random-manual-audit', function (): array {
+            $this->ensureEnabled();
+            $sample = $this->sampleSelection();
+            $reconciliation = $this->storage->readJson('rma/reconciliation-report.json');
+
+            if ($sample === [] || $reconciliation === []) {
+                throw ValidationException::withMessages([
+                    'evidence_pack' => 'Generate the random manual audit reconciliation report before building its evidence pack.',
+                ]);
+            }
+
+            $approved = $this->acceptedRecords();
+            $discrepancies = $this->discrepancyRecords();
+            $pack = [
+                'schema_version' => 'random-manual-audit-evidence-pack-1',
+                'generated_at' => $this->clock->now()->toIso8601String(),
+                'sample_selection' => $sample,
+                'reconciliation_report' => $reconciliation,
+                'approved_paper_comparisons' => $approved,
+                'paper_discrepancies' => $discrepancies,
+                'artifact_paths' => [
+                    'json' => 'rma/evidence-pack.json',
+                    'text' => 'rma/evidence-pack.txt',
+                    'pdf' => 'rma/evidence-pack.pdf',
+                ],
+                'artifact_count' => 2 + count($approved) + count($discrepancies),
+            ];
+            $pack['evidence_pack_hash'] = $this->json->hash($pack);
+            $this->storage->writeJson('rma/evidence-pack.json', $pack);
+            $this->storage->writeText('rma/evidence-pack.txt', $this->renderEvidencePackText($pack));
+            $this->storage->writeText('rma/evidence-pack.pdf', $this->pdf->render(
+                'Random Manual Audit Evidence Pack',
+                $this->renderEvidencePackLines($pack),
+            ));
+
+            $this->journal->record('rma.evidence_pack_built', [
+                'evidence_pack_hash' => $pack['evidence_pack_hash'],
+                'sample_hash' => $sample['sample_hash'],
+                'reconciliation_report_hash' => $reconciliation['report_hash'],
+                'artifact_count' => $pack['artifact_count'],
+                'passed' => $reconciliation['passed'] ?? false,
+            ]);
+
+            return $pack;
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function summary(): array
     {
         $records = $this->acceptedRecords();
@@ -440,6 +494,7 @@ final class RandomManualAuditService
             'discrepancy_ballots' => count($this->discrepancyRecords()),
             'pending_proposal' => $this->pendingProposals()[0] ?? null,
             'reconciliation_report' => $this->storage->readJson('rma/reconciliation-report.json'),
+            'evidence_pack' => $this->storage->readJson('rma/evidence-pack.json'),
             'tally' => $tally,
         ];
     }
@@ -561,6 +616,54 @@ final class RandomManualAuditService
             ->sortBy('sequence')
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $pack
+     * @return array<int, string>
+     */
+    private function renderEvidencePackLines(array $pack): array
+    {
+        $reconciliation = $pack['reconciliation_report'];
+        $sample = $pack['sample_selection'];
+        $lines = [
+            'RANDOM MANUAL AUDIT EVIDENCE PACK',
+            '',
+            'Evidence Pack Hash: '.$pack['evidence_pack_hash'],
+            'Generated At: '.$pack['generated_at'],
+            'Sample Hash: '.($sample['sample_hash'] ?? 'unknown'),
+            'Sample Size: '.($sample['sample_size'] ?? 0).' of '.($sample['source_record_count'] ?? 0),
+            'Reconciliation Hash: '.($reconciliation['report_hash'] ?? 'unknown'),
+            'Reconciliation Passed: '.(($reconciliation['passed'] ?? false) ? 'YES' : 'NO'),
+            'Verified Ballots: '.($reconciliation['verified_ballots'] ?? 0),
+            'Paper Discrepancies: '.($reconciliation['discrepancy_ballots'] ?? 0),
+            'Pending Ballots: '.($reconciliation['pending_ballots'] ?? 0),
+            'Device Record Issues: '.($reconciliation['device_record_issues'] ?? 0),
+            '',
+            'SAMPLE ENTRIES:',
+        ];
+
+        foreach (($reconciliation['entries'] ?? []) as $entry) {
+            $lines[] = sprintf(
+                'Paper ballot %s: %s (%s)',
+                $entry['paper_ballot_serial'] ?? 'serial unavailable',
+                $entry['status'] ?? 'unknown',
+                substr((string) ($entry['payload_hash'] ?? ''), 0, 16),
+            );
+        }
+
+        $lines[] = '';
+        $lines[] = 'The JSON evidence pack embeds the frozen sample, reconciliation report, approved paper comparisons, and paper discrepancy records.';
+
+        return $lines;
+    }
+
+    /**
+     * @param  array<string, mixed>  $pack
+     */
+    private function renderEvidencePackText(array $pack): string
+    {
+        return implode(PHP_EOL, $this->renderEvidencePackLines($pack)).PHP_EOL;
     }
 
     /**

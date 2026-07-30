@@ -90,12 +90,32 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
         ->toContain('rma.reconciliation_report_generated');
 
+    $this->post(route('election.counting.rma.evidence-pack.build'))
+        ->assertRedirect(route('election.counting'))
+        ->assertSessionHas('rma_feedback.status', 'evidence-pack-built');
+
+    $evidencePack = $storage->readJson('rma/evidence-pack.json');
+
+    expect($evidencePack['schema_version'])->toBe('random-manual-audit-evidence-pack-1')
+        ->and($evidencePack['sample_selection']['sample_hash'])->toBe($reconciliation['sample_hash'])
+        ->and($evidencePack['reconciliation_report']['report_hash'])->toBe($reconciliation['report_hash'])
+        ->and($evidencePack['approved_paper_comparisons'])->toHaveCount(1)
+        ->and($evidencePack['paper_discrepancies'])->toBeEmpty()
+        ->and(file_get_contents($storage->path('rma/evidence-pack.pdf')))
+        ->toStartWith('%PDF-');
+
+    $this->get(route('election.counting.rma.evidence-pack.download'))
+        ->assertDownload('random-manual-audit-evidence-pack.json');
+    $this->get(route('election.counting.rma.evidence-pack.print'))
+        ->assertDownload('random-manual-audit-evidence-pack.pdf');
+
     $this->get(route('election.counting'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('randomManualAudit.proposed_ballots', 0)
             ->where('randomManualAudit.approved_ballots', 1)
             ->where('randomManualAudit.tally.president.pres-ada', 1)
             ->where('randomManualAudit.reconciliation_report.passed', true)
+            ->where('randomManualAudit.evidence_pack.artifact_count', 3)
         );
 });
 
