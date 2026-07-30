@@ -937,4 +937,28 @@ Verification:
 
 Known limitation:
 
-- Public-simulation storyboard does not yet render the public namespace ballot/tally/ER PDFs as image pages. It shows the watcher result page and links instead; a follow-up slice should copy or index the public precinct evidence namespace into the walkthrough report.
+- Closed by the Public Simulation Print Artifact Storyboard Slice below.
+
+## Public Simulation Print Artifact Storyboard Slice
+
+Completed:
+
+- The public simulation browser walkthrough now discovers the completed public precinct run created during the recording and renders its generated PDFs into storyboard pages.
+- Rendered documents include the public simulation ballot PDF, tally sheet PDF, Election Return PDF, and available A4 / 58 mm / 80 mm print-form variants.
+- Rendered pages are written under `12-audit-and-reconciliation/browser-recordings/public-printed-artifacts`.
+- Each page is recorded as a `Printed Artifacts for Review` storyboard checkpoint with the public namespace source path, source PDF SHA-256, rendered PNG SHA-256, page number, and page count.
+- The previous known gap is closed: COMELEC reviewers can now critique the public flow's printed ballot, tally, and Election Return directly from the storyboard package.
+
+Verification:
+
+- `node --check scripts/election-print-artifact-renderer.mjs`: passed.
+- `node --check scripts/election-browser-walkthrough.mjs`: passed.
+- `php artisan test --compact tests/Feature/Election/BrowserWalkthroughRecorderTest.php`: 4 tests, 56 assertions passed.
+- Real browser walkthrough passed: `storage/app/election/runs/20260730-131432-412807-39010001-browser-public-simulation`.
+- Public rendered print pages: 102 PNG files under `public-printed-artifacts`.
+- Storyboard PDF: `storage/app/election/runs/20260730-131432-412807-39010001-browser-public-simulation/12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.pdf`.
+- Final archive verification passed with 196 checked files and zero mismatches.
+
+Known limitation:
+
+- The storyboard includes many thermal pages for candidate-heavy forms. A later presentation-polish slice may add a compact table of contents or split public print review into separate ballot, tally, and Election Return storyboard chapters.

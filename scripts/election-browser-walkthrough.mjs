@@ -3,7 +3,10 @@ import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { chromium } from 'playwright';
-import { renderPrintedArtifacts } from './election-print-artifact-renderer.mjs';
+import {
+    discoverPublicSimulationPrintedArtifacts,
+    renderPrintedArtifacts,
+} from './election-print-artifact-renderer.mjs';
 import { generateWalkthroughStoryboard } from './election-walkthrough-storyboard.mjs';
 
 const requiredEnvironment = [
@@ -1630,9 +1633,66 @@ if (errorMessage === null && scenario !== 'public-simulation') {
         });
     }
 } else if (errorMessage === null) {
-    recordAction('render-printed-artifacts', 'not-applicable', {
-        reason: 'Public simulation precinct print artifacts live in the public simulation evidence namespace and are reviewed through watcher publication links.',
-    });
+    try {
+        recordAction('render-public-simulation-printed-artifacts', 'started');
+        const publicRoot = path.resolve(
+            'storage',
+            'app',
+            'election',
+            'public-simulations',
+            publicRoundCode,
+            publicPrecinctCode,
+        );
+        const publicArtifacts =
+            await discoverPublicSimulationPrintedArtifacts(publicRoot);
+        const printedArtifacts = await renderPrintedArtifacts({
+            runPath: publicArtifacts.runPath,
+            artifactDirectory,
+            ghostscriptBinary:
+                process.env.ELECTION_WALKTHROUGH_GHOSTSCRIPT ?? 'gs',
+            definitions: publicArtifacts.definitions,
+            outputDirectoryName: 'public-printed-artifacts',
+        });
+        const storageRoot = path.resolve('storage', 'app');
+
+        for (const document of printedArtifacts) {
+            for (const pageArtifact of document.pages) {
+                recordAction('review-public-simulation-printed-artifact', 'passed', {
+                    screenshot: pageArtifact.imagePath,
+                    printed_artifact: {
+                        type: document.type,
+                        title: document.title,
+                        source_relative_path: path.relative(
+                            storageRoot,
+                            document.sourcePath,
+                        ),
+                        source_filename: path.basename(document.sourcePath),
+                        source_bytes: document.bytes,
+                        source_sha256: document.sha256,
+                        page: pageArtifact.page,
+                        page_count: pageArtifact.pageCount,
+                    },
+                });
+            }
+        }
+
+        walkthroughStatistics.printed_artifacts_rendered =
+            printedArtifacts.length;
+        walkthroughStatistics.printed_artifact_pages = printedArtifacts.reduce(
+            (total, document) => total + document.pages.length,
+            0,
+        );
+        recordAction('render-public-simulation-printed-artifacts', 'passed', {
+            public_run_path: publicArtifacts.runPath,
+            documents: walkthroughStatistics.printed_artifacts_rendered,
+            pages: walkthroughStatistics.printed_artifact_pages,
+        });
+    } catch (error) {
+        errorMessage = error instanceof Error ? error.message : String(error);
+        recordAction('render-public-simulation-printed-artifacts', 'failed', {
+            error: errorMessage,
+        });
+    }
 }
 
 if (errorMessage === null) {

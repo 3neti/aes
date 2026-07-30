@@ -71,6 +71,17 @@ async function pdfFiles(directory) {
         .sort((left, right) => left.localeCompare(right));
 }
 
+async function directories(directory) {
+    if (!(await exists(directory))) {
+        return [];
+    }
+
+    return (await readdir(directory, { withFileTypes: true }))
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+        .sort((left, right) => left.localeCompare(right));
+}
+
 export async function discoverPrintedArtifacts(runPath) {
     const artifacts = [];
     const ballotDirectory = path.join(runPath, '04-voting', 'ballots');
@@ -137,6 +148,167 @@ export async function discoverPrintedArtifacts(runPath) {
     return artifacts;
 }
 
+async function publicSimulationCandidateRunPaths(publicRoot) {
+    const runDirectory = path.join(publicRoot, 'runs');
+    const names = await directories(runDirectory);
+
+    return names
+        .reverse()
+        .map((name) => path.join(runDirectory, name));
+}
+
+function publicSimulationPrintFormDefinition(type, title, relativePath) {
+    return {
+        type,
+        title,
+        relativePath,
+        required: false,
+    };
+}
+
+export async function discoverPublicSimulationPrintedArtifacts(publicRoot) {
+    for (const runPath of await publicSimulationCandidateRunPaths(publicRoot)) {
+        const definitions = [];
+        const ballotDirectory = path.join(runPath, '04-voting', 'ballots');
+        const ballotFiles = await pdfFiles(ballotDirectory);
+
+        ballotFiles.forEach((filename, index) => {
+            definitions.push({
+                type: 'ballot',
+                title: `Public simulation printed ballot ${index + 1}`,
+                relativePath: path.posix.join(
+                    '04-voting',
+                    'ballots',
+                    filename,
+                ),
+                required: true,
+            });
+        });
+
+        const ballotPrintFormRoot = path.join(
+            runPath,
+            '04-voting',
+            'print-forms',
+            'ballots',
+        );
+        const ballotPrintFormDirectories =
+            await directories(ballotPrintFormRoot);
+
+        for (const ballotDirectoryName of ballotPrintFormDirectories) {
+            for (const filename of await pdfFiles(
+                path.join(ballotPrintFormRoot, ballotDirectoryName),
+            )) {
+                definitions.push(
+                    publicSimulationPrintFormDefinition(
+                        'ballot',
+                        `Public simulation ballot ${filename.replace('.pdf', '')} print form`,
+                        path.posix.join(
+                            '04-voting',
+                            'print-forms',
+                            'ballots',
+                            ballotDirectoryName,
+                            filename,
+                        ),
+                    ),
+                );
+            }
+        }
+
+        const tallyPath = path.join(
+            runPath,
+            '06-counting-and-tally',
+            'tally-sheet.pdf',
+        );
+
+        if (await exists(tallyPath)) {
+            definitions.push({
+                type: 'tally_sheet',
+                title: 'Public simulation tally sheet',
+                relativePath: '06-counting-and-tally/tally-sheet.pdf',
+                required: true,
+            });
+        }
+
+        for (const filename of await pdfFiles(
+            path.join(
+                runPath,
+                '06-counting-and-tally',
+                'print-forms',
+                'tally-sheet',
+            ),
+        )) {
+            definitions.push(
+                publicSimulationPrintFormDefinition(
+                    'tally_sheet',
+                    `Public simulation tally sheet ${filename.replace('.pdf', '')} print form`,
+                    path.posix.join(
+                        '06-counting-and-tally',
+                        'print-forms',
+                        'tally-sheet',
+                        filename,
+                    ),
+                ),
+            );
+        }
+
+        const returnDirectory = path.join(runPath, '07-election-return');
+        const returnFiles = (await pdfFiles(returnDirectory)).filter(
+            (filename) => filename.endsWith('-return.pdf'),
+        );
+
+        returnFiles.forEach((filename) => {
+            definitions.push({
+                type: 'election_return',
+                title: 'Public simulation Election Return',
+                relativePath: path.posix.join(
+                    '07-election-return',
+                    filename,
+                ),
+                required: true,
+            });
+        });
+
+        const returnPrintFormRoot = path.join(
+            runPath,
+            '07-election-return',
+            'print-forms',
+        );
+        const returnPrintFormDirectories =
+            await directories(returnPrintFormRoot);
+
+        for (const precinctDirectory of returnPrintFormDirectories) {
+            for (const filename of await pdfFiles(
+                path.join(returnPrintFormRoot, precinctDirectory),
+            )) {
+                definitions.push(
+                    publicSimulationPrintFormDefinition(
+                        'election_return',
+                        `Public simulation Election Return ${filename.replace('.pdf', '')} print form`,
+                        path.posix.join(
+                            '07-election-return',
+                            'print-forms',
+                            precinctDirectory,
+                            filename,
+                        ),
+                    ),
+                );
+            }
+        }
+
+        if (
+            definitions.some((artifact) => artifact.type === 'ballot') &&
+            definitions.some((artifact) => artifact.type === 'tally_sheet') &&
+            definitions.some((artifact) => artifact.type === 'election_return')
+        ) {
+            return { runPath, definitions };
+        }
+    }
+
+    throw new Error(
+        `No completed public simulation run with ballot, tally sheet, and Election Return PDFs was found under [${publicRoot}].`,
+    );
+}
+
 async function resolveGhostscript(configuredBinary) {
     const candidates = configuredBinary.includes(path.sep)
         ? [configuredBinary]
@@ -198,10 +370,12 @@ export async function renderPrintedArtifacts({
     runPath,
     artifactDirectory,
     ghostscriptBinary = 'gs',
+    definitions = null,
+    outputDirectoryName = 'printed-artifacts',
 }) {
-    const definitions = await discoverPrintedArtifacts(runPath);
+    definitions ??= await discoverPrintedArtifacts(runPath);
     const binary = await resolveGhostscript(ghostscriptBinary);
-    const outputDirectory = path.join(artifactDirectory, 'printed-artifacts');
+    const outputDirectory = path.join(artifactDirectory, outputDirectoryName);
 
     await mkdir(outputDirectory, { recursive: true });
 
