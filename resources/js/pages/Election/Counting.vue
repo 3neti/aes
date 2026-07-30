@@ -5,6 +5,7 @@ import ArtifactLinks from '@/components/election/ArtifactLinks.vue';
 import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import StatusBadge from '@/components/election/StatusBadge.vue';
+import TallyMarks from '@/components/election/TallyMarks.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { returns } from '@/routes/election';
 import {
@@ -1147,10 +1148,11 @@ onBeforeUnmount(() => stopCamera(false));
                         </span>
                     </header>
                     <table class="w-full table-fixed text-sm">
-                        <thead class="sr-only">
+                        <thead>
                             <tr>
-                                <th>Candidate</th>
-                                <th>Votes</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-stone-500">Candidate</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold text-stone-500">Tally marks</th>
+                                <th class="w-24 px-4 py-2 text-right text-xs font-semibold text-stone-500">Votes</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-stone-200">
@@ -1165,6 +1167,9 @@ onBeforeUnmount(() => stopCamera(false));
                                             String(candidate),
                                         )
                                     }}
+                                </td>
+                                <td class="px-4 py-2.5 align-middle">
+                                    <TallyMarks :count="Number(votes)" />
                                 </td>
                                 <td
                                     class="w-24 px-4 py-2.5 text-right text-base font-bold text-stone-950"

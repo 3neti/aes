@@ -43,6 +43,7 @@ test('operator can submit a camera capture frame through the counting ceremony',
         ->assertSee('browser-camera-ballot-001')
         ->assertSee('camera-image')
         ->assertSee('Accepted 1')
+        ->assertSee('Tally marks')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 

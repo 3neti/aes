@@ -4,6 +4,7 @@ import ArtifactLinks from '@/components/election/ArtifactLinks.vue';
 import CeremonyActionPanel from '@/components/election/CeremonyActionPanel.vue';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
 import StatusBadge from '@/components/election/StatusBadge.vue';
+import TallyMarks from '@/components/election/TallyMarks.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import { transmission } from '@/routes/election';
 import {
@@ -307,6 +308,9 @@ function candidateName(contestId: string, candidateId: string): string {
                                 <th class="px-4 py-2 font-semibold">
                                     Candidate
                                 </th>
+                                <th class="px-4 py-2 font-semibold">
+                                    Tally marks
+                                </th>
                                 <th
                                     class="w-24 px-4 py-2 text-right font-semibold"
                                 >
@@ -326,6 +330,9 @@ function candidateName(contestId: string, candidateId: string): string {
                                             String(candidate),
                                         )
                                     }}
+                                </td>
+                                <td class="px-4 py-2.5 align-middle">
+                                    <TallyMarks :count="Number(votes)" />
                                 </td>
                                 <td
                                     class="px-4 py-2.5 text-right text-base font-bold"

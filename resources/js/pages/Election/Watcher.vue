@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
 import CeremonyLayout from '@/components/election/CeremonyLayout.vue';
+import TallyMarks from '@/components/election/TallyMarks.vue';
 import type { ElectionSnapshot } from '@/components/election/types';
 import {
     download as downloadRandomManualAuditEvidencePack,
@@ -97,7 +98,7 @@ function candidateName(contestId: string, candidateId: string): string {
                 <div class="mt-5 space-y-4">
                     <section v-for="(totals, contest) in tally.tally ?? {}" :key="contest" class="border border-stone-300">
                         <h3 class="border-b border-stone-200 bg-stone-50 px-4 py-3 font-bold">{{ contestTitle(String(contest)) }}</h3>
-                        <table class="w-full text-sm"><tbody class="divide-y divide-stone-200"><tr v-for="(votes, candidate) in totals" :key="candidate"><td class="px-4 py-2.5">{{ candidateName(String(contest), String(candidate)) }}</td><td class="w-24 px-4 py-2.5 text-right text-base font-bold">{{ votes }}</td></tr></tbody></table>
+                        <table class="w-full text-sm"><thead><tr class="border-b border-stone-200 text-left text-xs text-stone-500"><th class="px-4 py-2 font-semibold">Candidate</th><th class="px-4 py-2 font-semibold">Tally marks</th><th class="w-24 px-4 py-2 text-right font-semibold">Votes</th></tr></thead><tbody class="divide-y divide-stone-200"><tr v-for="(votes, candidate) in totals" :key="candidate"><td class="px-4 py-2.5">{{ candidateName(String(contest), String(candidate)) }}</td><td class="px-4 py-2.5 align-middle"><TallyMarks :count="Number(votes)" /></td><td class="w-24 px-4 py-2.5 text-right text-base font-bold">{{ votes }}</td></tr></tbody></table>
                     </section>
                 </div>
             </template>
