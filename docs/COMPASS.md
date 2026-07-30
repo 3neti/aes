@@ -8,8 +8,9 @@
 - Active Program: Public Election Simulation Server
 - Completed Slice: Controlled public-simulation retention review and formal evidence-disposition policy
 - Completed Slice: Facilitated public-simulation debrief observations
-- Current Slice: Facilitated browser field rehearsal and operational observations
-- Next Slice: External usability session and observation review
+- Completed Slice: Facilitator observation review
+- Current Slice: External usability session preparation
+- Next Slice: Conduct external usability session and review findings
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -735,13 +736,14 @@ Completed:
 - `election:public-simulation:retention-review {round}` creates a no-delete `RETENTION-REVIEW` report that identifies whether an archived round is due for a human retain, external archive, or separately authorized deletion decision
 - `election:public-simulation:field-rehearsal {round} {precinct} --voters=5` runs a ready public precinct through a bounded voter cohort, proves closeout is held while voters are active, then publishes VVDAT results and a privacy-safe rehearsal report
 - after watcher publication, the Election Officer may record a structured facilitator, officer, voter, or watcher observation in `12-audit-and-reconciliation/operational-observations`; the public page shows aggregate assessments only and the journal excludes observation notes
+- `election:public-simulation:observation-review {round} {precinct}` writes a facilitator-only audit report with role, ceremony, and severity summaries plus private follow-up notes; its journal record contains counts and the review hash, never the notes
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then conduct an external usability session and review the resulting operational
-observations with Election Officers, voters, and watchers.
+Then conduct an external usability session and review findings with Election
+Officers, voters, and watchers.
 
 ---
 

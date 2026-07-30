@@ -5,6 +5,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationAdmissionIntake;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationContentionReport;
+use App\Election\PublicSimulation\PublicSimulationObservationReview;
 use App\Election\PublicSimulation\PublicSimulationOperationalObservation;
 use App\Election\PublicSimulation\PublicSimulationParticipation;
 use App\Election\PublicSimulation\PublicSimulationRetentionReview;
@@ -559,6 +560,42 @@ test('a published public precinct records a structured operational observation w
         ])
         ->and($journalEntry['payload'])->not->toHaveKey('note')
         ->and($journalEntry['payload']['observation_hash'])->toBe($observation['observation_hash']);
+});
+
+test('a facilitator observation review isolates follow-up notes in private audit evidence', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+    $precinct->forceFill(['status' => 'published'])->save();
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+
+    $observations = app(PublicSimulationOperationalObservation::class);
+    $observations->record('election_officer', 'admission', 'clear', 'Control-number handoff was clear.');
+    $observations->record('watcher', 'results', 'needs_attention', 'The published tally should use a larger projected display.');
+
+    $this->artisan('election:public-simulation:observation-review', [
+        'round' => $round->code,
+        'precinct' => $precinct->code,
+    ])->expectsOutputToContain("Observation review 1 created for {$round->code}/{$precinct->code}")
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $review = $storage->readJson('observation-review/000001-observation-review.json');
+    $journalEntry = collect(app(ActivityJournal::class)->entries())
+        ->firstWhere('event_type', 'public_simulation.operational_observations_reviewed');
+
+    expect($review['summary'])->toMatchArray([
+        'total' => 2,
+        'by_role' => ['election_officer' => 1, 'watcher' => 1],
+        'by_ceremony' => ['admission' => 1, 'results' => 1],
+        'by_assessment' => ['clear' => 1, 'needs_attention' => 1],
+    ])
+        ->and($review['follow_up_observations'])->toHaveCount(1)
+        ->and($review['follow_up_observations'][0]['note'])->toBe('The published tally should use a larger projected display.')
+        ->and($journalEntry['payload'])->not->toHaveKey('note')
+        ->and($journalEntry['payload']['follow_up_count'])->toBe(1)
+        ->and(app(PublicSimulationObservationReview::class)->build()['sequence'])->toBe(2);
 });
 
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {
