@@ -118,3 +118,27 @@ test('an officer can record a redacted contention report from the public precinc
     app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
     expect(app(ElectionStorage::class)->files('contention-reports'))->toHaveCount(1);
 });
+
+test('an officer pause makes the public waiting line unavailable without affecting the voter code screen', function (): void {
+    $simulations = app(PublicSimulationService::class);
+    $round = $simulations->currentRound();
+    $precinct = $round->precincts()->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $simulations->open($precinct, $precinct->officer_code, '123456');
+    visit(route('election.public-simulation.show', [$round, $precinct]))
+        ->assertSee('Anonymous entry control')
+        ->fill('@intake-officer-code', $precinct->officer_code)
+        ->fill('@intake-officer-pin', '123456')
+        ->click('@toggle-admission-intake')
+        ->assertSee('New anonymous waiting tickets are paused')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+
+    visit(route('election.public-simulation.voter.show', [$round, $precinct]))
+        ->assertSee('Admission line temporarily paused')
+        ->assertDontSee('Take waiting ticket')
+        ->assertSee('Enter your Voter Control Number')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+});

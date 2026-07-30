@@ -2,6 +2,7 @@
 
 use App\Election\Core\ActivityJournal;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
+use App\Election\PublicSimulation\PublicSimulationAdmissionIntake;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationContentionReport;
 use App\Election\PublicSimulation\PublicSimulationScope;
@@ -354,6 +355,44 @@ test('an officer contention report preserves only aggregate public simulation pr
         ->and(app(PublicSimulationContentionReport::class)->summary()['activity']['close_attempts_blocked'])->toBe(1)
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
         ->toContain('public_simulation.contention_report_generated');
+});
+
+test('an officer can pause new anonymous tickets without invalidating issued control numbers', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $authorization = app(PublicSimulationAdmissionCapacity::class)->issue(app(AnonymousVoterAuthorization::class));
+
+    $this->post(route('election.public-simulation.admission-intake', [$round, $precinct]), [
+        ...$credentials,
+        'operation' => 'pause',
+    ])->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    expect(app(PublicSimulationAdmissionIntake::class)->status()['status'])->toBe('paused')
+        ->and(fn (): array => app(PublicSimulationAdmissionQueue::class)->join())
+        ->toThrow(RuntimeException::class, 'temporarily paused')
+        ->and(app(AnonymousVoterAuthorization::class)->claim($authorization['code'])['status'])->toBe('claimed');
+
+    $this->get(route('election.public-simulation.voter.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->where('admissionQueue.status', 'paused'));
+    $this->post(route('election.public-simulation.admission-intake', [$round, $precinct]), [
+        ...$credentials,
+        'operation' => 'resume',
+    ])->assertRedirect();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    expect(app(PublicSimulationAdmissionQueue::class)->join()['status'])->toBe('waiting')
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('public_simulation.admission_intake_paused', 'public_simulation.admission_intake_resumed');
 });
 
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {

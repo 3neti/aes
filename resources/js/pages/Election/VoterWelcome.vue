@@ -51,7 +51,11 @@ const reviewRoom = computed(
                 v-if="publicSimulation && admissionQueue?.enabled"
                 class="mt-6 border border-blue-200 bg-blue-50 p-4 text-left"
             >
-                <template v-if="['not_joined', 'expired', 'missing'].includes(admissionQueue.status)">
+                <template v-if="admissionQueue.status === 'paused'">
+                    <p class="font-bold text-blue-950">Admission line temporarily paused</p>
+                    <p class="mt-1 text-sm text-blue-950">The Election Officer has temporarily paused new waiting tickets. A previously issued control number remains valid.</p>
+                </template>
+                <template v-else-if="['not_joined', 'expired', 'missing'].includes(admissionQueue.status)">
                     <p class="font-bold text-blue-950">Need to wait for admission?</p>
                     <p class="mt-1 text-sm text-blue-950">Take an anonymous waiting ticket. The Election Officer still verifies and admits voters in person before issuing a control number.</p>
                     <Form :action="joinQueueAction" method="post" #default="{ errors, processing }" class="mt-3">

@@ -18,6 +18,7 @@ final class PublicSimulationAdmissionQueue
         private readonly ElectionOperationLock $lock,
         private readonly ActivityJournal $journal,
         private readonly PublicSimulationAdmissionCapacity $capacity,
+        private readonly PublicSimulationAdmissionIntake $intake,
     ) {}
 
     /** @return array<string, mixed> */
@@ -25,6 +26,7 @@ final class PublicSimulationAdmissionQueue
     {
         return $this->lock->execute('public-simulation-admission-queue', function () use ($existingTicketId): array {
             $this->ensureEnabled();
+            $this->intake->assertAcceptingNewTickets();
             $this->expireWaitingTickets();
 
             if (is_string($existingTicketId) && $existingTicketId !== '') {
@@ -103,6 +105,10 @@ final class PublicSimulationAdmissionQueue
     {
         return $this->lock->execute('public-simulation-admission-queue', function () use ($ticketId): array {
             if (! $this->enabled() || ! is_string($ticketId) || $ticketId === '') {
+                if ($this->enabled() && $this->intake->status()['status'] === 'paused') {
+                    return ['enabled' => true, 'status' => 'paused'];
+                }
+
                 return ['enabled' => $this->enabled(), 'status' => 'not_joined'];
             }
 
@@ -115,7 +121,7 @@ final class PublicSimulationAdmissionQueue
         });
     }
 
-    /** @return array{enabled: bool, waiting_voters: int, maximum_waiting_voters: int, available_admissions: int} */
+    /** @return array{enabled: bool, waiting_voters: int, maximum_waiting_voters: int, available_admissions: int, intake: array{status: string, changed_at: string|null}} */
     public function summary(): array
     {
         $capacity = $this->capacity->summary();
@@ -125,6 +131,7 @@ final class PublicSimulationAdmissionQueue
             'waiting_voters' => collect($this->records())->where('status', 'waiting')->count(),
             'maximum_waiting_voters' => max(1, (int) config('election.public_simulation.admission_queue.maximum_waiting_voters', 25)),
             'available_admissions' => $capacity['available_admissions'],
+            'intake' => $this->intake->status(),
         ];
     }
 

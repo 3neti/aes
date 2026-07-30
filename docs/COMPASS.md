@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Public Admission Queue, Browser Ticket Privacy Coverage, and Officer Contention Reporting
+- Completed Slice: Public Admission Queue, Browser Ticket Privacy Coverage, Officer Contention Reporting, and Anonymous Intake Pause Control
 - Active Program: Public Election Simulation Server
-- Current Slice: Public anonymous-entry abuse controls
-- Next Slice: Bounded abuse response and public-simulation retention/consent policy
+- Current Slice: Public-simulation retention and consent policy
+- Next Slice: Bounded public-simulation retention, archive review, and COMELEC Review Kit
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -727,12 +727,13 @@ Completed:
 - shared public voting gate that blocks closeout on unresolved voter/print work, plus a two-browser workflow proving isolated private voter sessions and closeout refusal while voters are active
 - optional bounded anonymous admission queue with expiring tickets, officer-only release into the existing four-digit control-number flow, and browser proof that a voter never sees a released code
 - officer-only redacted contention reporting with aggregate admission, queue, expiry, and closeout-block counts; each report is journaled and stored in the voting evidence bundle without voter, ballot, code, ticket, QR, or browser/session data
+- officer-controlled pause and resume of new anonymous waiting tickets, with journaled voting evidence; existing tickets and issued four-digit control numbers remain valid while intake is paused
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then add bounded anonymous-entry abuse response, retention and consent policy,
+Then add bounded public-simulation retention and consent policy, archive review,
 and package the results into the offline COMELEC Review Kit.
 
 ---

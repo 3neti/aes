@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ElectionSnapshot;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
+use App\Election\PublicSimulation\PublicSimulationAdmissionIntake;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationCloseout;
 use App\Election\PublicSimulation\PublicSimulationContentionReport;
@@ -63,6 +64,7 @@ final class PublicSimulationController extends Controller
                 'open' => route('election.public-simulation.open', [$round, $precinct]),
                 'admit' => route('election.public-simulation.admit', [$round, $precinct]),
                 'admitQueued' => route('election.public-simulation.admit-queued', [$round, $precinct]),
+                'admissionIntake' => route('election.public-simulation.admission-intake', [$round, $precinct]),
                 'contentionReport' => route('election.public-simulation.contention-report', [$round, $precinct]),
                 'close' => route('election.public-simulation.close', [$round, $precinct]),
                 'publish' => route('election.public-simulation.publish', [$round, $precinct]),
@@ -154,6 +156,30 @@ final class PublicSimulationController extends Controller
 
         return to_route('election.public-simulation.show', [$round, $precinct])
             ->with('public_simulation.officer_feedback', "Redacted contention report {$report['sequence']} has been recorded in the voting evidence bundle.");
+    }
+
+    public function updateAdmissionIntake(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationAdmissionIntake $intake): RedirectResponse
+    {
+        $this->ensurePrecinctInRound($round, $precinct);
+        $validated = [
+            ...$this->officerCredentials($request),
+            ...$request->validate(['operation' => ['required', 'in:pause,resume']]),
+        ];
+
+        try {
+            $simulations->verifyOfficer($precinct, $validated['officer_code'], $validated['officer_pin']);
+            $simulations->applyScope($precinct);
+            $status = $validated['operation'] === 'pause' ? $intake->pause() : $intake->resume();
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
+        }
+
+        $message = $status['status'] === 'paused'
+            ? 'New anonymous waiting tickets are paused. Existing tickets and issued control numbers remain valid.'
+            : 'New anonymous waiting tickets are open again.';
+
+        return to_route('election.public-simulation.show', [$round, $precinct])
+            ->with('public_simulation.officer_feedback', $message);
     }
 
     public function close(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationCloseout $closeout): RedirectResponse

@@ -531,6 +531,7 @@ final class ElectionStorage
             str_starts_with($relative, 'voter-authorizations/') => self::CeremonyDirectories['voting'].'/voter-authorizations/'.$basename,
             $relative === 'admission-queue' => self::CeremonyDirectories['voting'].'/admission-queue',
             str_starts_with($relative, 'admission-queue/') => self::CeremonyDirectories['voting'].'/admission-queue/'.$basename,
+            $relative === 'admission-intake.json' => self::CeremonyDirectories['voting'].'/admission-intake.json',
             $relative === 'contention-reports' => self::CeremonyDirectories['voting'].'/contention-reports',
             str_starts_with($relative, 'contention-reports/') => self::CeremonyDirectories['voting'].'/contention-reports/'.$basename,
             $relative === 'print-releases' => self::CeremonyDirectories['voting'].'/private-print-releases',
