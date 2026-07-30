@@ -151,6 +151,7 @@ Not yet implemented:
 - `election:public-simulation:observation-review {round} {precinct}` builds a private audit-ceremony facilitator review with aggregate breakdowns and only the needs-attention or blocking notes. Its journal event retains counts and a review hash, not the notes.
 - `election:public-simulation:usability-session-kit {round} {precinct}` prepares a ready precinct with a privacy-safe facilitator guide, participant observation sheet, and success criteria. It does not store or reveal officer credentials or participant data.
 - `election:public-simulation:improvement-backlog {round} {precinct}` converts the latest private observation review into an audit-ceremony improvement backlog with open prioritized items. Its journal event stores only counts and a backlog hash, not the private problem statements.
+- `election:public-simulation:facilitated-usability-simulation {round?} {precinct?} --voters=5` runs a synthetic dry-run through kit preparation, cohort voting, closeout, published tally/ER artifacts, synthetic observations, private review, and private backlog. Its report is explicitly labeled as synthetic and stored under `12-audit-and-reconciliation/usability-simulations`.
 - Public education copy, consent, retention, and deletion policy.
 
 ## Update Rule

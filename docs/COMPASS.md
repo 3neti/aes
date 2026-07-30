@@ -11,8 +11,9 @@
 - Completed Slice: Facilitator observation review
 - Completed Slice: External usability session preparation
 - Completed Slice: Public-simulation improvement backlog
+- Completed Slice: Persisted facilitated usability simulation script
 - Current Slice: Conduct external usability session with real participants
-- Next Slice: Convert prioritized backlog items into product fixes
+- Next Slice: Convert real prioritized backlog items into product fixes
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -741,14 +742,15 @@ Completed:
 - `election:public-simulation:observation-review {round} {precinct}` writes a facilitator-only audit report with role, ceremony, and severity summaries plus private follow-up notes; its journal record contains counts and the review hash, never the notes
 - `election:public-simulation:usability-session-kit {round} {precinct}` prepares a ready precinct with a privacy-safe facilitator guide, participant observation sheet, and structured success criteria without storing officer credentials or participant data
 - `election:public-simulation:improvement-backlog {round} {precinct}` converts the latest private observation review into open, prioritized improvement items in `12-audit-and-reconciliation/improvement-backlog`; its journal record contains counts and the backlog hash, never the private problem statements
+- `election:public-simulation:facilitated-usability-simulation {round?} {precinct?} --voters=5` runs a clearly labeled synthetic dry-run from usability kit through voter cohort, closeout, tally, Election Return, publication, synthetic observations, observation review, and improvement backlog; it writes a pointer report in `12-audit-and-reconciliation/usability-simulations`
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
 Then conduct an external usability session with actual Election Officers,
-voters, and watchers, record their observations, and convert the prioritized
-backlog into product fixes.
+voters, and watchers, record their observations, and convert the real
+prioritized backlog into product fixes.
 
 ---
 

@@ -563,6 +563,8 @@ final class ElectionStorage
             str_starts_with($relative, 'observation-review/') => self::CeremonyDirectories['audit'].'/observation-review/'.$basename,
             $relative === 'improvement-backlog' => self::CeremonyDirectories['audit'].'/improvement-backlog',
             str_starts_with($relative, 'improvement-backlog/') => self::CeremonyDirectories['audit'].'/improvement-backlog/'.$basename,
+            $relative === 'usability-simulations' => self::CeremonyDirectories['audit'].'/usability-simulations',
+            str_starts_with($relative, 'usability-simulations/') => self::CeremonyDirectories['audit'].'/usability-simulations/'.$basename,
             $relative === 'counting/physical-ballot-control.json' => self::CeremonyDirectories['counting'].'/physical-ballot-control.json',
             $relative === 'counting' => self::CeremonyDirectories['counting'],
             str_starts_with($relative, 'counting/') => self::CeremonyDirectories['counting'].'/'.$basename,

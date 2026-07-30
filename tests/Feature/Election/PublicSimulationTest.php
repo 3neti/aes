@@ -673,6 +673,50 @@ test('a ready public precinct receives a privacy-safe external usability session
         ->toContain('public_simulation.usability_session_kit_prepared');
 });
 
+test('a facilitated usability simulation runs the full public flow and persists report pointers', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->sortBy('code')->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $this->artisan('election:public-simulation:facilitated-usability-simulation', [
+        'round' => $round->code,
+        'precinct' => $precinct->code,
+        '--voters' => 3,
+    ])->expectsOutputToContain("Facilitated usability simulation completed for {$round->code}/{$precinct->code}")
+        ->assertSuccessful();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $storage = app(ElectionStorage::class);
+    $configuration = $storage->readJson('runtime/active-precinct.json');
+    $precinctId = (string) $configuration['precinct_id'];
+    $report = $storage->readJson('usability-simulations/000001-facilitated-usability-simulation.json');
+    $backlog = $storage->readJson('improvement-backlog/000001-improvement-backlog.json');
+
+    expect($precinct->fresh()->status)->toBe('published')
+        ->and($report)->toMatchArray([
+            'simulation_kind' => 'synthetic_facilitated_usability_dry_run',
+            'round_code' => $round->code,
+            'precinct_code' => $precinct->code,
+            'voter_cohort_size' => 3,
+            'statistics' => [
+                'field_rehearsal_voters' => 3,
+                'device_tabulated_ballots' => 3,
+                'observations_recorded' => 3,
+                'follow_up_observations' => 2,
+                'backlog_items' => 2,
+            ],
+        ])
+        ->and($report['flow'])->toContain('election_return_generated', 'private_improvement_backlog_created')
+        ->and($report['artifacts']['tally_sheet_pdf']['absolute_path'])->toBeReadableFile()
+        ->and($report['artifacts']['election_return_pdf']['absolute_path'])->toBeReadableFile()
+        ->and($storage->path("returns/{$precinctId}-return.pdf"))->toBe($report['artifacts']['election_return_pdf']['absolute_path'])
+        ->and($backlog['items'])->toHaveCount(2)
+        ->and($report)->not->toHaveKeys(['officer_code', 'officer_pin', 'authorization_id', 'ballot_id', 'session_id', 'selections'])
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('public_simulation.facilitated_usability_simulation_completed');
+});
+
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {
     $this->get(route('election.public-simulation.index'))->assertSuccessful();
 

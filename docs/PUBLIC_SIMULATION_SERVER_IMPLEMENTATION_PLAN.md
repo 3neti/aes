@@ -199,7 +199,7 @@ Each scenario must persist a run summary with:
 9. Add redacted God Mode and training-fixture replay.
 10. Add concurrent multi-precinct scenarios, browser tests, retention policy, and Review Kit. Completed.
 
-11. Run facilitated browser field rehearsals and collect operational observations. Structured post-publication debrief observations, private facilitator observation review, and prioritized private improvement backlog generation are complete. `election:public-simulation:usability-session-kit {round} {precinct}` prepares a ready precinct with a facilitator guide and privacy-safe participant observation sheet; `election:public-simulation:improvement-backlog {round} {precinct}` converts reviewed follow-up observations into product work.
+11. Run facilitated browser field rehearsals and collect operational observations. Structured post-publication debrief observations, private facilitator observation review, prioritized private improvement backlog generation, and a persisted synthetic facilitated usability simulation command are complete. `election:public-simulation:usability-session-kit {round} {precinct}` prepares a ready precinct with a facilitator guide and privacy-safe participant observation sheet; `election:public-simulation:improvement-backlog {round} {precinct}` converts reviewed follow-up observations into product work; `election:public-simulation:facilitated-usability-simulation {round?} {precinct?} --voters=5` runs the synthetic end-to-end usability dry-run and writes the report pointers.
 
 ## Definition of Done
 
