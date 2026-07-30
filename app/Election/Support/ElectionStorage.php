@@ -544,6 +544,8 @@ final class ElectionStorage
             $relative === 'counting/physical-ballot-control.json' => self::CeremonyDirectories['counting'].'/physical-ballot-control.json',
             $relative === 'counting' => self::CeremonyDirectories['counting'],
             str_starts_with($relative, 'counting/') => self::CeremonyDirectories['counting'].'/'.$basename,
+            $relative === 'rma' => self::CeremonyDirectories['audit'].'/random-manual-audit',
+            str_starts_with($relative, 'rma/') => self::CeremonyDirectories['audit'].'/random-manual-audit/'.substr($relative, strlen('rma/')),
             $relative === 'returns' => self::CeremonyDirectories['returns'],
             str_starts_with($relative, 'returns/') => self::CeremonyDirectories['returns'].'/'.$basename,
             $relative === 'diagnostics' => self::CeremonyDirectories['audit'],

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Audit\RandomManualAuditService;
 use App\Election\Core\ElectionSnapshot;
 use App\Election\Counting\CountingLegalEvidenceService;
 use App\Election\Counting\CountingReconciliationService;
@@ -27,6 +28,7 @@ final class CountingController extends Controller
         CountingService $counting,
         CountingLegalEvidenceService $legalEvidence,
         CountingReconciliationService $reconciliation,
+        RandomManualAuditService $randomManualAudit,
     ): Response {
         return Inertia::render('Election/Counting', [
             'snapshot' => $snapshot->get(),
@@ -34,7 +36,9 @@ final class CountingController extends Controller
             'closePollsLegalEvidence' => $legalEvidence->closePollsSummary(),
             'countingLegalEvidence' => $legalEvidence->countingSummary(),
             'scanFeedback' => $request->session()->get('scan_feedback'),
+            'rmaFeedback' => $request->session()->get('rma_feedback'),
             'reconciliation' => $reconciliation->summary(),
+            'randomManualAudit' => $randomManualAudit->summary(),
         ]);
     }
 
@@ -112,6 +116,62 @@ final class CountingController extends Controller
         return redirect()
             ->route('election.counting')
             ->with('scan_feedback', $this->scanFeedback($scan, $record));
+    }
+
+    public function proposeRandomManualAudit(
+        Request $request,
+        BallotScanner $scanner,
+        RandomManualAuditService $randomManualAudit,
+    ): RedirectResponse {
+        $validated = $request->validate(['payload' => ['required', 'string']]);
+
+        try {
+            $scan = $scanner->scan($validated['payload']);
+        } catch (Throwable $exception) {
+            throw ValidationException::withMessages([
+                'payload' => $exception->getMessage(),
+            ]);
+        }
+
+        $proposal = $randomManualAudit->propose($scan);
+
+        return redirect()
+            ->route('election.counting')
+            ->with('rma_feedback', [
+                'status' => 'proposed',
+                'ballot_id' => $proposal['ballot_id'],
+                'payload_hash' => $proposal['payload_hash'],
+            ]);
+    }
+
+    public function approveRandomManualAudit(
+        Request $request,
+        RandomManualAuditService $randomManualAudit,
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'payload_hash' => ['required', 'string', 'size:64'],
+            'paper_matches_payload' => ['accepted'],
+            'first_officer_code' => ['required', 'string'],
+            'first_officer_pin' => ['required', 'digits:6'],
+            'second_officer_code' => ['required', 'string'],
+            'second_officer_pin' => ['required', 'digits:6'],
+        ]);
+
+        $record = $randomManualAudit->approve(
+            $validated['payload_hash'],
+            $validated['first_officer_code'],
+            $validated['first_officer_pin'],
+            $validated['second_officer_code'],
+            $validated['second_officer_pin'],
+        );
+
+        return redirect()
+            ->route('election.counting')
+            ->with('rma_feedback', [
+                'status' => 'approved',
+                'ballot_id' => $record['ballot_id'],
+                'payload_hash' => $record['payload_hash'],
+            ]);
     }
 
     public function complete(

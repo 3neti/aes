@@ -95,6 +95,17 @@ final class DeviceTabulationLedger
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public function findByPayloadHash(string $payloadHash): ?array
+    {
+        $record = collect($this->records())
+            ->firstWhere('payload_hash', $payloadHash);
+
+        return is_array($record) ? $record : null;
+    }
+
+    /**
      * @return array{recorded_ballots: int, record_hashes: array<int, string>}
      */
     public function summary(): array

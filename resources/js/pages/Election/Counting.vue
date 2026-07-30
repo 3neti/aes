@@ -13,6 +13,10 @@ import {
     physicalCount,
     scan,
 } from '@/routes/election/counting';
+import {
+    approve as approveRandomManualAudit,
+    propose as proposeRandomManualAudit,
+} from '@/routes/election/counting/rma';
 import { useElectionReview } from '@/stores/electionReview';
 
 type ScanFeedback = {
@@ -39,6 +43,25 @@ type LegalEvidence = {
     artifact: string;
 };
 
+type RandomManualAuditFeedback = {
+    status: 'proposed' | 'approved';
+    ballot_id: string;
+    payload_hash: string;
+};
+
+type RandomManualAudit = {
+    enabled: boolean;
+    proposed_ballots: number;
+    approved_ballots: number;
+    pending_proposal: {
+        ballot_id: string;
+        payload_hash: string;
+        paper_ballot_serial: number | null;
+        selections: Record<string, string[]>;
+    } | null;
+    tally: Record<string, Record<string, number>>;
+};
+
 const props = defineProps<{
     snapshot: ElectionSnapshot;
     tally: {
@@ -49,6 +72,8 @@ const props = defineProps<{
     closePollsLegalEvidence: LegalEvidence;
     countingLegalEvidence: LegalEvidence;
     scanFeedback?: ScanFeedback | null;
+    rmaFeedback?: RandomManualAuditFeedback | null;
+    randomManualAudit: RandomManualAudit;
     reconciliation: {
         physical_count_recorded: boolean;
         physical_ballots: number | null;
@@ -91,6 +116,7 @@ const routineScanningEnabled = computed(
 const totalScans = computed(
     () => props.tally.accepted_ballots + props.tally.rejected_ballots,
 );
+const pendingAudit = computed(() => props.randomManualAudit.pending_proposal);
 
 async function startCamera(): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -420,6 +446,219 @@ onBeforeUnmount(() => stopCamera(false));
                 </div>
                 <div class="border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
                     The ballot box remains the paper-audit record. Count the physical ballots removed from the box before completing the tally.
+                </div>
+            </div>
+        </CeremonyActionPanel>
+
+        <CeremonyActionPanel
+            v-if="randomManualAudit.enabled"
+            title="Random manual audit"
+            description="Scan a sampled paper ballot QR code, compare the decoded selections to the paper ballot, then obtain two distinct Election Board approvals. This audit tally is separate from device tabulation and the Election Return."
+            eyebrow="Paper audit control"
+            :status="`${randomManualAudit.approved_ballots} ballots approved`"
+            :tone="pendingAudit ? 'warning' : 'neutral'"
+            :recommended="canCount && !pendingAudit && randomManualAudit.approved_ballots === 0"
+        >
+            <section
+                v-if="rmaFeedback"
+                class="border-l-4 border-emerald-700 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"
+                role="status"
+            >
+                <p class="font-bold">
+                    {{
+                        rmaFeedback.status === 'approved'
+                            ? 'Random manual audit record approved'
+                            : 'Paper comparison ready for dual approval'
+                    }}
+                </p>
+                <p class="mt-1">
+                    Ballot {{ rmaFeedback.ballot_id }}
+                </p>
+            </section>
+
+            <div class="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                <Form
+                    v-if="canCount && !pendingAudit"
+                    v-bind="proposeRandomManualAudit.form()"
+                    #default="{ errors, processing }"
+                    class="grid content-start gap-3 border border-stone-300 p-4"
+                >
+                    <div>
+                        <h3 class="text-sm font-bold text-stone-950">
+                            Scan sampled ballot
+                        </h3>
+                        <p class="mt-1 text-sm text-stone-600">
+                            Use a handheld QR scanner or paste a simulation payload.
+                        </p>
+                    </div>
+                    <label class="block">
+                        <span class="sr-only">Sample ballot QR payload</span>
+                        <textarea
+                            name="payload"
+                            class="h-36 w-full border border-stone-300 bg-stone-50 p-3 font-mono text-sm"
+                            placeholder="Scan or paste sampled ballot payload"
+                            required
+                        />
+                    </label>
+                    <p v-if="errors.payload" class="text-sm font-bold text-red-700">
+                        {{ errors.payload }}
+                    </p>
+                    <button
+                        class="secondary-button"
+                        :class="{
+                            'review-next-action-button':
+                                electionReview.enabled &&
+                                randomManualAudit.approved_ballots === 0,
+                        }"
+                        type="submit"
+                        :disabled="processing"
+                    >
+                        {{ processing ? 'Reading QR...' : 'Propose paper comparison' }}
+                    </button>
+                </Form>
+
+                <section
+                    v-if="pendingAudit"
+                    class="border border-amber-400 bg-amber-50 p-4"
+                >
+                    <header class="border-b border-amber-200 pb-3">
+                        <p class="text-xs font-bold uppercase text-amber-900">
+                            Pending dual approval
+                        </p>
+                        <h3 class="mt-1 font-bold text-amber-950">
+                            Paper ballot {{ pendingAudit.paper_ballot_serial ?? pendingAudit.ballot_id }}
+                        </h3>
+                        <p class="mt-1 text-sm text-amber-900">
+                            Read the printed ballot face. Confirm each selection below matches the paper before both officers approve.
+                        </p>
+                    </header>
+
+                    <div class="mt-4 space-y-3">
+                        <section
+                            v-for="(candidateIds, contest) in pendingAudit.selections"
+                            :key="contest"
+                            class="border border-amber-200 bg-white"
+                        >
+                            <h4 class="border-b border-amber-100 px-3 py-2 text-sm font-bold text-stone-950">
+                                {{ contestTitle(String(contest)) }}
+                            </h4>
+                            <ul class="divide-y divide-stone-100">
+                                <li
+                                    v-for="candidateId in candidateIds"
+                                    :key="candidateId"
+                                    class="px-3 py-2 text-sm text-stone-800"
+                                >
+                                    {{ candidateName(String(contest), candidateId) }}
+                                </li>
+                                <li
+                                    v-if="candidateIds.length === 0"
+                                    class="px-3 py-2 text-sm text-stone-500"
+                                >
+                                    No selection
+                                </li>
+                            </ul>
+                        </section>
+                    </div>
+
+                    <Form
+                        v-bind="approveRandomManualAudit.form()"
+                        #default="{ errors, processing }"
+                        class="mt-5 grid gap-3 border-t border-amber-200 pt-4 sm:grid-cols-2"
+                    >
+                        <input
+                            name="payload_hash"
+                            type="hidden"
+                            :value="pendingAudit.payload_hash"
+                        />
+                        <label class="flex gap-2 text-sm font-bold text-stone-900 sm:col-span-2">
+                            <input
+                                name="paper_matches_payload"
+                                type="checkbox"
+                                value="1"
+                                required
+                            />
+                            The printed paper ballot matches these decoded selections.
+                        </label>
+                        <label class="text-sm font-bold"
+                            >First officer code<input
+                                name="first_officer_code"
+                                class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                :value="reviewDefaults.primary_officer?.code ?? ''"
+                        /></label>
+                        <label class="text-sm font-bold"
+                            >First officer PIN<input
+                                name="first_officer_pin"
+                                type="password"
+                                inputmode="numeric"
+                                class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                :value="reviewDefaults.primary_officer?.pin ?? ''"
+                        /></label>
+                        <label class="text-sm font-bold"
+                            >Second officer code<input
+                                name="second_officer_code"
+                                class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                :value="reviewDefaults.poll_clerk?.code ?? ''"
+                        /></label>
+                        <label class="text-sm font-bold"
+                            >Second officer PIN<input
+                                name="second_officer_pin"
+                                type="password"
+                                inputmode="numeric"
+                                class="mt-1 min-h-11 w-full border border-stone-300 px-3"
+                                :value="reviewDefaults.poll_clerk?.pin ?? ''"
+                        /></label>
+                        <p
+                            v-if="Object.keys(errors).length"
+                            class="text-sm font-bold text-red-700 sm:col-span-2"
+                        >
+                            Check the paper comparison and both officer credentials.
+                        </p>
+                        <button
+                            class="primary-button sm:col-span-2"
+                            :class="{
+                                'review-next-action-button': electionReview.enabled,
+                            }"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{ processing ? 'Recording approval...' : 'Record dual approval' }}
+                        </button>
+                    </Form>
+                </section>
+
+                <div
+                    v-else
+                    class="border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600"
+                >
+                    Scan a sampled paper ballot to begin a new comparison.
+                </div>
+            </div>
+
+            <div v-if="randomManualAudit.approved_ballots > 0" class="mt-6">
+                <h3 class="text-sm font-bold text-stone-950">Audit tally</h3>
+                <p class="mt-1 text-sm text-stone-600">
+                    Totals from dual-approved paper comparisons only. These figures do not replace the device tabulation tally.
+                </p>
+                <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                    <section
+                        v-for="(totals, contest) in randomManualAudit.tally"
+                        :key="contest"
+                        class="border border-stone-200"
+                    >
+                        <h4 class="border-b border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-950">
+                            {{ contestTitle(String(contest)) }}
+                        </h4>
+                        <dl class="divide-y divide-stone-100 text-sm">
+                            <div
+                                v-for="(votes, candidate) in totals"
+                                :key="candidate"
+                                class="flex justify-between gap-3 px-3 py-2"
+                            >
+                                <dt>{{ candidateName(String(contest), String(candidate)) }}</dt>
+                                <dd class="font-bold">{{ votes }}</dd>
+                            </div>
+                        </dl>
+                    </section>
                 </div>
             </div>
         </CeremonyActionPanel>
