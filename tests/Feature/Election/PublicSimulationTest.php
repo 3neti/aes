@@ -5,6 +5,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationAdmissionIntake;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationContentionReport;
+use App\Election\PublicSimulation\PublicSimulationOperationalObservation;
 use App\Election\PublicSimulation\PublicSimulationParticipation;
 use App\Election\PublicSimulation\PublicSimulationRetentionReview;
 use App\Election\PublicSimulation\PublicSimulationReviewKit;
@@ -518,6 +519,46 @@ test('a field rehearsal proves active-cohort closeout protection and publishes a
         ->and($storage->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
         ->toContain('public_simulation.close_blocked_pending_voters', 'public_simulation.field_rehearsal_completed');
+});
+
+test('a published public precinct records a structured operational observation without journaling its note', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+    $precinct->forceFill(['status' => 'published'])->save();
+
+    $note = 'The shared voter entry point was clear during the facilitated rehearsal.';
+    $this->post(route('election.public-simulation.observation', [$round, $precinct]), [
+        'officer_code' => $precinct->officer_code,
+        'officer_pin' => '123456',
+        'reported_role' => 'facilitator',
+        'ceremony' => 'admission',
+        'assessment' => 'clear',
+        'note' => $note,
+    ])->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $storage = app(ElectionStorage::class);
+    $observation = $storage->readJson('operational-observations/000001-observation.json');
+    $journalEntry = collect(app(ActivityJournal::class)->entries())
+        ->firstWhere('event_type', 'public_simulation.operational_observation_recorded');
+
+    expect($observation)->toMatchArray([
+        'sequence' => 1,
+        'reported_role' => 'facilitator',
+        'ceremony' => 'admission',
+        'assessment' => 'clear',
+        'note' => $note,
+    ])
+        ->and(app(PublicSimulationOperationalObservation::class)->summary())->toMatchArray([
+            'total' => 1,
+            'clear' => 1,
+            'needs_attention' => 0,
+            'blocking' => 0,
+        ])
+        ->and($journalEntry['payload'])->not->toHaveKey('note')
+        ->and($journalEntry['payload']['observation_hash'])->toBe($observation['observation_hash']);
 });
 
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {

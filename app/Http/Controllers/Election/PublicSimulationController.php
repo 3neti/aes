@@ -8,6 +8,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionIntake;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationCloseout;
 use App\Election\PublicSimulation\PublicSimulationContentionReport;
+use App\Election\PublicSimulation\PublicSimulationOperationalObservation;
 use App\Election\PublicSimulation\PublicSimulationPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
@@ -45,6 +46,7 @@ final class PublicSimulationController extends Controller
         PublicSimulationAdmissionCapacity $capacity,
         PublicSimulationAdmissionQueue $queue,
         PublicSimulationContentionReport $contentionReport,
+        PublicSimulationOperationalObservation $observations,
         Request $request,
     ): Response {
         $this->ensurePrecinctInRound($round, $precinct);
@@ -58,6 +60,7 @@ final class PublicSimulationController extends Controller
                 'queue' => $queue->summary(),
             ],
             'contention' => $contentionReport->summary(),
+            'operationalObservations' => $observations->summary(),
             'commonVoterUrl' => route('election.public-simulation.voter.show', [$round, $precinct]),
             'commonVoterQr' => 'data:image/png;base64,'.base64_encode($qrCode->renderPng(route('election.public-simulation.voter.show', [$round, $precinct]))),
             'actions' => [
@@ -66,6 +69,7 @@ final class PublicSimulationController extends Controller
                 'admitQueued' => route('election.public-simulation.admit-queued', [$round, $precinct]),
                 'admissionIntake' => route('election.public-simulation.admission-intake', [$round, $precinct]),
                 'contentionReport' => route('election.public-simulation.contention-report', [$round, $precinct]),
+                'observation' => route('election.public-simulation.observation', [$round, $precinct]),
                 'close' => route('election.public-simulation.close', [$round, $precinct]),
                 'publish' => route('election.public-simulation.publish', [$round, $precinct]),
                 'audit' => route('election.public-simulation.audit.show', [$round, $precinct]),
@@ -180,6 +184,41 @@ final class PublicSimulationController extends Controller
 
         return to_route('election.public-simulation.show', [$round, $precinct])
             ->with('public_simulation.officer_feedback', $message);
+    }
+
+    public function recordOperationalObservation(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationOperationalObservation $observations): RedirectResponse
+    {
+        $this->ensurePrecinctInRound($round, $precinct);
+        $validated = [
+            ...$this->officerCredentials($request),
+            ...$request->validate([
+                'reported_role' => ['required', 'in:election_officer,voter,watcher,facilitator'],
+                'ceremony' => ['required', 'in:admission,voting,printing,closeout,results,audit'],
+                'assessment' => ['required', 'in:clear,needs_attention,blocking'],
+                'note' => ['required', 'string', 'max:800'],
+            ]),
+        ];
+
+        try {
+            $simulations->verifyOfficer($precinct, $validated['officer_code'], $validated['officer_pin']);
+
+            if ($precinct->status !== 'published') {
+                throw new RuntimeException('Operational observations are recorded after watcher publication.');
+            }
+
+            $simulations->applyScope($precinct);
+            $observation = $observations->record(
+                $validated['reported_role'],
+                $validated['ceremony'],
+                $validated['assessment'],
+                $validated['note'],
+            );
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
+        }
+
+        return to_route('election.public-simulation.show', [$round, $precinct])
+            ->with('public_simulation.officer_feedback', "Operational observation {$observation['sequence']} has been recorded in the audit evidence bundle.");
     }
 
     public function close(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationCloseout $closeout): RedirectResponse

@@ -199,7 +199,7 @@ Each scenario must persist a run summary with:
 9. Add redacted God Mode and training-fixture replay.
 10. Add concurrent multi-precinct scenarios, browser tests, retention policy, and Review Kit. Completed.
 
-11. Run facilitated browser field rehearsals and collect operational observations. Next.
+11. Run facilitated browser field rehearsals and collect operational observations. Structured post-publication debrief observations are complete; external usability sessions remain next.
 
 ## Definition of Done
 

@@ -7,8 +7,9 @@
 - Completed Slice: Public Admission Queue, Browser Ticket Privacy Coverage, Officer Contention Reporting, Anonymous Intake Pause Control, and Public Participation Policy
 - Active Program: Public Election Simulation Server
 - Completed Slice: Controlled public-simulation retention review and formal evidence-disposition policy
-- Current Slice: Public-simulation field rehearsal with cohort-load and operational observation
-- Next Slice: Facilitated browser field rehearsal and operational observations
+- Completed Slice: Facilitated public-simulation debrief observations
+- Current Slice: Facilitated browser field rehearsal and operational observations
+- Next Slice: External usability session and observation review
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -733,13 +734,14 @@ Completed:
 - `election:public-simulation:review-kit {round}` creates a self-contained `REVIEW-KIT` folder with a readable guide and hash-addressed index of ceremony-level public simulation evidence, excluding private voter and ballot material
 - `election:public-simulation:retention-review {round}` creates a no-delete `RETENTION-REVIEW` report that identifies whether an archived round is due for a human retain, external archive, or separately authorized deletion decision
 - `election:public-simulation:field-rehearsal {round} {precinct} --voters=5` runs a ready public precinct through a bounded voter cohort, proves closeout is held while voters are active, then publishes VVDAT results and a privacy-safe rehearsal report
+- after watcher publication, the Election Officer may record a structured facilitator, officer, voter, or watcher observation in `12-audit-and-reconciliation/operational-observations`; the public page shows aggregate assessments only and the journal excludes observation notes
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then run a facilitated browser field rehearsal and record operational observations
-from Election Officers, voters, and watchers.
+Then conduct an external usability session and review the resulting operational
+observations with Election Officers, voters, and watchers.
 
 ---
 

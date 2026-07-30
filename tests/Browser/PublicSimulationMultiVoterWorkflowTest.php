@@ -160,3 +160,25 @@ test('a browser voter reviews the public simulation retention notice before reac
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
+
+test('an officer records a facilitated debrief observation after watcher publication', function (): void {
+    $simulations = app(PublicSimulationService::class);
+    $round = $simulations->currentRound();
+    $precinct = $round->precincts()->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+    $precinct->forceFill(['status' => 'published'])->save();
+
+    visit(route('election.public-simulation.show', [$round, $precinct]))
+        ->assertSee('Facilitated debrief')
+        ->assertSee('Record operational observation')
+        ->fill('note', 'The voter tablet flow was clear in the facilitated browser rehearsal.')
+        ->fill('@observation-officer-code', $precinct->officer_code)
+        ->fill('@observation-officer-pin', '123456')
+        ->click('@record-operational-observation')
+        ->assertSee('Operational observation 1 has been recorded')
+        ->assertNoJavaScriptErrors()
+        ->assertNoConsoleLogs();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    expect(app(ElectionStorage::class)->files('operational-observations'))->toHaveCount(1);
+});
