@@ -167,6 +167,17 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
         ->assertSessionHas('rma_verification.passed', false)
         ->assertSessionHas('rma_verification.errors', fn (array $errors): bool => str_contains($errors[0], 'approved'));
 
+    $offlineReportPath = storage_path('app/election-testing/offline-rma-verification.json');
+
+    $this->artisan('election:rma-pack-verify', [
+        'path' => $storage->path('rma/evidence-pack.json'),
+        '--report' => $offlineReportPath,
+    ])->expectsOutput('Random manual audit evidence pack verified.')
+        ->expectsOutput('Sample size: 1')
+        ->assertSuccessful();
+
+    expect(json_decode(file_get_contents($offlineReportPath), true, flags: JSON_THROW_ON_ERROR)['passed'])->toBeTrue();
+
     $this->get(route('election.counting'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('randomManualAudit.proposed_ballots', 0)
