@@ -27,6 +27,22 @@ final class PublicSimulationWatcherController extends Controller
                 'accepted_ballots' => $return['accepted_ballots'] ?? null,
                 'tally' => $return['tally'] ?? [],
             ],
+            'ballot' => [
+                'contests' => collect($configuration['contests'] ?? [])
+                    ->map(fn (array $contest): array => [
+                        'id' => $contest['id'],
+                        'title' => $contest['title'],
+                        'candidates' => collect($contest['candidates'])
+                            ->map(fn (array $candidate): array => [
+                                'id' => $candidate['id'],
+                                'name' => $candidate['name'],
+                            ])
+                            ->values()
+                            ->all(),
+                    ])
+                    ->values()
+                    ->all(),
+            ],
             'published' => $return !== [],
             'downloads' => [
                 'tally' => route('election.public-simulation.watcher.tally', [$round, $precinct]),

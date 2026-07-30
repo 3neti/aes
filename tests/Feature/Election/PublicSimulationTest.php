@@ -74,6 +74,14 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
     $this->post(route('election.public-simulation.close', [$round, $precinct]), $credentials)
         ->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
 
+    $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/PublicSimulationWatcher')
+            ->where('published', true)
+            ->where('ballot.contests.0.title', 'SENATOR - PHILIPPINES')
+        );
+
     $precinct->refresh();
     expect($precinct->status)->toBe('closed');
 

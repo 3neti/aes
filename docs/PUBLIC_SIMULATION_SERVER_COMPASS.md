@@ -111,12 +111,21 @@ Already implemented and reusable:
 - Multi-Tablet Review Room has officer, voter, print-station, watcher, and presentation roles.
 - Journal, evidence bundle, print forms, tally sheet, Election Return, and deterministic scenario infrastructure exist.
 
+Implemented in the Public Simulation Server:
+
+- A public three-card precinct lobby at `/election/play` creates one simulation round with three Tondo demonstration precincts.
+- Each precinct is isolated in `storage/app/election/public-simulations/{round}/{precinct}/runs`; its active run, journal, releases, VVDAT ledger, tally, and Election Return never share another card's storage root.
+- Each precinct receives a generated officer code and a simulation PIN. The code is not shown on the public card and is intended for manual handoff to its volunteer officer.
+- A precinct officer opens polls, issues anonymous four-digit control numbers, and closes the precinct with the assigned credentials.
+- A voter enters through a common precinct QR/link, claims a control number, marks the existing POP/CLC ballot, obtains a private print release, and never sees any tally.
+- The private print station redeems the release, prints with the existing adapter, and deposits a sealed ballot. Deposit records one VVDAT ledger entry.
+- Close records physical-ballot reconciliation, tallies the sealed VVDAT ledger, generates the existing tally and Election Return PDFs, and exposes a human-readable watcher view with download links.
+
 Not yet implemented:
 
-- Public simulation tenancy and precinct lobby.
-- Public participant enrollment and safe invite links.
-- Officer-host creation flow and configurable public simulation schedules.
-- Explicit VVDAT freeze, validation, watcher publication, and anonymized audit-export ceremony.
+- Public participant enrollment and safe invite links beyond the current anonymous control-number admission.
+- Officer-host creation flow, credential-handoff artifact, configurable public simulation schedules, and archive/start-fresh policy.
+- Explicit VVDAT freeze/validation artifact, watcher publication approval, and anonymized audit-export ceremony.
 - Privacy-safe God Mode command center.
 - Multi-precinct concurrent simulation controls and abuse protection.
 - Public education copy, consent, retention, and deletion policy.

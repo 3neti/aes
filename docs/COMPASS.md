@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Configurable Print Form Profiles
+- Completed Slice: Public Multi-Precinct Simulation Happy Path
 - Active Program: Public Election Simulation Server
-- Current Slice: Simulation Foundation and VVDAT Close Semantics
-- Next Slice: Public simulation catalog and isolated run ownership
+- Current Slice: Public watcher publication and ledger-freeze hardening
+- Next Slice: Explicit VVDAT freeze/validation artifact and publication approval
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

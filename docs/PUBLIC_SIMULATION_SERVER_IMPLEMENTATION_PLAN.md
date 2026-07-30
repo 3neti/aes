@@ -79,12 +79,12 @@ The public simulation model must use a distinct `simulation_id` and storage name
 
 ### Wave 1: Simulation Foundation
 
-1. **Simulation catalog and run isolation**
+1. **Simulation catalog and run isolation** - completed
    - Domain: public simulation, simulation package catalog, lifecycle ownership.
    - Storage: `simulations/{simulation-id}` namespace and immutable scenario configuration.
    - UI: public lobby, precinct selector, active/closed state.
    - Tests: tenant isolation, no election-day run selection, deterministic simulation creation.
-   - Done when a host can create an isolated simulation from an approved precinct package.
+   - Delivered: a fixed three-precinct public round, each with an independent storage namespace and active run. The three current cards deliberately use the fully imported Tondo POP/CLC ballot package; curated non-Tondo cards are deferred until matching CLC data is imported.
 
 2. **Role enrollment and safe invites**
    - Domain: participant, host, watcher, observer, facilitator role bindings.
@@ -99,10 +99,10 @@ The public simulation model must use a distinct `simulation_id` and storage name
    - Reuse the ceremony UI with a host setup wizard, a selected precinct, defaults clearly marked as simulation fixtures, and a start-fresh action limited to the host's simulation.
    - Done when a public host can complete setup, certification, and opening without affecting other simulations.
 
-4. **Public voter admission and private ballot**
+4. **Public voter admission and private ballot** - completed for the single-voter happy path
    - Officer issues four-digit control codes; voters claim a code and cast privately.
    - Locks and idempotency cover authorization, finalization, print release, printing, and deposit.
-   - Done when concurrent voter sessions create exactly one sealed record and one print/deposit lifecycle per admission.
+   - Delivered: officer admission, four-digit claim, private ballot, print release, simulated print/deposit, and one sealed VVDAT record per deposited ballot. Concurrent-session and idempotency hardening remain Wave 5 work.
 
 ### Wave 3: VVDAT Close and Results
 
@@ -111,15 +111,15 @@ The public simulation model must use a distinct `simulation_id` and storage name
    - Fail close if records are duplicated, incomplete, invalid, or changed after freeze.
    - Done when close polls deterministically freezes a ledger and prevents further voting mutations.
 
-6. **Device tabulation tally and result printing**
+6. **Device tabulation tally and result printing** - completed for simulation closeout
    - Derive tally directly from the frozen ledger.
    - Generate tally sheet and Election Return in A4, 80 mm, and 58 mm forms.
-   - Done when a completed simulation produces an immutable tally and ER without routine paper-QR counting.
+   - Delivered: close performs paper-count reconciliation, derives the tally from the sealed VVDAT ledger, and creates the existing tally and Election Return PDFs.
 
-7. **Watcher publication package**
+7. **Watcher publication package** - partial
    - Create a publication approval ceremony and a public result page.
    - Publish result PDFs, hashes, timeline, aggregate statistics, and approved downloader links.
-   - Done when watchers can independently obtain and hash-check the post-close result package.
+   - Delivered: post-close watcher page and tally/ER PDF downloads. Approval, hash-checkable public package, and audit export remain pending.
 
 ### Wave 4: Paper Audit and Understanding
 
@@ -188,12 +188,12 @@ Each scenario must persist a run summary with:
 
 ## Exact Implementation Order
 
-1. Persist public-simulation configuration and extend the compass/status documents.
-2. Add simulation catalog, isolated run ownership, and host creation.
+1. Persist public-simulation configuration and extend the compass/status documents. Completed.
+2. Add simulation catalog, isolated run ownership, and host creation. Completed for the fixed three-card demonstration.
 3. Add role invites, enrollment, rate limits, and public boundaries.
-4. Harden concurrent admission, finalization, printing, deposit, and journaling.
-5. Add explicit VVDAT freeze/validation and migrate close-polls to use it.
-6. Add tally/ER publication approval and watcher result package.
+4. Add explicit VVDAT freeze/validation and migrate close-polls to use it.
+5. Add tally/ER publication approval, hash manifest, and watcher result package.
+6. Harden concurrent admission, finalization, printing, deposit, and journaling.
 7. Add anonymized VVDAT audit export plus independent verification command.
 8. Add QR-assisted RMA tally room and public audit report.
 9. Add redacted God Mode and training-fixture replay.
