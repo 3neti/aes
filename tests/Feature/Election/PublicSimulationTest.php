@@ -1,7 +1,10 @@
 <?php
 
+use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationScope;
+use App\Election\PublicSimulation\PublicVvdatAuditExportVerifier;
 use App\Election\Support\ElectionStorage;
+use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -117,6 +120,27 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
     expect($export['record_count'])->toBe(1)
         ->and($export['records'][0])->toHaveKeys(['record_hash', 'selections'])
         ->and($export['records'][0])->not->toHaveKeys(['ballot_id', 'paper_ballot_serial', 'recorded_at']);
+
+    expect(app(PublicVvdatAuditExportVerifier::class)->verify(json_encode($export, JSON_THROW_ON_ERROR))['passed'])->toBeTrue();
+
+    $this->artisan('election:public-simulation:verify-vvdat-export', ['path' => $export['artifact_path']])
+        ->expectsOutput('VVDAT audit export verified for 1 records.')
+        ->assertSuccessful();
+});
+
+test('a precinct admission capacity is reserved atomically inside the scoped election lock', function (): void {
+    config()->set('election.public_simulation.maximum_active_admissions', 1);
+    $round = SimulationRound::factory()->create();
+    $precinct = SimulationPrecinct::factory()->for($round, 'round')->create();
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $storage = app(ElectionStorage::class);
+    $storage->reset();
+    $first = app(PublicSimulationAdmissionCapacity::class)->issue(app(AnonymousVoterAuthorization::class));
+
+    expect($first['code'])->toMatch('/^[0-9]{4}$/')
+        ->and(fn () => app(PublicSimulationAdmissionCapacity::class)->issue(app(AnonymousVoterAuthorization::class)))
+        ->toThrow(RuntimeException::class, 'active voter-admission limit');
 });
 
 test('a public simulation round archives only after every precinct is published', function (): void {

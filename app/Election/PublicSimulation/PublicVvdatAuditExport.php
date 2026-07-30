@@ -52,13 +52,15 @@ final class PublicVvdatAuditExport
             'ledger_root' => $publication['vvdat_ledger_root'],
             'record_count' => count($records),
             'records' => $records,
+            'published_tally' => $this->storage->readJson('runtime/tally.json')['tally'] ?? [],
             'privacy_transform' => [
                 'removed_fields' => ['ballot_id', 'paper_ballot_serial', 'recorded_at', 'authorization_id', 'release_id'],
                 'ordering' => 'deterministic-record-hash-order',
             ],
         ];
         $export['export_hash'] = $this->json->hash($export);
-        $export['artifact_path'] = $this->storage->writeJson('returns/vvdat-audit-export.json', $export);
+        $export['artifact_path'] = $this->storage->path('returns/vvdat-audit-export.json');
+        $this->storage->writeJson('returns/vvdat-audit-export.json', $export);
 
         $this->journal->record('public_simulation.vvdat_audit_export_generated', [
             'record_count' => $export['record_count'],

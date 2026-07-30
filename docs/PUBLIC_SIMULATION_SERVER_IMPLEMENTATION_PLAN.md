@@ -123,10 +123,10 @@ The public simulation model must use a distinct `simulation_id` and storage name
 
 ### Wave 4: Paper Audit and Understanding
 
-8. **Anonymized VVDAT audit export** - scaffolded
+8. **Anonymized VVDAT audit export** - partial
    - Generate a shuffled post-close export plus manifest and independent local tally command.
    - Make export policy configurable and disabled by default outside the public simulation profile.
-   - Delivered: deterministic record ordering and metadata stripping. An independent tally/verification command and small-precinct threshold remain pending.
+   - Delivered: deterministic record ordering, metadata stripping, and `election:public-simulation:verify-vvdat-export`, which independently checks the export hash, unique records, count, and tally. Public release approval and a small-precinct threshold remain pending.
 
 9. **QR-assisted Random Manual Audit room**
    - Present a public tally comparison screen that scans paper QR selections into an audit-only tally and requires two officer approvals per sample.
@@ -140,7 +140,7 @@ The public simulation model must use a distinct `simulation_id` and storage name
 
 11. **Concurrent multi-precinct controls** - partial
     - Distributed locks, idempotency keys, capacity limits, session expiry, queue/backpressure policy, and abuse controls.
-   - Delivered: election operation locks now include the scoped evidence root, avoiding cross-precinct lock contention. Capacity, rate, and race testing remain pending.
+   - Delivered: election operation locks include the scoped evidence root, avoiding cross-precinct lock contention. Admission issuance has an atomic active-capacity limit and endpoint throttle. Concurrent browser/race scenarios, queue/backpressure, and broader abuse controls remain pending.
 
 12. **Retention, consent, and review kit** - partial
     - Public consent page, retention schedule, deletion workflow, incident contact, accessibility review, and downloadable COMELEC Review Kit.

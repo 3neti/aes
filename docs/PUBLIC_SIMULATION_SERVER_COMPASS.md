@@ -123,6 +123,8 @@ Implemented in the Public Simulation Server:
 - Close writes `06-counting-and-tally/vvdat-ledger-freeze.json`, binding the exact ledger record count and root hash before tabulation. The ledger rejects any later deposit.
 - Watcher publication is a distinct officer action. It writes `07-election-return/publication-manifest.json` with hashes for the frozen ledger, tally, PDFs, and Election Return; no watcher result is available before it exists.
 - Watchers can download a post-publication VVDAT audit export. It retains only record hashes and selections in deterministic order, and removes ballot IDs, paper serials, timestamps, authorization data, and print-release data.
+- `php artisan election:public-simulation:verify-vvdat-export /path/to/export.json` independently checks a downloaded export's content hash, unique record hashes, count, and non-zero tally without reading the precinct ledger.
+- Admission issuance observes `ELECTION_PUBLIC_SIMULATION_MAX_ACTIVE_ADMISSIONS` (default `10`) inside a precinct-scoped election lock. The public admission endpoint is also throttled.
 - `election:public-simulation:archive {round}` archives only fully published rounds and preserves every precinct evidence namespace.
 - A privacy-redacted God Mode page is scaffolded at `/election/play/{round}/god-mode`, disabled by default through `ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED`.
 
@@ -130,9 +132,9 @@ Not yet implemented:
 
 - Public participant enrollment and safe invite links beyond the current anonymous control-number admission.
 - Officer-host creation flow, credential-handoff artifact, configurable public simulation schedules, and start-fresh policy.
-- Public release approval for the VVDAT export, independent export verification, and small-precinct publication threshold.
+- Public release approval for the VVDAT export and a small-precinct publication threshold.
 - Expanded God Mode authorization, classroom replay fixtures, and screen/capture controls.
-- Multi-precinct admission capacity limits, rate controls, and concurrency-race scenarios.
+- Multi-precinct concurrency-race scenarios, queue/backpressure policy, and abuse controls beyond the current admission capacity/throttle.
 - Public education copy, consent, retention, and deletion policy.
 
 ## Update Rule

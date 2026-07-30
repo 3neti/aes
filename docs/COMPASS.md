@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Public VVDAT Freeze, Publication, and Audit-Export Scaffolds
+- Completed Slice: Public Admission Capacity and Independent VVDAT Export Verification
 - Active Program: Public Election Simulation Server
-- Current Slice: Public simulation concurrency, independent audit verification, and controlled reset
-- Next Slice: Concurrent-voter capacity/race scenarios and independent VVDAT export verification
+- Current Slice: Concurrent-voter race scenarios, controlled reset, and public release policy
+- Next Slice: Deterministic multi-voter concurrent scenario and close-vs-finalize race coverage
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices

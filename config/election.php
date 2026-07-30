@@ -45,6 +45,7 @@ return [
         'god_mode' => [
             'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED', false),
         ],
+        'maximum_active_admissions' => (int) env('ELECTION_PUBLIC_SIMULATION_MAX_ACTIVE_ADMISSIONS', 10),
     ],
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),

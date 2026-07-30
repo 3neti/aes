@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ElectionSnapshot;
+use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationCloseout;
 use App\Election\PublicSimulation\PublicSimulationPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
@@ -75,7 +76,7 @@ final class PublicSimulationController extends Controller
             ->with('public_simulation.officer_feedback', 'Polls are open. Admit a voter and hand them the four-digit control number.');
     }
 
-    public function admit(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations): RedirectResponse
+    public function admit(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationAdmissionCapacity $capacity, AnonymousVoterAuthorization $authorizations): RedirectResponse
     {
         $this->ensurePrecinctInRound($round, $precinct);
         $validated = $this->officerCredentials($request);
@@ -91,7 +92,11 @@ final class PublicSimulationController extends Controller
         }
 
         $simulations->applyScope($precinct);
-        $authorization = $authorizations->issue();
+        try {
+            $authorization = $capacity->issue($authorizations);
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
+        }
 
         return to_route('election.public-simulation.show', [$round, $precinct])
             ->with('public_simulation.control_number', $authorization);
