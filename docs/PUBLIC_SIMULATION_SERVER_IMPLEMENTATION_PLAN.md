@@ -128,9 +128,9 @@ The public simulation model must use a distinct `simulation_id` and storage name
    - Make export policy configurable and disabled by default outside the public simulation profile.
    - Delivered: deterministic record ordering, metadata stripping, a configurable small-precinct threshold, and `election:public-simulation:verify-vvdat-export`, which independently checks the export hash, unique records, count, and tally. A distinct officer release ceremony remains pending.
 
-9. **QR-assisted Random Manual Audit room** - scaffolded for public simulation
+9. **QR-assisted Random Manual Audit room** - completed for public simulation
    - Present a public tally comparison screen that scans paper QR selections into an audit-only tally and requires two officer approvals per sample.
-   - Delivered: the public precinct audit room selects a deterministic post-close sample, accepts a selected paper QR, performs dual approval, writes reconciliation, and produces a separate PDF evidence pack without changing official results. Camera capture, discrepancy handling, and watcher-safe RMA publication remain pending.
+   - Delivered: the public precinct audit room selects a deterministic post-close sample, accepts a selected paper QR through a browser camera PNG capture or scanner payload, records either dual approval or a dual-confirmed written discrepancy, writes reconciliation, and produces an operator evidence PDF without changing official results. After normal result publication, the officer can publish a separate redacted watcher RMA PDF with aggregate status and hashes only.
 
 10. **Privacy-safe God Mode** - scaffolded
     - Build an explainer command center with lifecycle map, room/station status, redacted journal, artifact board, and training-fixture replay.
@@ -195,9 +195,9 @@ Each scenario must persist a run summary with:
 5. Add tally/ER publication approval, hash manifest, and watcher result package.
 6. Harden concurrent admission, finalization, printing, deposit, and journaling.
 7. Add anonymized VVDAT audit export plus independent verification command.
-8. Add QR-assisted RMA tally room and public audit report.
+8. Add QR-assisted RMA tally room and public audit report. Completed.
 9. Add redacted God Mode and training-fixture replay.
-10. Add concurrent multi-precinct scenarios, browser tests, retention policy, and Review Kit.
+10. Add concurrent multi-precinct scenarios, browser tests, retention policy, and Review Kit. Next: real concurrent browser voting and close-versus-finalize race coverage.
 
 ## Definition of Done
 

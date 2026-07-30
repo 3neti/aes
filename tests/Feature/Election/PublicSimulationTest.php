@@ -6,6 +6,7 @@ use App\Election\PublicSimulation\PublicVvdatAuditExportVerifier;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\DeviceTabulationLedger;
 use App\Election\Voting\AnonymousVoterAuthorization;
+use App\Election\Voting\StandardQrCode;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
 use Illuminate\Support\Facades\Crypt;
@@ -94,13 +95,15 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
         );
     $this->post(route('election.public-simulation.audit.select', [$round, $precinct]), $credentials)
         ->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
+    config()->set('election.devices.scanner.driver', 'camera');
     $this->post(route('election.public-simulation.audit.propose', [$round, $precinct]), [
         ...$credentials,
-        'payload' => $auditQrPayload,
+        'payload' => 'data:image/png;base64,'.base64_encode(app(StandardQrCode::class)->renderPng($auditQrPayload)),
     ])->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
-    $this->post(route('election.public-simulation.audit.approve', [$round, $precinct]), [
+    $this->post(route('election.public-simulation.audit.discrepancy', [$round, $precinct]), [
         ...$credentials,
         'payload_hash' => $privateRelease['payload_hash'],
+        'reason' => 'Simulation paper comparison intentionally recorded for review.',
         'first_officer_code' => 'SIM-OFFICER-001',
         'first_officer_pin' => '123456',
         'second_officer_code' => 'SIM-OFFICER-002',
@@ -122,14 +125,31 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
 
     $this->post(route('election.public-simulation.publish', [$round, $precinct]), $credentials)
         ->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
+    $this->post(route('election.public-simulation.audit.publish', [$round, $precinct]), $credentials)
+        ->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
 
-    $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Election/PublicSimulationWatcher')
-            ->where('published', true)
-            ->where('ballot.contests.0.title', 'SENATOR - PHILIPPINES')
-        );
+    $watcher = $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
+        ->assertSuccessful();
+    expect($watcher->inertiaProps('published'))->toBeTrue()
+        ->and($watcher->inertiaProps('ballot.contests.0.title'))->toBe('SENATOR - PHILIPPINES')
+        ->and($watcher->inertiaProps('randomManualAudit.discrepancy_ballots'))->toBe(1)
+        ->and($watcher->inertiaProps('randomManualAudit.passed'))->toBeFalse();
+    expect(array_keys($watcher->inertiaProps('randomManualAudit')))->toBe([
+        'sample_hash',
+        'sample_size',
+        'source_record_count',
+        'verified_ballots',
+        'discrepancy_ballots',
+        'pending_ballots',
+        'device_record_issues',
+        'complete',
+        'passed',
+        'outcome',
+        'summary_hash',
+        'privacy_notice',
+    ]);
+    $this->get(route('election.public-simulation.watcher.rma-audit', [$round, $precinct]))
+        ->assertDownload("{$precinct->code}-random-manual-audit-summary.pdf");
 
     $precinct->refresh();
     expect($precinct->status)->toBe('published');
@@ -142,6 +162,8 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
     expect($storage->files('device-tabulation-ledger'))->toHaveCount(1)
         ->and($storage->readJson('counting/vvdat-ledger-freeze.json')['record_count'])->toBe(1)
         ->and($storage->readJson('returns/publication-manifest.json')['precinct_code'])->toBe($precinct->code)
+        ->and($storage->readJson('returns/public-rma-audit-summary.json')['discrepancy_ballots'])->toBe(1)
+        ->and($storage->readJson('returns/public-rma-audit-summary.json'))->not->toHaveKeys(['paper_ballot_serial', 'payload_hash', 'selections', 'officer_identities'])
         ->and($storage->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
         ->and($return['accepted_ballots'])->toBe(1)
         ->and($return['tally_source'])->toContain('VVDAT');

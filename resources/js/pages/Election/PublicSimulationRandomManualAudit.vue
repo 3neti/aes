@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Form, Head, Link, useForm } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
-defineProps<{
+const props = defineProps<{
     precinct: { code: string; label: string; status: string };
     audit: {
         sample: Array<{ payload_hash: string; paper_ballot_serial: number | null }>;
@@ -12,9 +13,106 @@ defineProps<{
         pending: { payload_hash: string; paper_ballot_serial: number | null; selections: Record<string, string[]> } | null;
         reconciliation: { complete: boolean; passed: boolean; verified_ballots: number; discrepancy_ballots: number; pending_ballots: number } | null;
         evidencePackAvailable: boolean;
+        watcherPublicationAvailable: boolean;
     };
-    actions: { select: string; propose: string; approve: string; reconcile: string; evidencePack: string; download: string };
+    feedback: string | null;
+    actions: { select: string; propose: string; approve: string; discrepancy: string; reconcile: string; evidencePack: string; publish: string; download: string };
 }>();
+
+const video = ref<HTMLVideoElement | null>(null);
+const stream = ref<MediaStream | null>(null);
+const cameraStatus = ref<'idle' | 'starting' | 'ready' | 'captured' | 'error'>('idle');
+const cameraMessage = ref('');
+const cameraForm = useForm({
+    payload: '',
+    officer_code: '',
+    officer_pin: '',
+});
+const canCapture = computed(() => cameraStatus.value === 'ready' && !cameraForm.processing);
+
+async function startCamera(): Promise<void> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+        cameraStatus.value = 'error';
+        cameraMessage.value = 'Camera capture is not available in this browser.';
+
+        return;
+    }
+
+    cameraStatus.value = 'starting';
+    cameraMessage.value = 'Starting camera.';
+
+    try {
+        stopCamera(false);
+        stream.value = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: { ideal: 'environment' } },
+        });
+
+        if (video.value) {
+            video.value.srcObject = stream.value;
+            await video.value.play();
+        }
+
+        cameraStatus.value = 'ready';
+        cameraMessage.value = 'Camera ready. Position the paper ballot QR code within the frame.';
+    } catch {
+        cameraStatus.value = 'error';
+        cameraMessage.value = 'Camera permission was denied or unavailable. Use the scanner payload field instead.';
+    }
+}
+
+function stopCamera(resetStatus = true): void {
+    stream.value?.getTracks().forEach((track) => track.stop());
+    stream.value = null;
+
+    if (video.value) {
+        video.value.srcObject = null;
+    }
+
+    if (resetStatus) {
+        cameraStatus.value = 'idle';
+        cameraMessage.value = '';
+    }
+}
+
+function captureAndSubmit(): void {
+    if (!video.value || video.value.videoWidth === 0) {
+        cameraStatus.value = 'error';
+        cameraMessage.value = 'No camera frame is ready to capture.';
+
+        return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.value.videoWidth;
+    canvas.height = video.value.videoHeight;
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+        cameraStatus.value = 'error';
+        cameraMessage.value = 'Unable to capture a camera frame.';
+
+        return;
+    }
+
+    context.drawImage(video.value, 0, 0, canvas.width, canvas.height);
+    cameraForm.payload = canvas.toDataURL('image/png');
+    cameraForm.post(props.actions.propose, {
+        preserveScroll: true,
+        onSuccess: () => {
+            cameraStatus.value = 'captured';
+            cameraMessage.value = 'Camera capture submitted for paper comparison.';
+            cameraForm.reset('payload');
+            stopCamera(false);
+        },
+        onError: () => {
+            cameraStatus.value = 'error';
+            cameraMessage.value = 'The camera capture was not accepted. Check the QR code and try again.';
+        },
+    });
+}
+
+onBeforeUnmount(() => stopCamera(false));
 </script>
 
 <template>
@@ -25,6 +123,7 @@ defineProps<{
             <p class="mt-5 text-sm font-bold text-blue-800">RANDOM MANUAL AUDIT</p>
             <h1 class="mt-1 text-2xl font-bold">{{ precinct.label }}</h1>
             <p class="mt-3 border-l-4 border-blue-800 bg-blue-50 p-4 text-sm text-blue-950">This room compares a deterministically selected paper ballot QR code with its sealed VVDAT record. It records an audit finding only. The official tally and Election Return cannot be changed here.</p>
+            <p v-if="feedback" class="mt-4 border-l-4 border-emerald-700 bg-emerald-50 p-3 text-sm font-bold text-emerald-950" role="status">{{ feedback }}</p>
 
             <section class="mt-6 grid gap-4 sm:grid-cols-3">
                 <div class="border border-stone-300 p-4"><p class="text-xs font-bold text-stone-600">SAMPLE</p><p class="mt-2 text-2xl font-bold">{{ audit.sample.length }}</p><p class="text-sm text-stone-600">of {{ audit.source_record_count }} sealed records</p></div>
@@ -46,24 +145,37 @@ defineProps<{
                 </section>
 
                 <section v-if="!audit.pending" class="mt-6 border border-stone-300 p-5">
-                    <h2 class="text-lg font-bold">2. Scan a sampled ballot QR code</h2>
-                    <p class="mt-2 text-sm text-stone-700">Paste a scanner payload or scan through the connected scanner. The system rejects paper QR codes that were not selected for this sample.</p>
-                    <Form :action="actions.propose" method="post" #default="{ errors, processing }" class="mt-4 grid gap-3"><textarea name="payload" rows="4" placeholder="Scanned paper ballot QR payload" class="border border-stone-400 p-3 font-mono text-xs" required /><div class="grid gap-3 sm:grid-cols-3"><input name="officer_code" placeholder="Assigned officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="Six-digit PIN" class="min-h-11 border border-stone-400 px-3" required /><button type="submit" class="min-h-11 bg-blue-800 px-4 font-bold text-white" :disabled="processing">{{ processing ? 'Checking...' : 'Propose paper comparison' }}</button></div><p v-if="errors.payload || errors.officer_pin" class="text-sm font-bold text-red-700">{{ errors.payload ?? errors.officer_pin }}</p></Form>
+                    <h2 class="text-lg font-bold">2. Capture a sampled ballot QR code</h2>
+                    <p class="mt-2 text-sm text-stone-700">Use the device camera for the paper QR code, or use a handheld scanner payload below. The system accepts only QR codes selected for this audit sample.</p>
+                    <div class="mt-4 grid gap-6 lg:grid-cols-2">
+                        <div>
+                            <div class="aspect-[4/3] overflow-hidden border border-stone-300 bg-stone-950"><video ref="video" class="h-full w-full object-cover" autoplay muted playsinline /></div>
+                            <div class="mt-3 grid gap-3 sm:grid-cols-2"><input v-model="cameraForm.officer_code" placeholder="Assigned officer code" class="min-h-11 border border-stone-400 px-3" /><input v-model="cameraForm.officer_pin" inputmode="numeric" maxlength="6" placeholder="Six-digit PIN" class="min-h-11 border border-stone-400 px-3" /></div>
+                            <div class="mt-3 flex flex-wrap gap-2"><button type="button" class="min-h-11 border border-stone-500 px-4 font-bold" :disabled="cameraStatus === 'starting'" @click="startCamera">Start camera</button><button type="button" class="min-h-11 bg-blue-800 px-4 font-bold text-white" :disabled="!canCapture || !cameraForm.officer_code || !cameraForm.officer_pin" @click="captureAndSubmit">Capture QR</button><button type="button" class="min-h-11 border border-stone-500 px-4 font-bold" :disabled="!stream" @click="stopCamera()">Stop camera</button></div>
+                            <p v-if="cameraMessage" class="mt-3 text-sm font-bold" :class="cameraStatus === 'error' ? 'text-red-700' : 'text-emerald-700'" role="status">{{ cameraMessage }}</p>
+                            <p v-if="cameraForm.errors.payload || cameraForm.errors.officer_pin" class="mt-3 text-sm font-bold text-red-700">{{ cameraForm.errors.payload ?? cameraForm.errors.officer_pin }}</p>
+                        </div>
+                        <Form :action="actions.propose" method="post" #default="{ errors, processing }" class="grid content-start gap-3"><label class="text-sm font-bold" for="rma-payload">Scanner payload</label><textarea id="rma-payload" name="payload" rows="7" placeholder="Scanned paper ballot QR payload" class="border border-stone-400 p-3 font-mono text-xs" required /><input name="officer_code" placeholder="Assigned officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="Six-digit PIN" class="min-h-11 border border-stone-400 px-3" required /><button type="submit" class="min-h-11 bg-blue-800 px-4 font-bold text-white" :disabled="processing">{{ processing ? 'Checking...' : 'Propose paper comparison' }}</button><p v-if="errors.payload || errors.officer_pin" class="text-sm font-bold text-red-700">{{ errors.payload ?? errors.officer_pin }}</p></Form>
+                    </div>
                 </section>
 
                 <section v-else class="mt-6 border border-amber-500 bg-amber-50 p-5">
                     <h2 class="text-lg font-bold">3. Confirm the paper comparison</h2>
-                    <p class="mt-2 text-sm text-amber-950">Paper ballot {{ audit.pending.paper_ballot_serial ?? 'unserialized' }} is pending dual approval. Compare the paper marks against these QR-derived selections before recording approval.</p>
+                    <p class="mt-2 text-sm text-amber-950">Paper ballot {{ audit.pending.paper_ballot_serial ?? 'unserialized' }} is pending an audit finding. Compare the paper marks against these QR-derived selections before recording either result.</p>
                     <dl class="mt-4 grid gap-2 text-sm"><div v-for="(candidateIds, contest) in audit.pending.selections" :key="contest" class="grid grid-cols-[10rem_1fr] gap-3"><dt class="font-bold">{{ contest }}</dt><dd>{{ candidateIds.join(', ') }}</dd></div></dl>
                     <Form :action="actions.approve" method="post" #default="{ errors, processing }" class="mt-5 grid gap-3"><input type="hidden" name="payload_hash" :value="audit.pending.payload_hash" /><div class="grid gap-3 sm:grid-cols-2"><input name="officer_code" placeholder="Assigned precinct officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="Assigned officer PIN" class="min-h-11 border border-stone-400 px-3" required /><input name="first_officer_code" placeholder="First board officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="first_officer_pin" inputmode="numeric" maxlength="6" placeholder="First board officer PIN" class="min-h-11 border border-stone-400 px-3" required /><input name="second_officer_code" placeholder="Second board officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="second_officer_pin" inputmode="numeric" maxlength="6" placeholder="Second board officer PIN" class="min-h-11 border border-stone-400 px-3" required /></div><button type="submit" class="min-h-11 bg-emerald-700 px-4 font-bold text-white" :disabled="processing">{{ processing ? 'Recording...' : 'Record dual approval' }}</button><p v-if="errors.payload_hash || errors.second_officer_code || errors.officer_pin" class="text-sm font-bold text-red-700">{{ errors.payload_hash ?? errors.second_officer_code ?? errors.officer_pin }}</p></Form>
+                    <Form :action="actions.discrepancy" method="post" #default="{ errors, processing }" class="mt-6 border-t border-amber-300 pt-5"><h3 class="font-bold">Record a paper discrepancy</h3><p class="mt-1 text-sm text-amber-950">Use only when the printed paper ballot does not match the QR-derived selections. This preserves the official VVDAT tally and records an audit exception.</p><input type="hidden" name="payload_hash" :value="audit.pending.payload_hash" /><div class="mt-3 grid gap-3 sm:grid-cols-2"><textarea name="reason" rows="3" placeholder="Observed discrepancy and paper-ballot finding" class="border border-stone-400 p-3 sm:col-span-2" required /><input name="officer_code" placeholder="Assigned precinct officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="Assigned officer PIN" class="min-h-11 border border-stone-400 px-3" required /><input name="first_officer_code" placeholder="First board officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="first_officer_pin" inputmode="numeric" maxlength="6" placeholder="First board officer PIN" class="min-h-11 border border-stone-400 px-3" required /><input name="second_officer_code" placeholder="Second board officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="second_officer_pin" inputmode="numeric" maxlength="6" placeholder="Second board officer PIN" class="min-h-11 border border-stone-400 px-3" required /></div><button type="submit" class="mt-3 min-h-11 bg-red-700 px-4 font-bold text-white" :disabled="processing">{{ processing ? 'Recording...' : 'Record dual-confirmed discrepancy' }}</button><p v-if="errors.reason || errors.payload_hash || errors.second_officer_code || errors.officer_pin" class="mt-3 text-sm font-bold text-red-700">{{ errors.reason ?? errors.payload_hash ?? errors.second_officer_code ?? errors.officer_pin }}</p></Form>
                 </section>
 
                 <section v-if="!audit.pending" class="mt-6 border border-stone-300 p-5">
-                    <h2 class="text-lg font-bold">4. Reconcile the audit sample</h2>
-                    <p v-if="audit.reconciliation" class="mt-2 text-sm text-stone-700">{{ audit.reconciliation.verified_ballots }} verified, {{ audit.reconciliation.discrepancy_ballots }} discrepancies, {{ audit.reconciliation.pending_ballots }} pending. <strong>{{ audit.reconciliation.passed ? 'The current reconciliation passes.' : 'The current reconciliation does not yet pass.' }}</strong></p>
+                    <h2 class="text-lg font-bold">4. Reconcile and publish the audit</h2>
+                    <p v-if="audit.reconciliation" class="mt-2 text-sm text-stone-700">{{ audit.reconciliation.verified_ballots }} verified, {{ audit.reconciliation.discrepancy_ballots }} discrepancies, {{ audit.reconciliation.pending_ballots }} pending. <strong>{{ audit.reconciliation.passed ? 'The current reconciliation passes.' : 'The current reconciliation requires attention.' }}</strong></p>
                     <Form :action="actions.reconcile" method="post" #default="{ errors, processing }" class="mt-4 grid gap-3 sm:grid-cols-3"><input name="officer_code" placeholder="Assigned officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="Six-digit PIN" class="min-h-11 border border-stone-400 px-3" required /><button type="submit" class="min-h-11 bg-blue-800 px-4 font-bold text-white" :disabled="processing">{{ processing ? 'Reconciling...' : 'Generate reconciliation' }}</button><p v-if="errors.officer_pin" class="text-sm font-bold text-red-700 sm:col-span-3">{{ errors.officer_pin }}</p></Form>
-                    <Form v-if="audit.reconciliation?.complete" :action="actions.evidencePack" method="post" #default="{ errors, processing }" class="mt-4 grid gap-3 sm:grid-cols-3"><input name="officer_code" placeholder="Assigned officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="Six-digit PIN" class="min-h-11 border border-stone-400 px-3" required /><button type="submit" class="min-h-11 bg-emerald-700 px-4 font-bold text-white" :disabled="processing">{{ processing ? 'Building...' : 'Build audit evidence pack' }}</button><p v-if="errors.officer_pin" class="text-sm font-bold text-red-700 sm:col-span-3">{{ errors.officer_pin }}</p></Form>
-                    <a v-if="audit.evidencePackAvailable" :href="actions.download" class="mt-4 inline-flex min-h-11 items-center bg-stone-800 px-4 font-bold text-white">Download audit evidence PDF</a>
+                    <Form v-if="audit.reconciliation?.complete && !audit.evidencePackAvailable" :action="actions.evidencePack" method="post" #default="{ errors, processing }" class="mt-4 grid gap-3 sm:grid-cols-3"><input name="officer_code" placeholder="Assigned officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="Six-digit PIN" class="min-h-11 border border-stone-400 px-3" required /><button type="submit" class="min-h-11 bg-emerald-700 px-4 font-bold text-white" :disabled="processing">{{ processing ? 'Building...' : 'Build officer evidence pack' }}</button><p v-if="errors.officer_pin" class="text-sm font-bold text-red-700 sm:col-span-3">{{ errors.officer_pin }}</p></Form>
+                    <a v-if="audit.evidencePackAvailable" :href="actions.download" class="mt-4 inline-flex min-h-11 items-center bg-stone-800 px-4 font-bold text-white">Download officer audit evidence PDF</a>
+                    <Form v-if="audit.evidencePackAvailable && precinct.status === 'published' && !audit.watcherPublicationAvailable" :action="actions.publish" method="post" #default="{ errors, processing }" class="mt-4 grid gap-3 sm:grid-cols-3"><input name="officer_code" placeholder="Assigned officer code" class="min-h-11 border border-stone-400 px-3" required /><input name="officer_pin" inputmode="numeric" maxlength="6" placeholder="Six-digit PIN" class="min-h-11 border border-stone-400 px-3" required /><button type="submit" class="min-h-11 bg-blue-800 px-4 font-bold text-white" :disabled="processing">{{ processing ? 'Publishing...' : 'Publish redacted watcher summary' }}</button><p v-if="errors.audit_publication || errors.officer_pin" class="text-sm font-bold text-red-700 sm:col-span-3">{{ errors.audit_publication ?? errors.officer_pin }}</p></Form>
+                    <p v-else-if="audit.evidencePackAvailable && precinct.status !== 'published'" class="mt-4 text-sm text-stone-700">Publish the post-close tally and Election Return first; then this room can publish a separate redacted summary for poll watchers.</p>
+                    <p v-else-if="audit.watcherPublicationAvailable" class="mt-4 border-l-4 border-emerald-700 bg-emerald-50 p-3 text-sm font-bold text-emerald-950">A redacted audit summary is published for poll watchers. It excludes individual ballot and officer evidence.</p>
                 </section>
             </template>
         </section>

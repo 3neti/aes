@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Election;
 
 use App\Election\Audit\RandomManualAuditService;
+use App\Election\PublicSimulation\PublicRandomManualAuditPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\Scanning\BallotScanner;
 use App\Election\Support\ElectionStorage;
@@ -20,7 +21,7 @@ use Throwable;
 
 final class PublicSimulationRandomManualAuditController extends Controller
 {
-    public function show(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, RandomManualAuditService $audit): Response
+    public function show(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, RandomManualAuditService $audit, PublicRandomManualAuditPublication $publication): Response
     {
         $this->scope($round, $precinct, $simulations);
         $this->ensureAvailable($precinct);
@@ -57,13 +58,17 @@ final class PublicSimulationRandomManualAuditController extends Controller
                     'pending_ballots' => $summary['reconciliation_report']['pending_ballots'],
                 ],
                 'evidencePackAvailable' => $summary['evidence_pack'] !== [],
+                'watcherPublicationAvailable' => $publication->summary() !== [],
             ],
+            'feedback' => session('public_simulation.audit_feedback'),
             'actions' => [
                 'select' => route('election.public-simulation.audit.select', [$round, $precinct]),
                 'propose' => route('election.public-simulation.audit.propose', [$round, $precinct]),
                 'approve' => route('election.public-simulation.audit.approve', [$round, $precinct]),
+                'discrepancy' => route('election.public-simulation.audit.discrepancy', [$round, $precinct]),
                 'reconcile' => route('election.public-simulation.audit.reconcile', [$round, $precinct]),
                 'evidencePack' => route('election.public-simulation.audit.evidence-pack', [$round, $precinct]),
+                'publish' => route('election.public-simulation.audit.publish', [$round, $precinct]),
                 'download' => route('election.public-simulation.audit.download', [$round, $precinct]),
             ],
         ]);
@@ -112,6 +117,28 @@ final class PublicSimulationRandomManualAuditController extends Controller
         return $this->redirect($round, $precinct, 'The sampled paper ballot comparison has been dual-approved.');
     }
 
+    public function discrepancy(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, RandomManualAuditService $audit): RedirectResponse
+    {
+        $validated = $this->authorizeOfficer($request, $round, $precinct, $simulations, [
+            'payload_hash' => ['required', 'string', 'size:64'],
+            'reason' => ['required', 'string', 'max:1000'],
+            'first_officer_code' => ['required', 'string'],
+            'first_officer_pin' => ['required', 'digits:6'],
+            'second_officer_code' => ['required', 'string'],
+            'second_officer_pin' => ['required', 'digits:6'],
+        ]);
+        $audit->recordDiscrepancy(
+            $validated['payload_hash'],
+            $validated['reason'],
+            $validated['first_officer_code'],
+            $validated['first_officer_pin'],
+            $validated['second_officer_code'],
+            $validated['second_officer_pin'],
+        );
+
+        return $this->redirect($round, $precinct, 'The paper discrepancy has been dual-confirmed and recorded as an audit finding.');
+    }
+
     public function reconcile(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, RandomManualAuditService $audit): RedirectResponse
     {
         $this->authorizeOfficer($request, $round, $precinct, $simulations);
@@ -126,6 +153,19 @@ final class PublicSimulationRandomManualAuditController extends Controller
         $audit->buildEvidencePack();
 
         return $this->redirect($round, $precinct, 'The Random Manual Audit evidence pack is ready for download.');
+    }
+
+    public function publish(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicRandomManualAuditPublication $publication): RedirectResponse
+    {
+        $this->authorizeOfficer($request, $round, $precinct, $simulations);
+
+        try {
+            $publication->publish();
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['audit_publication' => $exception->getMessage()]);
+        }
+
+        return $this->redirect($round, $precinct, 'The redacted Random Manual Audit summary is now available to poll watchers.');
     }
 
     public function download(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse

@@ -40,8 +40,10 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/{round:code}/{precinct:code}/audit/select', [PublicSimulationRandomManualAuditController::class, 'select'])->name('audit.select');
         Route::post('/{round:code}/{precinct:code}/audit/propose', [PublicSimulationRandomManualAuditController::class, 'propose'])->name('audit.propose');
         Route::post('/{round:code}/{precinct:code}/audit/approve', [PublicSimulationRandomManualAuditController::class, 'approve'])->name('audit.approve');
+        Route::post('/{round:code}/{precinct:code}/audit/discrepancy', [PublicSimulationRandomManualAuditController::class, 'discrepancy'])->name('audit.discrepancy');
         Route::post('/{round:code}/{precinct:code}/audit/reconcile', [PublicSimulationRandomManualAuditController::class, 'reconcile'])->name('audit.reconcile');
         Route::post('/{round:code}/{precinct:code}/audit/evidence-pack', [PublicSimulationRandomManualAuditController::class, 'evidencePack'])->name('audit.evidence-pack');
+        Route::post('/{round:code}/{precinct:code}/audit/publish', [PublicSimulationRandomManualAuditController::class, 'publish'])->name('audit.publish');
         Route::get('/{round:code}/{precinct:code}/audit/evidence-pack', [PublicSimulationRandomManualAuditController::class, 'download'])->name('audit.download');
 
         Route::get('/{round:code}/{precinct:code}/vote', [PublicSimulationVoterController::class, 'show'])->name('voter.show');
@@ -58,6 +60,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/{round:code}/{precinct:code}/watch/tally-sheet', [PublicSimulationWatcherController::class, 'tally'])->name('watcher.tally');
         Route::get('/{round:code}/{precinct:code}/watch/election-return', [PublicSimulationWatcherController::class, 'electionReturn'])->name('watcher.return');
         Route::get('/{round:code}/{precinct:code}/watch/vvdat-audit-export', [PublicSimulationWatcherController::class, 'vvdatAuditExport'])->name('watcher.vvdat-audit-export');
+        Route::get('/{round:code}/{precinct:code}/watch/random-manual-audit', [PublicSimulationWatcherController::class, 'randomManualAudit'])->name('watcher.rma-audit');
     });
 
     Route::get('/review-room', [ReviewRoomController::class, 'index'])->name('review-room.index');

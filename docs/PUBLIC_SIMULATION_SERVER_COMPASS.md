@@ -38,7 +38,7 @@ The offline precinct appliance remains the operational model. The Cloud-hosted s
 | --- | --- | --- |
 | Participant voter | Experiences admission, ballot marking, private release, verification, and deposit. | Own ballot while active; no totals. |
 | Election Officer / host | Creates a simulation, selects a precinct, operates ceremonies, admits participants, and closes polls. | Ceremony controls, station state, aggregate operational counts. |
-| Poll watcher | Observes procedures and independently checks published outputs after close. | Ceremony timeline, published tally/ER, approved anonymous VVDAT audit export, RMA evidence. |
+| Poll watcher | Observes procedures and independently checks published outputs after close. | Ceremony timeline, published tally/ER, approved anonymous VVDAT audit export, and a redacted RMA summary. |
 | God Mode facilitator | Explains the simulation in a classroom, presentation, or review setting. | Anonymized multi-role telemetry, journals, artifact status, and consented demo captures. |
 | Guest observer | Learns the process without casting a vote. | Public lifecycle and post-close published material. |
 
@@ -47,6 +47,7 @@ The offline precinct appliance remains the operational model. The Cloud-hosted s
 - A control code is a one-use admission token, not a voter identity.
 - Station IDs, room events, and timestamps are operational metadata. They are never placed in a public VVDAT export when they could help correlate a voter with a ballot.
 - A published VVDAT audit export is generated only after close, after officer publication approval, and uses a deterministic privacy transformation: records are identity-free, timestamp-free, station-free, and deterministically shuffled. It includes the ledger root, record hashes, selections, and export hash.
+- The officer RMA evidence pack stays inside the precinct evidence bundle. A separately approved watcher summary may publish only aggregate RMA counts, hashes, and outcome; it excludes paper serials, QR payloads, selections, officer identities, and individual audit entries.
 - Individual ballot displays are disabled by default. Any classroom demonstration of a ballot must use explicit training fixtures, not participant votes.
 - God Mode screenshots show state transitions and redacted participant screens. They never mirror a live voter ballot or raw release QR.
 
@@ -93,6 +94,8 @@ Create simulation / select precinct
   watcher-publication.json
   vvdat-audit-export.jsonl
   vvdat-audit-export-manifest.json
+  public-rma-audit-summary.json
+  public-rma-audit-summary.pdf
 
 12-audit-and-reconciliation/
   random-manual-audit/
@@ -130,7 +133,8 @@ Implemented in the Public Simulation Server:
 - `election:public-simulation:reset {round}` is the controlled start-fresh operation: it archives a fully published round first, retains all evidence, then creates a new three-precinct lobby. It refuses to replace an unrelated live round.
 - Watcher VVDAT downloads now follow an explicit release policy. `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_ENABLED` enables the export and `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_MINIMUM_RECORDS` sets the minimum sealed-record count. A withheld export is not linked or downloadable.
 - A privacy-redacted God Mode page is scaffolded at `/election/play/{round}/god-mode`, disabled by default through `ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED`.
-- The precinct operator can now open `/election/play/{round}/{precinct}/audit` after closeout. It selects a deterministic paper-ballot sample, accepts only a sampled QR payload, requires two distinct board approvals, writes a separate reconciliation, and produces a Random Manual Audit PDF. The audit never changes the official VVDAT tally or Election Return.
+- The precinct operator can now open `/election/play/{round}/{precinct}/audit` after closeout. It selects a deterministic paper-ballot sample, captures a paper QR from a browser camera or scanner payload, requires two distinct board approvals for either a match or a written discrepancy, and produces a detailed operator evidence PDF. The audit never changes the official VVDAT tally or Election Return.
+- After post-close result publication, the officer may publish `07-election-return/public-rma-audit-summary.pdf`. The watcher view receives only aggregate sample, verification, discrepancy, and outcome information plus hashes; it cannot download the detailed officer RMA evidence pack.
 
 Not yet implemented:
 
@@ -138,7 +142,7 @@ Not yet implemented:
 - Officer-host creation flow, credential-handoff artifact, and configurable public simulation schedules.
 - A separate officer approval ceremony for the VVDAT export; the current policy is configured per environment.
 - Expanded God Mode authorization, classroom replay fixtures, and screen/capture controls.
-- Multi-precinct concurrency-race scenarios, queue/backpressure policy, and abuse controls beyond the current admission capacity/throttle.
+- Real concurrent browser/race scenarios, queue/backpressure policy, and abuse controls beyond the current admission capacity/throttle.
 - Public education copy, consent, retention, and deletion policy.
 
 ## Update Rule

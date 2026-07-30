@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Public Admission Capacity and Independent VVDAT Export Verification
+- Completed Slice: Public RMA Camera Capture, Discrepancy Recording, and Watcher-Safe Publication
 - Active Program: Public Election Simulation Server
-- Current Slice: Concurrent-voter race scenarios, controlled reset, and public release policy
-- Next Slice: Deterministic multi-voter concurrent scenario and close-vs-finalize race coverage
+- Current Slice: Concurrent browser voting and close-versus-finalize race coverage
+- Next Slice: Deterministic multi-voter concurrent scenario, queue/backpressure policy, and browser race assertions
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -722,15 +722,16 @@ Completed:
 - role-paired Multi-Tablet Review Room for one officer, five default voter tablets, private printing, watcher observation, and a projection-safe presentation screen
 - signed QR joins, one-browser station binding, role-restricted routes, connectivity status, and an append-only hash-chained room journal
 - public three-precinct simulation lobby with isolated evidence roots, Device Tabulation with Paper Audit closeout, sealed VVDAT freeze, tally/ER watcher publication, policy-controlled anonymized VVDAT export, and a non-destructive archive/reset flow
-- public precinct Random Manual Audit room: deterministic sample selection, selected paper QR comparison, dual officer approval, reconciliation, and separate PDF evidence without mutation of official result artifacts
+- public precinct Random Manual Audit room: deterministic sample selection, browser-camera or scanner QR comparison, dual officer approval or written discrepancy, reconciliation, detailed officer evidence, and redacted watcher summary without mutation of official result artifacts
 - deterministic three-voter public precinct exercise that proves repeated admission, private vote, print/deposit, device closeout, tally, and neighbouring-precinct storage isolation
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then add RMA camera capture, discrepancy handling, watcher-safe audit
-publication, and package the results into the offline COMELEC Review Kit.
+Then exercise real concurrent browser voting and close-versus-finalize races,
+define queue/backpressure behaviour, and package the results into the offline
+COMELEC Review Kit.
 
 ---
 
