@@ -7,6 +7,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationCloseout;
 use App\Election\PublicSimulation\PublicSimulationPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
+use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\StandardQrCode;
@@ -77,7 +78,7 @@ final class PublicSimulationController extends Controller
             ->with('public_simulation.officer_feedback', 'Polls are open. Admit a voter and hand them the four-digit control number.');
     }
 
-    public function admit(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationAdmissionCapacity $capacity, AnonymousVoterAuthorization $authorizations): RedirectResponse
+    public function admit(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationAdmissionCapacity $capacity, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting): RedirectResponse
     {
         $this->ensurePrecinctInRound($round, $precinct);
         $validated = $this->officerCredentials($request);
@@ -94,7 +95,7 @@ final class PublicSimulationController extends Controller
 
         $simulations->applyScope($precinct);
         try {
-            $authorization = $capacity->issue($authorizations);
+            $authorization = $voting->execute(fn (): array => $capacity->issue($authorizations));
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
         }

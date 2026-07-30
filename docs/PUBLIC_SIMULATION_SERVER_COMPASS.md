@@ -129,6 +129,8 @@ Implemented in the Public Simulation Server:
 - `php artisan election:public-simulation:verify-vvdat-export /path/to/export.json` independently checks a downloaded export's content hash, unique record hashes, count, and non-zero tally without reading the precinct ledger.
 - Admission issuance observes `ELECTION_PUBLIC_SIMULATION_MAX_ACTIVE_ADMISSIONS` (default `10`) inside a precinct-scoped election lock. The public admission endpoint is also throttled.
 - The public feature suite executes three complete voter admissions, private ballots, prints, deposits, and closeout in one precinct, then proves the neighbouring precinct's VVDAT evidence root is empty.
+- Public voter claim, finalization, private print release, printing, deposit, admission, and closeout now share one precinct-scoped voting gate. Closeout refuses and journals any claimed voter session or pending/printed paper release rather than freezing an incomplete precinct.
+- A browser workflow opens two isolated voter contexts in one public precinct, proves closeout is blocked while both are active, then independently finalizes both private releases without sharing browser drafts or sessions.
 - `election:public-simulation:archive {round}` archives only fully published rounds and preserves every precinct evidence namespace.
 - `election:public-simulation:reset {round}` is the controlled start-fresh operation: it archives a fully published round first, retains all evidence, then creates a new three-precinct lobby. It refuses to replace an unrelated live round.
 - Watcher VVDAT downloads now follow an explicit release policy. `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_ENABLED` enables the export and `ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_MINIMUM_RECORDS` sets the minimum sealed-record count. A withheld export is not linked or downloadable.
@@ -142,7 +144,7 @@ Not yet implemented:
 - Officer-host creation flow, credential-handoff artifact, and configurable public simulation schedules.
 - A separate officer approval ceremony for the VVDAT export; the current policy is configured per environment.
 - Expanded God Mode authorization, classroom replay fixtures, and screen/capture controls.
-- Real concurrent browser/race scenarios, queue/backpressure policy, and abuse controls beyond the current admission capacity/throttle.
+- Queue/backpressure policy and broader abuse controls beyond the current admission capacity/throttle.
 - Public education copy, consent, retention, and deletion policy.
 
 ## Update Rule

@@ -1,5 +1,6 @@
 <?php
 
+use App\Election\Core\ActivityJournal;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\PublicSimulation\PublicVvdatAuditExportVerifier;
@@ -210,6 +211,70 @@ test('a precinct admission capacity is reserved atomically inside the scoped ele
     expect($first['code'])->toMatch('/^[0-9]{4}$/')
         ->and(fn () => app(PublicSimulationAdmissionCapacity::class)->issue(app(AnonymousVoterAuthorization::class)))
         ->toThrow(RuntimeException::class, 'active voter-admission limit');
+});
+
+test('closeout serializes public voter work and refuses unresolved sessions', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
+    $selections = collect($configuration['contests'])
+        ->mapWithKeys(fn (array $contest): array => [
+            $contest['id'] => collect($contest['candidates'])
+                ->take(min(1, (int) $contest['max_selections']))
+                ->pluck('id')
+                ->all(),
+        ])
+        ->all();
+
+    $this->post(route('election.public-simulation.admit', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+    $authorization = session('public_simulation.control_number');
+    $this->post(route('election.public-simulation.voter.claim', [$round, $precinct]), ['code' => $authorization['code']])
+        ->assertRedirect();
+
+    $this->post(route('election.public-simulation.close', [$round, $precinct]), $credentials)
+        ->assertRedirect()
+        ->assertSessionHasErrors('officer_pin');
+    expect($precinct->fresh()->status)->toBe('open');
+
+    $this->post(route('election.public-simulation.voter.finalize', [$round, $precinct]), ['selections' => $selections])
+        ->assertRedirect();
+    $release = session("public_simulation.{$precinct->id}.release");
+    expect($release)->toBeArray();
+
+    $this->post(route('election.public-simulation.close', [$round, $precinct]), $credentials)
+        ->assertRedirect()
+        ->assertSessionHasErrors('officer_pin');
+    expect($precinct->fresh()->status)->toBe('open');
+
+    $this->post(route('election.public-simulation.print.redeem', [$round, $precinct]), ['code' => $release['release_code']])
+        ->assertRedirect();
+    $this->post(route('election.public-simulation.print.print', [$round, $precinct]))->assertRedirect();
+    $this->post(route('election.public-simulation.print.deposit', [$round, $precinct]))->assertRedirect();
+
+    $this->post(route('election.public-simulation.admit', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+    $lateAuthorization = session('public_simulation.control_number');
+
+    $this->post(route('election.public-simulation.close', [$round, $precinct]), $credentials)
+        ->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
+    $this->post(route('election.public-simulation.voter.claim', [$round, $precinct]), ['code' => $lateAuthorization['code']])
+        ->assertRedirect()
+        ->assertSessionHasErrors('code');
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    expect($precinct->fresh()->status)->toBe('results_ready')
+        ->and(app(ElectionStorage::class)->files('device-tabulation-ledger'))->toHaveCount(1)
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('public_simulation.close_blocked_pending_voters');
 });
 
 test('multiple public voters create independent sealed records without crossing precinct evidence roots', function (): void {

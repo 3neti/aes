@@ -161,6 +161,7 @@ function clearDraft(): void {
                                 isAtLimit(contest) &&
                                 !selected(contest.id, candidate.id)
                             "
+                            :data-testid="`candidate-${contest.id}-${candidate.id}`"
                             type="button"
                             @click="toggle(contest, candidate)"
                         >

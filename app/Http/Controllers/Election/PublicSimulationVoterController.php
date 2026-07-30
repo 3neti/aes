@@ -6,6 +6,7 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Printing\BallotPrinter;
 use App\Election\PublicSimulation\PublicSimulationService;
+use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
@@ -41,12 +42,12 @@ final class PublicSimulationVoterController extends Controller
         ]);
     }
 
-    public function claim(ClaimVoterAuthorizationRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations): RedirectResponse
+    public function claim(ClaimVoterAuthorizationRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting): RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
 
         try {
-            $authorization = $authorizations->claim($request->validated('code'));
+            $authorization = $voting->execute(fn (): array => $authorizations->claim($request->validated('code')));
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['code' => $exception->getMessage()]);
         }
@@ -76,13 +77,9 @@ final class PublicSimulationVoterController extends Controller
         ]);
     }
 
-    public function finalize(FinalizePrivateBallotRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PrivateBallotRelease $releases, LifecycleState $lifecycle): RedirectResponse
+    public function finalize(FinalizePrivateBallotRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PrivateBallotRelease $releases, LifecycleState $lifecycle, PublicSimulationVotingGate $voting): RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
-        if ($lifecycle->current() !== Lifecycle::Voting) {
-            throw ValidationException::withMessages(['lifecycle' => 'Voting is no longer open for this precinct.']);
-        }
-
         $authorizationId = $request->session()->get($this->authorizationSessionKey($precinct));
         abort_unless(is_string($authorizationId) && $authorizations->isClaimed($authorizationId), 403);
         $selections = collect($request->validated('selections', []))
@@ -90,8 +87,12 @@ final class PublicSimulationVoterController extends Controller
             ->all();
 
         try {
-            $release = $releases->create($authorizationId, $selections);
-            $authorizations->complete($authorizationId);
+            $release = $voting->execute(function () use ($authorizationId, $authorizations, $releases, $selections): array {
+                $release = $releases->create($authorizationId, $selections);
+                $authorizations->complete($authorizationId);
+
+                return $release;
+            });
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['selections' => $exception->getMessage()]);
         }
@@ -132,12 +133,12 @@ final class PublicSimulationVoterController extends Controller
         ]);
     }
 
-    public function redeem(RedeemPrintReleaseRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases): RedirectResponse
+    public function redeem(RedeemPrintReleaseRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases, PublicSimulationVotingGate $voting): RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
 
         try {
-            $release = $releases->redeem($request->validated('code'));
+            $release = $voting->execute(fn (): array => $releases->redeem($request->validated('code')));
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['code' => $exception->getMessage()]);
         }
@@ -147,12 +148,12 @@ final class PublicSimulationVoterController extends Controller
         return to_route('election.public-simulation.print.station', [$round, $precinct]);
     }
 
-    public function print(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases, BallotPrinter $printer): RedirectResponse
+    public function print(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases, BallotPrinter $printer, PublicSimulationVotingGate $voting): RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
 
         try {
-            $releases->print($this->printReleaseId($request, $precinct), $printer);
+            $voting->execute(fn (): array => $releases->print($this->printReleaseId($request, $precinct), $printer));
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['printer' => $exception->getMessage()]);
         }
@@ -160,12 +161,12 @@ final class PublicSimulationVoterController extends Controller
         return to_route('election.public-simulation.print.station', [$round, $precinct]);
     }
 
-    public function deposit(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, SealedBallotBox $ballotBox): RedirectResponse
+    public function deposit(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, SealedBallotBox $ballotBox, PublicSimulationVotingGate $voting): RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
 
         try {
-            $record = $ballotBox->deposit($this->printReleaseId($request, $precinct));
+            $record = $voting->execute(fn (): array => $ballotBox->deposit($this->printReleaseId($request, $precinct)));
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['deposit' => $exception->getMessage()]);
         }

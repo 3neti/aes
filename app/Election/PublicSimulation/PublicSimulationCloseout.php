@@ -22,6 +22,8 @@ final class PublicSimulationCloseout
         private readonly CountingService $counting,
         private readonly ElectionReturnService $returns,
         private readonly VvdatLedgerFreeze $freeze,
+        private readonly PublicSimulationVotingGate $voting,
+        private readonly PublicSimulationVotingQuiescence $quiescence,
     ) {}
 
     /**
@@ -29,30 +31,33 @@ final class PublicSimulationCloseout
      */
     public function close(SimulationPrecinct $precinct, string $officerCode, string $officerPin): array
     {
-        $this->ceremonies->closePolls($precinct->officer_name);
-        $this->legalEvidence->writeForClosePolls();
-        $freeze = $this->freeze->freeze();
-        $validation = $this->freeze->validation();
+        return $this->voting->execute(function () use ($precinct, $officerCode, $officerPin): array {
+            $this->quiescence->assertReadyForClose();
+            $this->ceremonies->closePolls($precinct->officer_name);
+            $this->legalEvidence->writeForClosePolls();
+            $freeze = $this->freeze->freeze();
+            $validation = $this->freeze->validation();
 
-        if (! $validation['passed']) {
-            throw new \RuntimeException('The VVDAT ledger freeze validation failed: '.implode(' ', $validation['errors']));
-        }
+            if (! $validation['passed']) {
+                throw new \RuntimeException('The VVDAT ledger freeze validation failed: '.implode(' ', $validation['errors']));
+            }
 
-        $this->ceremonies->startCounting();
-        $this->ballotBox->openForCounting($this->counting);
+            $this->ceremonies->startCounting();
+            $this->ballotBox->openForCounting($this->counting);
 
-        $physicalCount = $this->ledger->summary()['recorded_ballots'];
-        $this->reconciliation->recordPhysicalCount($physicalCount, $officerCode, $officerPin);
-        $tally = $this->counting->tally();
-        $this->legalEvidence->writeForCompletion($tally);
-        $this->ceremonies->moveToReturns();
-        $return = $this->returns->generate($tally);
+            $physicalCount = $this->ledger->summary()['recorded_ballots'];
+            $this->reconciliation->recordPhysicalCount($physicalCount, $officerCode, $officerPin);
+            $tally = $this->counting->tally();
+            $this->legalEvidence->writeForCompletion($tally);
+            $this->ceremonies->moveToReturns();
+            $return = $this->returns->generate($tally);
 
-        $precinct->forceFill([
-            'status' => 'results_ready',
-            'closed_at' => now(),
-        ])->save();
+            $precinct->forceFill([
+                'status' => 'results_ready',
+                'closed_at' => now(),
+            ])->save();
 
-        return ['tally' => $tally, 'return' => $return, 'freeze' => $freeze];
+            return ['tally' => $tally, 'return' => $return, 'freeze' => $freeze];
+        });
     }
 }

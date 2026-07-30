@@ -57,6 +57,12 @@ Run only the Counting camera capture workflow:
 vendor/bin/pest tests/Browser/CountingCameraCaptureWorkflowTest.php --compact
 ```
 
+Run the public multi-voter and closeout-race workflow:
+
+```bash
+vendor/bin/pest tests/Browser/PublicSimulationMultiVoterWorkflowTest.php --compact
+```
+
 For local debugging, Pest Browser supports headed and debug modes:
 
 ```bash
@@ -65,6 +71,8 @@ vendor/bin/pest tests/Browser --debug
 ```
 
 Do not run AES feature, browser, or scenario tests in parallel until the election storage reset/test isolation model is improved. The storage-backed evidence files are part of the behavior under test.
+
+The public multi-voter browser test creates two distinct browser contexts. It proves that their cookies and ballot drafts are isolated, closeout refuses two active claimed voters, and each voter can independently produce a private print release. It does not run test processes in parallel.
 
 ## CI Workflow
 

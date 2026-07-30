@@ -4,10 +4,10 @@
 
 ## Implementation Status
 
-- Completed Slice: Public RMA Camera Capture, Discrepancy Recording, and Watcher-Safe Publication
+- Completed Slice: Public Concurrent Voter Gate and Browser Race Coverage
 - Active Program: Public Election Simulation Server
-- Current Slice: Concurrent browser voting and close-versus-finalize race coverage
-- Next Slice: Deterministic multi-voter concurrent scenario, queue/backpressure policy, and browser race assertions
+- Current Slice: Queue/backpressure policy and contention reporting
+- Next Slice: Deterministic multi-voter contention scenario, queue/backpressure policy, and broader public abuse controls
 - Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
 
 ## Domains, Waves, and Vertical Slices
@@ -724,14 +724,15 @@ Completed:
 - public three-precinct simulation lobby with isolated evidence roots, Device Tabulation with Paper Audit closeout, sealed VVDAT freeze, tally/ER watcher publication, policy-controlled anonymized VVDAT export, and a non-destructive archive/reset flow
 - public precinct Random Manual Audit room: deterministic sample selection, browser-camera or scanner QR comparison, dual officer approval or written discrepancy, reconciliation, detailed officer evidence, and redacted watcher summary without mutation of official result artifacts
 - deterministic three-voter public precinct exercise that proves repeated admission, private vote, print/deposit, device closeout, tally, and neighbouring-precinct storage isolation
+- shared public voting gate that blocks closeout on unresolved voter/print work, plus a two-browser workflow proving isolated private voter sessions and closeout refusal while voters are active
 
 Next:
 
 Exercise five and ten independent voter flows through verified evidence
 bundles, including close-versus-finalize races and backpressure behaviour.
-Then exercise real concurrent browser voting and close-versus-finalize races,
-define queue/backpressure behaviour, and package the results into the offline
-COMELEC Review Kit.
+Then define queue/backpressure behaviour, add contention reporting and broader
+public abuse controls, and package the results into the offline COMELEC Review
+Kit.
 
 ---
 
