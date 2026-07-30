@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
 use App\Election\Printing\Documents\ElectionReturnPdf;
+use App\Election\Printing\PrintFormArtifactService;
 use App\Election\Support\ElectionStorage;
 
 final class ElectionReturnService
@@ -15,6 +16,7 @@ final class ElectionReturnService
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
         private readonly ElectionReturnPdf $pdf,
+        private readonly PrintFormArtifactService $forms,
         private readonly BallotConfigurationLabels $labels,
         private readonly ElectionReturnLegalEvidenceService $legalEvidence,
     ) {}
@@ -46,6 +48,7 @@ final class ElectionReturnService
             "returns/{$return['precinct_id']}-return.pdf",
             $this->pdf->render($configuration, $return),
         );
+        $this->forms->writeElectionReturn($configuration, $return);
         $this->journal->record('return.generated', [
             'precinct_id' => $return['precinct_id'],
             'return_hash' => $return['return_hash'],

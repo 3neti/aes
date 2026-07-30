@@ -14,8 +14,9 @@ use App\Election\Devices\SimulatedPrinterHealthCheck;
 use App\Election\Devices\SimulatedScannerHealthCheck;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\CupsBallotPrinter;
-use App\Election\Printing\Documents\OfficialBallotPdf;
 use App\Election\Printing\FileBallotPrinter;
+use App\Election\Printing\PrintFormArtifactService;
+use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\Scanning\BallotScanner;
 use App\Election\Scanning\CameraImageScanner;
 use App\Election\Scanning\HandheldPayloadScanner;
@@ -52,7 +53,8 @@ class AppServiceProvider extends ServiceProvider
                     new FileBallotPrinter(
                         $app->make(ElectionStorage::class),
                         $app->make(ActivityJournal::class),
-                        $app->make(OfficialBallotPdf::class),
+                        $app->make(PrintFormArtifactService::class),
+                        $app->make(PrintFormProfileResolver::class),
                         $app->make(BallotConfigurationLabels::class),
                         $app->make(PaperBallotLedger::class),
                     ),

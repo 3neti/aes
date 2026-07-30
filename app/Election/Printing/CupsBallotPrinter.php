@@ -22,7 +22,7 @@ final class CupsBallotPrinter implements BallotPrinter
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    public function print(array $payload): array
+    public function print(array $payload, ?PrintFormProfile $profile = null): array
     {
         if ($this->printerName === '') {
             throw new RuntimeException('CUPS printer name is not configured.');
@@ -30,8 +30,8 @@ final class CupsBallotPrinter implements BallotPrinter
 
         $this->ensureCertified();
 
-        $job = $this->files->print($payload);
-        $artifactPath = $job['pdf_artifact_path'] ?? $job['artifact_path'] ?? null;
+        $job = $this->files->print($payload, $profile);
+        $artifactPath = $job['selected_pdf_artifact_path'] ?? $job['pdf_artifact_path'] ?? $job['artifact_path'] ?? null;
 
         if (! is_string($artifactPath) || $artifactPath === '') {
             throw new RuntimeException('No printable artifact was generated for CUPS submission.');

@@ -79,6 +79,10 @@ return [
     'pdf' => [
         'ghostscript_binary' => env('ELECTION_PDF_GHOSTSCRIPT_BINARY', 'gs'),
     ],
+    'print_forms' => [
+        'default_profile' => env('ELECTION_PRINT_FORM_PROFILE', 'a4'),
+        'available_profiles' => ['a4', 'thermal-80', 'thermal-58'],
+    ],
     'clc' => [
         'source_path' => env('ELECTION_CLC_SOURCE_PATH', resource_path('election/clc')),
         'profile' => env('ELECTION_CLC_PROFILE', 'comelec-clc-2025-nle'),

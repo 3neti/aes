@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
 use App\Election\Printing\Documents\TallySheetPdf;
+use App\Election\Printing\PrintFormArtifactService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\DeviceTabulationLedger;
 use App\Election\Tabulation\TabulationProfileResolver;
@@ -21,6 +22,7 @@ final class CountingService
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
         private readonly TallySheetPdf $pdf,
+        private readonly PrintFormArtifactService $forms,
         private readonly BallotConfigurationLabels $labels,
         private readonly PaperBallotLedger $paperBallots,
         private readonly TabulationProfileResolver $tabulation,
@@ -253,6 +255,7 @@ final class CountingService
             'runtime/tally-sheet.pdf',
             $this->pdf->render($configuration, $tally),
         );
+        $this->forms->writeTally($configuration, $tally);
     }
 
     /**

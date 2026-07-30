@@ -6,6 +6,7 @@ use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\Documents\ElectionReturnPdf;
 use App\Election\Printing\Documents\OfficialBallotPdf;
 use App\Election\Printing\Documents\TallySheetPdf;
+use App\Election\Printing\PrintFormProfile;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
@@ -42,6 +43,33 @@ test('printed ballot embeds its qr image and every voter selection', function ()
 
     $qr->clear();
     $qr->destroy();
+});
+
+test('print-form profiles render A4 and thermal evidence from the same sealed records', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana', 'council-cora'],
+    ], 'thermal-print-form-ballot');
+    $job = app(BallotPrinter::class)->print($payload, PrintFormProfile::Thermal80);
+    $storage = app(ElectionStorage::class);
+
+    expect($job['print_form_profile'])->toBe('thermal-80')
+        ->and($job['selected_pdf_artifact_path'])->toEndWith('thermal-80.pdf')
+        ->and(file_get_contents($job['selected_pdf_artifact_path']))->toContain('/MediaBox [0 0 226.77 792]')
+        ->and($job['form_artifacts'])->toHaveKeys(['a4', 'thermal-80', 'thermal-58'])
+        ->and($storage->readJson('print-forms/ballots/thermal-print-form-ballot/manifest.json')['source_hash'])
+        ->toBe($payload['payload_hash']);
+
+    app(CountingService::class)->accept($payload['qr_payload']);
+    $tally = app(CountingService::class)->tally();
+    $return = app(ElectionReturnService::class)->generate($tally);
+
+    expect($storage->readJson('print-forms/tally-sheet/manifest.json')['source_hash'])->toBe($tally['tally_hash'])
+        ->and($storage->readJson('print-forms/election-return/0421-A/manifest.json')['source_hash'])->toBe($return['return_hash'])
+        ->and($storage->readText('print-forms/tally-sheet/thermal-58.pdf'))->toContain('/MediaBox [0 0 164.41 792]')
+        ->and($storage->readText('print-forms/election-return/0421-A/thermal-80.pdf'))->toContain('Roll segment 1 of');
 });
 
 test('printed ballot reserves space beside long contest titles for selection limits', function (): void {

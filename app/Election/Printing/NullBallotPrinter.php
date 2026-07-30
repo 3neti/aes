@@ -4,7 +4,7 @@ namespace App\Election\Printing;
 
 final class NullBallotPrinter implements BallotPrinter
 {
-    public function print(array $payload): array
+    public function print(array $payload, ?PrintFormProfile $profile = null): array
     {
         return [
             'schema_version' => 'print-job-1',
@@ -13,6 +13,7 @@ final class NullBallotPrinter implements BallotPrinter
             'printer' => 'null',
             'status' => 'printed',
             'artifact_path' => null,
+            'print_form_profile' => ($profile ?? PrintFormProfile::A4)->value,
         ];
     }
 }
