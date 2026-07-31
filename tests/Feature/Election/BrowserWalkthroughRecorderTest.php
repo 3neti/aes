@@ -340,3 +340,12 @@ test('browser walkthrough command rejects remote targets and invalid limits', fu
 
     Process::assertNothingRan();
 });
+
+test('browser walkthrough recorder follows the fixed booth print station labels', function (): void {
+    $recorder = file_get_contents(base_path('scripts/election-browser-walkthrough.mjs'));
+    $printStation = file_get_contents(resource_path('js/pages/Election/PrintStation.vue'));
+
+    expect($printStation)->toContain('Claim paper ballot')
+        ->and($recorder)->toContain("'Claim paper ballot'")
+        ->and($recorder)->not->toContain("'Prepare paper ballot'");
+});

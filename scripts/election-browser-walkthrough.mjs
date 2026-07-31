@@ -377,7 +377,7 @@ async function finalizeVoterBallot(ballotNumber) {
 async function printAndDepositPreparedBallot(release) {
     await openPath('/election/print-station');
     await page.locator('input[name="code"]').fill(release.release_code);
-    await postButton('Prepare paper ballot', '/election/print-station/redeem');
+    await postButton('Claim paper ballot', '/election/print-station/redeem');
     await postButton('Print paper ballot', '/election/print-station/print');
     walkthroughStatistics.ballots_printed++;
     await postButton(
@@ -577,7 +577,7 @@ async function printAndDepositPublicSimulationBallot(release) {
     await openPath(publicSimulationPath('/print'));
     await page.locator('input[name="code"]').fill(release.release_code);
     await postButton(
-        'Prepare paper ballot',
+        'Claim paper ballot',
         publicSimulationPath('/print/redeem'),
     );
     await postButton(
