@@ -122,7 +122,7 @@ Implemented in the Public Simulation Server:
 - A precinct officer opens polls, issues anonymous four-digit control numbers, and closes the precinct with the assigned credentials.
 - A voter enters through a common precinct QR/link, claims a control number, marks the existing POP/CLC ballot on a fixed booth tablet, confirms selections, receives a configurable 4-6 digit print PIN, and never sees any tally.
 - The central private print station redeems the one-use PIN, prints with the existing adapter, and deposits a sealed ballot. Deposit records one VVDAT ledger entry.
-- The officer precinct screen and God Mode now show a privacy-safe booth-to-paper handoff monitor: active booths, pending print PINs, claimed PINs, printed-but-undeposited ballots, closeout readiness, and labeled timeline events.
+- The officer precinct screen and God Mode now show a privacy-safe, auto-refreshing booth-to-paper handoff monitor: active booths, pending print PINs, claimed PINs, printed-but-undeposited ballots, closeout readiness, and labeled timeline events.
 - Close records physical-ballot reconciliation, tallies the sealed VVDAT ledger, generates the existing tally and Election Return PDFs, and exposes a human-readable watcher view with download links.
 - Close writes `06-counting-and-tally/vvdat-ledger-freeze.json`, binding the exact ledger record count and root hash before tabulation. The ledger rejects any later deposit.
 - Watcher publication is a distinct officer action. It writes `07-election-return/publication-manifest.json` with hashes for the frozen ledger, tally, PDFs, and Election Return; no watcher result is available before it exists.

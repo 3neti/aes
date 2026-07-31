@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePoll } from '@inertiajs/vue3';
 
 defineProps<{
     round: {
@@ -42,6 +42,16 @@ defineProps<{
     };
     privacyNotice: string;
 }>();
+
+usePoll(
+    5000,
+    {
+        only: ['round'],
+    },
+    {
+        keepAlive: true,
+    },
+);
 </script>
 
 <template>
@@ -57,6 +67,9 @@ defineProps<{
                 Simulation facilitator
             </p>
             <h1 class="mt-1 text-3xl font-bold">{{ round.name }}</h1>
+            <p class="mt-2 text-sm font-bold text-emerald-300">
+                Live refresh every 5 seconds
+            </p>
             <p
                 class="mt-3 max-w-4xl border-l-4 border-yellow-300 bg-stone-900 p-4 text-sm text-stone-200"
             >

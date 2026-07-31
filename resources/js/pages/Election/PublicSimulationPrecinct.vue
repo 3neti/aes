@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Form, Head, Link, usePoll } from '@inertiajs/vue3';
 
 defineProps<{
     round: { code: string; name: string };
@@ -101,6 +101,24 @@ defineProps<{
     officerFeedback?: string | null;
     controlNumber?: { code: string; expires_at: string } | null;
 }>();
+
+usePoll(
+    5000,
+    {
+        only: [
+            'precinct',
+            'admission',
+            'contention',
+            'operationalObservations',
+            'operationsBoard',
+            'officerFeedback',
+            'controlNumber',
+        ],
+    },
+    {
+        keepAlive: true,
+    },
+);
 </script>
 
 <template>
@@ -141,6 +159,11 @@ defineProps<{
                     "
                     >{{ precinct.status }}</span
                 >
+                <span
+                    class="border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-900"
+                >
+                    Live refresh every 5 seconds
+                </span>
             </div>
         </header>
         <div

@@ -1020,3 +1020,28 @@ Verification:
 Known limitation:
 
 - The board is request/refresh based. A later presentation-polish slice can add lightweight polling or live refresh for large public demonstrations.
+
+## Public Simulation Live Refresh Slice
+
+Completed:
+
+- The officer precinct screen now uses Inertia polling to partial-reload precinct status, admission pressure, contention counts, observations, the handoff monitor, officer feedback, and the latest control-number handoff every five seconds.
+- God Mode now uses Inertia polling to partial-reload round precinct summaries, including every precinct's privacy-safe handoff monitor, every five seconds.
+- Both pages display a visible “Live refresh every 5 seconds” indicator for presenters.
+- The handoff monitor remains privacy-safe: polling reloads aggregate props only, not voter selections, raw PINs, control numbers in God Mode, QR payloads, paper serials, or event payloads.
+- The public simulation compass now describes the handoff monitor as auto-refreshing.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/Election/PublicSimulationTest.php --filter="officer and god mode screens show"`: 1 test, 107 assertions passed, including Inertia partial reload assertions for `operationsBoard` and `round`.
+- `vendor/bin/pint --dirty --format agent`: passed.
+- `php artisan test --compact tests/Feature/Election/PublicSimulationTest.php`: 20 tests, 617 assertions passed.
+- `npm run types:check`: passed.
+- `npm run lint:check`: passed.
+- `npm run format:check`: passed.
+- `npm run build`: passed.
+- `vendor/bin/pest tests/Browser/PublicSimulationMultiVoterWorkflowTest.php`: 6 tests, 56 assertions passed.
+
+Known limitation:
+
+- Polling is intentionally simple and request-based. If the public demo grows to many simultaneous observers, evaluate a broadcast channel or cached JSON endpoint for lower server load.

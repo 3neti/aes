@@ -348,6 +348,10 @@ test('officer and god mode screens show the fixed booth print PIN handoff withou
             ->where('operationsBoard.closeout.next_required_action', 'Wait for every voter booth to finalize or reset.')
             ->missing('operationsBoard.control_number')
             ->missing('operationsBoard.release_code')
+            ->reloadOnly('operationsBoard', fn (Assert $reload) => $reload
+                ->has('operationsBoard')
+                ->missing('precinct')
+            )
         );
 
     app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
@@ -373,6 +377,10 @@ test('officer and god mode screens show the fixed booth print PIN handoff withou
             ->where('round.precincts.0.operations_board.closeout.next_required_action', 'Send voters with print PINs to the central print station.')
             ->where('round.precincts.0.operations_board.timeline.0.label', 'Officer issued a voter control number')
             ->missing('round.precincts.0.operations_board.timeline.0.payload')
+            ->reloadOnly('round', fn (Assert $reload) => $reload
+                ->has('round.precincts.0.operations_board')
+                ->missing('privacyNotice')
+            )
         );
 
     $this->post(route('election.public-simulation.print.redeem', [$round, $precinct]), ['code' => $release['release_code']])
