@@ -11,6 +11,32 @@ defineProps<{
             status: string;
             deposited_ballots: number;
             vvdat_records: number;
+            operations_board: {
+                booths: {
+                    active: number;
+                    completed: number;
+                    issued_unclaimed: number;
+                    expired: number;
+                };
+                print_station: {
+                    pending_pins: number;
+                    redeemed_pins: number;
+                    printed_awaiting_deposit: number;
+                    deposited: number;
+                    expired: number;
+                };
+                closeout: {
+                    unresolved_voter_work: number;
+                    can_close: boolean;
+                    next_required_action: string;
+                };
+                timeline: Array<{
+                    event_type: string;
+                    occurred_at: string;
+                    label: string;
+                }>;
+                privacy_notice: string;
+            };
             journal: Array<{ event_type: string; occurred_at: string }>;
         }>;
     };
@@ -72,14 +98,73 @@ defineProps<{
                             </dd>
                         </div>
                     </dl>
+                    <section
+                        class="mt-5 border border-stone-700 bg-stone-950 p-4"
+                    >
+                        <p class="text-xs font-bold text-yellow-300">
+                            Fixed booth handoff
+                        </p>
+                        <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                            <div class="bg-stone-800 p-3">
+                                <dt class="text-stone-400">Active booths</dt>
+                                <dd class="mt-1 text-2xl font-bold">
+                                    {{
+                                        precinct.operations_board.booths.active
+                                    }}
+                                </dd>
+                            </div>
+                            <div class="bg-stone-800 p-3">
+                                <dt class="text-stone-400">Pending PINs</dt>
+                                <dd class="mt-1 text-2xl font-bold">
+                                    {{
+                                        precinct.operations_board.print_station
+                                            .pending_pins
+                                    }}
+                                </dd>
+                            </div>
+                            <div class="bg-stone-800 p-3">
+                                <dt class="text-stone-400">PINs claimed</dt>
+                                <dd class="mt-1 text-2xl font-bold">
+                                    {{
+                                        precinct.operations_board.print_station
+                                            .redeemed_pins
+                                    }}
+                                </dd>
+                            </div>
+                            <div class="bg-stone-800 p-3">
+                                <dt class="text-stone-400">
+                                    Printed, not deposited
+                                </dt>
+                                <dd class="mt-1 text-2xl font-bold">
+                                    {{
+                                        precinct.operations_board.print_station
+                                            .printed_awaiting_deposit
+                                    }}
+                                </dd>
+                            </div>
+                        </dl>
+                        <p
+                            class="mt-3 border-l-4 p-3 text-sm"
+                            :class="
+                                precinct.operations_board.closeout.can_close
+                                    ? 'border-emerald-400 bg-emerald-950 text-emerald-100'
+                                    : 'border-yellow-300 bg-yellow-950 text-yellow-100'
+                            "
+                        >
+                            {{
+                                precinct.operations_board.closeout
+                                    .next_required_action
+                            }}
+                        </p>
+                    </section>
                     <ol
                         class="mt-5 space-y-3 border-t border-stone-700 pt-4 text-sm"
                     >
                         <li
-                            v-for="event in precinct.journal"
+                            v-for="event in precinct.operations_board.timeline"
                             :key="`${event.occurred_at}-${event.event_type}`"
                         >
-                            <strong class="block">{{ event.event_type }}</strong
+                            <strong class="block">{{ event.label }}</strong
                             ><span class="text-stone-400">{{
                                 event.occurred_at
                             }}</span>

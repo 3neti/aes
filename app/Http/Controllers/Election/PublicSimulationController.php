@@ -9,6 +9,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationCloseout;
 use App\Election\PublicSimulation\PublicSimulationContentionReport;
 use App\Election\PublicSimulation\PublicSimulationOperationalObservation;
+use App\Election\PublicSimulation\PublicSimulationOperationsBoard;
 use App\Election\PublicSimulation\PublicSimulationPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
@@ -47,6 +48,7 @@ final class PublicSimulationController extends Controller
         PublicSimulationAdmissionQueue $queue,
         PublicSimulationContentionReport $contentionReport,
         PublicSimulationOperationalObservation $observations,
+        PublicSimulationOperationsBoard $operationsBoard,
         Request $request,
     ): Response {
         $this->ensurePrecinctInRound($round, $precinct);
@@ -61,6 +63,7 @@ final class PublicSimulationController extends Controller
             ],
             'contention' => $contentionReport->summary(),
             'operationalObservations' => $observations->summary(),
+            'operationsBoard' => $operationsBoard->summary(),
             'commonVoterUrl' => route('election.public-simulation.voter.show', [$round, $precinct]),
             'commonVoterQr' => 'data:image/png;base64,'.base64_encode($qrCode->renderPng(route('election.public-simulation.voter.show', [$round, $precinct]))),
             'actions' => [

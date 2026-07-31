@@ -57,6 +57,32 @@ defineProps<{
         needs_attention: number;
         blocking: number;
     };
+    operationsBoard: {
+        booths: {
+            active: number;
+            completed: number;
+            issued_unclaimed: number;
+            expired: number;
+        };
+        print_station: {
+            pending_pins: number;
+            redeemed_pins: number;
+            printed_awaiting_deposit: number;
+            deposited: number;
+            expired: number;
+        };
+        closeout: {
+            unresolved_voter_work: number;
+            can_close: boolean;
+            next_required_action: string;
+        };
+        timeline: Array<{
+            event_type: string;
+            occurred_at: string;
+            label: string;
+        }>;
+        privacy_notice: string;
+    };
     commonVoterUrl: string;
     commonVoterQr: string;
     actions: {
@@ -146,6 +172,90 @@ defineProps<{
                             >Open watcher view</a
                         >
                     </div>
+                </section>
+                <section class="border border-stone-300 bg-white p-5">
+                    <p class="text-sm font-bold text-blue-800">
+                        Fixed booth and central print station
+                    </p>
+                    <h2 class="mt-1 text-xl font-bold">
+                        Booth-to-paper handoff monitor
+                    </h2>
+                    <p class="mt-2 text-sm text-stone-700">
+                        {{ operationsBoard.privacy_notice }}
+                    </p>
+                    <dl class="mt-5 grid gap-3 sm:grid-cols-4">
+                        <div class="border border-stone-200 bg-stone-50 p-3">
+                            <dt class="text-xs font-bold text-stone-600">
+                                Active booths
+                            </dt>
+                            <dd class="mt-1 text-3xl font-bold">
+                                {{ operationsBoard.booths.active }}
+                            </dd>
+                        </div>
+                        <div class="border border-stone-200 bg-stone-50 p-3">
+                            <dt class="text-xs font-bold text-stone-600">
+                                Pending print PINs
+                            </dt>
+                            <dd class="mt-1 text-3xl font-bold">
+                                {{ operationsBoard.print_station.pending_pins }}
+                            </dd>
+                        </div>
+                        <div class="border border-stone-200 bg-stone-50 p-3">
+                            <dt class="text-xs font-bold text-stone-600">
+                                Claimed at print station
+                            </dt>
+                            <dd class="mt-1 text-3xl font-bold">
+                                {{
+                                    operationsBoard.print_station.redeemed_pins
+                                }}
+                            </dd>
+                        </div>
+                        <div class="border border-stone-200 bg-stone-50 p-3">
+                            <dt class="text-xs font-bold text-stone-600">
+                                Printed, not deposited
+                            </dt>
+                            <dd class="mt-1 text-3xl font-bold">
+                                {{
+                                    operationsBoard.print_station
+                                        .printed_awaiting_deposit
+                                }}
+                            </dd>
+                        </div>
+                    </dl>
+                    <div
+                        class="mt-4 border-l-4 p-4"
+                        :class="
+                            operationsBoard.closeout.can_close
+                                ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
+                                : 'border-amber-500 bg-amber-50 text-amber-950'
+                        "
+                    >
+                        <p class="text-sm font-bold">
+                            {{
+                                operationsBoard.closeout.can_close
+                                    ? 'Ready for closeout'
+                                    : `${operationsBoard.closeout.unresolved_voter_work} unresolved handoff item${operationsBoard.closeout.unresolved_voter_work === 1 ? '' : 's'}`
+                            }}
+                        </p>
+                        <p class="mt-1 text-sm">
+                            {{ operationsBoard.closeout.next_required_action }}
+                        </p>
+                    </div>
+                    <ol
+                        v-if="operationsBoard.timeline.length"
+                        class="mt-5 grid gap-2 border-t border-stone-200 pt-4 text-sm"
+                    >
+                        <li
+                            v-for="event in operationsBoard.timeline"
+                            :key="`${event.occurred_at}-${event.event_type}`"
+                            class="grid gap-1 border-l-2 border-stone-300 pl-3"
+                        >
+                            <strong>{{ event.label }}</strong>
+                            <span class="text-stone-600">{{
+                                event.occurred_at
+                            }}</span>
+                        </li>
+                    </ol>
                 </section>
                 <section
                     v-if="precinct.status === 'open'"

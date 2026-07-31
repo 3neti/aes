@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\PublicSimulation\PublicSimulationOperationsBoard;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
@@ -12,7 +13,7 @@ use Inertia\Response;
 
 final class PublicSimulationGodModeController extends Controller
 {
-    public function __invoke(SimulationRound $round, PublicSimulationService $simulations, ElectionStorage $storage): Response
+    public function __invoke(SimulationRound $round, PublicSimulationService $simulations, ElectionStorage $storage, PublicSimulationOperationsBoard $operationsBoard): Response
     {
         abort_unless(config('election.public_simulation.god_mode.enabled', false), 404);
 
@@ -22,7 +23,7 @@ final class PublicSimulationGodModeController extends Controller
             'round' => [
                 'code' => $round->code,
                 'name' => $round->name,
-                'precincts' => $round->precincts->map(function (SimulationPrecinct $precinct) use ($simulations, $storage): array {
+                'precincts' => $round->precincts->map(function (SimulationPrecinct $precinct) use ($simulations, $storage, $operationsBoard): array {
                     $simulations->applyScope($precinct);
                     $journal = collect(explode(PHP_EOL, trim($storage->readText('journals/activity.jsonl'))))
                         ->filter()
@@ -44,6 +45,7 @@ final class PublicSimulationGodModeController extends Controller
                         'status' => $precinct->status,
                         'deposited_ballots' => count($storage->files('counting/sealed')),
                         'vvdat_records' => count($storage->files('device-tabulation-ledger')),
+                        'operations_board' => $operationsBoard->summary(),
                         'journal' => $journal,
                     ];
                 })->all(),

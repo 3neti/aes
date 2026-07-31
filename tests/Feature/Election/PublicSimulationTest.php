@@ -323,6 +323,91 @@ test('closeout serializes public voter work and refuses unresolved sessions', fu
         ->toContain('public_simulation.close_blocked_pending_voters');
 });
 
+test('officer and god mode screens show the fixed booth print PIN handoff without private data', function (): void {
+    config()->set('election.public_simulation.god_mode.enabled', true);
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)->assertRedirect();
+    $this->post(route('election.public-simulation.admit', [$round, $precinct]), $credentials)->assertRedirect();
+    $authorization = session('public_simulation.control_number');
+
+    $this->post(route('election.public-simulation.voter.claim', [$round, $precinct]), ['code' => $authorization['code']])
+        ->assertRedirect();
+
+    $this->get(route('election.public-simulation.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('operationsBoard.booths.active', 1)
+            ->where('operationsBoard.print_station.pending_pins', 0)
+            ->where('operationsBoard.closeout.can_close', false)
+            ->where('operationsBoard.closeout.next_required_action', 'Wait for every voter booth to finalize or reset.')
+            ->missing('operationsBoard.control_number')
+            ->missing('operationsBoard.release_code')
+        );
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
+    $selections = collect($configuration['contests'])
+        ->mapWithKeys(fn (array $contest): array => [
+            $contest['id'] => collect($contest['candidates'])
+                ->take(min(1, (int) $contest['max_selections']))
+                ->pluck('id')
+                ->all(),
+        ])
+        ->all();
+
+    $this->post(route('election.public-simulation.voter.finalize', [$round, $precinct]), ['selections' => $selections])
+        ->assertRedirect();
+    $release = session("public_simulation.{$precinct->id}.release");
+
+    $this->get(route('election.public-simulation.god-mode', $round))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('round.precincts.0.operations_board.booths.active', 0)
+            ->where('round.precincts.0.operations_board.print_station.pending_pins', 1)
+            ->where('round.precincts.0.operations_board.closeout.next_required_action', 'Send voters with print PINs to the central print station.')
+            ->where('round.precincts.0.operations_board.timeline.0.label', 'Officer issued a voter control number')
+            ->missing('round.precincts.0.operations_board.timeline.0.payload')
+        );
+
+    $this->post(route('election.public-simulation.print.redeem', [$round, $precinct]), ['code' => $release['release_code']])
+        ->assertRedirect();
+
+    $this->get(route('election.public-simulation.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('operationsBoard.print_station.pending_pins', 0)
+            ->where('operationsBoard.print_station.redeemed_pins', 1)
+            ->where('operationsBoard.closeout.next_required_action', 'Print the claimed paper ballots at the central print station.')
+        );
+
+    $this->post(route('election.public-simulation.print.print', [$round, $precinct]))->assertRedirect();
+
+    $this->get(route('election.public-simulation.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('operationsBoard.print_station.redeemed_pins', 0)
+            ->where('operationsBoard.print_station.printed_awaiting_deposit', 1)
+            ->where('operationsBoard.closeout.next_required_action', 'Verify and deposit every printed paper ballot.')
+        );
+
+    $this->post(route('election.public-simulation.print.deposit', [$round, $precinct]))->assertRedirect();
+
+    $this->get(route('election.public-simulation.show', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('operationsBoard.print_station.printed_awaiting_deposit', 0)
+            ->where('operationsBoard.print_station.deposited', 1)
+            ->where('operationsBoard.closeout.can_close', true)
+            ->where('operationsBoard.closeout.next_required_action', 'No unresolved voter work. The officer may close polls when ready.')
+        );
+});
+
 test('an officer contention report preserves only aggregate public simulation pressure', function (): void {
     config()->set('election.public_simulation.maximum_active_admissions', 10);
     config()->set('election.public_simulation.admission_queue.maximum_waiting_voters', 25);

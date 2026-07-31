@@ -994,3 +994,29 @@ Verification:
 Known limitation:
 
 - The PIN is currently typed at the print station or encoded in the existing QR. A later hardware rehearsal should validate scanner ergonomics, slip handling, booth shielding, and whether 4, 5, or 6 digits is operationally best.
+
+## Public Simulation Handoff Presentation Slice
+
+Completed:
+
+- Added a privacy-safe `PublicSimulationOperationsBoard` presenter for the game-server-style public simulation.
+- The presenter summarizes active booth tablets, completed booth sessions, issued-but-unclaimed control numbers, pending print PINs, PINs claimed at the central print station, printed-but-undeposited paper ballots, deposited paper ballots, closeout readiness, and the next required action.
+- The officer precinct page now shows a “Booth-to-paper handoff monitor” so demonstrators can explain the fixed classroom-chair booth, print PIN handoff, central print station, and closeout blocker without exposing voter selections.
+- God Mode now shows the same handoff monitor per precinct with labeled timeline events such as control-number issuance, booth claim, print PIN generation, PIN claim, ballot printing, and ballot deposit.
+- The board intentionally excludes voter identity, control numbers, raw PINs, ballot selections, paper serials, QR payloads, and event payloads.
+- The public simulation compass now describes the officer/God Mode handoff monitor as part of the game-server presentation model.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/Election/PublicSimulationTest.php --filter="officer and god mode screens show"`: 1 test, 83 assertions passed.
+- `vendor/bin/pint --dirty --format agent`: passed.
+- `php artisan test --compact tests/Feature/Election/PublicSimulationTest.php`: 20 tests, 593 assertions passed.
+- `npm run types:check`: passed.
+- `npm run lint:check`: passed.
+- `npm run format:check`: passed.
+- `npm run build`: passed.
+- `vendor/bin/pest tests/Browser/PublicSimulationMultiVoterWorkflowTest.php`: 6 tests, 56 assertions passed.
+
+Known limitation:
+
+- The board is request/refresh based. A later presentation-polish slice can add lightweight polling or live refresh for large public demonstrations.
