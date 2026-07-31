@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Core\ActivityJournal;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
@@ -83,6 +84,25 @@ final class VoterBallotController extends Controller
 
         return Inertia::render('Election/VoterComplete', [
             'release' => $release,
+            'resetAction' => route('election.voter.reset'),
         ]);
+    }
+
+    public function reset(Request $request, ActivityJournal $journal): RedirectResponse
+    {
+        $release = $request->session()->get('election.voter_print_release');
+
+        $journal->record('voting.booth.reset', [
+            'release_id' => is_array($release) ? ($release['release_id'] ?? null) : null,
+            'reason' => 'next-voter',
+            'pending_print_authorization_preserved' => true,
+        ]);
+
+        $request->session()->forget([
+            'election.voter_authorization_id',
+            'election.voter_print_release',
+        ]);
+
+        return redirect()->route('election.voter');
     }
 }

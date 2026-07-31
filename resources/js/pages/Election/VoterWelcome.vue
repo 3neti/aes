@@ -52,29 +52,88 @@ const reviewRoom = computed(
                 class="mt-6 border border-blue-200 bg-blue-50 p-4 text-left"
             >
                 <template v-if="admissionQueue.status === 'paused'">
-                    <p class="font-bold text-blue-950">Admission line temporarily paused</p>
-                    <p class="mt-1 text-sm text-blue-950">The Election Officer has temporarily paused new waiting tickets. A previously issued control number remains valid.</p>
+                    <p class="font-bold text-blue-950">
+                        Admission line temporarily paused
+                    </p>
+                    <p class="mt-1 text-sm text-blue-950">
+                        The Election Officer has temporarily paused new waiting
+                        tickets. A previously issued control number remains
+                        valid.
+                    </p>
                 </template>
-                <template v-else-if="['not_joined', 'expired', 'missing'].includes(admissionQueue.status)">
-                    <p class="font-bold text-blue-950">Need to wait for admission?</p>
-                    <p class="mt-1 text-sm text-blue-950">Take an anonymous waiting ticket. The Election Officer still verifies and admits voters in person before issuing a control number.</p>
-                    <Form :action="joinQueueAction" method="post" #default="{ errors, processing }" class="mt-3">
-                        <button class="min-h-11 bg-blue-800 px-4 font-bold text-white disabled:opacity-50" type="submit" :disabled="processing">{{ processing ? 'Joining...' : 'Take waiting ticket' }}</button>
-                        <p v-if="errors.queue" class="mt-2 font-bold text-red-700">{{ errors.queue }}</p>
+                <template
+                    v-else-if="
+                        ['not_joined', 'expired', 'missing'].includes(
+                            admissionQueue.status,
+                        )
+                    "
+                >
+                    <p class="font-bold text-blue-950">
+                        Need to wait for admission?
+                    </p>
+                    <p class="mt-1 text-sm text-blue-950">
+                        Take an anonymous waiting ticket. The Election Officer
+                        still verifies and admits voters in person before
+                        issuing a control number.
+                    </p>
+                    <Form
+                        :action="joinQueueAction"
+                        method="post"
+                        #default="{ errors, processing }"
+                        class="mt-3"
+                    >
+                        <button
+                            class="min-h-11 bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{
+                                processing
+                                    ? 'Joining...'
+                                    : 'Take waiting ticket'
+                            }}
+                        </button>
+                        <p
+                            v-if="errors.queue"
+                            class="mt-2 font-bold text-red-700"
+                        >
+                            {{ errors.queue }}
+                        </p>
                     </Form>
                 </template>
                 <template v-else-if="admissionQueue.status === 'waiting'">
-                    <p class="font-bold text-blue-950">Waiting ticket {{ admissionQueue.ticket_number }}</p>
-                    <p class="mt-1 text-sm text-blue-950">{{ admissionQueue.position === 1 ? 'You are next for Election Officer admission.' : `Position ${admissionQueue.position} in the waiting line.` }} Keep this tablet with you and wait for the officer's instruction.</p>
+                    <p class="font-bold text-blue-950">
+                        Waiting ticket {{ admissionQueue.ticket_number }}
+                    </p>
+                    <p class="mt-1 text-sm text-blue-950">
+                        {{
+                            admissionQueue.position === 1
+                                ? 'You are next for Election Officer admission.'
+                                : `Position ${admissionQueue.position} in the waiting line.`
+                        }}
+                        Keep this tablet with you and wait for the officer's
+                        instruction.
+                    </p>
                 </template>
                 <template v-else-if="admissionQueue.status === 'released'">
-                    <p class="font-bold text-emerald-900">Waiting ticket {{ admissionQueue.ticket_number }} has been released.</p>
-                    <p class="mt-1 text-sm text-emerald-900">Present yourself to the Election Officer for the four-digit control number. This page never displays the control number.</p>
+                    <p class="font-bold text-emerald-900">
+                        Waiting ticket {{ admissionQueue.ticket_number }} has
+                        been released.
+                    </p>
+                    <p class="mt-1 text-sm text-emerald-900">
+                        Present yourself to the Election Officer for the
+                        four-digit control number. This page never displays the
+                        control number.
+                    </p>
                 </template>
             </section>
 
             <Form
-                v-bind="claimAction ? { action: claimAction, method: 'post' } : claim.form()"
+                v-bind="
+                    claimAction
+                        ? { action: claimAction, method: 'post' }
+                        : claim.form()
+                "
                 #default="{ errors, processing }"
                 class="mt-7 space-y-4"
                 reset-on-success

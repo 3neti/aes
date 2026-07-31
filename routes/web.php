@@ -57,6 +57,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/{round:code}/{precinct:code}/vote/ballot', [PublicSimulationVoterController::class, 'ballot'])->name('voter.ballot');
         Route::post('/{round:code}/{precinct:code}/vote/ballot', [PublicSimulationVoterController::class, 'finalize'])->name('voter.finalize');
         Route::get('/{round:code}/{precinct:code}/vote/complete', [PublicSimulationVoterController::class, 'complete'])->name('voter.complete');
+        Route::post('/{round:code}/{precinct:code}/vote/reset', [PublicSimulationVoterController::class, 'reset'])->name('voter.reset');
         Route::get('/{round:code}/{precinct:code}/print', [PublicSimulationVoterController::class, 'printStation'])->name('print.station');
         Route::post('/{round:code}/{precinct:code}/print/redeem', [PublicSimulationVoterController::class, 'redeem'])->name('print.redeem');
         Route::post('/{round:code}/{precinct:code}/print/print', [PublicSimulationVoterController::class, 'print'])->name('print.print');
@@ -189,6 +190,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/voter/ballot', [VoterBallotController::class, 'show'])->name('voter.ballot');
         Route::post('/voter/ballot', [VoterBallotController::class, 'finalize'])->name('voter.finalize');
         Route::get('/voter/complete', [VoterBallotController::class, 'complete'])->name('voter.complete');
+        Route::post('/voter/reset', [VoterBallotController::class, 'reset'])->name('voter.reset');
     });
 
     Route::middleware('review-room-role:print_station')->group(function (): void {

@@ -31,6 +31,7 @@ final class PrintStationController extends Controller
         return Inertia::render('Election/PrintStation', [
             'release' => $release,
             'depositFeedback' => $request->session()->get('deposit_feedback'),
+            'printPinDigits' => min(6, max(4, (int) config('election.voter.print_pin_digits', 4))),
         ]);
     }
 

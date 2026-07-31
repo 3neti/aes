@@ -71,7 +71,7 @@ Concurrent voting hardening, followed by the COMELEC Review Kit. The supervised 
 - The authorization artifact stores no voter identity and no plaintext code.
 - The voter tablet exposes only the official ballot, selection limits, review, and finalization. Candidate order remains fixed and the official ballot has no search control.
 - Finalization writes an encrypted short-lived print release. Candidate choices are not written as a plaintext ballot payload before printing.
-- The tablet displays an opaque release QR and manual release code. Neither reveals candidate choices.
+- The fixed booth tablet displays an opaque release QR and configurable 4-6 digit print PIN. Neither reveals candidate choices.
 - The private print station redeems the release, displays no choices, and invokes the configured `BallotPrinter`.
 - A verified paper ballot is deposited into an encrypted sealed-ballot record during voting. Candidate totals remain unavailable.
 - Closing polls opens sealed records through the existing counting validation service, after which reconciliation, tally, and Election Return ceremonies continue normally.

@@ -5,11 +5,12 @@ import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
 import type { ElectionReviewRoomContext } from '@/components/election/types';
 import { deposit, print, redeem } from '@/routes/election/print-station';
 
-defineProps<{
+const props = defineProps<{
     release: {
         release_id?: string;
         paper_ballot_serial?: string;
         status?: string;
+        pin_digits?: number;
         expires_at?: string;
     };
     depositFeedback?: {
@@ -21,6 +22,7 @@ defineProps<{
         print: string;
         deposit: string;
     };
+    printPinDigits?: number;
     publicSimulation?: boolean;
 }>();
 
@@ -28,6 +30,8 @@ const page = usePage();
 const reviewRoom = computed(
     () => page.props.electionReviewRoom as ElectionReviewRoomContext,
 );
+const pinDigits = computed(() => props.printPinDigits ?? 4);
+const pinPlaceholder = computed(() => '0'.repeat(pinDigits.value));
 </script>
 
 <template>
@@ -55,28 +59,34 @@ const reviewRoom = computed(
 
             <template v-if="!release.release_id">
                 <h1 class="mt-2 text-3xl font-bold">
-                    Scan the voter’s print code
+                    Enter the voter's print PIN
                 </h1>
                 <p class="mt-3 text-stone-700">
-                    This station prints the ballot without showing candidate
+                    The voter writes the PIN in the covered voting booth. This
+                    station prints the ballot without showing candidate
                     selections on screen.
                 </p>
                 <Form
-                    v-bind="actions ? { action: actions.redeem, method: 'post' } : redeem.form()"
+                    v-bind="
+                        actions
+                            ? { action: actions.redeem, method: 'post' }
+                            : redeem.form()
+                    "
                     #default="{ errors, processing }"
                     class="mt-7 space-y-4"
                 >
                     <label class="block">
-                        <span class="text-sm font-bold"
-                            >Print release code</span
-                        >
+                        <span class="text-sm font-bold">Print PIN</span>
                         <input
                             class="mt-1 min-h-14 w-full border-2 border-stone-400 px-4 text-center text-2xl font-bold"
                             name="code"
                             required
                             autocomplete="off"
                             autofocus
-                            placeholder="1234-5678"
+                            inputmode="numeric"
+                            :maxlength="pinDigits"
+                            :pattern="`[0-9]{${pinDigits}}`"
+                            :placeholder="pinPlaceholder"
                         />
                     </label>
                     <p v-if="errors.code" class="font-bold text-red-700">
@@ -90,9 +100,7 @@ const reviewRoom = computed(
                         type="submit"
                         :disabled="processing"
                     >
-                        {{
-                            processing ? 'Checking...' : 'Prepare paper ballot'
-                        }}
+                        {{ processing ? 'Checking...' : 'Claim paper ballot' }}
                     </button>
                 </Form>
             </template>
@@ -112,8 +120,14 @@ const reviewRoom = computed(
                 </p>
 
                 <Form
-                    v-if="release.status === 'pending'"
-                    v-bind="actions ? { action: actions.print, method: 'post' } : print.form()"
+                    v-if="
+                        ['pending', 'redeemed'].includes(release.status ?? '')
+                    "
+                    v-bind="
+                        actions
+                            ? { action: actions.print, method: 'post' }
+                            : print.form()
+                    "
                     #default="{ errors, processing }"
                     class="mt-7"
                 >
@@ -137,7 +151,11 @@ const reviewRoom = computed(
 
                 <Form
                     v-else
-                    v-bind="actions ? { action: actions.deposit, method: 'post' } : deposit.form()"
+                    v-bind="
+                        actions
+                            ? { action: actions.deposit, method: 'post' }
+                            : deposit.form()
+                    "
                     #default="{ errors, processing }"
                     class="mt-7"
                 >

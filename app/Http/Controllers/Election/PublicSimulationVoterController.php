@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Core\ActivityJournal;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Printing\BallotPrinter;
@@ -155,8 +156,29 @@ final class PublicSimulationVoterController extends Controller
 
         return Inertia::render('Election/VoterComplete', [
             'release' => $release,
+            'resetAction' => route('election.public-simulation.voter.reset', [$round, $precinct]),
             'publicSimulation' => true,
         ]);
+    }
+
+    public function reset(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ActivityJournal $journal): RedirectResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        $release = $request->session()->get($this->releaseSessionKey($precinct));
+
+        $journal->record('voting.booth.reset', [
+            'release_id' => is_array($release) ? ($release['release_id'] ?? null) : null,
+            'reason' => 'next-voter',
+            'pending_print_authorization_preserved' => true,
+            'public_simulation_precinct_code' => $precinct->code,
+        ]);
+
+        $request->session()->forget([
+            $this->authorizationSessionKey($precinct),
+            $this->releaseSessionKey($precinct),
+        ]);
+
+        return to_route('election.public-simulation.voter.show', [$round, $precinct]);
     }
 
     public function printStation(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases, LifecycleState $lifecycle): Response
@@ -173,6 +195,7 @@ final class PublicSimulationVoterController extends Controller
                 'print' => route('election.public-simulation.print.print', [$round, $precinct]),
                 'deposit' => route('election.public-simulation.print.deposit', [$round, $precinct]),
             ],
+            'printPinDigits' => min(6, max(4, (int) config('election.voter.print_pin_digits', 4))),
             'publicSimulation' => true,
         ]);
     }

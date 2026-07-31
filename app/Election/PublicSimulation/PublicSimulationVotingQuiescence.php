@@ -21,7 +21,7 @@ final class PublicSimulationVotingQuiescence
             ->count();
         $unresolvedReleases = collect($this->storage->files('print-releases'))
             ->map(fn (string $path): array => $this->storage->readJson('print-releases/'.basename($path)))
-            ->whereIn('status', ['pending', 'printed'])
+            ->whereIn('status', ['pending', 'redeemed', 'printed'])
             ->count();
 
         if ($claimedAuthorizations === 0 && $unresolvedReleases === 0) {

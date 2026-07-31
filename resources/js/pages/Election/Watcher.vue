@@ -49,11 +49,20 @@ const props = defineProps<{
 }>();
 
 function contestTitle(contestId: string): string {
-    return props.snapshot.configuration.contests?.find((contest) => contest.id === contestId)?.title ?? contestId;
+    return (
+        props.snapshot.configuration.contests?.find(
+            (contest) => contest.id === contestId,
+        )?.title ?? contestId
+    );
 }
 
 function candidateName(contestId: string, candidateId: string): string {
-    return props.snapshot.configuration.contests?.find((contest) => contest.id === contestId)?.candidates.find((candidate) => candidate.id === candidateId)?.name ?? candidateId;
+    return (
+        props.snapshot.configuration.contests
+            ?.find((contest) => contest.id === contestId)
+            ?.candidates.find((candidate) => candidate.id === candidateId)
+            ?.name ?? candidateId
+    );
 }
 </script>
 
@@ -80,25 +89,95 @@ function candidateName(contestId: string, candidateId: string): string {
 
         <section class="border border-stone-300 bg-white p-5">
             <template v-if="!tallyAvailable">
-                <p class="text-sm font-bold text-amber-800">Tally remains sealed</p>
-                <h2 class="mt-1 text-xl font-bold">Candidate totals are not published during voting</h2>
+                <p class="text-sm font-bold text-amber-800">
+                    Tally remains sealed
+                </p>
+                <h2 class="mt-1 text-xl font-bold">
+                    Candidate totals are not published during voting
+                </h2>
             </template>
             <template v-else>
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                    class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <div>
-                        <p class="text-sm font-bold text-emerald-800">Post-close tally</p>
-                        <h2 class="mt-1 text-xl font-bold">Precinct candidate totals</h2>
-                        <p class="mt-2 text-stone-700">{{ tally.accepted_ballots ?? 0 }} deposited ballots represented in the published tally.</p>
+                        <p class="text-sm font-bold text-emerald-800">
+                            Post-close tally
+                        </p>
+                        <h2 class="mt-1 text-xl font-bold">
+                            Precinct candidate totals
+                        </h2>
+                        <p class="mt-2 text-stone-700">
+                            {{ tally.accepted_ballots ?? 0 }} deposited ballots
+                            represented in the published tally.
+                        </p>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <a :href="downloadTallySheet.url()" class="secondary-button">Download tally sheet PDF</a>
-                        <a :href="downloadTallyJson.url()" class="secondary-button">Download tally JSON</a>
+                        <a
+                            :href="downloadTallySheet.url()"
+                            class="secondary-button"
+                            >Download tally sheet PDF</a
+                        >
+                        <a
+                            :href="downloadTallyJson.url()"
+                            class="secondary-button"
+                            >Download tally JSON</a
+                        >
                     </div>
                 </div>
                 <div class="mt-5 space-y-4">
-                    <section v-for="(totals, contest) in tally.tally ?? {}" :key="contest" class="border border-stone-300">
-                        <h3 class="border-b border-stone-200 bg-stone-50 px-4 py-3 font-bold">{{ contestTitle(String(contest)) }}</h3>
-                        <table class="w-full text-sm"><thead><tr class="border-b border-stone-200 text-left text-xs text-stone-500"><th class="px-4 py-2 font-semibold">Candidate</th><th class="px-4 py-2 font-semibold">Tally marks</th><th class="w-24 px-4 py-2 text-right font-semibold">Votes</th></tr></thead><tbody class="divide-y divide-stone-200"><tr v-for="(votes, candidate) in totals" :key="candidate"><td class="px-4 py-2.5">{{ candidateName(String(contest), String(candidate)) }}</td><td class="px-4 py-2.5 align-middle"><TallyMarks :count="Number(votes)" /></td><td class="w-24 px-4 py-2.5 text-right text-base font-bold">{{ votes }}</td></tr></tbody></table>
+                    <section
+                        v-for="(totals, contest) in tally.tally ?? {}"
+                        :key="contest"
+                        class="border border-stone-300"
+                    >
+                        <h3
+                            class="border-b border-stone-200 bg-stone-50 px-4 py-3 font-bold"
+                        >
+                            {{ contestTitle(String(contest)) }}
+                        </h3>
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr
+                                    class="border-b border-stone-200 text-left text-xs text-stone-500"
+                                >
+                                    <th class="px-4 py-2 font-semibold">
+                                        Candidate
+                                    </th>
+                                    <th class="px-4 py-2 font-semibold">
+                                        Tally marks
+                                    </th>
+                                    <th
+                                        class="w-24 px-4 py-2 text-right font-semibold"
+                                    >
+                                        Votes
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-stone-200">
+                                <tr
+                                    v-for="(votes, candidate) in totals"
+                                    :key="candidate"
+                                >
+                                    <td class="px-4 py-2.5">
+                                        {{
+                                            candidateName(
+                                                String(contest),
+                                                String(candidate),
+                                            )
+                                        }}
+                                    </td>
+                                    <td class="px-4 py-2.5 align-middle">
+                                        <TallyMarks :count="Number(votes)" />
+                                    </td>
+                                    <td
+                                        class="w-24 px-4 py-2.5 text-right text-base font-bold"
+                                    >
+                                        {{ votes }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </section>
                 </div>
             </template>
@@ -153,24 +232,39 @@ function candidateName(contestId: string, candidateId: string): string {
 
         <section class="border border-stone-300 bg-white p-5">
             <template v-if="!randomManualAudit.available">
-                <p class="text-sm font-bold text-amber-800">Manual audit not published</p>
-                <h2 class="mt-1 text-xl font-bold">Paper-audit evidence remains sealed</h2>
+                <p class="text-sm font-bold text-amber-800">
+                    Manual audit not published
+                </p>
+                <h2 class="mt-1 text-xl font-bold">
+                    Paper-audit evidence remains sealed
+                </h2>
                 <p class="mt-3 text-stone-700">
-                    Random Manual Audit information becomes available to poll watchers only after polls close.
+                    Random Manual Audit information becomes available to poll
+                    watchers only after polls close.
                 </p>
             </template>
             <template v-else>
-                <p class="text-sm font-bold text-blue-800">Random manual audit</p>
-                <h2 class="mt-1 text-xl font-bold">Published paper-audit status</h2>
+                <p class="text-sm font-bold text-blue-800">
+                    Random manual audit
+                </p>
+                <h2 class="mt-1 text-xl font-bold">
+                    Published paper-audit status
+                </h2>
                 <p class="mt-3 text-stone-700">
-                    This is a read-only comparison of selected paper ballots and sealed device records. It does not change the published tally or Election Return.
+                    This is a read-only comparison of selected paper ballots and
+                    sealed device records. It does not change the published
+                    tally or Election Return.
                 </p>
 
-                <div v-if="randomManualAudit.sample_selected" class="mt-5 grid gap-4 sm:grid-cols-2">
+                <div
+                    v-if="randomManualAudit.sample_selected"
+                    class="mt-5 grid gap-4 sm:grid-cols-2"
+                >
                     <div class="bg-stone-50 p-4">
                         <dt class="text-sm text-stone-600">Audit sample</dt>
                         <dd class="mt-1 text-2xl font-bold">
-                            {{ randomManualAudit.sample_size ?? 0 }} of {{ randomManualAudit.source_record_count ?? 0 }}
+                            {{ randomManualAudit.sample_size ?? 0 }} of
+                            {{ randomManualAudit.source_record_count ?? 0 }}
                         </dd>
                     </div>
                     <div class="bg-stone-50 p-4">
@@ -186,43 +280,85 @@ function candidateName(contestId: string, candidateId: string): string {
                         </dd>
                     </div>
                 </div>
-                <p v-else class="mt-5 border-l-4 border-stone-400 bg-stone-50 p-4 text-sm text-stone-700">
-                    The Election Board has not selected a random manual audit sample for this run.
+                <p
+                    v-else
+                    class="mt-5 border-l-4 border-stone-400 bg-stone-50 p-4 text-sm text-stone-700"
+                >
+                    The Election Board has not selected a random manual audit
+                    sample for this run.
                 </p>
 
-                <div v-if="randomManualAudit.reconciliation.report_hash" class="mt-5 grid gap-3 sm:grid-cols-4">
+                <div
+                    v-if="randomManualAudit.reconciliation.report_hash"
+                    class="mt-5 grid gap-3 sm:grid-cols-4"
+                >
                     <div class="border border-emerald-300 bg-emerald-50 p-3">
-                        <span class="text-xs font-bold uppercase text-emerald-800">Verified</span>
-                        <strong class="mt-1 block text-2xl">{{ randomManualAudit.reconciliation.verified_ballots }}</strong>
+                        <span
+                            class="text-xs font-bold text-emerald-800 uppercase"
+                            >Verified</span
+                        >
+                        <strong class="mt-1 block text-2xl">{{
+                            randomManualAudit.reconciliation.verified_ballots
+                        }}</strong>
                     </div>
                     <div class="border border-red-300 bg-red-50 p-3">
-                        <span class="text-xs font-bold uppercase text-red-800">Discrepancies</span>
-                        <strong class="mt-1 block text-2xl">{{ randomManualAudit.reconciliation.discrepancy_ballots }}</strong>
+                        <span class="text-xs font-bold text-red-800 uppercase"
+                            >Discrepancies</span
+                        >
+                        <strong class="mt-1 block text-2xl">{{
+                            randomManualAudit.reconciliation.discrepancy_ballots
+                        }}</strong>
                     </div>
                     <div class="border border-amber-300 bg-amber-50 p-3">
-                        <span class="text-xs font-bold uppercase text-amber-800">Pending</span>
-                        <strong class="mt-1 block text-2xl">{{ randomManualAudit.reconciliation.pending_ballots }}</strong>
+                        <span class="text-xs font-bold text-amber-800 uppercase"
+                            >Pending</span
+                        >
+                        <strong class="mt-1 block text-2xl">{{
+                            randomManualAudit.reconciliation.pending_ballots
+                        }}</strong>
                     </div>
                     <div class="border border-stone-300 p-3">
-                        <span class="text-xs font-bold uppercase text-stone-600">Device issues</span>
-                        <strong class="mt-1 block text-2xl">{{ randomManualAudit.reconciliation.device_record_issues }}</strong>
+                        <span class="text-xs font-bold text-stone-600 uppercase"
+                            >Device issues</span
+                        >
+                        <strong class="mt-1 block text-2xl">{{
+                            randomManualAudit.reconciliation
+                                .device_record_issues
+                        }}</strong>
                     </div>
                 </div>
 
-                <div v-if="randomManualAudit.evidence_pack_available" class="mt-5 flex flex-col gap-3 border-t border-stone-300 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                    v-if="randomManualAudit.evidence_pack_available"
+                    class="mt-5 flex flex-col gap-3 border-t border-stone-300 pt-5 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <p class="text-sm text-stone-700">
-                        Evidence pack {{ randomManualAudit.evidence_pack_hash?.slice(0, 16) }} is available for independent review.
+                        Evidence pack
+                        {{ randomManualAudit.evidence_pack_hash?.slice(0, 16) }}
+                        is available for independent review.
                     </p>
                     <div class="flex flex-wrap gap-2">
-                        <a :href="downloadRandomManualAuditEvidencePack.url()" class="secondary-button">Download JSON</a>
-                        <a :href="printRandomManualAuditEvidencePack.url()" class="secondary-button">Download print form</a>
+                        <a
+                            :href="downloadRandomManualAuditEvidencePack.url()"
+                            class="secondary-button"
+                            >Download JSON</a
+                        >
+                        <a
+                            :href="printRandomManualAuditEvidencePack.url()"
+                            class="secondary-button"
+                            >Download print form</a
+                        >
                     </div>
                 </div>
 
                 <section class="mt-5 border-t border-stone-300 pt-5">
-                    <h3 class="text-sm font-bold text-stone-950">Verify a downloaded evidence pack</h3>
+                    <h3 class="text-sm font-bold text-stone-950">
+                        Verify a downloaded evidence pack
+                    </h3>
                     <p class="mt-1 text-sm text-stone-700">
-                        Upload a JSON pack to recompute its embedded hashes and reconciliation counts. This check does not alter precinct evidence.
+                        Upload a JSON pack to recompute its embedded hashes and
+                        reconciliation counts. This check does not alter
+                        precinct evidence.
                     </p>
                     <Form
                         v-bind="verifyRandomManualAuditEvidencePack.form()"
@@ -240,10 +376,21 @@ function candidateName(contestId: string, candidateId: string): string {
                                 required
                             />
                         </label>
-                        <button class="secondary-button" type="submit" :disabled="processing">
-                            {{ processing ? 'Verifying...' : 'Verify evidence pack' }}
+                        <button
+                            class="secondary-button"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{
+                                processing
+                                    ? 'Verifying...'
+                                    : 'Verify evidence pack'
+                            }}
                         </button>
-                        <p v-if="errors.evidence_pack" class="text-sm font-bold text-red-700">
+                        <p
+                            v-if="errors.evidence_pack"
+                            class="text-sm font-bold text-red-700"
+                        >
                             {{ errors.evidence_pack }}
                         </p>
                     </Form>
@@ -251,17 +398,38 @@ function candidateName(contestId: string, candidateId: string): string {
                     <div
                         v-if="randomManualAuditVerification"
                         class="mt-4 border-l-4 px-4 py-3 text-sm"
-                        :class="randomManualAuditVerification.passed ? 'border-emerald-700 bg-emerald-50 text-emerald-950' : 'border-red-700 bg-red-50 text-red-950'"
+                        :class="
+                            randomManualAuditVerification.passed
+                                ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
+                                : 'border-red-700 bg-red-50 text-red-950'
+                        "
                         role="status"
                     >
                         <p class="font-bold">
-                            {{ randomManualAuditVerification.passed ? 'Evidence pack verified' : 'Evidence pack verification failed' }}
+                            {{
+                                randomManualAuditVerification.passed
+                                    ? 'Evidence pack verified'
+                                    : 'Evidence pack verification failed'
+                            }}
                         </p>
                         <p class="mt-1">
-                            {{ randomManualAuditVerification.verified_ballots }} verified comparisons, {{ randomManualAuditVerification.discrepancy_ballots }} discrepancies.
+                            {{ randomManualAuditVerification.verified_ballots }}
+                            verified comparisons,
+                            {{
+                                randomManualAuditVerification.discrepancy_ballots
+                            }}
+                            discrepancies.
                         </p>
-                        <ul v-if="randomManualAuditVerification.errors.length" class="mt-2 list-disc pl-5">
-                            <li v-for="error in randomManualAuditVerification.errors" :key="error">{{ error }}</li>
+                        <ul
+                            v-if="randomManualAuditVerification.errors.length"
+                            class="mt-2 list-disc pl-5"
+                        >
+                            <li
+                                v-for="error in randomManualAuditVerification.errors"
+                                :key="error"
+                            >
+                                {{ error }}
+                            </li>
                         </ul>
                     </div>
                 </section>

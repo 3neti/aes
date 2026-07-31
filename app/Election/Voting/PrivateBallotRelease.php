@@ -40,6 +40,7 @@ final class PrivateBallotRelease
 
         $releaseId = (string) Str::uuid();
         $releaseCode = $this->code();
+        $digits = $this->digits();
         $ballotId = 'ballot-'.Str::lower(Str::random(12));
         $paperBallotSerial = $this->paperBallots->nextSerial();
         $payload = [
@@ -63,6 +64,7 @@ final class PrivateBallotRelease
             'release_id' => $releaseId,
             'authorization_id' => $authorizationId,
             'release_code_hash' => $this->hash($releaseCode),
+            'pin_digits' => $digits,
             'ballot_id' => $ballotId,
             'paper_ballot_serial' => $paperBallotSerial,
             'payload_hash' => $payload['payload_hash'],
@@ -85,10 +87,19 @@ final class PrivateBallotRelease
             'payload_hash' => $payload['payload_hash'],
             'paper_ballot_serial' => $paperBallotSerial,
         ]);
+        $this->journal->record('voting.print_pin.generated', [
+            'authorization_id' => $authorizationId,
+            'release_id' => $releaseId,
+            'ballot_id' => $ballotId,
+            'pin_digits' => $digits,
+            'payload_hash' => $payload['payload_hash'],
+            'expires_at' => $record['expires_at'],
+        ]);
 
         return [
             'release_id' => $releaseId,
             'release_code' => $releaseCode,
+            'pin_digits' => $digits,
             'release_qr_data_uri' => 'data:image/png;base64,'.base64_encode(
                 $this->qrCode->renderPng('aes-print-release:'.$releaseCode),
             ),
@@ -103,20 +114,41 @@ final class PrivateBallotRelease
     public function redeem(string $code): array
     {
         $normalized = Str::after(Str::lower(trim($code)), 'aes-print-release:');
-        $record = collect($this->storage->files('print-releases'))
-            ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
-            ->first(fn (array $candidate): bool => hash_equals(
-                (string) ($candidate['release_code_hash'] ?? ''),
-                $this->hash($normalized),
-            ));
+        $record = $this->recordForCode($normalized);
 
-        if (! is_array($record) || ! in_array($record['status'], ['pending', 'printed'], true)) {
+        if (! is_array($record) || $record['status'] !== 'pending') {
+            $this->journal->record('printing.pin.rejected', [
+                'reason' => 'invalid-or-unavailable',
+            ]);
+
             throw new RuntimeException('The print release is invalid or no longer available.');
         }
 
         if ($this->clock->now()->isAfter($record['expires_at'])) {
+            $record['status'] = 'expired';
+            $record['expired_at'] = $this->clock->now()->toIso8601String();
+            $this->storage->writeJson("print-releases/{$record['release_id']}.json", $record);
+            $this->journal->record('voting.print_pin.expired', [
+                'release_id' => $record['release_id'],
+                'ballot_id' => $record['ballot_id'],
+                'payload_hash' => $record['payload_hash'],
+            ]);
+            $this->journal->record('printing.pin.rejected', [
+                'release_id' => $record['release_id'],
+                'reason' => 'expired',
+            ]);
+
             throw new RuntimeException('The print release has expired.');
         }
+
+        $record['status'] = 'redeemed';
+        $record['redeemed_at'] = $this->clock->now()->toIso8601String();
+        $this->storage->writeJson("print-releases/{$record['release_id']}.json", $record);
+        $this->journal->record('voting.print_pin.consumed', [
+            'release_id' => $record['release_id'],
+            'ballot_id' => $record['ballot_id'],
+            'payload_hash' => $record['payload_hash'],
+        ]);
 
         return $this->publicRecord($record);
     }
@@ -142,7 +174,7 @@ final class PrivateBallotRelease
     {
         $record = $this->record($releaseId);
 
-        if ($record['status'] !== 'pending') {
+        if (! in_array($record['status'], ['pending', 'redeemed'], true)) {
             throw new RuntimeException('This paper ballot has already been printed.');
         }
 
@@ -155,6 +187,13 @@ final class PrivateBallotRelease
         $record['status'] = 'printed';
         $record['printed_at'] = $this->clock->now()->toIso8601String();
         $this->storage->writeJson("print-releases/{$releaseId}.json", $record);
+        $this->journal->record('printing.ballot.generated_from_pin', [
+            'release_id' => $releaseId,
+            'ballot_id' => $payload['ballot_id'],
+            'payload_hash' => $payload['payload_hash'],
+            'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
+            'print_job_path' => $job['artifact_path'] ?? null,
+        ]);
 
         return $job;
     }
@@ -215,10 +254,44 @@ final class PrivateBallotRelease
 
     private function code(): string
     {
-        return implode('-', [
-            (string) random_int(1000, 9999),
-            (string) random_int(1000, 9999),
-        ]);
+        $digits = $this->digits();
+        $maximum = (10 ** $digits) - 1;
+
+        foreach (range(1, 20) as $_) {
+            $code = str_pad((string) random_int(0, $maximum), $digits, '0', STR_PAD_LEFT);
+
+            if (! $this->activeHashExists($this->hash($code))) {
+                return $code;
+            }
+        }
+
+        throw new RuntimeException('A unique print PIN could not be generated. Try again.');
+    }
+
+    private function digits(): int
+    {
+        return min(6, max(4, (int) config('election.voter.print_pin_digits', 4)));
+    }
+
+    private function activeHashExists(string $hash): bool
+    {
+        return collect($this->storage->files('print-releases'))
+            ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
+            ->contains(fn (array $candidate): bool => in_array($candidate['status'] ?? null, ['pending', 'redeemed', 'printed'], true)
+                && hash_equals((string) ($candidate['release_code_hash'] ?? ''), $hash));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function recordForCode(string $code): ?array
+    {
+        return collect($this->storage->files('print-releases'))
+            ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
+            ->first(fn (array $candidate): bool => hash_equals(
+                (string) ($candidate['release_code_hash'] ?? ''),
+                $this->hash($code),
+            ));
     }
 
     /**

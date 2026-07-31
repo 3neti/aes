@@ -61,6 +61,7 @@ return [
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),
         'print_release_ttl_seconds' => (int) env('ELECTION_PRINT_RELEASE_TTL', 600),
+        'print_pin_digits' => (int) env('ELECTION_PRINT_PIN_DIGITS', 4),
         'candidate_photos_enabled' => false,
         'individual_ballot_disclosure' => false,
     ],

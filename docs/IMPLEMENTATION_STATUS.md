@@ -962,3 +962,35 @@ Verification:
 Known limitation:
 
 - The storyboard includes many thermal pages for candidate-heavy forms. A later presentation-polish slice may add a compact table of contents or split public print review into separate ballot, tally, and Election Return storyboard chapters.
+
+## Fixed Booth Voting and Central Print PIN Slice
+
+Completed:
+
+- Fixed booth voter finalization now issues a configurable numeric print PIN through the existing private print-release evidence path.
+- `ELECTION_PRINT_PIN_DIGITS` controls the PIN length, clamped to 4-6 digits with a 4-digit default for review-room and public-simulation demonstrations.
+- Pending print authorization artifacts remain under `04-voting/private-print-releases`; raw PINs are shown once to the voter and are not stored in the JSON artifact.
+- Redeeming a PIN marks it `redeemed`, making it single-use while still allowing the central print station to generate the paper ballot.
+- Expired, invalid, reused, printed, or deposited PIN attempts are rejected and journaled without exposing ballot selections.
+- The voter completion screen now instructs the voter to leave the fixed tablet in the booth, write down the PIN, proceed to the central print station, and reset the booth for the next voter.
+- Booth reset is a server-side ceremony action. It clears only booth/session display state, journals `voting.booth.reset`, and preserves the pending print authorization.
+- Public simulation closeout now treats `redeemed` but unprinted releases as unresolved voter work.
+- Public and realism compasses now describe the fixed booth tablet and central print PIN handoff.
+
+Verification:
+
+- `php artisan wayfinder:generate --with-form --no-interaction`: passed.
+- `vendor/bin/pint --dirty --format agent`: passed; formatted the two touched PHP controllers.
+- `node --check scripts/election-browser-walkthrough.mjs`: passed.
+- `php artisan test --compact tests/Feature/PrivateVoterJourneyTest.php`: 13 tests, 196 assertions passed.
+- `php artisan test --compact tests/Feature/Election/PublicSimulationTest.php --filter="closeout serializes public voter work"`: 1 test, 31 assertions passed.
+- `php artisan test --compact tests/Feature/PrivateVoterJourneyTest.php tests/Feature/Election/PublicSimulationTest.php`: 32 tests, 706 assertions passed.
+- `npm run types:check`: passed.
+- `npm run lint:check`: passed.
+- `npm run format:check`: passed.
+- `npm run build`: passed.
+- `vendor/bin/pest tests/Browser/PublicSimulationMultiVoterWorkflowTest.php`: 6 tests, 56 assertions passed after rebuilding frontend assets.
+
+Known limitation:
+
+- The PIN is currently typed at the print station or encoded in the existing QR. A later hardware rehearsal should validate scanner ergonomics, slip handling, booth shielding, and whether 4, 5, or 6 digits is operationally best.

@@ -358,7 +358,7 @@ async function finalizeVoterBallot(ballotNumber) {
         storyboard_frame: reviewCapture.storyboardFrame,
     });
     await postButton(
-        'Finalize and get print code',
+        'Finalize and get print PIN',
         '/election/voter/ballot',
         60_000,
         false,
@@ -557,7 +557,7 @@ async function finalizePublicSimulationBallot(ballotNumber) {
     });
 
     await postButton(
-        'Finalize and get print code',
+        'Finalize and get print PIN',
         publicSimulationPath('/vote/ballot'),
         60_000,
         false,

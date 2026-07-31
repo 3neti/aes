@@ -14,7 +14,6 @@ import {
     physicalCount,
     scan,
 } from '@/routes/election/counting';
-import { download as downloadTallySheet } from '@/routes/election/counting/tally-sheet';
 import {
     approve as approveRandomManualAudit,
     discrepancy as recordRandomManualAuditDiscrepancy,
@@ -27,6 +26,7 @@ import {
     download as downloadRandomManualAuditEvidencePack,
     print as printRandomManualAuditEvidencePack,
 } from '@/routes/election/counting/rma/evidence-pack';
+import { download as downloadTallySheet } from '@/routes/election/counting/tally-sheet';
 import { useElectionReview } from '@/stores/electionReview';
 
 type ScanFeedback = {

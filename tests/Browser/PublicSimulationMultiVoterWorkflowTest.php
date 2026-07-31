@@ -52,16 +52,16 @@ test('two isolated browser voters finalize private releases in the same public p
     $firstVoter
         ->click($candidateSelector)
         ->click('Review 1 selection')
-        ->click('Finalize and get print code')
-        ->assertSee('Print and verify your paper ballot')
+        ->click('Finalize and get print PIN')
+        ->assertSee('Write down your print PIN')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 
     $secondVoter
         ->click($candidateSelector)
         ->click('Review 1 selection')
-        ->click('Finalize and get print code')
-        ->assertSee('Print and verify your paper ballot')
+        ->click('Finalize and get print PIN')
+        ->assertSee('Write down your print PIN')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 

@@ -161,7 +161,9 @@ test('the private voter journey seals choices until polls close', function (): v
     $release = $finalize->getSession()->get('election.voter_print_release');
 
     $finalize->assertRedirect(route('election.voter.complete'));
-    expect($release['release_qr_data_uri'])->toStartWith('data:image/png;base64,');
+    expect($release['release_qr_data_uri'])->toStartWith('data:image/png;base64,')
+        ->and($release['release_code'])->toMatch('/^[0-9]{4}$/')
+        ->and($release['pin_digits'])->toBe(4);
 
     $releasePath = app(ElectionStorage::class)->path("print-releases/{$release['release_id']}.json");
     $releaseContents = file_get_contents($releasePath);
@@ -182,12 +184,14 @@ test('the private voter journey seals choices until polls close', function (): v
 
     $this->post(route('election.print-station.redeem'), ['code' => $release['release_code']])
         ->assertRedirect(route('election.print-station'));
+    $this->post(route('election.print-station.redeem'), ['code' => $release['release_code']])
+        ->assertSessionHasErrors('code');
 
     $this->get(route('election.print-station'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/PrintStation')
-            ->where('release.status', 'pending')
+            ->where('release.status', 'redeemed')
             ->missing('release.encrypted_payload')
             ->missing('release.payload_hash')
         );
@@ -236,9 +240,66 @@ test('the private voter journey seals choices until polls close', function (): v
         ->assertRedirect(route('election.counting'))
         ->assertSessionHas('scan_feedback', fn (array $feedback): bool => $feedback['adapter'] === 'routine-scan-blocked');
 
+    $eventTypes = collect(app(ActivityJournal::class)->entries())->pluck('event_type');
+
     expect($storage->files('counting/rejected'))->toBeEmpty()
+        ->and($eventTypes)->toContain('voting.print_pin.generated')
+        ->and($eventTypes)->toContain('voting.print_pin.consumed')
+        ->and($eventTypes)->toContain('printing.pin.rejected')
+        ->and($eventTypes)->toContain('printing.ballot.generated_from_pin')
+        ->and($eventTypes)->toContain('counting.routine_scan_blocked');
+});
+
+test('print PIN length is configurable between four and six digits', function (int $configured, int $expected): void {
+    config()->set('election.voter.print_pin_digits', $configured);
+
+    $release = app(PrivateBallotRelease::class)->create('test-authorization-'.$configured, [
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+        'council' => ['council-ana'],
+    ]);
+    $record = app(ElectionStorage::class)->readJson("print-releases/{$release['release_id']}.json");
+
+    expect($release['pin_digits'])->toBe($expected)
+        ->and($release['release_code'])->toMatch('/^[0-9]{'.$expected.'}$/')
+        ->and($record['pin_digits'])->toBe($expected)
+        ->and($record)->not->toHaveKey('release_code');
+})->with([
+    'below minimum falls back to four' => [3, 4],
+    'four digits' => [4, 4],
+    'five digits' => [5, 5],
+    'six digits' => [6, 6],
+    'above maximum falls back to six' => [7, 6],
+]);
+
+test('resetting the booth clears only the display and preserves the pending print authorization', function (): void {
+    $authorization = app(AnonymousVoterAuthorization::class)->issue();
+    $this->post(route('election.voter.claim'), ['code' => $authorization['code']])
+        ->assertRedirect(route('election.voter.ballot'));
+
+    $this->post(route('election.voter.finalize'), [
+        'selections' => [
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ],
+    ])->assertRedirect(route('election.voter.complete'));
+
+    $release = session('election.voter_print_release');
+    expect($release)->toBeArray();
+
+    $this->post(route('election.voter.reset'))
+        ->assertRedirect(route('election.voter'))
+        ->assertSessionMissing('election.voter_print_release');
+
+    $record = app(ElectionStorage::class)->readJson("print-releases/{$release['release_id']}.json");
+
+    expect($record['status'])->toBe('pending')
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
-        ->toContain('counting.routine_scan_blocked');
+        ->toContain('voting.booth.reset');
+
+    $this->post(route('election.print-station.redeem'), ['code' => $release['release_code']])
+        ->assertRedirect(route('election.print-station'));
 });
 
 test('a paper-first profile remains available for a newly activated run', function (): void {

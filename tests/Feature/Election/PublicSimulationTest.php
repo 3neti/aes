@@ -298,6 +298,11 @@ test('closeout serializes public voter work and refuses unresolved sessions', fu
 
     $this->post(route('election.public-simulation.print.redeem', [$round, $precinct]), ['code' => $release['release_code']])
         ->assertRedirect();
+    $this->post(route('election.public-simulation.close', [$round, $precinct]), $credentials)
+        ->assertRedirect()
+        ->assertSessionHasErrors('officer_pin');
+    expect($precinct->fresh()->status)->toBe('open');
+
     $this->post(route('election.public-simulation.print.print', [$round, $precinct]))->assertRedirect();
     $this->post(route('election.public-simulation.print.deposit', [$round, $precinct]))->assertRedirect();
 
