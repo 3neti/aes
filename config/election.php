@@ -24,6 +24,11 @@ return [
             'enabled' => (bool) env('ELECTION_REVIEW_ACCESS_ENABLED', false),
             'username' => (string) env('ELECTION_REVIEW_ACCESS_USERNAME', ''),
             'password' => (string) env('ELECTION_REVIEW_ACCESS_PASSWORD', ''),
+            'demo_credentials' => [
+                'enabled' => (bool) env('ELECTION_REVIEW_DEMO_CREDENTIALS_ENABLED', (bool) env('ELECTION_REVIEW_MODE', false)),
+                'username' => (string) env('ELECTION_REVIEW_DEMO_USERNAME', 'user'),
+                'password' => (string) env('ELECTION_REVIEW_DEMO_PASSWORD', 'user'),
+            ],
         ],
     ],
     'review_room' => [

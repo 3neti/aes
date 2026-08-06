@@ -46,6 +46,21 @@ test('enabled review protection permits configured credentials and prohibits ind
         ->assertHeader('Pragma', 'no-cache');
 });
 
+test('enabled review protection permits simple demo credentials when configured', function (): void {
+    configureReviewAccess();
+    config()->set('election.review.access.demo_credentials.enabled', true);
+    config()->set('election.review.access.demo_credentials.username', 'user');
+    config()->set('election.review.access.demo_credentials.password', 'user');
+
+    $this->withHeaders([
+        'Authorization' => basicAuthorization('user', 'user'),
+    ])->get(route('home'))
+        ->assertSuccessful()
+        ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
+        ->assertHeader('Cache-Control', 'no-store, private')
+        ->assertHeader('Pragma', 'no-cache');
+});
+
 test('basic authenticated browser reclaims facilitator access to an open room', function (): void {
     configureReviewAccess();
     config()->set('election.review.enabled', true);

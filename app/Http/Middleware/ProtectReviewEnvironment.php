@@ -35,7 +35,7 @@ final class ProtectReviewEnvironment
             return $this->protectedResponse($next($request));
         }
 
-        if (! $this->credentialsMatch($request, $username, $password)) {
+        if (! $this->credentialsMatchAny($request, $this->credentialPairs($username, $password))) {
             return $this->protectedResponse(
                 response('Review access required.', Response::HTTP_UNAUTHORIZED)
                     ->header('WWW-Authenticate', 'Basic realm="AES COMELEC Review", charset="UTF-8"'),
@@ -60,15 +60,55 @@ final class ProtectReviewEnvironment
         return $this->reviewRoom->station($request) !== null;
     }
 
-    private function credentialsMatch(Request $request, string $username, string $password): bool
+    /**
+     * @return list<array{username: string, password: string}>
+     */
+    private function credentialPairs(string $username, string $password): array
+    {
+        $pairs = [
+            [
+                'username' => $username,
+                'password' => $password,
+            ],
+        ];
+
+        if (config('election.review.access.demo_credentials.enabled', false)) {
+            $demoUsername = (string) config('election.review.access.demo_credentials.username');
+            $demoPassword = (string) config('election.review.access.demo_credentials.password');
+
+            if ($demoUsername !== '' && $demoPassword !== '') {
+                $pairs[] = [
+                    'username' => $demoUsername,
+                    'password' => $demoPassword,
+                ];
+            }
+        }
+
+        return $pairs;
+    }
+
+    /**
+     * @param  list<array{username: string, password: string}>  $credentialPairs
+     */
+    private function credentialsMatchAny(Request $request, array $credentialPairs): bool
     {
         $providedUsername = $request->getUser();
         $providedPassword = $request->getPassword();
 
-        return is_string($providedUsername)
-            && is_string($providedPassword)
-            && hash_equals($username, $providedUsername)
-            && hash_equals($password, $providedPassword);
+        if (! is_string($providedUsername) || ! is_string($providedPassword)) {
+            return false;
+        }
+
+        foreach ($credentialPairs as $credentialPair) {
+            if (
+                hash_equals($credentialPair['username'], $providedUsername)
+                && hash_equals($credentialPair['password'], $providedPassword)
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function protectedResponse(Response $response): Response
