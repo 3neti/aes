@@ -46,6 +46,7 @@ final class DemoRoomPrintStationController extends Controller
             'isPublished' => $publication !== [],
             'release' => is_string($releaseId) ? $releases->find($releaseId) : [],
             'depositFeedback' => $request->session()->get($this->depositSessionKey($precinct)),
+            'closeoutFeedback' => $request->session()->get($this->closeoutSessionKey($precinct)),
             'officerDefaults' => [
                 'officer_code' => $precinct->officer_code,
                 'officer_pin' => '123456',
@@ -107,30 +108,44 @@ final class DemoRoomPrintStationController extends Controller
         return to_route('election.demo-room.print.station', [$round, $precinct]);
     }
 
-    public function tallySheet(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse
+    public function tallySheet(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse|RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
-        $this->ensureEnabled($request, $precinct);
-        $this->ensureCloseoutReady($precinct);
+        if (! $this->isEnabled($request, $precinct)) {
+            return $this->stationRedirect($round, $precinct, 'Enable the central print station before opening closeout forms.');
+        }
+
+        if (! $this->isCloseoutReady($precinct)) {
+            return $this->stationRedirect($round, $precinct, 'Close the precinct first. The tally sheet is generated after closeout.');
+        }
 
         $path = $storage->path('runtime/tally-sheet.pdf');
-        abort_unless(is_file($path), 404);
+        if (! is_file($path)) {
+            return $this->stationRedirect($round, $precinct, 'The tally sheet PDF is not available yet. Close the precinct again or refresh the Printing Station.');
+        }
 
         return response()->file($path, [
             'Content-Disposition' => 'inline; filename="'.$precinct->code.'-tally-sheet.pdf"',
         ]);
     }
 
-    public function electionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse
+    public function electionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse|RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
-        $this->ensureEnabled($request, $precinct);
-        $this->ensureCloseoutReady($precinct);
+        if (! $this->isEnabled($request, $precinct)) {
+            return $this->stationRedirect($round, $precinct, 'Enable the central print station before opening closeout forms.');
+        }
+
+        if (! $this->isCloseoutReady($precinct)) {
+            return $this->stationRedirect($round, $precinct, 'Close the precinct first. The Election Return is generated after closeout.');
+        }
 
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $precinctId = (string) ($configuration['precinct_id'] ?? '');
         $path = $storage->path("returns/{$precinctId}-return.pdf");
-        abort_unless($precinctId !== '' && is_file($path), 404);
+        if ($precinctId === '' || ! is_file($path)) {
+            return $this->stationRedirect($round, $precinct, 'The Election Return PDF is not available yet. Close the precinct again or refresh the Printing Station.');
+        }
 
         return response()->file($path, [
             'Content-Disposition' => 'inline; filename="'.$precinct->code.'-election-return.pdf"',
@@ -192,9 +207,19 @@ final class DemoRoomPrintStationController extends Controller
         return "demo_room.{$precinct->id}.deposit_feedback";
     }
 
+    private function closeoutSessionKey(SimulationPrecinct $precinct): string
+    {
+        return "demo_room.{$precinct->id}.closeout_feedback";
+    }
+
     private function ensureEnabled(Request $request, SimulationPrecinct $precinct): void
     {
-        abort_unless((bool) $request->session()->get($this->enabledSessionKey($precinct), false), 403);
+        abort_unless($this->isEnabled($request, $precinct), 403);
+    }
+
+    private function isEnabled(Request $request, SimulationPrecinct $precinct): bool
+    {
+        return (bool) $request->session()->get($this->enabledSessionKey($precinct), false);
     }
 
     private function printReleaseId(Request $request, SimulationPrecinct $precinct): string
@@ -205,9 +230,15 @@ final class DemoRoomPrintStationController extends Controller
         return $releaseId;
     }
 
-    private function ensureCloseoutReady(SimulationPrecinct $precinct): void
+    private function isCloseoutReady(SimulationPrecinct $precinct): bool
     {
-        abort_unless(in_array($precinct->status, ['results_ready', 'published'], true), 404);
+        return in_array($precinct->status, ['results_ready', 'published'], true);
+    }
+
+    private function stationRedirect(SimulationRound $round, SimulationPrecinct $precinct, string $message): RedirectResponse
+    {
+        return to_route('election.demo-room.print.station', [$round, $precinct])
+            ->with($this->closeoutSessionKey($precinct), $message);
     }
 
     /** @return array<string, mixed> */

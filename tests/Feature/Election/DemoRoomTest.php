@@ -97,6 +97,15 @@ test('the demo room runs a precinct through officer, voter, print station, watch
     $this->post(route('election.demo-room.print.deposit', [$round, $precinct]))
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));
 
+    $this->get(route('election.demo-room.print.tally-sheet', [$round, $precinct]))
+        ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));
+
+    $this->get(route('election.demo-room.print.station', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('closeoutFeedback', 'Close the precinct first. The tally sheet is generated after closeout.')
+        );
+
     $this->post(route('election.demo-room.close', [$round, $precinct]), $credentials)
         ->assertRedirect(route('election.demo-room.officer', [$round, $precinct]));
     expect($precinct->fresh()->status)->toBe('results_ready');

@@ -26,6 +26,7 @@ defineProps<{
         status: string;
         paper_ballot_serial: string;
     };
+    closeoutFeedback?: string;
     officerDefaults: { officer_code: string; officer_pin: string };
     actions: {
         enable: string;
@@ -124,6 +125,12 @@ defineProps<{
             <span class="mx-2 text-stone-400">/</span>
             <span>{{ precinct.label }} print station enabled</span>
         </div>
+        <div
+            v-if="closeoutFeedback"
+            class="border-l-8 border-amber-500 bg-amber-50 px-5 py-4 font-semibold text-amber-950 sm:px-8"
+        >
+            {{ closeoutFeedback }}
+        </div>
         <PrintStation
             :release="release"
             :deposit-feedback="depositFeedback"
@@ -148,6 +155,12 @@ defineProps<{
                 >Back to officer console</Link
             >
             <div class="mt-4 border border-stone-300 bg-white p-6">
+                <div
+                    v-if="closeoutFeedback"
+                    class="mb-5 border-l-8 border-amber-500 bg-amber-50 p-4 font-semibold text-amber-950"
+                >
+                    {{ closeoutFeedback }}
+                </div>
                 <p class="text-sm font-bold text-blue-800">
                     Closeout printing
                 </p>
