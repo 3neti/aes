@@ -36,6 +36,7 @@ final class DemoRoomPrintStationController extends Controller
         $publication = $storage->readJson('returns/publication-manifest.json');
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $precinctId = (string) ($configuration['precinct_id'] ?? '');
+        $release = is_string($releaseId) ? $releases->find($releaseId) : [];
 
         return Inertia::render('Election/DemoRoomPrintStation', [
             'round' => $this->round($round),
@@ -48,7 +49,8 @@ final class DemoRoomPrintStationController extends Controller
                 'tally_sheet_pdf' => is_file($storage->path('runtime/tally-sheet.pdf')),
                 'election_return_pdf' => $precinctId !== '' && is_file($storage->path("returns/{$precinctId}-return.pdf")),
             ],
-            'release' => is_string($releaseId) ? $releases->find($releaseId) : [],
+            'release' => $release,
+            'ballotPreview' => is_string($releaseId) ? $releases->printedBallotPreview($releaseId) : null,
             'depositFeedback' => $request->session()->get($this->depositSessionKey($precinct)),
             'closeoutFeedback' => $request->session()->get($this->closeoutSessionKey($precinct)),
             'officerDefaults' => [

@@ -188,9 +188,11 @@ final class PublicSimulationVoterController extends Controller
         $this->scope($round, $precinct, $simulations);
         abort_unless($lifecycle->current() === Lifecycle::Voting, 409);
         $releaseId = $request->session()->get($this->printSessionKey($precinct));
+        $release = is_string($releaseId) ? $releases->find($releaseId) : [];
 
         return Inertia::render('Election/PrintStation', [
-            'release' => is_string($releaseId) ? $releases->find($releaseId) : [],
+            'release' => $release,
+            'ballotPreview' => is_string($releaseId) ? $releases->printedBallotPreview($releaseId) : null,
             'depositFeedback' => $request->session()->get($this->depositSessionKey($precinct)),
             'actions' => [
                 'redeem' => route('election.public-simulation.print.redeem', [$round, $precinct]),

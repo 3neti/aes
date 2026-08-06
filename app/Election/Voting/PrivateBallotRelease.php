@@ -212,6 +212,61 @@ final class PrivateBallotRelease
         return $this->decryptPayload($record);
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function printedBallotPreview(string $releaseId): ?array
+    {
+        $record = $this->record($releaseId);
+
+        if ($record['status'] !== 'printed') {
+            return null;
+        }
+
+        $payload = $this->decryptPayload($record);
+        $configuration = $this->storage->readJson('runtime/active-precinct.json');
+        $selections = $payload['selections'] ?? [];
+
+        if (! is_array($selections)) {
+            return null;
+        }
+
+        $rows = collect($configuration['contests'] ?? [])
+            ->filter(fn (mixed $contest): bool => is_array($contest))
+            ->map(function (array $contest) use ($selections): array {
+                $contestId = (string) ($contest['id'] ?? '');
+                $candidates = collect($contest['candidates'] ?? [])
+                    ->filter(fn (mixed $candidate): bool => is_array($candidate))
+                    ->keyBy(fn (array $candidate): string => (string) ($candidate['id'] ?? ''));
+                $selectedCandidateIds = $selections[$contestId] ?? [];
+
+                $selected = collect(is_array($selectedCandidateIds) ? $selectedCandidateIds : [])
+                    ->map(function (mixed $candidateId) use ($candidates): string {
+                        $candidate = $candidates->get((string) $candidateId, []);
+
+                        return trim(implode(' ', array_filter([
+                            $candidate['ballot_number'] ?? null,
+                            $candidate['name'] ?? $candidateId,
+                        ])));
+                    })
+                    ->values()
+                    ->all();
+
+                return [
+                    'contest' => (string) ($contest['title'] ?? $contestId),
+                    'selections' => $selected === [] ? ['UNDERVOTE - No selection'] : $selected,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return [
+            'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
+            'ballot_id' => $payload['ballot_id'] ?? null,
+            'rows' => $rows,
+        ];
+    }
+
     public function markDeposited(string $releaseId): void
     {
         $record = $this->record($releaseId);

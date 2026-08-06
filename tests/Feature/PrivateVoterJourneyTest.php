@@ -18,6 +18,7 @@ use App\Election\Voting\SealedBallotBox;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
+    $this->withoutVite();
     app(ElectionStorage::class)->reset();
     app(ElectionClock::class)->unfreeze();
     app(ActivateSamplePackage::class)->handle();

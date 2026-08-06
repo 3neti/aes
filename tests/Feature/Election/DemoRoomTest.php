@@ -126,8 +126,25 @@ test('the demo room runs a precinct through officer, voter, print station, watch
     ])->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));
     $this->post(route('election.demo-room.print.print', [$round, $precinct]))
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));
+
+    $this->get(route('election.demo-room.print.station', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('release.status', 'printed')
+            ->where('ballotPreview.ballot_id', fn (?string $ballotId): bool => $ballotId !== null && $ballotId !== '')
+            ->has('ballotPreview.rows')
+        );
+
     $this->post(route('election.demo-room.print.deposit', [$round, $precinct]))
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));
+
+    $this->get(route('election.demo-room.print.station', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('release', [])
+            ->where('ballotPreview', null)
+            ->where('depositFeedback.status', 'accepted')
+        );
 
     $this->get(route('election.demo-room.print.tally-sheet', [$round, $precinct]))
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));

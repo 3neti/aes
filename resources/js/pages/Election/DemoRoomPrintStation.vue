@@ -27,6 +27,11 @@ defineProps<{
         pin_digits?: number;
         expires_at?: string;
     };
+    ballotPreview?: {
+        paper_ballot_serial?: string | null;
+        ballot_id?: string | null;
+        rows: Array<{ contest: string; selections: string[] }>;
+    } | null;
     depositFeedback?: {
         status: string;
         paper_ballot_serial: string;
@@ -138,6 +143,7 @@ defineProps<{
         </div>
         <PrintStation
             :release="release"
+            :ballot-preview="ballotPreview"
             :deposit-feedback="depositFeedback"
             :actions="{
                 redeem: actions.redeem,
