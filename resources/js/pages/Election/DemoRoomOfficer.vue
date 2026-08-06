@@ -46,6 +46,7 @@ defineProps<{
     actions: {
         open: string;
         admit: string;
+        dismissControlNumber: string;
         admitQueued: string;
         close: string;
         publish: string;
@@ -126,7 +127,7 @@ usePoll(
                     </div>
                     <div
                         v-if="controlNumber"
-                        class="mt-4 border-2 border-blue-800 bg-blue-50 p-5 text-center"
+                        class="mt-4 border-4 border-blue-800 bg-blue-50 p-5 text-center"
                     >
                         <p class="text-sm font-bold text-blue-900">
                             Hand this 4-digit control number to the voter
@@ -134,6 +135,24 @@ usePoll(
                         <p class="mt-1 text-6xl font-black tracking-widest">
                             {{ controlNumber.code }}
                         </p>
+                        <p class="mt-2 text-sm font-semibold text-blue-950">
+                            Stays here until dismissed. Expires
+                            {{ controlNumber.expires_at }}.
+                        </p>
+                        <Form
+                            :action="actions.dismissControlNumber"
+                            method="post"
+                            #default="{ processing }"
+                            class="mt-4"
+                        >
+                            <button
+                                class="min-h-11 border-2 border-blue-800 bg-white px-5 font-bold text-blue-800 disabled:opacity-50"
+                                type="submit"
+                                :disabled="processing"
+                            >
+                                Dismiss after writing number
+                            </button>
+                        </Form>
                     </div>
                     <div class="mt-5 grid gap-4 md:grid-cols-2">
                         <Form

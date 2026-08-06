@@ -36,6 +36,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/{round:code}/{precinct:code}/officer', [DemoRoomController::class, 'officer'])->name('officer');
         Route::post('/{round:code}/{precinct:code}/open', [DemoRoomController::class, 'open'])->name('open');
         Route::post('/{round:code}/{precinct:code}/admit', [DemoRoomController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
+        Route::post('/{round:code}/{precinct:code}/dismiss-control-number', [DemoRoomController::class, 'dismissControlNumber'])->name('dismiss-control-number');
         Route::post('/{round:code}/{precinct:code}/close', [DemoRoomController::class, 'close'])->name('close');
         Route::post('/{round:code}/{precinct:code}/publish', [DemoRoomController::class, 'publish'])->name('publish');
         Route::get('/{round:code}/{precinct:code}/handoff', [DemoRoomController::class, 'handoff'])->name('handoff');
@@ -56,6 +57,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/{round:code}/{precinct:code}/open', [PublicSimulationController::class, 'open'])->name('open');
         Route::post('/{round:code}/{precinct:code}/admit', [PublicSimulationController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
         Route::post('/{round:code}/{precinct:code}/admit-queued', [PublicSimulationController::class, 'admitQueued'])->middleware('throttle:20,1')->name('admit-queued');
+        Route::post('/{round:code}/{precinct:code}/dismiss-control-number', [PublicSimulationController::class, 'dismissControlNumber'])->name('dismiss-control-number');
         Route::post('/{round:code}/{precinct:code}/admission-intake', [PublicSimulationController::class, 'updateAdmissionIntake'])->middleware('throttle:10,1')->name('admission-intake');
         Route::post('/{round:code}/{precinct:code}/contention-report', [PublicSimulationController::class, 'generateContentionReport'])->middleware('throttle:10,1')->name('contention-report');
         Route::post('/{round:code}/{precinct:code}/observation', [PublicSimulationController::class, 'recordOperationalObservation'])->middleware('throttle:10,1')->name('observation');

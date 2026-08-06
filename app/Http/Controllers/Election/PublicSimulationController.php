@@ -70,6 +70,7 @@ final class PublicSimulationController extends Controller
                 'open' => route('election.public-simulation.open', [$round, $precinct]),
                 'admit' => route('election.public-simulation.admit', [$round, $precinct]),
                 'admitQueued' => route('election.public-simulation.admit-queued', [$round, $precinct]),
+                'dismissControlNumber' => route('election.public-simulation.dismiss-control-number', [$round, $precinct]),
                 'admissionIntake' => route('election.public-simulation.admission-intake', [$round, $precinct]),
                 'contentionReport' => route('election.public-simulation.contention-report', [$round, $precinct]),
                 'observation' => route('election.public-simulation.observation', [$round, $precinct]),
@@ -80,7 +81,7 @@ final class PublicSimulationController extends Controller
                 'watch' => route('election.public-simulation.watcher.show', [$round, $precinct]),
             ],
             'officerFeedback' => $request->session()->get('public_simulation.officer_feedback'),
-            'controlNumber' => $request->session()->get('public_simulation.control_number'),
+            'controlNumber' => $request->session()->get($this->controlNumberSessionKey($precinct)),
         ]);
     }
 
@@ -121,8 +122,10 @@ final class PublicSimulationController extends Controller
             throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
         }
 
-        return to_route('election.public-simulation.show', [$round, $precinct])
-            ->with('public_simulation.control_number', $authorization);
+        $request->session()->put($this->controlNumberSessionKey($precinct), $authorization);
+        $request->session()->put('public_simulation.control_number', $authorization);
+
+        return to_route('election.public-simulation.show', [$round, $precinct]);
     }
 
     public function admitQueued(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationAdmissionQueue $queue, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting): RedirectResponse
@@ -143,9 +146,22 @@ final class PublicSimulationController extends Controller
             throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
         }
 
+        $request->session()->put($this->controlNumberSessionKey($precinct), $release['authorization']);
+        $request->session()->put('public_simulation.control_number', $release['authorization']);
+
         return to_route('election.public-simulation.show', [$round, $precinct])
-            ->with('public_simulation.control_number', $release['authorization'])
             ->with('public_simulation.officer_feedback', "Waiting ticket {$release['ticket']['ticket_number']} has been admitted. Hand over the four-digit control number.");
+    }
+
+    public function dismissControlNumber(Request $request, SimulationRound $round, SimulationPrecinct $precinct): RedirectResponse
+    {
+        $this->ensurePrecinctInRound($round, $precinct);
+        $request->session()->forget([
+            $this->controlNumberSessionKey($precinct),
+            'public_simulation.control_number',
+        ]);
+
+        return to_route('election.public-simulation.show', [$round, $precinct]);
     }
 
     public function generateContentionReport(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationContentionReport $contentionReport): RedirectResponse
@@ -271,6 +287,11 @@ final class PublicSimulationController extends Controller
     private function ensurePrecinctInRound(SimulationRound $round, SimulationPrecinct $precinct): void
     {
         abort_unless($precinct->simulation_round_id === $round->id, 404);
+    }
+
+    private function controlNumberSessionKey(SimulationPrecinct $precinct): string
+    {
+        return "public_simulation.{$precinct->id}.control_number";
     }
 
     /** @return array<string, mixed> */

@@ -101,6 +101,7 @@ final class DemoRoomController extends Controller
             'actions' => [
                 'open' => route('election.demo-room.open', [$round, $precinct]),
                 'admit' => route('election.demo-room.admit', [$round, $precinct]),
+                'dismissControlNumber' => route('election.demo-room.dismiss-control-number', [$round, $precinct]),
                 'admitQueued' => route('election.public-simulation.admit-queued', [$round, $precinct]),
                 'admissionIntake' => route('election.public-simulation.admission-intake', [$round, $precinct]),
                 'contentionReport' => route('election.public-simulation.contention-report', [$round, $precinct]),
@@ -113,7 +114,7 @@ final class DemoRoomController extends Controller
             ],
             'officerDefaults' => $this->officerDefaults($precinct),
             'officerFeedback' => $request->session()->get('public_simulation.officer_feedback'),
-            'controlNumber' => $request->session()->get('public_simulation.control_number'),
+            'controlNumber' => $request->session()->get($this->controlNumberSessionKey($precinct)),
         ]);
     }
 
@@ -149,8 +150,21 @@ final class DemoRoomController extends Controller
             throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
         }
 
-        return to_route('election.demo-room.officer', [$round, $precinct])
-            ->with('public_simulation.control_number', $authorization);
+        $request->session()->put($this->controlNumberSessionKey($precinct), $authorization);
+        $request->session()->put('public_simulation.control_number', $authorization);
+
+        return to_route('election.demo-room.officer', [$round, $precinct]);
+    }
+
+    public function dismissControlNumber(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations): RedirectResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        $request->session()->forget([
+            $this->controlNumberSessionKey($precinct),
+            'public_simulation.control_number',
+        ]);
+
+        return to_route('election.demo-room.officer', [$round, $precinct]);
     }
 
     public function close(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationCloseout $closeout): RedirectResponse
@@ -206,6 +220,11 @@ final class DemoRoomController extends Controller
     {
         abort_unless($precinct->simulation_round_id === $round->id, 404);
         $simulations->applyScope($precinct);
+    }
+
+    private function controlNumberSessionKey(SimulationPrecinct $precinct): string
+    {
+        return "public_simulation.{$precinct->id}.control_number";
     }
 
     /** @return array{officer_code: string, officer_pin: string} */

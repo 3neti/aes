@@ -56,6 +56,28 @@ test('the demo room runs a precinct through officer, voter, print station, watch
     expect($authorization)->toBeArray()
         ->and($authorization['code'])->toMatch('/^[0-9]{4}$/');
 
+    $this->get(route('election.demo-room.officer', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('controlNumber.code', $authorization['code'])
+            ->where('actions.dismissControlNumber', route('election.demo-room.dismiss-control-number', [$round, $precinct]))
+        );
+
+    $this->get(route('election.demo-room.officer', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('controlNumber.code', $authorization['code'])
+        );
+
+    $this->post(route('election.demo-room.dismiss-control-number', [$round, $precinct]))
+        ->assertRedirect(route('election.demo-room.officer', [$round, $precinct]));
+
+    $this->get(route('election.demo-room.officer', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('controlNumber', null)
+        );
+
     $this->post(route('election.public-simulation.voter.claim', [$round, $precinct]), [
         'code' => $authorization['code'],
     ])->assertRedirect(route('election.public-simulation.voter.ballot', [$round, $precinct]));

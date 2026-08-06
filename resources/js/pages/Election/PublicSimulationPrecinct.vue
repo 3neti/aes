@@ -89,6 +89,7 @@ defineProps<{
         open: string;
         admit: string;
         admitQueued: string;
+        dismissControlNumber: string;
         admissionIntake: string;
         contentionReport: string;
         observation: string;
@@ -513,19 +514,34 @@ usePoll(
                     </section>
                     <div
                         v-if="controlNumber"
-                        class="mt-5 border-l-4 border-emerald-700 bg-emerald-50 p-4"
+                        class="mt-5 border-4 border-emerald-700 bg-emerald-50 p-5 text-center"
                     >
                         <p class="text-sm font-bold text-emerald-900">
                             Give this number to the admitted voter
                         </p>
                         <p
-                            class="mt-1 font-mono text-4xl font-bold text-emerald-950"
+                            class="mt-1 font-mono text-6xl font-black tracking-widest text-emerald-950"
                         >
                             {{ controlNumber.code }}
                         </p>
-                        <p class="mt-2 text-sm text-emerald-900">
-                            Expires {{ controlNumber.expires_at }}
+                        <p class="mt-2 text-sm font-semibold text-emerald-900">
+                            Stays here until dismissed. Expires
+                            {{ controlNumber.expires_at }}.
                         </p>
+                        <Form
+                            :action="actions.dismissControlNumber"
+                            method="post"
+                            #default="{ processing }"
+                            class="mt-4"
+                        >
+                            <button
+                                class="min-h-11 border-2 border-emerald-800 bg-white px-5 font-bold text-emerald-900 disabled:opacity-50"
+                                type="submit"
+                                :disabled="processing"
+                            >
+                                Dismiss after writing number
+                            </button>
+                        </Form>
                     </div>
                 </section>
                 <section
