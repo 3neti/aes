@@ -101,6 +101,24 @@ test('the demo room runs a precinct through officer, voter, print station, watch
         ->assertRedirect(route('election.demo-room.officer', [$round, $precinct]));
     expect($precinct->fresh()->status)->toBe('results_ready');
 
+    $this->get(route('election.demo-room.print.station', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('enabled', true)
+            ->where('isVoting', false)
+            ->where('isPublished', false)
+            ->where('actions.tally', route('election.demo-room.print.tally-sheet', [$round, $precinct]))
+            ->where('actions.return', route('election.demo-room.print.election-return', [$round, $precinct]))
+        );
+
+    $this->get(route('election.demo-room.print.tally-sheet', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(route('election.demo-room.print.election-return', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
     $this->post(route('election.demo-room.publish', [$round, $precinct]), $credentials)
         ->assertRedirect(route('election.demo-room.officer', [$round, $precinct]));
     expect($precinct->fresh()->status)->toBe('published');
@@ -111,8 +129,8 @@ test('the demo room runs a precinct through officer, voter, print station, watch
             ->where('enabled', true)
             ->where('isVoting', false)
             ->where('isPublished', true)
-            ->where('actions.tally', route('election.public-simulation.watcher.tally', [$round, $precinct]))
-            ->where('actions.return', route('election.public-simulation.watcher.return', [$round, $precinct]))
+            ->where('actions.tally', route('election.demo-room.print.tally-sheet', [$round, $precinct]))
+            ->where('actions.return', route('election.demo-room.print.election-return', [$round, $precinct]))
         );
 
     $this->get(route('election.demo-room.handoff', [$round, $precinct]))

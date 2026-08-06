@@ -156,21 +156,20 @@ defineProps<{
                 </h1>
                 <p class="mt-3 text-stone-700">
                     Polls are no longer accepting voters. Use this printer
-                    station to produce the official review artifacts after the
-                    watcher package is published.
+                    station to produce the official closeout artifacts. The
+                    same laptop may open each PDF in the browser and print
+                    through the connected local printer.
                 </p>
                 <div class="mt-6 grid gap-3 sm:grid-cols-2">
                     <a
                         :href="actions.tally"
                         class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
-                        :class="{ 'pointer-events-none opacity-40': !isPublished }"
-                        >Download / print tally sheet</a
+                        >Open / print tally sheet</a
                     >
                     <a
                         :href="actions.return"
                         class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
-                        :class="{ 'pointer-events-none opacity-40': !isPublished }"
-                        >Download / print Election Return</a
+                        >Open / print Election Return</a
                     >
                     <a
                         :href="actions.watch"
@@ -187,8 +186,9 @@ defineProps<{
                     v-if="!isPublished"
                     class="mt-5 border-l-4 border-amber-500 bg-amber-50 p-4 text-sm font-semibold text-amber-950"
                 >
-                    Publish the watcher packet from the officer console before
-                    downloading public tally and Election Return files.
+                    The closeout PDFs are printable now. Publish the watcher
+                    packet from the officer console when you are ready to make
+                    the public download page visible.
                 </p>
             </div>
         </section>

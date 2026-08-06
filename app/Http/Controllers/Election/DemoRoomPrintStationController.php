@@ -21,6 +21,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class DemoRoomPrintStationController extends Controller
 {
@@ -57,8 +58,8 @@ final class DemoRoomPrintStationController extends Controller
                 'officer' => route('election.demo-room.officer', [$round, $precinct]),
                 'handoff' => route('election.demo-room.handoff', [$round, $precinct]),
                 'watch' => route('election.public-simulation.watcher.show', [$round, $precinct]),
-                'tally' => route('election.public-simulation.watcher.tally', [$round, $precinct]),
-                'return' => route('election.public-simulation.watcher.return', [$round, $precinct]),
+                'tally' => route('election.demo-room.print.tally-sheet', [$round, $precinct]),
+                'return' => route('election.demo-room.print.election-return', [$round, $precinct]),
             ],
             'printPinDigits' => min(6, max(4, (int) config('election.voter.print_pin_digits', 4))),
         ]);
@@ -104,6 +105,36 @@ final class DemoRoomPrintStationController extends Controller
         $request->session()->put($this->printSessionKey($precinct), $release['release_id']);
 
         return to_route('election.demo-room.print.station', [$round, $precinct]);
+    }
+
+    public function tallySheet(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        $this->ensureEnabled($request, $precinct);
+        $this->ensureCloseoutReady($precinct);
+
+        $path = $storage->path('runtime/tally-sheet.pdf');
+        abort_unless(is_file($path), 404);
+
+        return response()->file($path, [
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-tally-sheet.pdf"',
+        ]);
+    }
+
+    public function electionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        $this->ensureEnabled($request, $precinct);
+        $this->ensureCloseoutReady($precinct);
+
+        $configuration = $storage->readJson('runtime/active-precinct.json');
+        $precinctId = (string) ($configuration['precinct_id'] ?? '');
+        $path = $storage->path("returns/{$precinctId}-return.pdf");
+        abort_unless($precinctId !== '' && is_file($path), 404);
+
+        return response()->file($path, [
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-election-return.pdf"',
+        ]);
     }
 
     public function print(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases, BallotPrinter $printer, PublicSimulationVotingGate $voting): RedirectResponse
@@ -172,6 +203,11 @@ final class DemoRoomPrintStationController extends Controller
         abort_unless(is_string($releaseId), 403);
 
         return $releaseId;
+    }
+
+    private function ensureCloseoutReady(SimulationPrecinct $precinct): void
+    {
+        abort_unless(in_array($precinct->status, ['results_ready', 'published'], true), 404);
     }
 
     /** @return array<string, mixed> */
