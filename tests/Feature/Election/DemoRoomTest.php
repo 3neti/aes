@@ -89,6 +89,16 @@ test('the demo room runs a precinct through officer, voter, print station, watch
     $this->post(route('election.demo-room.print.enable', [$round, $precinct]), $credentials)
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));
 
+    $this->get(route('election.demo-room.print.station', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('enabled', true)
+            ->where('isVoting', true)
+            ->where('isCloseoutReady', false)
+            ->where('artifacts.tally_sheet_pdf', false)
+            ->where('artifacts.election_return_pdf', false)
+        );
+
     $this->post(route('election.demo-room.print.redeem', [$round, $precinct]), [
         'code' => $release['release_code'],
     ])->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));
@@ -115,7 +125,10 @@ test('the demo room runs a precinct through officer, voter, print station, watch
         ->assertInertia(fn (Assert $page) => $page
             ->where('enabled', true)
             ->where('isVoting', false)
+            ->where('isCloseoutReady', true)
             ->where('isPublished', false)
+            ->where('artifacts.tally_sheet_pdf', true)
+            ->where('artifacts.election_return_pdf', true)
             ->where('actions.tally', route('election.demo-room.print.tally-sheet', [$round, $precinct]))
             ->where('actions.return', route('election.demo-room.print.election-return', [$round, $precinct]))
         );

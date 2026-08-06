@@ -14,7 +14,12 @@ defineProps<{
     };
     enabled: boolean;
     isVoting: boolean;
+    isCloseoutReady: boolean;
     isPublished: boolean;
+    artifacts: {
+        tally_sheet_pdf: boolean;
+        election_return_pdf: boolean;
+    };
     release: {
         release_id?: string;
         paper_ballot_serial?: string;
@@ -168,20 +173,29 @@ defineProps<{
                     Print tally, Election Return, and handoff packet
                 </h1>
                 <p class="mt-3 text-stone-700">
-                    Polls are no longer accepting voters. Use this printer
-                    station to produce the official closeout artifacts. The
-                    same laptop may open each PDF in the browser and print
-                    through the connected local printer.
+                    {{
+                        isCloseoutReady
+                            ? 'Polls are no longer accepting voters. Use this printer station to produce the official closeout artifacts. The same laptop may open each PDF in the browser and print through the connected local printer.'
+                            : 'Close the precinct from the officer console before printing the tally sheet and Election Return.'
+                    }}
                 </p>
                 <div class="mt-6 grid gap-3 sm:grid-cols-2">
                     <a
                         :href="actions.tally"
                         class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
+                        :class="{
+                            'pointer-events-none opacity-40':
+                                !artifacts.tally_sheet_pdf,
+                        }"
                         >Open / print tally sheet</a
                     >
                     <a
                         :href="actions.return"
                         class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
+                        :class="{
+                            'pointer-events-none opacity-40':
+                                !artifacts.election_return_pdf,
+                        }"
                         >Open / print Election Return</a
                     >
                     <a
@@ -196,7 +210,19 @@ defineProps<{
                     >
                 </div>
                 <p
-                    v-if="!isPublished"
+                    v-if="
+                        isCloseoutReady &&
+                        (!artifacts.tally_sheet_pdf ||
+                            !artifacts.election_return_pdf)
+                    "
+                    class="mt-5 border-l-4 border-red-600 bg-red-50 p-4 text-sm font-semibold text-red-950"
+                >
+                    Closeout is marked ready, but one or more PDF artifacts are
+                    missing. Return to the officer console and run closeout
+                    again.
+                </p>
+                <p
+                    v-else-if="!isPublished"
                     class="mt-5 border-l-4 border-amber-500 bg-amber-50 p-4 text-sm font-semibold text-amber-950"
                 >
                     The closeout PDFs are printable now. Publish the watcher

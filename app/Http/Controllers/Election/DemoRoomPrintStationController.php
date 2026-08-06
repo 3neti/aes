@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ActivityJournal;
-use App\Election\Lifecycle\Lifecycle;
-use App\Election\Lifecycle\LifecycleState;
 use App\Election\Printing\BallotPrinter;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
@@ -31,19 +29,25 @@ final class DemoRoomPrintStationController extends Controller
         SimulationPrecinct $precinct,
         PublicSimulationService $simulations,
         PrivateBallotRelease $releases,
-        LifecycleState $lifecycle,
         ElectionStorage $storage,
     ): Response {
         $this->scope($round, $precinct, $simulations);
         $releaseId = $request->session()->get($this->printSessionKey($precinct));
         $publication = $storage->readJson('returns/publication-manifest.json');
+        $configuration = $storage->readJson('runtime/active-precinct.json');
+        $precinctId = (string) ($configuration['precinct_id'] ?? '');
 
         return Inertia::render('Election/DemoRoomPrintStation', [
             'round' => $this->round($round),
             'precinct' => $this->precinct($precinct),
             'enabled' => (bool) $request->session()->get($this->enabledSessionKey($precinct), false),
-            'isVoting' => $lifecycle->current() === Lifecycle::Voting,
+            'isVoting' => $precinct->status === 'open',
+            'isCloseoutReady' => $this->isCloseoutReady($precinct),
             'isPublished' => $publication !== [],
+            'artifacts' => [
+                'tally_sheet_pdf' => is_file($storage->path('runtime/tally-sheet.pdf')),
+                'election_return_pdf' => $precinctId !== '' && is_file($storage->path("returns/{$precinctId}-return.pdf")),
+            ],
             'release' => is_string($releaseId) ? $releases->find($releaseId) : [],
             'depositFeedback' => $request->session()->get($this->depositSessionKey($precinct)),
             'closeoutFeedback' => $request->session()->get($this->closeoutSessionKey($precinct)),
