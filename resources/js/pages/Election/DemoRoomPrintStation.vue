@@ -1,0 +1,196 @@
+<script setup lang="ts">
+import { Form, Head, Link } from '@inertiajs/vue3';
+import PrintStation from './PrintStation.vue';
+
+defineProps<{
+    round: { code: string; name: string };
+    precinct: {
+        code: string;
+        label: string;
+        clustered_precinct: string;
+        city_municipality: string | null;
+        province: string | null;
+        status: string;
+    };
+    enabled: boolean;
+    isVoting: boolean;
+    isPublished: boolean;
+    release: {
+        release_id?: string;
+        paper_ballot_serial?: string;
+        status?: string;
+        pin_digits?: number;
+        expires_at?: string;
+    };
+    depositFeedback?: {
+        status: string;
+        paper_ballot_serial: string;
+    };
+    officerDefaults: { officer_code: string; officer_pin: string };
+    actions: {
+        enable: string;
+        redeem: string;
+        print: string;
+        deposit: string;
+        officer: string;
+        handoff: string;
+        watch: string;
+        tally: string;
+        return: string;
+    };
+    printPinDigits: number;
+}>();
+</script>
+
+<template>
+    <Head :title="`${precinct.code} central print station`" />
+
+    <main v-if="!enabled" class="min-h-screen bg-stone-100 text-stone-950">
+        <div class="grid h-1.5 grid-cols-3">
+            <span class="bg-blue-800" /><span class="bg-yellow-400" /><span
+                class="bg-red-700"
+            />
+        </div>
+        <section class="mx-auto max-w-xl px-5 py-10 sm:px-8">
+            <Link :href="actions.officer" class="text-sm font-bold text-blue-800"
+                >Back to officer console</Link
+            >
+            <div class="mt-4 border border-stone-300 bg-white p-6">
+                <p class="text-sm font-bold text-blue-800">
+                    Central print station
+                </p>
+                <h1 class="mt-2 text-3xl font-bold">
+                    Enable printer for {{ precinct.label }}
+                </h1>
+                <p class="mt-3 text-stone-700">
+                    An Election Officer enables this laptop once. After that,
+                    the station waits for voter print PINs and prints without
+                    displaying vote choices on screen.
+                </p>
+                <Form
+                    :action="actions.enable"
+                    method="post"
+                    #default="{ errors, processing }"
+                    class="mt-6 space-y-4"
+                >
+                    <label class="block">
+                        <span class="text-sm font-bold">Officer username</span>
+                        <input
+                            class="mt-1 min-h-12 w-full border-2 border-stone-300 px-3 font-mono"
+                            name="officer_code"
+                            required
+                            :value="officerDefaults.officer_code"
+                        />
+                    </label>
+                    <label class="block">
+                        <span class="text-sm font-bold">Officer PIN</span>
+                        <input
+                            class="mt-1 min-h-12 w-full border-2 border-stone-300 px-3 font-mono"
+                            name="officer_pin"
+                            required
+                            inputmode="numeric"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            :value="officerDefaults.officer_pin"
+                        />
+                    </label>
+                    <p v-if="errors.officer_pin" class="font-bold text-red-700">
+                        {{ errors.officer_pin }}
+                    </p>
+                    <button
+                        class="review-next-action-button min-h-14 w-full bg-blue-800 px-5 font-bold text-white disabled:opacity-50"
+                        type="submit"
+                        :disabled="processing"
+                    >
+                        {{
+                            processing
+                                ? 'Enabling...'
+                                : 'Enable central print station'
+                        }}
+                    </button>
+                </Form>
+            </div>
+        </section>
+    </main>
+
+    <main
+        v-else-if="isVoting"
+        class="min-h-screen bg-stone-950 text-stone-950"
+    >
+        <div class="bg-white px-5 py-3 text-sm sm:px-8">
+            <a :href="actions.officer" class="font-bold text-blue-800"
+                >Officer console</a
+            >
+            <span class="mx-2 text-stone-400">/</span>
+            <span>{{ precinct.label }} print station enabled</span>
+        </div>
+        <PrintStation
+            :release="release"
+            :deposit-feedback="depositFeedback"
+            :actions="{
+                redeem: actions.redeem,
+                print: actions.print,
+                deposit: actions.deposit,
+            }"
+            :print-pin-digits="printPinDigits"
+            public-simulation
+        />
+    </main>
+
+    <main v-else class="min-h-screen bg-stone-100 text-stone-950">
+        <div class="grid h-1.5 grid-cols-3">
+            <span class="bg-blue-800" /><span class="bg-yellow-400" /><span
+                class="bg-red-700"
+            />
+        </div>
+        <section class="mx-auto max-w-4xl px-5 py-10 sm:px-8">
+            <Link :href="actions.officer" class="text-sm font-bold text-blue-800"
+                >Back to officer console</Link
+            >
+            <div class="mt-4 border border-stone-300 bg-white p-6">
+                <p class="text-sm font-bold text-blue-800">
+                    Closeout printing
+                </p>
+                <h1 class="mt-2 text-3xl font-bold">
+                    Print tally, Election Return, and handoff packet
+                </h1>
+                <p class="mt-3 text-stone-700">
+                    Polls are no longer accepting voters. Use this printer
+                    station to produce the official review artifacts after the
+                    watcher package is published.
+                </p>
+                <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                    <a
+                        :href="actions.tally"
+                        class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
+                        :class="{ 'pointer-events-none opacity-40': !isPublished }"
+                        >Download / print tally sheet</a
+                    >
+                    <a
+                        :href="actions.return"
+                        class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
+                        :class="{ 'pointer-events-none opacity-40': !isPublished }"
+                        >Download / print Election Return</a
+                    >
+                    <a
+                        :href="actions.watch"
+                        class="secondary-button text-center"
+                        >Open watcher publication</a
+                    >
+                    <a
+                        :href="actions.handoff"
+                        class="secondary-button text-center"
+                        >Open handoff guide</a
+                    >
+                </div>
+                <p
+                    v-if="!isPublished"
+                    class="mt-5 border-l-4 border-amber-500 bg-amber-50 p-4 text-sm font-semibold text-amber-950"
+                >
+                    Publish the watcher packet from the officer console before
+                    downloading public tally and Election Return files.
+                </p>
+            </div>
+        </section>
+    </main>
+</template>

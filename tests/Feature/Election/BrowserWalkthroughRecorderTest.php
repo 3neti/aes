@@ -271,6 +271,97 @@ test('browser walkthrough command records public simulation lobby officer voter 
     });
 });
 
+test('browser walkthrough command records demo room role qr officer voter print watcher and handoff flow', function (): void {
+    config()->set('election.public_simulation.enabled', true);
+
+    Process::fake(function (PendingProcess $process) {
+        $artifactDirectory = $process->environment['ELECTION_WALKTHROUGH_ARTIFACT_DIR'];
+        $scenario = $process->environment['ELECTION_WALKTHROUGH_SCENARIO'];
+        $videoPath = "{$artifactDirectory}/{$scenario}.webm";
+        $tracePath = "{$artifactDirectory}/playwright-trace.zip";
+        $storyboardPdfPath = "{$artifactDirectory}/walkthrough-storyboard.pdf";
+        $storyboardFramePath = "{$artifactDirectory}/storyboard-frames/01-demo-room-lobby.png";
+
+        file_put_contents($videoPath, 'recorded-demo-room-video');
+        file_put_contents($tracePath, 'recorded-demo-room-trace');
+        mkdir(dirname($storyboardFramePath), recursive: true);
+        file_put_contents($storyboardFramePath, 'storyboard-frame');
+        file_put_contents($storyboardPdfPath, '%PDF-1.4 demo room storyboard');
+
+        return Process::result(output: json_encode([
+            'schema_version' => 'browser-walkthrough-recorder-result-1',
+            'passed' => true,
+            'statistics' => [
+                'actions_recorded' => 12,
+                'actions_completed' => 12,
+                'browser_messages' => 0,
+                'ballots_requested' => 2,
+                'ballots_finalized' => 2,
+                'ballots_printed' => 2,
+                'ballots_accepted' => 2,
+                'handoff_completed' => true,
+            ],
+            'artifacts' => [
+                [
+                    'label' => 'Video',
+                    'path' => $videoPath,
+                    'relative_path' => "{$scenario}.webm",
+                    'bytes' => filesize($videoPath),
+                    'sha256' => hash_file('sha256', $videoPath),
+                ],
+                [
+                    'label' => 'Walkthrough storyboard PDF',
+                    'path' => $storyboardPdfPath,
+                    'relative_path' => 'walkthrough-storyboard.pdf',
+                    'bytes' => filesize($storyboardPdfPath),
+                    'sha256' => hash_file('sha256', $storyboardPdfPath),
+                ],
+                [
+                    'label' => 'Storyboard frame 01-demo-room-lobby',
+                    'path' => $storyboardFramePath,
+                    'relative_path' => 'storyboard-frames/01-demo-room-lobby.png',
+                    'bytes' => filesize($storyboardFramePath),
+                    'sha256' => hash_file('sha256', $storyboardFramePath),
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR));
+    });
+
+    $this->artisan('election:browser-walkthrough', [
+        'scenario' => 'demo-room',
+        '--ballots' => 2,
+        '--slow-mo' => 0,
+        '--base-url' => 'http://127.0.0.1:8000',
+    ])
+        ->expectsOutputToContain('Browser walkthrough passed.')
+        ->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $rehearsal = $storage->currentRun(ElectionRunType::Rehearsal);
+    $reportPath = $rehearsal['run_path'].'/12-audit-and-reconciliation/browser-recordings/browser-walkthrough-report.json';
+    $report = json_decode(file_get_contents($reportPath), true, flags: JSON_THROW_ON_ERROR);
+    $browserDirectory = dirname($reportPath);
+    $browserIndex = json_decode(file_get_contents($browserDirectory.'/browser-artifact-index.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($report['scenario'])->toBe('demo-room')
+        ->and($report['context']['round_code'])->toStartWith('ROUND-')
+        ->and($report['context']['precinct_code'])->toStartWith('TONDO-')
+        ->and($report['statistics']['handoff_completed'])->toBeTrue()
+        ->and(collect($browserIndex['artifacts'])->pluck('relative_path'))->toContain(
+            '12-audit-and-reconciliation/browser-recordings/demo-room.webm',
+            '12-audit-and-reconciliation/browser-recordings/walkthrough-storyboard.pdf',
+            '12-audit-and-reconciliation/browser-recordings/storyboard-frames/01-demo-room-lobby.png',
+        );
+
+    Process::assertRan(function (PendingProcess $process): bool {
+        return ($process->environment['ELECTION_WALKTHROUGH_SCENARIO'] ?? null) === 'demo-room'
+            && ($process->environment['ELECTION_WALKTHROUGH_PUBLIC_ROUND'] ?? '') !== ''
+            && str_starts_with((string) ($process->environment['ELECTION_WALKTHROUGH_PUBLIC_PRECINCT'] ?? ''), 'TONDO-')
+            && str_starts_with((string) ($process->environment['ELECTION_WALKTHROUGH_PUBLIC_OFFICER_CODE'] ?? ''), 'SIM-')
+            && ($process->environment['ELECTION_WALKTHROUGH_PUBLIC_OFFICER_PIN'] ?? null) === '123456';
+    });
+});
+
 test('browser walkthrough command preserves and locks failed recorder evidence', function (): void {
     Process::fake(function (PendingProcess $process) {
         $artifactDirectory = $process->environment['ELECTION_WALKTHROUGH_ARTIFACT_DIR'];

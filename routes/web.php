@@ -3,6 +3,8 @@
 use App\Http\Controllers\Election\AttestationController;
 use App\Http\Controllers\Election\CertificationController;
 use App\Http\Controllers\Election\CountingController;
+use App\Http\Controllers\Election\DemoRoomController;
+use App\Http\Controllers\Election\DemoRoomPrintStationController;
 use App\Http\Controllers\Election\DiagnosticsController;
 use App\Http\Controllers\Election\HomeController;
 use App\Http\Controllers\Election\PrintingController;
@@ -27,6 +29,23 @@ Route::get('/', HomeController::class)
     ->name('home');
 
 Route::prefix('election')->name('election.')->group(function (): void {
+    Route::prefix('demo-room')->name('demo-room.')->group(function (): void {
+        Route::get('/', [DemoRoomController::class, 'index'])->name('index');
+        Route::get('/{round:code}/{precinct:code}', [DemoRoomController::class, 'show'])->name('show');
+        Route::get('/{round:code}/{precinct:code}/officer', [DemoRoomController::class, 'officer'])->name('officer');
+        Route::post('/{round:code}/{precinct:code}/open', [DemoRoomController::class, 'open'])->name('open');
+        Route::post('/{round:code}/{precinct:code}/admit', [DemoRoomController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
+        Route::post('/{round:code}/{precinct:code}/close', [DemoRoomController::class, 'close'])->name('close');
+        Route::post('/{round:code}/{precinct:code}/publish', [DemoRoomController::class, 'publish'])->name('publish');
+        Route::get('/{round:code}/{precinct:code}/handoff', [DemoRoomController::class, 'handoff'])->name('handoff');
+
+        Route::get('/{round:code}/{precinct:code}/print', [DemoRoomPrintStationController::class, 'show'])->name('print.station');
+        Route::post('/{round:code}/{precinct:code}/print/enable', [DemoRoomPrintStationController::class, 'enable'])->middleware('throttle:10,1')->name('print.enable');
+        Route::post('/{round:code}/{precinct:code}/print/redeem', [DemoRoomPrintStationController::class, 'redeem'])->middleware('throttle:10,1')->name('print.redeem');
+        Route::post('/{round:code}/{precinct:code}/print/print', [DemoRoomPrintStationController::class, 'print'])->name('print.print');
+        Route::post('/{round:code}/{precinct:code}/print/deposit', [DemoRoomPrintStationController::class, 'deposit'])->name('print.deposit');
+    });
+
     Route::prefix('play')->name('public-simulation.')->group(function (): void {
         Route::get('/', [PublicSimulationController::class, 'index'])->name('index');
         Route::get('/{round:code}/god-mode', PublicSimulationGodModeController::class)->name('god-mode');

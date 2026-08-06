@@ -402,6 +402,16 @@ function publicSimulationPath(suffix = '') {
     return `/election/play/${publicRoundCode}/${publicPrecinctCode}${suffix}`;
 }
 
+function demoRoomPath(suffix = '') {
+    if (!publicRoundCode || !publicPrecinctCode) {
+        throw new Error(
+            'The demo-room walkthrough requires a round and precinct context.',
+        );
+    }
+
+    return `/election/demo-room/${publicRoundCode}/${publicPrecinctCode}${suffix}`;
+}
+
 async function postPublicOfficerAction(buttonName, pathname, reload = true) {
     const button = page.getByRole('button', {
         name: buttonName,
@@ -411,6 +421,29 @@ async function postPublicOfficerAction(buttonName, pathname, reload = true) {
 
     await form.locator('input[name="officer_code"]').fill(publicOfficerCode);
     await form.locator('input[name="officer_pin"]').fill(publicOfficerPin);
+    await Promise.all([
+        page.waitForResponse(
+            (response) =>
+                response.request().method() === 'POST' &&
+                new URL(response.url()).pathname === pathname,
+            { timeout: 120_000 },
+        ),
+        form.getByRole('button', { name: buttonName, exact: true }).click(),
+    ]);
+    await page.waitForLoadState('networkidle');
+
+    if (reload) {
+        await page.reload({ waitUntil: 'networkidle', timeout: 120_000 });
+    }
+}
+
+async function postDemoOfficerAction(buttonName, pathname, reload = true) {
+    const button = page.getByRole('button', {
+        name: buttonName,
+        exact: true,
+    });
+    const form = page.locator('form').filter({ has: button }).first();
+
     await Promise.all([
         page.waitForResponse(
             (response) =>
@@ -588,6 +621,40 @@ async function printAndDepositPublicSimulationBallot(release) {
     await postButton(
         'Scan and deposit verified ballot',
         publicSimulationPath('/print/deposit'),
+        60_000,
+        false,
+    );
+    await page.getByText('Ballot accepted', { exact: true }).waitFor();
+    walkthroughStatistics.ballots_accepted++;
+
+    return release;
+}
+
+async function printAndDepositDemoRoomBallot(release) {
+    await openPath(demoRoomPath('/print'));
+
+    if (
+        (await page
+            .getByRole('button', {
+                name: 'Enable central print station',
+                exact: true,
+            })
+            .count()) > 0
+    ) {
+        await postDemoOfficerAction(
+            'Enable central print station',
+            demoRoomPath('/print/enable'),
+            false,
+        );
+    }
+
+    await page.locator('input[name="code"]').fill(release.release_code);
+    await postButton('Claim paper ballot', demoRoomPath('/print/redeem'));
+    await postButton('Print paper ballot', demoRoomPath('/print/print'));
+    walkthroughStatistics.ballots_printed++;
+    await postButton(
+        'Scan and deposit verified ballot',
+        demoRoomPath('/print/deposit'),
         60_000,
         false,
     );
@@ -803,6 +870,215 @@ async function runPublicSimulationScenario() {
     });
 }
 
+async function runDemoRoomScenario() {
+    if (!publicOfficerCode || !publicOfficerPin) {
+        throw new Error(
+            'The demo-room walkthrough requires officer credentials.',
+        );
+    }
+
+    await runStep(
+        'open-demo-room-lobby',
+        async () => {
+            await openPath('/election/demo-room');
+            await page.getByText(publicPrecinctCode, { exact: true }).waitFor();
+
+            return {
+                round_code: publicRoundCode,
+                precinct_code: publicPrecinctCode,
+            };
+        },
+        '01-demo-room-lobby.png',
+    );
+
+    await runStep(
+        'open-demo-role-qr-room',
+        async () => {
+            await openPath(demoRoomPath());
+            await page
+                .getByRole('heading', {
+                    name: 'Election Officer',
+                    exact: true,
+                })
+                .waitFor();
+            await page
+                .getByRole('heading', {
+                    name: 'Printing Station',
+                    exact: true,
+                })
+                .waitFor();
+        },
+        '02-demo-role-qr-room.png',
+    );
+
+    await runStep(
+        'open-demo-officer-console',
+        async () => {
+            await openPath(demoRoomPath('/officer'));
+            await page
+                .getByRole('heading', {
+                    name: /Election Officer:/,
+                })
+                .waitFor();
+        },
+        '03-demo-officer-console-ready.png',
+    );
+
+    await runStep(
+        'open-demo-precinct',
+        async () => {
+            await postDemoOfficerAction(
+                'Open precinct',
+                demoRoomPath('/open'),
+            );
+            await page
+                .getByRole('button', {
+                    name: 'Generate voter control number',
+                    exact: true,
+                })
+                .waitFor();
+        },
+        '04-demo-precinct-open.png',
+    );
+
+    const requestedBallots = Number(
+        process.env.ELECTION_WALKTHROUGH_BALLOTS ?? 1,
+    );
+
+    for (
+        let ballotNumber = 1;
+        ballotNumber <= requestedBallots;
+        ballotNumber++
+    ) {
+        await runStep(
+            `issue-demo-control-number-${ballotNumber}`,
+            async () => {
+                await postDemoOfficerAction(
+                    'Generate voter control number',
+                    demoRoomPath('/admit'),
+                    false,
+                );
+                publicControlNumber = (
+                    await page.locator('p.tracking-widest').first().textContent()
+                ).trim();
+
+                return {
+                    control_number_visible: publicControlNumber.length === 4,
+                };
+            },
+            `05-demo-control-number-${ballotNumber}.png`,
+        );
+
+        let release;
+        await runStep(
+            `finalize-demo-voter-ballot-${ballotNumber}`,
+            async () => {
+                release = await finalizePublicSimulationBallot(ballotNumber);
+
+                return {
+                    release_ready: true,
+                };
+            },
+            `06-demo-voter-ballot-${ballotNumber}-finalized.png`,
+        );
+
+        await runStep(
+            `print-and-deposit-demo-ballot-${ballotNumber}`,
+            async () => printAndDepositDemoRoomBallot(release),
+            `07-demo-ballot-${ballotNumber}-deposited.png`,
+        );
+
+        await openPath(demoRoomPath('/officer'));
+    }
+
+    await runStep(
+        'close-demo-precinct-and-tally',
+        async () => {
+            await postDemoOfficerAction(
+                'Close precinct and tally',
+                demoRoomPath('/close'),
+            );
+            await page
+                .getByRole('button', {
+                    name: 'Publish results',
+                    exact: true,
+                })
+                .waitFor();
+            walkthroughStatistics.return_generated = true;
+            walkthroughStatistics.precinct_closed = true;
+        },
+        '08-demo-results-ready.png',
+    );
+
+    await runStep(
+        'publish-demo-watcher-packet',
+        async () => {
+            await postDemoOfficerAction(
+                'Publish results',
+                demoRoomPath('/publish'),
+            );
+            walkthroughStatistics.return_approved = true;
+        },
+        '09-demo-results-published.png',
+    );
+
+    await runStep(
+        'review-demo-print-station-closeout',
+        async () => {
+            await openPath(demoRoomPath('/print'));
+            await page
+                .getByRole('heading', {
+                    name: 'Print tally, Election Return, and handoff packet',
+                    exact: true,
+                })
+                .waitFor();
+            await page
+                .getByRole('link', {
+                    name: 'Download / print tally sheet',
+                    exact: true,
+                })
+                .waitFor();
+        },
+        '10-demo-print-station-closeout.png',
+    );
+
+    await runStep(
+        'review-demo-watcher-publication',
+        async () => {
+            await openPath(publicSimulationPath('/watch'));
+            await page.getByText('POLL WATCHER VIEW', { exact: true }).waitFor();
+            await page
+                .getByRole('link', {
+                    name: 'Download Election Return PDF',
+                    exact: true,
+                })
+                .waitFor();
+        },
+        '11-demo-watcher-publication.png',
+    );
+
+    await runStep(
+        'review-demo-handoff-guide',
+        async () => {
+            await openPath(demoRoomPath('/handoff'));
+            await page
+                .getByRole('heading', {
+                    name: /closeout packet/,
+                })
+                .waitFor();
+            walkthroughStatistics.handoff_completed = true;
+        },
+        '12-demo-handoff-guide.png',
+    );
+
+    recordAction('demo-room-role-qr-officer-voter-print-watcher-flow', 'passed', {
+        final_url: page.url(),
+        round_code: publicRoundCode,
+        precinct_code: publicPrecinctCode,
+        ...walkthroughStatistics,
+    });
+}
+
 try {
     recordAction('launch-browser', 'started', {
         headless: process.env.ELECTION_WALKTHROUGH_HEADED !== '1',
@@ -846,6 +1122,8 @@ try {
 
     if (scenario === 'public-simulation') {
         await runPublicSimulationScenario();
+    } else if (scenario === 'demo-room') {
+        await runDemoRoomScenario();
     } else {
     await runStep(
         'open-election-home',
@@ -1587,7 +1865,10 @@ if (nativeVideoPath) {
 
 await rm(videoStagingDirectory, { force: true, recursive: true });
 
-if (errorMessage === null && scenario !== 'public-simulation') {
+if (
+    errorMessage === null &&
+    !['public-simulation', 'demo-room'].includes(scenario)
+) {
     try {
         recordAction('render-printed-artifacts', 'started');
         const runPath = path.resolve(artifactDirectory, '../..');

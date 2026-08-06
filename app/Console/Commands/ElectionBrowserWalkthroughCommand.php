@@ -20,7 +20,7 @@ use RuntimeException;
 use Throwable;
 
 #[Signature('election:browser-walkthrough
-    {scenario : full-election or public-simulation}
+    {scenario : full-election, public-simulation, or demo-room}
     {--ballots=3 : Number of voter ballots to cast}
     {--headed : Show the browser while the walkthrough runs}
     {--slow-mo=150 : Delay browser actions by this many milliseconds}
@@ -44,7 +44,7 @@ final class ElectionBrowserWalkthroughCommand extends Command
         $slowMotion = filter_var($this->option('slow-mo'), FILTER_VALIDATE_INT);
         $baseUrl = rtrim((string) ($this->option('base-url') ?: config('app.url')), '/');
 
-        if (! in_array($scenario, ['full-election', 'public-simulation'], true)) {
+        if (! in_array($scenario, ['full-election', 'public-simulation', 'demo-room'], true)) {
             $this->error("Unsupported browser walkthrough [{$scenario}].");
 
             return self::INVALID;
