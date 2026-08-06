@@ -445,8 +445,10 @@ test('voter ballot includes position and candidate navigation aids', function ()
     $voterBallot = file_get_contents(resource_path('js/pages/Election/VoterBallot.vue'));
 
     expect($voterBallot)->toContain('Jump to position')
-        ->and($voterBallot)->toContain('Jump by candidate name')
+        ->and($voterBallot)->toContain('Senator surname jump')
+        ->and($voterBallot)->toContain('Stays here while browsing this position')
         ->and($voterBallot)->toContain('Review: {{ reviewSummary }}')
+        ->and($voterBallot)->toContain('function jumpToCandidateLetter')
         ->and($voterBallot)->toContain('function candidateIndexKey')
         ->and($voterBallot)->toContain('function contestShortLabel');
 });

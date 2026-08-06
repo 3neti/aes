@@ -22,6 +22,7 @@ const props = defineProps<{
 
 const step = ref<'ballot' | 'review'>('ballot');
 const selections = ref<Record<string, string[]>>({});
+const activeLetters = ref<Record<string, string>>({});
 const page = usePage();
 const reviewRoom = computed(
     () => page.props.electionReviewRoom as ElectionReviewRoomContext,
@@ -150,6 +151,14 @@ function scrollToElement(elementId: string): void {
     });
 }
 
+function jumpToCandidateLetter(
+    contest: Contest,
+    letter: { letter: string; candidateId: string },
+): void {
+    activeLetters.value[contest.id] = letter.letter;
+    scrollToElement(candidateAnchor(contest.id, letter.candidateId));
+}
+
 function letterIndex(
     contest: Contest,
 ): Array<{ letter: string; candidateId: string }> {
@@ -206,6 +215,20 @@ function isPartyListContest(contest: Contest): boolean {
     return `${contest.office ?? ''} ${contest.title}`
         .toUpperCase()
         .includes('PARTY LIST');
+}
+
+function letterNavigationLabel(contest: Contest): string {
+    const title = `${contest.office ?? ''} ${contest.title}`.toUpperCase();
+
+    if (title.includes('SENATOR')) {
+        return 'Senator surname jump';
+    }
+
+    if (isPartyListContest(contest)) {
+        return 'Party-list name jump';
+    }
+
+    return `${contestShortLabel(contest)} name jump`;
 }
 </script>
 
@@ -308,25 +331,30 @@ function isPartyListContest(contest: Contest): boolean {
                     </div>
                     <div
                         v-if="letterIndex(contest).length > 0"
-                        class="mt-4 border-y border-stone-200 py-3"
+                        class="sticky top-[76px] z-10 mt-4 border-y border-stone-200 bg-white/95 py-3 shadow-sm backdrop-blur"
                     >
-                        <p class="text-xs font-bold text-stone-600 uppercase">
-                            Jump by candidate name
-                        </p>
-                        <div class="mt-2 flex flex-wrap gap-1.5">
+                        <div class="flex items-center justify-between gap-3">
+                            <p
+                                class="text-xs font-bold text-stone-600 uppercase"
+                            >
+                                {{ letterNavigationLabel(contest) }}
+                            </p>
+                            <p class="text-xs font-semibold text-stone-500">
+                                Stays here while browsing this position
+                            </p>
+                        </div>
+                        <div class="mt-2 flex gap-1.5 overflow-x-auto pb-1">
                             <button
                                 v-for="letter in letterIndex(contest)"
                                 :key="`${contest.id}-${letter.letter}`"
-                                class="flex h-9 min-w-9 items-center justify-center border border-stone-300 bg-stone-50 px-2 text-sm font-bold text-stone-900"
-                                type="button"
-                                @click="
-                                    scrollToElement(
-                                        candidateAnchor(
-                                            contest.id,
-                                            letter.candidateId,
-                                        ),
-                                    )
+                                class="flex h-9 min-w-9 shrink-0 items-center justify-center border px-2 text-sm font-bold"
+                                :class="
+                                    activeLetters[contest.id] === letter.letter
+                                        ? 'border-blue-800 bg-blue-800 text-white'
+                                        : 'border-stone-300 bg-stone-50 text-stone-900'
                                 "
+                                type="button"
+                                @click="jumpToCandidateLetter(contest, letter)"
                             >
                                 {{ letter.letter }}
                             </button>
