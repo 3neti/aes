@@ -57,6 +57,11 @@ test('tondo precinct ballot package activates deterministic configuration', func
         ->and($configuration['contests'])->toHaveCount(6)
         ->and(collect($configuration['contests'])->pluck('office')->contains('PRESIDENT'))->toBeFalse()
         ->and(collect($configuration['contests'])->sum(fn (array $contest): int => count($contest['candidates'])))->toBe(387)
+        ->and(collect($configuration['contests'])
+            ->flatMap(fn (array $contest): array => $contest['candidates'])
+            ->pluck('political_party')
+            ->filter()
+            ->contains(fn (string $party): bool => str_contains($party, 'pertinent documents attached thereto')))->toBeFalse()
         ->and($activation['report']['artifact_path'])->toBeReadableFile()
         ->and(app(LifecycleState::class)->current())->toBe(Lifecycle::Certification);
 });

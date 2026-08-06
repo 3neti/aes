@@ -11,6 +11,7 @@ use App\Election\PublicSimulation\PublicSimulationParticipation;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\PartyLabelNormalizer;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
 use App\Election\Voting\SealedBallotBox;
@@ -102,20 +103,21 @@ final class PublicSimulationVoterController extends Controller
         return to_route('election.public-simulation.voter.ballot', [$round, $precinct]);
     }
 
-    public function ballot(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, LifecycleState $lifecycle, AnonymousVoterAuthorization $authorizations): Response
+    public function ballot(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, LifecycleState $lifecycle, AnonymousVoterAuthorization $authorizations, PartyLabelNormalizer $partyLabels): Response
     {
         $this->scope($round, $precinct, $simulations);
         abort_unless($lifecycle->current() === Lifecycle::Voting, 409);
         $authorizationId = $request->session()->get($this->authorizationSessionKey($precinct));
         abort_unless(is_string($authorizationId) && $authorizations->isClaimed($authorizationId), 403);
         $configuration = $storage->readJson('runtime/active-precinct.json');
+        $contests = $this->normalizeContestPartyLabels($configuration['contests'] ?? [], $partyLabels);
 
         return Inertia::render('Election/VoterBallot', [
             'ballot' => [
                 'election_id' => $configuration['election_id'] ?? null,
                 'precinct_id' => $configuration['precinct_id'] ?? null,
                 'ballot_style_id' => $configuration['ballot_style_id'] ?? null,
-                'contests' => $configuration['contests'] ?? [],
+                'contests' => $contests,
             ],
             'finalizeAction' => route('election.public-simulation.voter.finalize', [$round, $precinct]),
             'publicSimulation' => true,
@@ -251,6 +253,27 @@ final class PublicSimulationVoterController extends Controller
     {
         abort_unless($precinct->simulation_round_id === $round->id, 404);
         $simulations->applyScope($precinct);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $contests
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeContestPartyLabels(array $contests, PartyLabelNormalizer $partyLabels): array
+    {
+        return collect($contests)
+            ->map(function (array $contest) use ($partyLabels): array {
+                $contest['candidates'] = collect($contest['candidates'] ?? [])
+                    ->map(function (array $candidate) use ($partyLabels): array {
+                        $candidate['political_party'] = $partyLabels->normalize($candidate['political_party'] ?? null);
+
+                        return $candidate;
+                    })
+                    ->all();
+
+                return $contest;
+            })
+            ->all();
     }
 
     private function authorizationSessionKey(SimulationPrecinct $precinct): string

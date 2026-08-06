@@ -3,11 +3,15 @@
 namespace App\Election\Preparation;
 
 use App\Election\Core\CanonicalJson;
+use App\Election\Support\PartyLabelNormalizer;
 use RuntimeException;
 
 final class DeterministicMapper
 {
-    public function __construct(private readonly CanonicalJson $json) {}
+    public function __construct(
+        private readonly CanonicalJson $json,
+        private readonly PartyLabelNormalizer $partyLabels,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $registries
@@ -45,7 +49,7 @@ final class DeterministicMapper
                             'ordinal' => $index + 1,
                             'ballot_number' => $candidate['ballot_number'] ?? $index + 1,
                             'full_name' => $candidate['full_name'] ?? $candidate['name'],
-                            'political_party' => $candidate['political_party'] ?? null,
+                            'political_party' => $this->partyLabels->normalize($candidate['political_party'] ?? null),
                             'source_file' => $candidate['source_file'] ?? null,
                             'source_page' => $candidate['source_page'] ?? null,
                             'candidate_hash' => $candidate['candidate_hash'] ?? null,
