@@ -452,3 +452,11 @@ test('voter ballot includes position and candidate navigation aids', function ()
         ->and($voterBallot)->toContain('function candidateIndexKey')
         ->and($voterBallot)->toContain('function contestShortLabel');
 });
+
+test('demo room officer action cards include aligned descriptions', function (): void {
+    $officerPage = file_get_contents(resource_path('js/pages/Election/DemoRoomOfficer.vue'));
+
+    expect($officerPage)->toContain('Start voting for this precinct after setup and')
+        ->and($officerPage)->toContain('certification are complete.')
+        ->and($officerPage)->toContain('Tally all deposited VVDAT records and generate');
+});

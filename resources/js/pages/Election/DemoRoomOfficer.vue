@@ -88,7 +88,9 @@ usePoll(
                 class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8"
             >
                 <div>
-                    <Link :href="actions.roles" class="text-sm font-bold text-blue-800"
+                    <Link
+                        :href="actions.roles"
+                        class="text-sm font-bold text-blue-800"
                         >Role QR room</Link
                     >
                     <h1 class="mt-1 text-2xl font-bold">
@@ -100,7 +102,8 @@ usePoll(
                         {{ precinct.clustered_precinct }}
                     </p>
                 </div>
-                <span class="border border-stone-400 bg-white px-3 py-2 text-sm font-bold"
+                <span
+                    class="border border-stone-400 bg-white px-3 py-2 text-sm font-bold"
                     >{{ precinct.status }}</span
                 >
             </div>
@@ -113,9 +116,7 @@ usePoll(
                     <p class="text-sm font-bold text-blue-800">
                         Ceremony controls
                     </p>
-                    <h2 class="mt-1 text-xl font-bold">
-                        Next officer action
-                    </h2>
+                    <h2 class="mt-1 text-xl font-bold">Next officer action</h2>
                     <p class="mt-2 text-sm text-stone-700">
                         {{ operationsBoard.closeout.next_required_action }}
                     </p>
@@ -172,6 +173,10 @@ usePoll(
                                 :value="officerDefaults.officer_pin"
                             />
                             <p class="font-bold">Open precinct</p>
+                            <p class="mt-1 text-sm text-stone-600">
+                                Start voting for this precinct after setup and
+                                certification are complete.
+                            </p>
                             <p
                                 v-if="errors.officer_pin"
                                 class="mt-2 text-sm font-bold text-red-700"
@@ -181,7 +186,9 @@ usePoll(
                             <button
                                 class="review-next-action-button mt-4 min-h-12 w-full bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
                                 type="submit"
-                                :disabled="processing || precinct.status !== 'ready'"
+                                :disabled="
+                                    processing || precinct.status !== 'ready'
+                                "
                             >
                                 Open precinct
                             </button>
@@ -205,7 +212,11 @@ usePoll(
                             <p class="font-bold">Admit next voter</p>
                             <p class="mt-1 text-sm text-stone-600">
                                 {{ admission.available_admissions }} active
-                                slot{{ admission.available_admissions === 1 ? '' : 's' }}
+                                slot{{
+                                    admission.available_admissions === 1
+                                        ? ''
+                                        : 's'
+                                }}
                                 available.
                             </p>
                             <p
@@ -217,7 +228,9 @@ usePoll(
                             <button
                                 class="review-next-action-button mt-4 min-h-12 w-full bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
                                 type="submit"
-                                :disabled="processing || precinct.status !== 'open'"
+                                :disabled="
+                                    processing || precinct.status !== 'open'
+                                "
                             >
                                 Generate voter control number
                             </button>
@@ -291,7 +304,10 @@ usePoll(
                             <button
                                 class="review-next-action-button mt-4 min-h-12 w-full bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
                                 type="submit"
-                                :disabled="processing || precinct.status !== 'results_ready'"
+                                :disabled="
+                                    processing ||
+                                    precinct.status !== 'results_ready'
+                                "
                             >
                                 Publish results
                             </button>
@@ -354,7 +370,9 @@ usePoll(
                             class="border-l-2 border-stone-300 pl-3"
                         >
                             <strong>{{ event.label }}</strong>
-                            <p class="text-stone-600">{{ event.occurred_at }}</p>
+                            <p class="text-stone-600">
+                                {{ event.occurred_at }}
+                            </p>
                         </li>
                     </ol>
                 </section>
