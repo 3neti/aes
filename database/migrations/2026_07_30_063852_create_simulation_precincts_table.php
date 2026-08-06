@@ -11,6 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('simulation_rounds')) {
+            Schema::create('simulation_rounds', function (Blueprint $table) {
+                $table->id();
+                $table->string('code', 24)->unique();
+                $table->string('name');
+                $table->string('status', 24)->default('open');
+                $table->timestamp('opened_at');
+                $table->timestamp('archived_at')->nullable();
+                $table->timestamps();
+            });
+        }
+
         Schema::create('simulation_precincts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('simulation_round_id')->constrained()->cascadeOnDelete();
