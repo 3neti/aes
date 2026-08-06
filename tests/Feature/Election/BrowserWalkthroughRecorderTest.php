@@ -440,3 +440,13 @@ test('browser walkthrough recorder follows the fixed booth print station labels'
         ->and($recorder)->toContain("'Claim paper ballot'")
         ->and($recorder)->not->toContain("'Prepare paper ballot'");
 });
+
+test('voter ballot includes position and candidate navigation aids', function (): void {
+    $voterBallot = file_get_contents(resource_path('js/pages/Election/VoterBallot.vue'));
+
+    expect($voterBallot)->toContain('Jump to position')
+        ->and($voterBallot)->toContain('Jump by candidate name')
+        ->and($voterBallot)->toContain('Review: {{ reviewSummary }}')
+        ->and($voterBallot)->toContain('function candidateIndexKey')
+        ->and($voterBallot)->toContain('function contestShortLabel');
+});

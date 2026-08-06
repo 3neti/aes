@@ -9,7 +9,7 @@ import type {
 } from '@/components/election/types';
 import { finalize } from '@/routes/election/voter';
 
-defineProps<{
+const props = defineProps<{
     ballot: {
         election_id: string;
         precinct_id: string;
@@ -43,6 +43,20 @@ const selectionCount = computed(() =>
         (total, selected) => total + selected.length,
         0,
     ),
+);
+const contestNavigation = computed(() =>
+    props.ballot.contests.map((contest) => ({
+        id: contest.id,
+        title: contest.title,
+        label: contestShortLabel(contest),
+        selected: selections.value[contest.id]?.length ?? 0,
+        max: contest.max_selections,
+    })),
+);
+const reviewSummary = computed(() =>
+    contestNavigation.value
+        .map((contest) => `${contest.label} (${contest.selected})`)
+        .join(', '),
 );
 
 function selected(contestId: string, candidateId: string): boolean {
@@ -80,6 +94,118 @@ function candidateName(contest: Contest, candidateId: string): string {
 
 function clearDraft(): void {
     sessionStorage.removeItem('aes-voter-draft');
+}
+
+function contestShortLabel(contest: Contest): string {
+    const title = `${contest.office ?? ''} ${contest.title}`.toUpperCase();
+
+    if (title.includes('SENATOR')) {
+        return 'Sen.';
+    }
+
+    if (title.includes('PARTY LIST')) {
+        return 'Party List';
+    }
+
+    if (title.includes('REPRESENTATIVE') || title.includes('HOUSE')) {
+        return 'Rep.';
+    }
+
+    if (title.includes('VICE-MAYOR') || title.includes('VICE MAYOR')) {
+        return 'Vice-Mayor';
+    }
+
+    if (title.includes('MAYOR')) {
+        return 'Mayor';
+    }
+
+    if (title.includes('COUNCILOR')) {
+        return 'Councilors';
+    }
+
+    return contest.title.split(/[-(]/)[0]?.trim() || contest.id;
+}
+
+function contestAnchor(contestId: string): string {
+    return `contest-${stableDomId(contestId)}`;
+}
+
+function candidateAnchor(contestId: string, candidateId: string): string {
+    return `candidate-${stableDomId(contestId)}-${stableDomId(candidateId)}`;
+}
+
+function stableDomId(value: string): string {
+    return (
+        value
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '') || 'item'
+    );
+}
+
+function scrollToElement(elementId: string): void {
+    document.getElementById(elementId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+    });
+}
+
+function letterIndex(
+    contest: Contest,
+): Array<{ letter: string; candidateId: string }> {
+    if (contest.candidates.length < 20) {
+        return [];
+    }
+
+    const seen = new Set<string>();
+
+    return contest.candidates.reduce(
+        (
+            letters: Array<{ letter: string; candidateId: string }>,
+            candidate,
+        ) => {
+            const letter = candidateLetter(contest, candidate);
+
+            if (letter === '' || seen.has(letter)) {
+                return letters;
+            }
+
+            seen.add(letter);
+            letters.push({ letter, candidateId: candidate.id });
+
+            return letters;
+        },
+        [],
+    );
+}
+
+function candidateLetter(contest: Contest, candidate: Candidate): string {
+    const key = candidateIndexKey(contest, candidate);
+    const match = key.match(/[A-Z0-9]/);
+
+    return match?.[0] ?? '';
+}
+
+function candidateIndexKey(contest: Contest, candidate: Candidate): string {
+    const name = (candidate.name || candidate.full_name || '').trim();
+
+    if (isPartyListContest(contest)) {
+        return name.toUpperCase();
+    }
+
+    if (name.includes(',')) {
+        return name.split(',')[0].trim().toUpperCase();
+    }
+
+    const words = name.split(/\s+/).filter(Boolean);
+
+    return (words.at(-1) ?? name).toUpperCase();
+}
+
+function isPartyListContest(contest: Contest): boolean {
+    return `${contest.office ?? ''} ${contest.title}`
+        .toUpperCase()
+        .includes('PARTY LIST');
 }
 </script>
 
@@ -134,10 +260,39 @@ function clearDraft(): void {
             </template>
 
             <template v-if="step === 'ballot'">
+                <nav
+                    class="sticky top-0 z-20 border border-stone-300 bg-white p-3 shadow-sm"
+                    aria-label="Ballot position navigation"
+                >
+                    <p class="text-xs font-bold text-stone-600 uppercase">
+                        Jump to position
+                    </p>
+                    <div class="mt-2 flex gap-2 overflow-x-auto pb-1">
+                        <button
+                            v-for="contest in contestNavigation"
+                            :key="contest.id"
+                            class="shrink-0 border px-3 py-2 text-sm font-bold"
+                            :class="
+                                contest.selected > 0
+                                    ? 'border-blue-800 bg-blue-50 text-blue-900'
+                                    : 'border-stone-300 bg-white text-stone-800'
+                            "
+                            type="button"
+                            @click="scrollToElement(contestAnchor(contest.id))"
+                        >
+                            {{ contest.label }}
+                            <span class="font-mono"
+                                >{{ contest.selected }}/{{ contest.max }}</span
+                            >
+                        </button>
+                    </div>
+                </nav>
+
                 <fieldset
                     v-for="contest in ballot.contests"
                     :key="contest.id"
-                    class="border border-stone-300 bg-white p-4 sm:p-5"
+                    class="scroll-mt-28 border border-stone-300 bg-white p-4 sm:p-5"
+                    :id="contestAnchor(contest.id)"
                 >
                     <legend class="px-2 text-lg font-bold">
                         {{ contest.title }}
@@ -151,16 +306,43 @@ function clearDraft(): void {
                             {{ contest.max_selections }}
                         </p>
                     </div>
+                    <div
+                        v-if="letterIndex(contest).length > 0"
+                        class="mt-4 border-y border-stone-200 py-3"
+                    >
+                        <p class="text-xs font-bold text-stone-600 uppercase">
+                            Jump by candidate name
+                        </p>
+                        <div class="mt-2 flex flex-wrap gap-1.5">
+                            <button
+                                v-for="letter in letterIndex(contest)"
+                                :key="`${contest.id}-${letter.letter}`"
+                                class="flex h-9 min-w-9 items-center justify-center border border-stone-300 bg-stone-50 px-2 text-sm font-bold text-stone-900"
+                                type="button"
+                                @click="
+                                    scrollToElement(
+                                        candidateAnchor(
+                                            contest.id,
+                                            letter.candidateId,
+                                        ),
+                                    )
+                                "
+                            >
+                                {{ letter.letter }}
+                            </button>
+                        </div>
+                    </div>
                     <div class="mt-4 grid gap-2 sm:grid-cols-2">
                         <button
                             v-for="candidate in contest.candidates"
                             :key="candidate.id"
-                            class="grid min-h-20 grid-cols-[32px_1fr] items-center gap-3 border p-3 text-left disabled:cursor-not-allowed disabled:opacity-45"
+                            class="grid min-h-20 scroll-mt-32 grid-cols-[32px_1fr] items-center gap-3 border p-3 text-left disabled:cursor-not-allowed disabled:opacity-45"
                             :class="
                                 selected(contest.id, candidate.id)
                                     ? 'border-blue-800 bg-blue-50'
                                     : 'border-stone-300 bg-white'
                             "
+                            :id="candidateAnchor(contest.id, candidate.id)"
                             :disabled="
                                 isAtLimit(contest) &&
                                 !selected(contest.id, candidate.id)
@@ -201,7 +383,7 @@ function clearDraft(): void {
                     class="sticky bottom-0 border-t-4 border-blue-800 bg-white p-4"
                 >
                     <button
-                        class="min-h-12 w-full bg-blue-800 px-6 py-3 text-base font-bold text-white"
+                        class="min-h-12 w-full bg-blue-800 px-6 py-3 text-sm leading-snug font-bold text-white sm:text-base"
                         :class="{
                             'review-next-action-button':
                                 reviewRoom.enabled && selectionCount > 0,
@@ -209,9 +391,7 @@ function clearDraft(): void {
                         type="button"
                         @click="step = 'review'"
                     >
-                        Review {{ selectionCount }} selection{{
-                            selectionCount === 1 ? '' : 's'
-                        }}
+                        Review: {{ reviewSummary }}
                     </button>
                 </div>
             </template>
