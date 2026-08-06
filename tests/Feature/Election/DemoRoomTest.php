@@ -170,3 +170,34 @@ test('the demo room runs a precinct through officer, voter, print station, watch
         ->and($storage->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
         ->and($storage->path("returns/{$configuration['precinct_id']}-return.pdf"))->toBeReadableFile();
 });
+
+test('the demo room can start a fresh three precinct set before closeout', function (): void {
+    $this->get(route('election.demo-room.index'))
+        ->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+
+    $this->post(route('election.demo-room.open', [$round, $precinct]), [
+        'officer_code' => $precinct->officer_code,
+        'officer_pin' => '123456',
+    ])->assertRedirect(route('election.demo-room.officer', [$round, $precinct]));
+
+    expect($round->fresh()->status)->toBe('open')
+        ->and($precinct->fresh()->status)->toBe('open');
+
+    $this->post(route('election.demo-room.refresh'))
+        ->assertRedirect(route('election.demo-room.index'))
+        ->assertSessionHas('public_simulation.officer_feedback');
+
+    $freshRound = SimulationRound::query()
+        ->with('precincts')
+        ->where('status', 'open')
+        ->sole();
+
+    expect($round->fresh()->status)->toBe('archived')
+        ->and($round->fresh()->archived_at)->not->toBeNull()
+        ->and($freshRound->id)->not->toBe($round->id)
+        ->and($freshRound->precincts)->toHaveCount(3)
+        ->and($freshRound->precincts->pluck('status')->all())->toBe(['ready', 'ready', 'ready']);
+});

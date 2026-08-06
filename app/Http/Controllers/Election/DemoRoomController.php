@@ -36,6 +36,21 @@ final class DemoRoomController extends Controller
         ]);
     }
 
+    public function refresh(PublicSimulationService $simulations): RedirectResponse
+    {
+        abort_unless(config('election.public_simulation.enabled'), 404);
+
+        $result = $simulations->refreshDemoSet();
+        $archived = $result['archived'];
+        $fresh = $result['fresh'];
+        $message = $archived instanceof SimulationRound
+            ? "Archived {$archived->code}. Fresh demo set {$fresh->code} is ready."
+            : "Fresh demo set {$fresh->code} is ready.";
+
+        return to_route('election.demo-room.index')
+            ->with('public_simulation.officer_feedback', $message);
+    }
+
     public function show(
         SimulationRound $round,
         SimulationPrecinct $precinct,

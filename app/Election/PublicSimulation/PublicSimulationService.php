@@ -118,6 +118,34 @@ final class PublicSimulationService
         ];
     }
 
+    /**
+     * Replace the live demo set without requiring every precinct to be published.
+     *
+     * @return array{archived: SimulationRound|null, fresh: SimulationRound}
+     */
+    public function refreshDemoSet(): array
+    {
+        return DB::transaction(function (): array {
+            $round = SimulationRound::query()
+                ->where('status', 'open')
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
+
+            if ($round instanceof SimulationRound) {
+                $round->forceFill([
+                    'status' => 'archived',
+                    'archived_at' => now(),
+                ])->save();
+            }
+
+            return [
+                'archived' => $round,
+                'fresh' => $this->createRound(),
+            ];
+        }, attempts: 5);
+    }
+
     private function createRound(): SimulationRound
     {
         return DB::transaction(function (): SimulationRound {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Form, Head, Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 defineProps<{
     round: {
@@ -15,6 +16,13 @@ defineProps<{
         }>;
     };
 }>();
+
+const page = usePage();
+const feedback = computed(
+    () => page.props.flash?.public_simulation?.officer_feedback as
+        | string
+        | undefined,
+);
 
 function statusTone(status: string): string {
     return status === 'open'
@@ -43,6 +51,30 @@ function statusTone(status: string): string {
                     Select a precinct, then choose a role QR: Election Officer,
                     voter, central print station, poll watcher, or auditor.
                 </p>
+                <div
+                    v-if="feedback"
+                    class="mt-5 border-l-8 border-emerald-700 bg-emerald-50 p-4 font-semibold text-emerald-950"
+                >
+                    {{ feedback }}
+                </div>
+                <Form
+                    action="/election/demo-room/refresh"
+                    method="post"
+                    #default="{ processing }"
+                    class="mt-6"
+                >
+                    <button
+                        type="submit"
+                        class="min-h-12 border-2 border-blue-800 bg-white px-5 font-bold text-blue-800 disabled:opacity-50"
+                        :disabled="processing"
+                    >
+                        {{
+                            processing
+                                ? 'Preparing fresh demo set...'
+                                : 'Start fresh demo set'
+                        }}
+                    </button>
+                </Form>
             </div>
         </header>
         <section

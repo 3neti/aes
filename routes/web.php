@@ -31,6 +31,7 @@ Route::get('/', HomeController::class)
 Route::prefix('election')->name('election.')->group(function (): void {
     Route::prefix('demo-room')->name('demo-room.')->group(function (): void {
         Route::get('/', [DemoRoomController::class, 'index'])->name('index');
+        Route::post('/refresh', [DemoRoomController::class, 'refresh'])->name('refresh');
         Route::get('/{round:code}/{precinct:code}', [DemoRoomController::class, 'show'])->name('show');
         Route::get('/{round:code}/{precinct:code}/officer', [DemoRoomController::class, 'officer'])->name('officer');
         Route::post('/{round:code}/{precinct:code}/open', [DemoRoomController::class, 'open'])->name('open');
