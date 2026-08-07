@@ -43,6 +43,19 @@ const props = defineProps<{
         watcherPublicationAvailable: boolean;
     };
     feedback: string | null;
+    officerDefaults: {
+        assigned: { officer_code: string; officer_pin: string };
+        first_board: {
+            officer_code: string;
+            officer_pin: string;
+            label: string;
+        };
+        second_board: {
+            officer_code: string;
+            officer_pin: string;
+            label: string;
+        };
+    };
     actions: {
         select: string;
         propose: string;
@@ -63,8 +76,8 @@ const cameraStatus = ref<'idle' | 'starting' | 'ready' | 'captured' | 'error'>(
 const cameraMessage = ref('');
 const cameraForm = useForm({
     payload: '',
-    officer_code: '',
-    officer_pin: '',
+    officer_code: props.officerDefaults.assigned.officer_code,
+    officer_pin: props.officerDefaults.assigned.officer_pin,
 });
 const canCapture = computed(
     () => cameraStatus.value === 'ready' && !cameraForm.processing,
@@ -206,6 +219,49 @@ onBeforeUnmount(() => stopCamera(false));
                 {{ feedback }}
             </p>
 
+            <section
+                class="mt-4 border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950"
+                aria-labelledby="audit-demo-credentials-heading"
+            >
+                <h2 id="audit-demo-credentials-heading" class="font-bold">
+                    Demo credentials for this audit room
+                </h2>
+                <p class="mt-1">
+                    These temporary values are shown for review sessions so the
+                    audit ceremony can be demonstrated without memorizing
+                    credentials.
+                </p>
+                <dl class="mt-3 grid gap-3 sm:grid-cols-3">
+                    <div class="border border-blue-100 bg-white p-3">
+                        <dt class="text-xs font-bold text-stone-600">
+                            Assigned precinct officer
+                        </dt>
+                        <dd class="mt-1 font-mono font-bold">
+                            {{ officerDefaults.assigned.officer_code }} /
+                            {{ officerDefaults.assigned.officer_pin }}
+                        </dd>
+                    </div>
+                    <div class="border border-blue-100 bg-white p-3">
+                        <dt class="text-xs font-bold text-stone-600">
+                            {{ officerDefaults.first_board.label }}
+                        </dt>
+                        <dd class="mt-1 font-mono font-bold">
+                            {{ officerDefaults.first_board.officer_code }} /
+                            {{ officerDefaults.first_board.officer_pin }}
+                        </dd>
+                    </div>
+                    <div class="border border-blue-100 bg-white p-3">
+                        <dt class="text-xs font-bold text-stone-600">
+                            {{ officerDefaults.second_board.label }}
+                        </dt>
+                        <dd class="mt-1 font-mono font-bold">
+                            {{ officerDefaults.second_board.officer_code }} /
+                            {{ officerDefaults.second_board.officer_pin }}
+                        </dd>
+                    </div>
+                </dl>
+            </section>
+
             <section class="mt-6 grid gap-4 sm:grid-cols-3">
                 <div class="border border-stone-300 p-4">
                     <p class="text-xs font-bold text-stone-600">SAMPLE</p>
@@ -257,11 +313,13 @@ onBeforeUnmount(() => stopCamera(false));
                     class="mt-4 grid gap-3 sm:grid-cols-3"
                     ><input
                         name="officer_code"
+                        :value="officerDefaults.assigned.officer_code"
                         placeholder="Assigned officer code"
                         class="min-h-11 border border-stone-400 px-3"
                         required
                     /><input
                         name="officer_pin"
+                        :value="officerDefaults.assigned.officer_pin"
                         inputmode="numeric"
                         maxlength="6"
                         placeholder="Six-digit PIN"
@@ -423,11 +481,13 @@ onBeforeUnmount(() => stopCamera(false));
                                 required
                             /><input
                                 name="officer_code"
+                                :value="officerDefaults.assigned.officer_code"
                                 placeholder="Assigned officer code"
                                 class="min-h-11 border border-stone-400 px-3"
                                 required
                             /><input
                                 name="officer_pin"
+                                :value="officerDefaults.assigned.officer_pin"
                                 inputmode="numeric"
                                 maxlength="6"
                                 placeholder="Six-digit PIN"
@@ -494,11 +554,13 @@ onBeforeUnmount(() => stopCamera(false));
                         <div class="grid gap-3 sm:grid-cols-2">
                             <input
                                 name="officer_code"
+                                :value="officerDefaults.assigned.officer_code"
                                 placeholder="Assigned precinct officer code"
                                 class="min-h-11 border border-stone-400 px-3"
                                 required
                             /><input
                                 name="officer_pin"
+                                :value="officerDefaults.assigned.officer_pin"
                                 inputmode="numeric"
                                 maxlength="6"
                                 placeholder="Assigned officer PIN"
@@ -506,11 +568,15 @@ onBeforeUnmount(() => stopCamera(false));
                                 required
                             /><input
                                 name="first_officer_code"
+                                :value="
+                                    officerDefaults.first_board.officer_code
+                                "
                                 placeholder="First board officer code"
                                 class="min-h-11 border border-stone-400 px-3"
                                 required
                             /><input
                                 name="first_officer_pin"
+                                :value="officerDefaults.first_board.officer_pin"
                                 inputmode="numeric"
                                 maxlength="6"
                                 placeholder="First board officer PIN"
@@ -518,11 +584,17 @@ onBeforeUnmount(() => stopCamera(false));
                                 required
                             /><input
                                 name="second_officer_code"
+                                :value="
+                                    officerDefaults.second_board.officer_code
+                                "
                                 placeholder="Second board officer code"
                                 class="min-h-11 border border-stone-400 px-3"
                                 required
                             /><input
                                 name="second_officer_pin"
+                                :value="
+                                    officerDefaults.second_board.officer_pin
+                                "
                                 inputmode="numeric"
                                 maxlength="6"
                                 placeholder="Second board officer PIN"
@@ -581,11 +653,13 @@ onBeforeUnmount(() => stopCamera(false));
                                 required
                             /><input
                                 name="officer_code"
+                                :value="officerDefaults.assigned.officer_code"
                                 placeholder="Assigned precinct officer code"
                                 class="min-h-11 border border-stone-400 px-3"
                                 required
                             /><input
                                 name="officer_pin"
+                                :value="officerDefaults.assigned.officer_pin"
                                 inputmode="numeric"
                                 maxlength="6"
                                 placeholder="Assigned officer PIN"
@@ -593,11 +667,15 @@ onBeforeUnmount(() => stopCamera(false));
                                 required
                             /><input
                                 name="first_officer_code"
+                                :value="
+                                    officerDefaults.first_board.officer_code
+                                "
                                 placeholder="First board officer code"
                                 class="min-h-11 border border-stone-400 px-3"
                                 required
                             /><input
                                 name="first_officer_pin"
+                                :value="officerDefaults.first_board.officer_pin"
                                 inputmode="numeric"
                                 maxlength="6"
                                 placeholder="First board officer PIN"
@@ -605,11 +683,17 @@ onBeforeUnmount(() => stopCamera(false));
                                 required
                             /><input
                                 name="second_officer_code"
+                                :value="
+                                    officerDefaults.second_board.officer_code
+                                "
                                 placeholder="Second board officer code"
                                 class="min-h-11 border border-stone-400 px-3"
                                 required
                             /><input
                                 name="second_officer_pin"
+                                :value="
+                                    officerDefaults.second_board.officer_pin
+                                "
                                 inputmode="numeric"
                                 maxlength="6"
                                 placeholder="Second board officer PIN"
@@ -727,11 +811,13 @@ onBeforeUnmount(() => stopCamera(false));
                         class="mt-4 grid gap-3 sm:grid-cols-3"
                         ><input
                             name="officer_code"
+                            :value="officerDefaults.assigned.officer_code"
                             placeholder="Assigned officer code"
                             class="min-h-11 border border-stone-400 px-3"
                             required
                         /><input
                             name="officer_pin"
+                            :value="officerDefaults.assigned.officer_pin"
                             inputmode="numeric"
                             maxlength="6"
                             placeholder="Six-digit PIN"
@@ -766,11 +852,13 @@ onBeforeUnmount(() => stopCamera(false));
                         class="mt-4 grid gap-3 sm:grid-cols-3"
                         ><input
                             name="officer_code"
+                            :value="officerDefaults.assigned.officer_code"
                             placeholder="Assigned officer code"
                             class="min-h-11 border border-stone-400 px-3"
                             required
                         /><input
                             name="officer_pin"
+                            :value="officerDefaults.assigned.officer_pin"
                             inputmode="numeric"
                             maxlength="6"
                             placeholder="Six-digit PIN"
@@ -812,11 +900,13 @@ onBeforeUnmount(() => stopCamera(false));
                         class="mt-4 grid gap-3 sm:grid-cols-3"
                         ><input
                             name="officer_code"
+                            :value="officerDefaults.assigned.officer_code"
                             placeholder="Assigned officer code"
                             class="min-h-11 border border-stone-400 px-3"
                             required
                         /><input
                             name="officer_pin"
+                            :value="officerDefaults.assigned.officer_pin"
                             inputmode="numeric"
                             maxlength="6"
                             placeholder="Six-digit PIN"

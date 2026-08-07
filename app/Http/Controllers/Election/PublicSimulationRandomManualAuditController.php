@@ -68,6 +68,7 @@ final class PublicSimulationRandomManualAuditController extends Controller
                 'watcherPublicationAvailable' => $publication->summary() !== [],
             ],
             'feedback' => session('public_simulation.audit_feedback'),
+            'officerDefaults' => $this->officerDefaults($precinct),
             'actions' => [
                 'select' => route('election.public-simulation.audit.select', [$round, $precinct]),
                 'propose' => route('election.public-simulation.audit.propose', [$round, $precinct]),
@@ -217,6 +218,37 @@ final class PublicSimulationRandomManualAuditController extends Controller
     private function ensureAvailable(SimulationPrecinct $precinct): void
     {
         abort_unless(in_array($precinct->status, ['results_ready', 'published'], true), 409);
+    }
+
+    /**
+     * @return array{
+     *     assigned: array{officer_code: string, officer_pin: string},
+     *     first_board: array{officer_code: string, officer_pin: string, label: string},
+     *     second_board: array{officer_code: string, officer_pin: string, label: string}
+     * }
+     */
+    private function officerDefaults(SimulationPrecinct $precinct): array
+    {
+        $officers = collect(config('election.officers', []))->values();
+        $firstBoard = $officers->get(0, []);
+        $secondBoard = $officers->get(1, []);
+
+        return [
+            'assigned' => [
+                'officer_code' => $precinct->officer_code,
+                'officer_pin' => '123456',
+            ],
+            'first_board' => [
+                'officer_code' => (string) ($firstBoard['code'] ?? 'SIM-OFFICER-001'),
+                'officer_pin' => '123456',
+                'label' => (string) ($firstBoard['role'] ?? 'First Election Board officer'),
+            ],
+            'second_board' => [
+                'officer_code' => (string) ($secondBoard['code'] ?? 'SIM-OFFICER-002'),
+                'officer_pin' => '123456',
+                'label' => (string) ($secondBoard['role'] ?? 'Second Election Board officer'),
+            ],
+        ];
     }
 
     private function redirect(SimulationRound $round, SimulationPrecinct $precinct, string $message): RedirectResponse

@@ -102,6 +102,12 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/PublicSimulationRandomManualAudit')
             ->where('audit.sample', [])
+            ->where('officerDefaults.assigned.officer_code', $precinct->officer_code)
+            ->where('officerDefaults.assigned.officer_pin', '123456')
+            ->where('officerDefaults.first_board.officer_code', 'SIM-OFFICER-001')
+            ->where('officerDefaults.first_board.officer_pin', '123456')
+            ->where('officerDefaults.second_board.officer_code', 'SIM-OFFICER-002')
+            ->where('officerDefaults.second_board.officer_pin', '123456')
         );
     $this->post(route('election.public-simulation.audit.select', [$round, $precinct]), $credentials)
         ->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
