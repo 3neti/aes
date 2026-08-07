@@ -56,6 +56,9 @@ final class DemoRoomPrintStationController extends Controller
             'printProfiles' => $profiles,
             'release' => $release,
             'ballotPreview' => is_string($releaseId) ? $releases->printedBallotPreview($releaseId) : null,
+            'ballotPreviewUrl' => is_string($releaseId) && $releases->printedBallotPdfPath($releaseId) !== null
+                ? route('election.demo-room.print.ballot-preview', [$round, $precinct])
+                : null,
             'depositFeedback' => $request->session()->get($this->depositSessionKey($precinct)),
             'closeoutFeedback' => $request->session()->get($this->closeoutSessionKey($precinct)),
             'officerDefaults' => [
@@ -177,6 +180,21 @@ final class DemoRoomPrintStationController extends Controller
         }
 
         return to_route('election.demo-room.print.station', [$round, $precinct]);
+    }
+
+    public function ballotPreview(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases): BinaryFileResponse|RedirectResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        $this->ensureEnabled($request, $precinct);
+
+        $path = $releases->printedBallotPdfPath($this->printReleaseId($request, $precinct));
+        if ($path === null) {
+            return $this->stationRedirect($round, $precinct, 'The printed ballot preview is not available yet. Print the paper ballot first.');
+        }
+
+        return response()->file($path, [
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-printed-ballot-preview.pdf"',
+        ]);
     }
 
     public function deposit(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, SealedBallotBox $ballotBox, PublicSimulationVotingGate $voting): RedirectResponse

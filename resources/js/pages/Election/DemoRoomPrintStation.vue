@@ -44,6 +44,7 @@ const props = defineProps<{
         ballot_id?: string | null;
         rows: Array<{ contest: string; selections: string[] }>;
     } | null;
+    ballotPreviewUrl?: string | null;
     depositFeedback?: {
         status: string;
         paper_ballot_serial: string;
@@ -176,6 +177,7 @@ const selectedPrintProfile = computed(() => {
         <PrintStation
             :release="release"
             :ballot-preview="ballotPreview"
+            :ballot-preview-url="ballotPreviewUrl"
             :deposit-feedback="depositFeedback"
             :actions="{
                 redeem: actions.redeem,

@@ -45,6 +45,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/{round:code}/{precinct:code}/print/enable', [DemoRoomPrintStationController::class, 'enable'])->middleware('throttle:10,1')->name('print.enable');
         Route::post('/{round:code}/{precinct:code}/print/redeem', [DemoRoomPrintStationController::class, 'redeem'])->middleware('throttle:10,1')->name('print.redeem');
         Route::post('/{round:code}/{precinct:code}/print/print', [DemoRoomPrintStationController::class, 'print'])->name('print.print');
+        Route::get('/{round:code}/{precinct:code}/print/ballot-preview', [DemoRoomPrintStationController::class, 'ballotPreview'])->name('print.ballot-preview');
         Route::post('/{round:code}/{precinct:code}/print/deposit', [DemoRoomPrintStationController::class, 'deposit'])->name('print.deposit');
         Route::get('/{round:code}/{precinct:code}/print/tally-sheet/{profile?}', [DemoRoomPrintStationController::class, 'tallySheet'])->name('print.tally-sheet');
         Route::get('/{round:code}/{precinct:code}/print/election-return/{profile?}', [DemoRoomPrintStationController::class, 'electionReturn'])->name('print.election-return');
@@ -223,6 +224,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
             ->middleware('throttle:10,1')
             ->name('print-station.redeem');
         Route::post('/print-station/print', [PrintStationController::class, 'print'])->name('print-station.print');
+        Route::get('/print-station/ballot-preview', [PrintStationController::class, 'ballotPreview'])->name('print-station.ballot-preview');
         Route::post('/print-station/deposit', [PrintStationController::class, 'deposit'])->name('print-station.deposit');
     });
 

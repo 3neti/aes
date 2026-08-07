@@ -268,6 +268,24 @@ final class PrivateBallotRelease
         ];
     }
 
+    public function printedBallotPdfPath(string $releaseId): ?string
+    {
+        $record = $this->record($releaseId);
+
+        if ($record['status'] !== 'printed') {
+            return null;
+        }
+
+        $job = $this->storage->readJson("print-jobs/{$record['ballot_id']}.json");
+        $path = $job['pdf_artifact_path'] ?? $job['selected_pdf_artifact_path'] ?? null;
+
+        if (! is_string($path) || ! is_file($path)) {
+            return null;
+        }
+
+        return $path;
+    }
+
     public function markDeposited(string $releaseId): void
     {
         $record = $this->record($releaseId);

@@ -18,6 +18,7 @@ const props = defineProps<{
         ballot_id?: string | null;
         rows: Array<{ contest: string; selections: string[] }>;
     } | null;
+    ballotPreviewUrl?: string | null;
     depositFeedback?: {
         status: string;
         paper_ballot_serial: string;
@@ -47,7 +48,8 @@ const canPeekAtBallot = computed(
     () =>
         props.publicSimulation === true &&
         props.release.status === 'printed' &&
-        (props.ballotPreview?.rows.length ?? 0) > 0,
+        ((props.ballotPreview?.rows.length ?? 0) > 0 ||
+            Boolean(props.ballotPreviewUrl)),
 );
 
 function showPrintingOverlay(): void {
@@ -103,7 +105,9 @@ onMounted(syncPrintingOverlay);
                     </h1>
                     <p class="mt-3 text-lg text-emerald-900">
                         Paper ballot
-                        <strong>{{ depositFeedback.paper_ballot_serial }}</strong>
+                        <strong>{{
+                            depositFeedback.paper_ballot_serial
+                        }}</strong>
                         is recorded in the sealed ballot box.
                     </p>
                     <button
@@ -285,10 +289,19 @@ onMounted(syncPrintingOverlay);
                 </p>
                 <h2 class="mt-2 text-3xl font-bold">Printed ballot preview</h2>
                 <p class="mt-2 text-stone-700">
-                    This peek is enabled only for the public simulation demo. In
-                    live privacy mode, the printer station does not display
-                    candidate selections.
+                    This peek is enabled only for the public simulation demo.
+                    Open the PDF to inspect the same printed ballot artifact,
+                    including its QR code.
                 </p>
+                <a
+                    v-if="ballotPreviewUrl"
+                    :href="ballotPreviewUrl"
+                    target="_blank"
+                    rel="noopener"
+                    class="mt-5 block min-h-12 w-full bg-blue-800 px-5 py-3 text-center font-bold text-white"
+                >
+                    Open QR ballot PDF
+                </a>
                 <dl class="mt-5 grid gap-3 border-y border-stone-200 py-4">
                     <div class="flex items-center justify-between gap-4">
                         <dt class="text-sm font-bold text-stone-600">Serial</dt>

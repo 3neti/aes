@@ -15,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class PrintStationController extends Controller
 {
@@ -31,6 +32,9 @@ final class PrintStationController extends Controller
         return Inertia::render('Election/PrintStation', [
             'release' => $release,
             'ballotPreview' => is_string($releaseId) ? $releases->printedBallotPreview($releaseId) : null,
+            'ballotPreviewUrl' => is_string($releaseId) && $releases->printedBallotPdfPath($releaseId) !== null
+                ? route('election.print-station.ballot-preview')
+                : null,
             'depositFeedback' => $request->session()->get('deposit_feedback'),
             'printPinDigits' => min(6, max(4, (int) config('election.voter.print_pin_digits', 4))),
         ]);
@@ -65,6 +69,17 @@ final class PrintStationController extends Controller
         }
 
         return redirect()->route('election.print-station');
+    }
+
+    public function ballotPreview(Request $request, PrivateBallotRelease $releases): BinaryFileResponse
+    {
+        $path = $releases->printedBallotPdfPath($this->releaseId($request));
+
+        abort_unless($path !== null, 404);
+
+        return response()->file($path, [
+            'Content-Disposition' => 'inline; filename="printed-ballot-preview.pdf"',
+        ]);
     }
 
     public function deposit(

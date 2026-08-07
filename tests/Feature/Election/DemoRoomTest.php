@@ -132,8 +132,20 @@ test('the demo room runs a precinct through officer, voter, print station, watch
         ->assertInertia(fn (Assert $page) => $page
             ->where('release.status', 'printed')
             ->where('ballotPreview.ballot_id', fn (?string $ballotId): bool => $ballotId !== null && $ballotId !== '')
+            ->where('ballotPreviewUrl', fn (?string $url): bool => $url !== null && str_contains($url, '/print/ballot-preview'))
             ->has('ballotPreview.rows')
         );
+
+    $this->get(route('election.demo-room.print.ballot-preview', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertHeader('content-disposition', 'inline; filename="'.$precinct->code.'-printed-ballot-preview.pdf"');
+
+    $printedBallotPdf = collect(app(ElectionStorage::class)->files('ballots'))
+        ->first(fn (string $path): bool => str_ends_with($path, '.pdf'));
+
+    expect($printedBallotPdf)->toBeString()
+        ->and(file_get_contents($printedBallotPdf))->toStartWith('%PDF-')
+        ->and(file_get_contents($printedBallotPdf))->toContain('aes-ballot-compact-1');
 
     $this->post(route('election.demo-room.print.deposit', [$round, $precinct]))
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));
