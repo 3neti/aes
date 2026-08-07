@@ -38,6 +38,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/{round:code}/{precinct:code}/admit', [DemoRoomController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
         Route::post('/{round:code}/{precinct:code}/dismiss-control-number', [DemoRoomController::class, 'dismissControlNumber'])->name('dismiss-control-number');
         Route::post('/{round:code}/{precinct:code}/close', [DemoRoomController::class, 'close'])->name('close');
+        Route::post('/{round:code}/{precinct:code}/force-close', [DemoRoomController::class, 'forceClose'])->name('force-close');
         Route::post('/{round:code}/{precinct:code}/publish', [DemoRoomController::class, 'publish'])->name('publish');
         Route::get('/{round:code}/{precinct:code}/handoff', [DemoRoomController::class, 'handoff'])->name('handoff');
 

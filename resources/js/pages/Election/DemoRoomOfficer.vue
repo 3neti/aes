@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePoll } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 defineProps<{
     round: { code: string; name: string };
@@ -49,6 +50,7 @@ defineProps<{
         dismissControlNumber: string;
         admitQueued: string;
         close: string;
+        forceClose: string;
         publish: string;
         roles: string;
         print: string;
@@ -59,6 +61,8 @@ defineProps<{
     officerFeedback?: string | null;
     controlNumber?: { code: string; expires_at: string } | null;
 }>();
+
+const showForceCloseoutConfirm = ref(false);
 
 usePoll(
     5000,
@@ -274,6 +278,24 @@ usePoll(
                                 Close precinct and tally
                             </button>
                         </Form>
+                        <section
+                            class="border border-amber-300 bg-amber-50 p-4"
+                        >
+                            <p class="font-bold">Finalize all and close</p>
+                            <p class="mt-1 text-sm text-amber-950">
+                                Presentation safeguard. Cancels unfinished voter
+                                booths, completes finalized print releases, then
+                                closes and tallies this precinct.
+                            </p>
+                            <button
+                                class="mt-4 min-h-12 w-full border-2 border-amber-800 bg-white px-4 font-bold text-amber-900 disabled:opacity-50"
+                                type="button"
+                                :disabled="precinct.status !== 'open'"
+                                @click="showForceCloseoutConfirm = true"
+                            >
+                                Finalize all ballots and close
+                            </button>
+                        </section>
                         <Form
                             :action="actions.publish"
                             method="post"
@@ -378,5 +400,97 @@ usePoll(
                 </section>
             </aside>
         </section>
+        <div
+            v-if="showForceCloseoutConfirm"
+            class="fixed inset-0 z-50 grid place-items-center bg-stone-950/70 p-5"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="force-closeout-title"
+        >
+            <section
+                class="w-full max-w-lg border border-stone-300 bg-white p-5"
+            >
+                <h2 id="force-closeout-title" class="text-xl font-bold">
+                    Finalize all voter work and close?
+                </h2>
+                <p class="mt-3 text-sm text-stone-700">
+                    This is for demonstrations. It will cancel unfinished booth
+                    sessions, print and deposit any finalized but unresolved
+                    paper ballots, then generate the tally and Election Return.
+                </p>
+                <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div class="border border-stone-200 p-3">
+                        <dt>Active booths</dt>
+                        <dd class="text-2xl font-bold">
+                            {{ operationsBoard.booths.active }}
+                        </dd>
+                    </div>
+                    <div class="border border-stone-200 p-3">
+                        <dt>Unresolved print work</dt>
+                        <dd class="text-2xl font-bold">
+                            {{
+                                operationsBoard.print_station.pending_pins +
+                                operationsBoard.print_station.redeemed_pins +
+                                operationsBoard.print_station
+                                    .printed_awaiting_deposit
+                            }}
+                        </dd>
+                    </div>
+                </dl>
+                <Form
+                    :action="actions.forceClose"
+                    method="post"
+                    #default="{ errors, processing }"
+                    class="mt-5"
+                >
+                    <input
+                        type="hidden"
+                        name="officer_code"
+                        :value="officerDefaults.officer_code"
+                    />
+                    <input
+                        type="hidden"
+                        name="officer_pin"
+                        :value="officerDefaults.officer_pin"
+                    />
+                    <input
+                        type="hidden"
+                        name="confirm_force_closeout"
+                        value="FINALIZE"
+                    />
+                    <p
+                        v-if="
+                            errors.officer_pin || errors.confirm_force_closeout
+                        "
+                        class="text-sm font-bold text-red-700"
+                    >
+                        {{
+                            errors.officer_pin ?? errors.confirm_force_closeout
+                        }}
+                    </p>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                        <button
+                            class="min-h-11 border border-stone-500 px-4 font-bold"
+                            type="button"
+                            :disabled="processing"
+                            @click="showForceCloseoutConfirm = false"
+                        >
+                            Return to officer console
+                        </button>
+                        <button
+                            class="min-h-11 bg-amber-700 px-4 font-bold text-white disabled:opacity-50"
+                            type="submit"
+                            :disabled="processing"
+                        >
+                            {{
+                                processing
+                                    ? 'Finalizing...'
+                                    : 'Finalize all and close'
+                            }}
+                        </button>
+                    </div>
+                </Form>
+            </section>
+        </div>
     </main>
 </template>

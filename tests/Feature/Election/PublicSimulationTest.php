@@ -366,6 +366,62 @@ test('closeout serializes public voter work and refuses unresolved sessions', fu
         ->toContain('public_simulation.close_blocked_pending_voters');
 });
 
+test('demo room can force finalize unresolved voter work before closeout', function (): void {
+    $this->get(route('election.demo-room.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.demo-room.open', [$round, $precinct]), $credentials)->assertRedirect();
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
+    $selections = collect($configuration['contests'])
+        ->mapWithKeys(fn (array $contest): array => [
+            $contest['id'] => collect($contest['candidates'])
+                ->take(min(1, (int) $contest['max_selections']))
+                ->pluck('id')
+                ->all(),
+        ])
+        ->all();
+
+    $this->post(route('election.demo-room.admit', [$round, $precinct]), $credentials)->assertRedirect();
+    $pendingAuthorization = session('public_simulation.control_number');
+    $this->post(route('election.public-simulation.voter.claim', [$round, $precinct]), ['code' => $pendingAuthorization['code']])->assertRedirect();
+    $this->post(route('election.public-simulation.voter.finalize', [$round, $precinct]), ['selections' => $selections])->assertRedirect();
+
+    $this->post(route('election.demo-room.admit', [$round, $precinct]), $credentials)->assertRedirect();
+    $printedAuthorization = session('public_simulation.control_number');
+    $this->post(route('election.public-simulation.voter.claim', [$round, $precinct]), ['code' => $printedAuthorization['code']])->assertRedirect();
+    $this->post(route('election.public-simulation.voter.finalize', [$round, $precinct]), ['selections' => $selections])->assertRedirect();
+    $release = session("public_simulation.{$precinct->id}.release");
+    $this->post(route('election.public-simulation.print.redeem', [$round, $precinct]), ['code' => $release['release_code']])->assertRedirect();
+    $this->post(route('election.public-simulation.print.print', [$round, $precinct]))->assertRedirect();
+
+    $this->post(route('election.demo-room.admit', [$round, $precinct]), $credentials)->assertRedirect();
+    $unfinishedAuthorization = session('public_simulation.control_number');
+    $this->post(route('election.public-simulation.voter.claim', [$round, $precinct]), ['code' => $unfinishedAuthorization['code']])->assertRedirect();
+
+    $this->post(route('election.demo-room.close', [$round, $precinct]), $credentials)
+        ->assertRedirect()
+        ->assertSessionHasErrors('officer_pin');
+
+    $this->post(route('election.demo-room.force-close', [$round, $precinct]), [
+        ...$credentials,
+        'confirm_force_closeout' => 'FINALIZE',
+    ])->assertRedirect(route('election.demo-room.officer', [$round, $precinct]));
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $storage = app(ElectionStorage::class);
+
+    expect($precinct->fresh()->status)->toBe('results_ready')
+        ->and($storage->files('device-tabulation-ledger'))->toHaveCount(2)
+        ->and($storage->readJson("voter-authorizations/{$unfinishedAuthorization['authorization_id']}.json")['status'])->toBe('cancelled_by_officer_closeout')
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
+        ->toContain('demo_room.force_closeout_requested', 'demo_room.force_closeout_completed');
+});
+
 test('officer and god mode screens show the fixed booth print PIN handoff without private data', function (): void {
     config()->set('election.public_simulation.god_mode.enabled', true);
     $this->get(route('election.public-simulation.index'))->assertSuccessful();

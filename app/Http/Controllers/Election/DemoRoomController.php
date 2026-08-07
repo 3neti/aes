@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ElectionSnapshot;
+use App\Election\PublicSimulation\DemoRoomForceCloseout;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationCloseout;
@@ -106,6 +107,7 @@ final class DemoRoomController extends Controller
                 'admissionIntake' => route('election.public-simulation.admission-intake', [$round, $precinct]),
                 'contentionReport' => route('election.public-simulation.contention-report', [$round, $precinct]),
                 'close' => route('election.demo-room.close', [$round, $precinct]),
+                'forceClose' => route('election.demo-room.force-close', [$round, $precinct]),
                 'publish' => route('election.demo-room.publish', [$round, $precinct]),
                 'roles' => route('election.demo-room.show', [$round, $precinct]),
                 'print' => route('election.demo-room.print.station', [$round, $precinct]),
@@ -181,6 +183,29 @@ final class DemoRoomController extends Controller
 
         return to_route('election.demo-room.officer', [$round, $precinct])
             ->with('public_simulation.officer_feedback', 'Polls are closed. The VVDAT ledger is frozen and the tally/Election Return are ready for publication.');
+    }
+
+    public function forceClose(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, DemoRoomForceCloseout $closeout): RedirectResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        $validated = [
+            ...$this->officerCredentials($request),
+            ...$request->validate([
+                'confirm_force_closeout' => ['required', 'in:FINALIZE'],
+            ]),
+        ];
+
+        try {
+            $simulations->verifyOfficer($precinct, $validated['officer_code'], $validated['officer_pin']);
+            $result = $closeout->close($precinct, $validated['officer_code'], $validated['officer_pin']);
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
+        }
+
+        $resolved = $result['resolved'];
+
+        return to_route('election.demo-room.officer', [$round, $precinct])
+            ->with('public_simulation.officer_feedback', "Polls are closed after finalizing demo work: {$resolved['cancelled_unfinished_booths']} unfinished booth(s) cancelled, {$resolved['auto_printed_ballots']} finalized ballot(s) printed, and {$resolved['auto_deposited_ballots']} paper ballot(s) deposited. The tally and Election Return are ready.");
     }
 
     public function publish(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicSimulationPublication $publication): RedirectResponse
