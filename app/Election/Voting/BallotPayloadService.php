@@ -40,7 +40,9 @@ final class BallotPayloadService
             'selections' => $selections,
         ];
 
-        $paperBallotSerial = $journal ? $this->paperBallots->nextSerial() : null;
+        $paperBallotSerial = $journal
+            ? $this->paperBallots->nextRequiredSerial((string) ($configuration['precinct_id'] ?? 'PRECINCT'))
+            : null;
 
         if ($paperBallotSerial !== null) {
             $payload['paper_ballot_serial'] = $paperBallotSerial;

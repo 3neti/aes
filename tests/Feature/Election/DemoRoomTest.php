@@ -132,6 +132,9 @@ test('the demo room runs a precinct through officer, voter, print station, watch
         ->assertInertia(fn (Assert $page) => $page
             ->where('release.status', 'printed')
             ->where('ballotPreview.ballot_id', fn (?string $ballotId): bool => $ballotId !== null && $ballotId !== '')
+            ->where('ballotPreview.qr_payload', fn (?string $payload): bool => $payload !== null && str_starts_with($payload, 'aes-ballot-compact-1:') && ! str_contains($payload, '||CAND'))
+            ->where('ballotPreview.decoded.paper_ballot_serial', fn (?string $serial): bool => $serial !== null && $serial !== '')
+            ->where('ballotPreview.candidate_mapping.0.code', 'CAND00001')
             ->where('ballotPreviewUrl', fn (?string $url): bool => $url !== null && str_contains($url, '/print/ballot-preview'))
             ->has('ballotPreview.rows')
         );
@@ -145,7 +148,8 @@ test('the demo room runs a precinct through officer, voter, print station, watch
 
     expect($printedBallotPdf)->toBeString()
         ->and(file_get_contents($printedBallotPdf))->toStartWith('%PDF-')
-        ->and(file_get_contents($printedBallotPdf))->toContain('aes-ballot-compact-1');
+        ->and(file_get_contents($printedBallotPdf))->toContain('aes-ballot-compact-1')
+        ->and(substr_count(file_get_contents($printedBallotPdf), '/Type /Page'))->toBeGreaterThanOrEqual(2);
 
     $this->post(route('election.demo-room.print.deposit', [$round, $precinct]))
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));

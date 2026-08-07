@@ -42,7 +42,7 @@ final class PrivateBallotRelease
         $releaseCode = $this->code();
         $digits = $this->digits();
         $ballotId = 'ballot-'.Str::lower(Str::random(12));
-        $paperBallotSerial = $this->paperBallots->nextSerial();
+        $paperBallotSerial = $this->paperBallots->nextRequiredSerial((string) ($configuration['precinct_id'] ?? 'PRECINCT'));
         $payload = [
             'schema_version' => 'ballot-payload-1',
             'ballot_id' => $ballotId,
@@ -77,9 +77,7 @@ final class PrivateBallotRelease
 
         $this->storage->writeJson("print-releases/{$releaseId}.json", $record);
 
-        if ($paperBallotSerial !== null) {
-            $this->paperBallots->recordIssued($paperBallotSerial, $ballotId, $payload['payload_hash']);
-        }
+        $this->paperBallots->recordIssued($paperBallotSerial, $ballotId, $payload['payload_hash']);
 
         $this->journal->record('ballot.finalized_privately', [
             'authorization_id' => $authorizationId,
@@ -227,6 +225,12 @@ final class PrivateBallotRelease
         $payload = $this->decryptPayload($record);
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
         $selections = $payload['selections'] ?? [];
+        $decoded = $this->qrPayload->decode((string) ($payload['qr_payload'] ?? ''));
+        $candidateCodes = collect($decoded['candidate_codes'] ?? [])
+            ->filter(fn (mixed $code): bool => is_string($code) && $code !== '')
+            ->values();
+        $candidateMap = $this->storage->readJson('mappings/candidate-code-map.json');
+        $mappedCandidates = collect($candidateMap['candidates'] ?? []);
 
         if (! is_array($selections)) {
             return null;
@@ -264,6 +268,34 @@ final class PrivateBallotRelease
         return [
             'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
             'ballot_id' => $payload['ballot_id'] ?? null,
+            'qr_payload' => $payload['qr_payload'] ?? null,
+            'decoded' => [
+                'schema_version' => $decoded['schema_version'] ?? null,
+                'election_id' => $decoded['election_id'] ?? null,
+                'precinct_id' => $decoded['precinct_id'] ?? null,
+                'ballot_style_id' => $decoded['ballot_style_id'] ?? null,
+                'mapping_hash' => $decoded['mapping_hash'] ?? null,
+                'tabulation_profile' => $decoded['tabulation_profile'] ?? null,
+                'paper_ballot_serial' => $decoded['paper_ballot_serial'] ?? null,
+                'payload_hash' => $decoded['payload_hash'] ?? null,
+                'candidate_codes' => $candidateCodes->all(),
+            ],
+            'candidate_mapping' => $candidateCodes
+                ->map(function (string $code) use ($mappedCandidates): array {
+                    $candidate = $mappedCandidates->get($code, []);
+
+                    return [
+                        'code' => $code,
+                        'contest' => (string) ($candidate['contest_title'] ?? $candidate['contest_id'] ?? 'Unknown contest'),
+                        'candidate' => trim(implode(' ', array_filter([
+                            $candidate['ballot_number'] ?? null,
+                            $candidate['name'] ?? 'Unknown candidate',
+                        ]))),
+                        'party' => $candidate['party'] ?? null,
+                    ];
+                })
+                ->values()
+                ->all(),
             'rows' => $rows,
         ];
     }

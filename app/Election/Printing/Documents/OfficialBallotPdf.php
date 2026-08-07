@@ -163,6 +163,34 @@ final class OfficialBallotPdf
             10,
         );
 
+        $qrPage = $document->addPage('Large QR verification copy');
+        $document->text($qrPage, 'BALLOT QR VERIFICATION COPY', 42, 714, 13, true);
+        $document->wrappedText(
+            $qrPage,
+            'This enlarged QR code carries the same compact ballot payload as the first page. It is provided for scanner compatibility during audit and demonstration review.',
+            42,
+            694,
+            500,
+            9,
+            12,
+        );
+        $document->rectangle($qrPage, 92, 236, 412, 412, 0.97);
+        $document->image($qrPage, 'BallotQr', 106, 250, 384, 384);
+        $document->text($qrPage, 'SCAN THIS LARGE QR FOR AUDIT VERIFICATION', 298, 218, 9, true, 'center');
+        $document->text($qrPage, 'Paper ballot serial', 42, 176, 8, true);
+        $document->wrappedText($qrPage, (string) ($payload['paper_ballot_serial'] ?? 'SERIAL UNAVAILABLE'), 170, 176, 360, 8.5, 10);
+        $document->text($qrPage, 'Payload SHA-256', 42, 150, 8, true);
+        $document->wrappedText(
+            $qrPage,
+            (string) ($payload['payload_hash'] ?? 'unknown'),
+            170,
+            150,
+            360,
+            7.5,
+            9,
+            monospace: true,
+        );
+
         return $document->render();
     }
 }

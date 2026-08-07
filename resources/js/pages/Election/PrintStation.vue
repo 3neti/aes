@@ -16,6 +16,24 @@ const props = defineProps<{
     ballotPreview?: {
         paper_ballot_serial?: string | null;
         ballot_id?: string | null;
+        qr_payload?: string | null;
+        decoded?: {
+            schema_version?: string | null;
+            election_id?: string | null;
+            precinct_id?: string | null;
+            ballot_style_id?: string | null;
+            mapping_hash?: string | null;
+            tabulation_profile?: string | null;
+            paper_ballot_serial?: string | null;
+            payload_hash?: string | null;
+            candidate_codes: string[];
+        };
+        candidate_mapping?: Array<{
+            code: string;
+            contest: string;
+            candidate: string;
+            party?: string | null;
+        }>;
         rows: Array<{ contest: string; selections: string[] }>;
     } | null;
     ballotPreviewUrl?: string | null;
@@ -40,6 +58,7 @@ const pinDigits = computed(() => props.printPinDigits ?? 4);
 const pinPlaceholder = computed(() => '0'.repeat(pinDigits.value));
 const acceptedDismissed = ref(false);
 const previewOpen = ref(false);
+const decodedOpen = ref(false);
 const printingOverlayVisible = ref(false);
 const printOverlayStorageKey = 'aes-print-station-overlay-until';
 let printingOverlayTimer: ReturnType<typeof setTimeout> | null = null;
@@ -229,7 +248,7 @@ onMounted(syncPrintingOverlay);
                         type="button"
                         @click="previewOpen = true"
                     >
-                        Demo peek at printed ballot
+                        Demo peek at printed ballot and QR
                     </button>
                     <div
                         class="border border-amber-300 bg-amber-50 p-4 text-amber-950"
@@ -302,6 +321,120 @@ onMounted(syncPrintingOverlay);
                 >
                     Open QR ballot PDF
                 </a>
+                <section
+                    v-if="ballotPreview?.qr_payload"
+                    class="mt-5 border border-blue-200 bg-blue-50 p-4"
+                    aria-labelledby="qr-payload-heading"
+                >
+                    <div
+                        class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                        <div>
+                            <h3
+                                id="qr-payload-heading"
+                                class="font-bold text-blue-950"
+                            >
+                                Decoded QR payload text
+                            </h3>
+                            <p class="mt-1 text-sm text-blue-900">
+                                This is the plain text carried by the ballot QR.
+                                Some phone scanners hide long non-URL payloads;
+                                this panel lets reviewers verify the same data.
+                            </p>
+                        </div>
+                        <button
+                            class="min-h-11 border-2 border-blue-800 px-4 py-2 text-sm font-bold text-blue-950"
+                            type="button"
+                            @click="decodedOpen = !decodedOpen"
+                        >
+                            {{
+                                decodedOpen
+                                    ? 'Hide candidate mapping'
+                                    : 'Decode QR / Show candidate mapping'
+                            }}
+                        </button>
+                    </div>
+                    <pre
+                        class="mt-4 max-h-40 overflow-auto border border-blue-100 bg-white p-3 font-mono text-xs break-all whitespace-pre-wrap text-stone-950"
+                        >{{ ballotPreview.qr_payload }}</pre>
+                    <div
+                        v-if="decodedOpen && ballotPreview.decoded"
+                        class="mt-4 space-y-4"
+                    >
+                        <dl class="grid gap-2 text-sm sm:grid-cols-2">
+                            <div>
+                                <dt class="font-bold text-stone-600">
+                                    Election
+                                </dt>
+                                <dd class="font-mono">
+                                    {{ ballotPreview.decoded.election_id }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="font-bold text-stone-600">
+                                    Precinct
+                                </dt>
+                                <dd class="font-mono">
+                                    {{ ballotPreview.decoded.precinct_id }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="font-bold text-stone-600">
+                                    Paper serial
+                                </dt>
+                                <dd class="font-mono">
+                                    {{
+                                        ballotPreview.decoded
+                                            .paper_ballot_serial
+                                    }}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="font-bold text-stone-600">
+                                    Candidate codes
+                                </dt>
+                                <dd class="font-mono">
+                                    {{
+                                        ballotPreview.decoded.candidate_codes
+                                            .length
+                                    }}
+                                </dd>
+                            </div>
+                        </dl>
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-white text-left">
+                                        <th class="border p-2">Code</th>
+                                        <th class="border p-2">Position</th>
+                                        <th class="border p-2">Candidate</th>
+                                        <th class="border p-2">Party</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="mapping in ballotPreview.candidate_mapping ??
+                                        []"
+                                        :key="mapping.code"
+                                    >
+                                        <td class="border p-2 font-mono">
+                                            {{ mapping.code }}
+                                        </td>
+                                        <td class="border p-2">
+                                            {{ mapping.contest }}
+                                        </td>
+                                        <td class="border p-2 font-bold">
+                                            {{ mapping.candidate }}
+                                        </td>
+                                        <td class="border p-2">
+                                            {{ mapping.party ?? 'N/A' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
                 <dl class="mt-5 grid gap-3 border-y border-stone-200 py-4">
                     <div class="flex items-center justify-between gap-4">
                         <dt class="text-sm font-bold text-stone-600">Serial</dt>

@@ -42,6 +42,24 @@ const props = defineProps<{
     ballotPreview?: {
         paper_ballot_serial?: string | null;
         ballot_id?: string | null;
+        qr_payload?: string | null;
+        decoded?: {
+            schema_version?: string | null;
+            election_id?: string | null;
+            precinct_id?: string | null;
+            ballot_style_id?: string | null;
+            mapping_hash?: string | null;
+            tabulation_profile?: string | null;
+            paper_ballot_serial?: string | null;
+            payload_hash?: string | null;
+            candidate_codes: string[];
+        };
+        candidate_mapping?: Array<{
+            code: string;
+            contest: string;
+            candidate: string;
+            party?: string | null;
+        }>;
         rows: Array<{ contest: string; selections: string[] }>;
     } | null;
     ballotPreviewUrl?: string | null;

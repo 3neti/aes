@@ -36,8 +36,10 @@ test('printed ballot embeds its qr image and every voter selection', function ()
         ->toContain('1. Ada Santos')
         ->toContain('2. Lina Mercado')
         ->toContain('1. Ana Lopez; 3. Cora Ramos')
+        ->toContain('BALLOT QR VERIFICATION COPY')
+        ->toContain('SCAN THIS LARGE QR FOR AUDIT VERIFICATION')
         ->not->toContain('QR Artifact:')
-        ->and(pdfPageCount($pdf))->toBe(1)
+        ->and(pdfPageCount($pdf))->toBe(2)
         ->and($qr->getImageWidth())->toBeGreaterThanOrEqual(740)
         ->and($qr->getImageHeight())->toBeGreaterThanOrEqual(740);
 

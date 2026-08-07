@@ -35,6 +35,15 @@ final class PaperBallotLedger
         return sprintf('%s-%06d', (string) ($setup['precinct_id'] ?? 'PRECINCT'), $number);
     }
 
+    public function nextRequiredSerial(string $precinctId): string
+    {
+        return $this->nextSerial() ?? sprintf(
+            '%s-DEMO-%06d',
+            $this->serialPrefix($precinctId),
+            collect($this->events())->where('event_type', 'paper_ballot.issued')->count() + 1,
+        );
+    }
+
     public function recordIssued(string $serial, string $ballotId, string $payloadHash): void
     {
         $this->append('paper_ballot.issued', [
@@ -189,5 +198,13 @@ final class PaperBallotLedger
             sprintf('paper-ballot-ledger/%06d-%s.json', $event['sequence'], str_replace('.', '-', $eventType)),
             $event,
         );
+    }
+
+    private function serialPrefix(string $precinctId): string
+    {
+        $prefix = strtoupper((string) preg_replace('/[^A-Z0-9]+/i', '-', trim($precinctId)));
+        $prefix = trim($prefix, '-');
+
+        return $prefix !== '' ? $prefix : 'PRECINCT';
     }
 }
