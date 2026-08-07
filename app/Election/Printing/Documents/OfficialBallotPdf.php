@@ -29,7 +29,8 @@ final class OfficialBallotPdf
             ['Clustered precinct', $precinctId],
             ['Ballot style', (string) ($payload['ballot_style_id'] ?? 'unknown')],
             ['Paper ballot serial', (string) ($payload['paper_ballot_serial'] ?? 'CERTIFICATION/UNNUMBERED')],
-            ['Ballot identifier', $ballotId],
+            ['QR payload version', str_starts_with((string) ($payload['qr_payload'] ?? ''), 'aes-ballot-compact-1:') ? 'aes-ballot-compact-1' : 'aes-ballot-zlib-1'],
+            ['Mapping hash', substr((string) ($payload['mapping_hash'] ?? 'unknown'), 0, 16)],
         ];
         $y = 674.0;
 
@@ -41,7 +42,7 @@ final class OfficialBallotPdf
 
         $document->rectangle($page, 363, 499, 190, 191, 0.97);
         $document->image($page, 'BallotQr', 366, 505, 184, 184);
-        $document->text($page, 'SCAN DURING COUNTING', 458, 501, 7.5, true, 'center');
+        $document->text($page, 'SCAN FOR QR-ASSISTED AUDIT', 458, 501, 7.5, true, 'center');
         $document->text($page, 'Payload SHA-256', 42, 552, 7.5, true);
         $document->wrappedText(
             $page,
@@ -53,8 +54,17 @@ final class OfficialBallotPdf
             9,
             monospace: true,
         );
+        $document->wrappedText(
+            $page,
+            'The QR stores precinct data, paper serial, mapping hash, and mapped candidate codes. It is not a server ballot lookup.',
+            42,
+            508,
+            300,
+            7.5,
+            9,
+        );
 
-        $y = 497;
+        $y = 474;
         $document->line($page, 42, $y, 553, $y, 1.2, 0.12);
         $y -= 20;
         $document->text($page, "VOTER'S RECORDED SELECTIONS", 42, $y, 12, true);

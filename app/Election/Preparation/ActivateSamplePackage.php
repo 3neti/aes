@@ -8,6 +8,7 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfileResolver;
+use App\Election\Voting\CandidateCodeMap;
 
 final class ActivateSamplePackage
 {
@@ -19,6 +20,7 @@ final class ActivateSamplePackage
         private readonly ActivityJournal $journal,
         private readonly LifecycleState $lifecycle,
         private readonly TabulationProfileResolver $tabulation,
+        private readonly CandidateCodeMap $candidateCodes,
     ) {}
 
     /**
@@ -41,12 +43,14 @@ final class ActivateSamplePackage
             'registry_hash' => $this->json->hash($registries),
         ]);
         $this->storage->writeJson('runtime/active-precinct.json', $configuration);
+        $candidateCodeMap = $this->candidateCodes->write($configuration);
         $this->lifecycle->set(Lifecycle::Certification, false);
         $this->journal->record('package.activated', [
             'election_id' => $configuration['election_id'],
             'precinct_id' => $configuration['precinct_id'],
             'mapping_hash' => $configuration['mapping_hash'],
             'tabulation_profile' => $configuration['tabulation_profile'],
+            'candidate_code_map_hash' => $candidateCodeMap['candidate_code_map_hash'],
         ]);
         $this->journal->record('lifecycle.stage_set', ['stage' => Lifecycle::Certification]);
 

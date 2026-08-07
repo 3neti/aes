@@ -57,6 +57,13 @@ final class PublicSimulationRandomManualAuditController extends Controller
                     'discrepancy_ballots' => $summary['reconciliation_report']['discrepancy_ballots'],
                     'pending_ballots' => $summary['reconciliation_report']['pending_ballots'],
                 ],
+                'auditTally' => $summary['audit_tally'] === [] ? null : [
+                    'accepted_scans' => $summary['audit_tally']['accepted_scans'],
+                    'discrepancy_ballots' => $summary['audit_tally']['discrepancy_ballots'],
+                    'tally' => $summary['audit_tally']['tally'],
+                    'latest' => $summary['audit_tally']['latest'],
+                    'audit_tally_hash' => $summary['audit_tally']['audit_tally_hash'],
+                ],
                 'evidencePackAvailable' => $summary['evidence_pack'] !== [],
                 'watcherPublicationAvailable' => $publication->summary() !== [],
             ],

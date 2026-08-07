@@ -213,11 +213,7 @@ final class CountingService
             throw new RuntimeException('Tabulation profile mismatch.');
         }
 
-        if (($payload['payload_hash'] ?? null) !== $this->json->hash(array_diff_key($payload, [
-            'qr_payload' => true,
-            'qr_artifact_path' => true,
-            'payload_hash' => true,
-        ]))) {
+        if (($payload['payload_hash'] ?? null) !== $this->payloadHash($payload)) {
             throw new RuntimeException('Payload hash mismatch.');
         }
 
@@ -232,6 +228,31 @@ final class CountingService
                 throw new RuntimeException('Duplicate ballot payload.');
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function payloadHash(array $payload): string
+    {
+        if (($payload['payload_hash_profile'] ?? null) === 'compact-selection-1') {
+            return $this->json->hash([
+                'schema_version' => 'ballot-payload-compact-1',
+                'election_id' => $payload['election_id'] ?? null,
+                'precinct_id' => $payload['precinct_id'] ?? null,
+                'ballot_style_id' => $payload['ballot_style_id'] ?? null,
+                'mapping_hash' => $payload['mapping_hash'] ?? null,
+                'tabulation_profile' => $payload['tabulation_profile'] ?? null,
+                'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
+                'candidate_codes' => $payload['candidate_codes'] ?? [],
+            ]);
+        }
+
+        return $this->json->hash(array_diff_key($payload, [
+            'qr_payload' => true,
+            'qr_artifact_path' => true,
+            'payload_hash' => true,
+        ]));
     }
 
     /**

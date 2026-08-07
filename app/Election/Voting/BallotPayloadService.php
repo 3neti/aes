@@ -36,6 +36,7 @@ final class BallotPayloadService
             'ballot_style_id' => $configuration['ballot_style_id'],
             'mapping_hash' => $configuration['mapping_hash'],
             'tabulation_profile' => $configuration['tabulation_profile'],
+            'payload_hash_profile' => 'compact-selection-1',
             'selections' => $selections,
         ];
 
@@ -45,7 +46,7 @@ final class BallotPayloadService
             $payload['paper_ballot_serial'] = $paperBallotSerial;
         }
 
-        $payload['payload_hash'] = $this->json->hash($payload);
+        $payload['payload_hash'] = $this->qrPayload->compactHash($payload);
         $payload['qr_payload'] = $this->qrPayload->encode($payload);
         $payload['qr_artifact_path'] = $this->storage->writeText(
             "ballots/{$payload['ballot_id']}-qr.png",

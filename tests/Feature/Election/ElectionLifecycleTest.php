@@ -717,7 +717,9 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
 
     expect($payload['payload_hash'])->toBeString()
         ->and($payload['qr_payload'])->toBeString()
-        ->and($payload['qr_payload'])->toStartWith('aes-ballot-zlib-1:')
+        ->and($payload['qr_payload'])->toStartWith('aes-ballot-compact-1:')
+        ->and($payload['qr_payload'])->toContain('CAND')
+        ->and($payload['payload_hash_profile'])->toBe('compact-selection-1')
         ->and($payload['qr_artifact_path'])->toBeString()
         ->and(file_exists($payload['qr_artifact_path']))->toBeTrue()
         ->and($job['status'])->toBe('printed')
@@ -730,6 +732,7 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('/BaseFont /Courier')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('/Subtype /Image')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('/BallotQr')
+        ->and(file_get_contents($job['pdf_artifact_path']))->toContain('aes-ballot-compact-1')
         ->and(file_get_contents($job['pdf_artifact_path']))->toContain('1. Ada Santos');
 });
 

@@ -46,7 +46,9 @@ final class RandomManualAuditService
         $this->validatePayload($payload);
         $payloadHash = (string) $payload['payload_hash'];
 
-        if ($this->deviceLedger->findByPayloadHash($payloadHash) === null) {
+        $deviceRecord = $this->deviceLedger->findByPayloadHash($payloadHash);
+
+        if ($deviceRecord === null) {
             throw ValidationException::withMessages([
                 'payload' => 'The scanned QR code is not present in this precinct device tabulation record.',
             ]);
@@ -80,10 +82,11 @@ final class RandomManualAuditService
         $proposal = [
             'schema_version' => 'random-manual-audit-proposal-1',
             'status' => 'pending-dual-approval',
-            'ballot_id' => $payload['ballot_id'],
+            'ballot_id' => $deviceRecord['ballot_id'] ?? $payload['ballot_id'],
             'payload_hash' => $payloadHash,
-            'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
+            'paper_ballot_serial' => $deviceRecord['paper_ballot_serial'] ?? $payload['paper_ballot_serial'] ?? null,
             'selections' => $payload['selections'],
+            'candidate_codes' => $payload['candidate_codes'] ?? [],
             'scanner_adapter' => $scan['adapter'],
             'raw_input_hash' => $scan['raw_payload_hash'],
             'proposed_at' => $this->clock->now()->toIso8601String(),
@@ -230,12 +233,15 @@ final class RandomManualAuditService
                 sprintf('rma/accepted/%06d-%s.json', $sequence, $payloadHash),
                 $record,
             );
+            $scanRecord = $this->writeAcceptedScan($record, $proposal);
+            $auditTally = $this->writeAuditTally($record);
 
             $proposal = [
                 ...$proposal,
                 'status' => 'approved',
                 'approved_record_path' => $record['artifact_path'],
                 'approved_record_hash' => $record['record_hash'],
+                'accepted_scan_path' => $scanRecord['artifact_path'],
             ];
             $this->storage->writeJson("rma/proposals/{$payloadHash}.json", $proposal);
 
@@ -244,6 +250,7 @@ final class RandomManualAuditService
                 'ballot_id' => $record['ballot_id'],
                 'payload_hash' => $payloadHash,
                 'record_hash' => $record['record_hash'],
+                'audit_tally_hash' => $auditTally['audit_tally_hash'],
                 'officer_code_hashes' => array_column($record['approvals'], 'code_hash'),
             ]);
 
@@ -305,6 +312,7 @@ final class RandomManualAuditService
                 sprintf('rma/discrepancies/%06d-%s.json', $sequence, $payloadHash),
                 $record,
             );
+            $this->writeAuditTally();
 
             $proposal = [
                 ...$proposal,
@@ -495,6 +503,7 @@ final class RandomManualAuditService
             'pending_proposal' => $this->pendingProposals()[0] ?? null,
             'reconciliation_report' => $this->storage->readJson('rma/reconciliation-report.json'),
             'evidence_pack' => $this->storage->readJson('rma/evidence-pack.json'),
+            'audit_tally' => $this->storage->readJson('rma/audit-tally.json'),
             'tally' => $tally,
         ];
     }
@@ -527,15 +536,36 @@ final class RandomManualAuditService
             throw ValidationException::withMessages(['payload' => 'The QR code belongs to a different tabulation profile.']);
         }
 
-        if (($payload['payload_hash'] ?? null) !== $this->json->hash(array_diff_key($payload, [
-            'qr_payload' => true,
-            'qr_artifact_path' => true,
-            'payload_hash' => true,
-        ]))) {
+        if (($payload['payload_hash'] ?? null) !== $this->payloadHash($payload)) {
             throw ValidationException::withMessages(['payload' => 'The QR payload hash is invalid.']);
         }
 
         $this->selections->validate($configuration, $payload['selections'] ?? []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function payloadHash(array $payload): string
+    {
+        if (($payload['payload_hash_profile'] ?? null) === 'compact-selection-1') {
+            return $this->json->hash([
+                'schema_version' => 'ballot-payload-compact-1',
+                'election_id' => $payload['election_id'] ?? null,
+                'precinct_id' => $payload['precinct_id'] ?? null,
+                'ballot_style_id' => $payload['ballot_style_id'] ?? null,
+                'mapping_hash' => $payload['mapping_hash'] ?? null,
+                'tabulation_profile' => $payload['tabulation_profile'] ?? null,
+                'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
+                'candidate_codes' => $payload['candidate_codes'] ?? [],
+            ]);
+        }
+
+        return $this->json->hash(array_diff_key($payload, [
+            'qr_payload' => true,
+            'qr_artifact_path' => true,
+            'payload_hash' => true,
+        ]));
     }
 
     /**
@@ -616,6 +646,136 @@ final class RandomManualAuditService
             ->sortBy('sequence')
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @param  array<string, mixed>  $proposal
+     * @return array<string, mixed>
+     */
+    private function writeAcceptedScan(array $record, array $proposal): array
+    {
+        $scan = [
+            'schema_version' => 'random-manual-audit-scan-1',
+            'sequence' => $record['sequence'],
+            'payload_hash' => $record['payload_hash'],
+            'paper_ballot_serial' => $record['paper_ballot_serial'],
+            'candidate_codes' => $proposal['candidate_codes'] ?? [],
+            'resolved_selections' => $record['selections'],
+            'status' => 'accepted',
+            'accepted_record_hash' => $record['record_hash'],
+            'recorded_at' => $record['approved_at'],
+        ];
+        $scan['scan_hash'] = $this->json->hash($scan);
+        $scan['artifact_path'] = $this->storage->path(
+            sprintf('rma/scans/%06d-%s.json', $record['sequence'], $record['payload_hash']),
+        );
+        $this->storage->writeJson(
+            sprintf('rma/scans/%06d-%s.json', $record['sequence'], $record['payload_hash']),
+            $scan,
+        );
+
+        return $scan;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $latestRecord
+     * @return array<string, mixed>
+     */
+    private function writeAuditTally(?array $latestRecord = null): array
+    {
+        $configuration = $this->storage->readJson('runtime/active-precinct.json');
+        $records = $this->acceptedRecords();
+        $tally = [];
+
+        foreach (($configuration['contests'] ?? []) as $contest) {
+            $contestId = (string) ($contest['id'] ?? '');
+            $tally[$contestId] = [];
+
+            foreach (($contest['candidates'] ?? []) as $candidate) {
+                $tally[$contestId][(string) ($candidate['id'] ?? '')] = 0;
+            }
+        }
+
+        foreach ($records as $record) {
+            foreach (($record['selections'] ?? []) as $contestId => $candidateIds) {
+                foreach ($candidateIds as $candidateId) {
+                    $tally[$contestId][$candidateId] = ($tally[$contestId][$candidateId] ?? 0) + 1;
+                }
+            }
+        }
+
+        $latestSelections = is_array($latestRecord)
+            ? (array) ($latestRecord['selections'] ?? [])
+            : [];
+        $auditTally = [
+            'schema_version' => 'random-manual-audit-tally-1',
+            'precinct_id' => $configuration['precinct_id'] ?? null,
+            'mapping_hash' => $configuration['mapping_hash'] ?? null,
+            'accepted_scans' => count($records),
+            'discrepancy_ballots' => count($this->discrepancyRecords()),
+            'tally' => $tally,
+            'latest' => is_array($latestRecord) ? [
+                'sequence' => $latestRecord['sequence'] ?? null,
+                'payload_hash' => $latestRecord['payload_hash'] ?? null,
+                'paper_ballot_serial' => $latestRecord['paper_ballot_serial'] ?? null,
+                'selections' => $latestSelections,
+                'candidate_ids' => collect($latestSelections)->flatten()->values()->all(),
+            ] : null,
+            'generated_at' => $this->clock->now()->toIso8601String(),
+        ];
+        $auditTally['audit_tally_hash'] = $this->json->hash($auditTally);
+        $this->storage->writeJson('rma/audit-tally.json', $auditTally);
+        $this->storage->writeText('rma/audit-tally.pdf', $this->pdf->render(
+            'Random Manual Audit Tally',
+            $this->renderAuditTallyLines($configuration, $auditTally),
+        ));
+
+        return $auditTally;
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @param  array<string, mixed>  $auditTally
+     * @return array<int, string>
+     */
+    private function renderAuditTallyLines(array $configuration, array $auditTally): array
+    {
+        $lines = [
+            'RANDOM MANUAL AUDIT TALLY',
+            '',
+            'Precinct: '.($configuration['precinct_id'] ?? 'unknown'),
+            'Mapping Hash: '.($configuration['mapping_hash'] ?? 'unknown'),
+            'Accepted QR-Assisted Scans: '.($auditTally['accepted_scans'] ?? 0),
+            'Discrepancies: '.($auditTally['discrepancy_ballots'] ?? 0),
+            'Audit Tally Hash: '.($auditTally['audit_tally_hash'] ?? 'unknown'),
+            '',
+            'TALLY:',
+        ];
+        $tally = (array) ($auditTally['tally'] ?? []);
+
+        foreach (($configuration['contests'] ?? []) as $contest) {
+            $contestId = (string) ($contest['id'] ?? '');
+            $lines[] = '';
+            $lines[] = (string) ($contest['title'] ?? $contestId);
+
+            foreach (($contest['candidates'] ?? []) as $candidate) {
+                $candidateId = (string) ($candidate['id'] ?? '');
+                $votes = (int) (($tally[$contestId] ?? [])[$candidateId] ?? 0);
+
+                if ($votes === 0) {
+                    continue;
+                }
+
+                $lines[] = sprintf(
+                    '  %s - %d',
+                    (string) ($candidate['name'] ?? $candidateId),
+                    $votes,
+                );
+            }
+        }
+
+        return $lines;
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfileResolver;
+use App\Election\Voting\CandidateCodeMap;
 
 final class ActivatePrecinctBallotPackage
 {
@@ -17,6 +18,7 @@ final class ActivatePrecinctBallotPackage
         private readonly LifecycleState $lifecycle,
         private readonly ActivityJournal $journal,
         private readonly TabulationProfileResolver $tabulation,
+        private readonly CandidateCodeMap $candidateCodes,
     ) {}
 
     /**
@@ -31,11 +33,13 @@ final class ActivatePrecinctBallotPackage
         $this->storage->writeJson('packages/active-package.json', $definition['package']);
         $this->storage->writeJson('runtime/active-precinct.json', $configuration);
         $this->storage->writeJson('precinct-candidates/active-ballot-definition.json', $definition['report']);
+        $candidateCodeMap = $this->candidateCodes->write($configuration);
         $this->lifecycle->set(Lifecycle::Certification, false);
         $this->journal->record('pop_clc.lifecycle_package_activated', [
             'precinct_id' => $configuration['precinct_id'],
             'mapping_hash' => $configuration['mapping_hash'],
             'tabulation_profile' => $configuration['tabulation_profile'],
+            'candidate_code_map_hash' => $candidateCodeMap['candidate_code_map_hash'],
             'registry_hash' => $definition['report']['registry_hash'],
             'package_hash' => $definition['report']['package_hash'],
         ]);

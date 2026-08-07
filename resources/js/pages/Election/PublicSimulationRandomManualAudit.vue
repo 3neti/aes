@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { Form, Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref } from 'vue';
+import TallyMarks from '@/components/election/TallyMarks.vue';
 
 const props = defineProps<{
     precinct: { code: string; label: string; status: string };
     audit: {
         sample: Array<{
             payload_hash: string;
-            paper_ballot_serial: number | null;
+            paper_ballot_serial: string | null;
         }>;
         sample_hash: string | null;
         source_record_count: number;
@@ -15,7 +16,7 @@ const props = defineProps<{
         discrepancy_ballots: number;
         pending: {
             payload_hash: string;
-            paper_ballot_serial: number | null;
+            paper_ballot_serial: string | null;
             selections: Record<string, string[]>;
         } | null;
         reconciliation: {
@@ -24,6 +25,19 @@ const props = defineProps<{
             verified_ballots: number;
             discrepancy_ballots: number;
             pending_ballots: number;
+        } | null;
+        auditTally: {
+            accepted_scans: number;
+            discrepancy_ballots: number;
+            tally: Record<string, Record<string, number>>;
+            latest: {
+                sequence: number | null;
+                payload_hash: string | null;
+                paper_ballot_serial: string | null;
+                selections: Record<string, string[]>;
+                candidate_ids: string[];
+            } | null;
+            audit_tally_hash: string;
         } | null;
         evidencePackAvailable: boolean;
         watcherPublicationAvailable: boolean;
@@ -55,6 +69,23 @@ const cameraForm = useForm({
 const canCapture = computed(
     () => cameraStatus.value === 'ready' && !cameraForm.processing,
 );
+const auditTallyRows = computed(() => {
+    return Object.entries(props.audit.auditTally?.tally ?? {}).flatMap(
+        ([contest, candidates]) =>
+            Object.entries(candidates)
+                .filter(([, votes]) => Number(votes) > 0)
+                .map(([candidateId, votes]) => ({
+                    contest,
+                    candidateId,
+                    votes: Number(votes),
+                    latest: Boolean(
+                        props.audit.auditTally?.latest?.candidate_ids.includes(
+                            candidateId,
+                        ),
+                    ),
+                })),
+    );
+});
 
 async function startCamera(): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -256,11 +287,14 @@ onBeforeUnmount(() => stopCamera(false));
 
             <template v-else>
                 <section class="mt-6 border border-stone-300 p-5">
-                    <h2 class="text-lg font-bold">Selected paper ballots</h2>
+                    <h2 class="text-lg font-bold">
+                        2. Open ballot box and prepare sampled ballots
+                    </h2>
                     <p class="mt-2 text-sm text-stone-700">
                         Sample {{ audit.sample_hash?.slice(0, 16) }}. Retrieve
-                        only these paper ballots from the ballot box for
-                        comparison.
+                        the selected paper ballots from the ballot box, arrange
+                        them for QR-assisted audit tallying, and keep the
+                        official tally unchanged.
                     </p>
                     <ul
                         class="mt-4 divide-y divide-stone-200 border border-stone-200 text-sm"
@@ -287,7 +321,7 @@ onBeforeUnmount(() => stopCamera(false));
                     class="mt-6 border border-stone-300 p-5"
                 >
                     <h2 class="text-lg font-bold">
-                        2. Capture a sampled ballot QR code
+                        3. Scan each sampled paper ballot QR code
                     </h2>
                     <p class="mt-2 text-sm text-stone-700">
                         Use the device camera for the paper QR code, or use a
@@ -425,7 +459,7 @@ onBeforeUnmount(() => stopCamera(false));
                     class="mt-6 border border-amber-500 bg-amber-50 p-5"
                 >
                     <h2 class="text-lg font-bold">
-                        3. Confirm the paper comparison
+                        4. Confirm the paper comparison
                     </h2>
                     <p class="mt-2 text-sm text-amber-950">
                         Paper ballot
@@ -613,12 +647,64 @@ onBeforeUnmount(() => stopCamera(false));
                     >
                 </section>
 
+                <section class="mt-6 border border-stone-300 p-5">
+                    <div
+                        class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                        <div>
+                            <h2 class="text-lg font-bold">
+                                Live QR-assisted audit tally
+                            </h2>
+                            <p class="mt-2 text-sm text-stone-700">
+                                Each dual-approved paper comparison updates this
+                                audit tally. Rows touched by the latest approved
+                                scan are highlighted.
+                            </p>
+                        </div>
+                        <p class="text-sm font-bold text-stone-600">
+                            {{ audit.auditTally?.accepted_scans ?? 0 }}
+                            accepted scans
+                        </p>
+                    </div>
+                    <div
+                        v-if="auditTallyRows.length > 0"
+                        class="mt-4 divide-y divide-stone-200 border border-stone-200"
+                    >
+                        <div
+                            v-for="row in auditTallyRows"
+                            :key="`${row.contest}-${row.candidateId}`"
+                            class="grid gap-2 p-3 sm:grid-cols-[9rem_1fr_6rem]"
+                            :class="row.latest ? 'bg-yellow-100' : 'bg-white'"
+                        >
+                            <p class="text-xs font-bold text-stone-600">
+                                {{ row.contest }}
+                            </p>
+                            <div>
+                                <p class="font-mono text-sm font-bold">
+                                    {{ row.candidateId }}
+                                </p>
+                                <TallyMarks :count="row.votes" />
+                            </div>
+                            <p class="text-right text-sm font-bold">
+                                {{ row.votes }}
+                            </p>
+                        </div>
+                    </div>
+                    <p
+                        v-else
+                        class="mt-4 border border-dashed border-stone-300 p-4 text-sm text-stone-600"
+                    >
+                        No paper ballot QR has been dual-approved for the audit
+                        tally yet.
+                    </p>
+                </section>
+
                 <section
                     v-if="!audit.pending"
                     class="mt-6 border border-stone-300 p-5"
                 >
                     <h2 class="text-lg font-bold">
-                        4. Reconcile and publish the audit
+                        5. Reconcile and publish the audit
                     </h2>
                     <p
                         v-if="audit.reconciliation"

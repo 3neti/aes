@@ -11,6 +11,7 @@ use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\BallotQrPayload;
 use App\Election\Voting\SealedBallotBox;
 use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -32,6 +33,23 @@ beforeEach(function (): void {
     app(BallotPrinter::class)->print($this->auditPayload);
     app(SealedBallotBox::class)->depositPrintedPayload($this->auditPayload);
     app(LifecycleState::class)->set(Lifecycle::Counting);
+});
+
+test('compact ballot QR payload uses candidate codes and resolves without a stored ballot lookup', function (): void {
+    $decoded = app(BallotQrPayload::class)->decode($this->auditPayload['qr_payload']);
+    $mapping = app(ElectionStorage::class)->readJson('mappings/candidate-code-map.json');
+
+    expect($this->auditPayload['qr_payload'])->toStartWith('aes-ballot-compact-1:')
+        ->and($this->auditPayload['qr_payload'])->toContain('CAND')
+        ->and($mapping['schema_version'])->toBe('candidate-code-map-1')
+        ->and($mapping['candidates'])->toHaveKey('CAND00001')
+        ->and($decoded['schema_version'])->toBe('ballot-payload-compact-1')
+        ->and($decoded['payload_hash_profile'])->toBe('compact-selection-1')
+        ->and($decoded['precinct_id'])->toBe($this->auditPayload['precinct_id'])
+        ->and($decoded['paper_ballot_serial'])->toBe($this->auditPayload['paper_ballot_serial'])
+        ->and($decoded['candidate_codes'])->not->toBeEmpty()
+        ->and($decoded['selections'])->toBe($this->auditPayload['selections'])
+        ->and($decoded['ballot_id'])->not->toBe($this->auditPayload['ballot_id']);
 });
 
 test('a QR-assisted random manual audit writes a separately dual-approved audit record', function (): void {
@@ -77,6 +95,18 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
         ->and($record['artifact_path'])->toContain('12-audit-and-reconciliation/random-manual-audit/accepted')
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type')->all())
         ->toContain('rma.ballot_proposed', 'rma.ballot_approved');
+
+    $scanRecord = json_decode(file_get_contents($storage->files('rma/scans')[0]), true, flags: JSON_THROW_ON_ERROR);
+    $auditTally = $storage->readJson('rma/audit-tally.json');
+
+    expect($scanRecord['schema_version'])->toBe('random-manual-audit-scan-1')
+        ->and($scanRecord['candidate_codes'])->not->toBeEmpty()
+        ->and($scanRecord['resolved_selections']['president'])->toBe(['pres-ada'])
+        ->and($auditTally['schema_version'])->toBe('random-manual-audit-tally-1')
+        ->and($auditTally['accepted_scans'])->toBe(1)
+        ->and($auditTally['latest']['candidate_ids'])->toContain('pres-ada')
+        ->and($auditTally['tally']['president']['pres-ada'])->toBe(1)
+        ->and(file_get_contents($storage->path('rma/audit-tally.pdf')))->toStartWith('%PDF-');
 
     $this->post(route('election.counting.rma.reconciliation-report'))
         ->assertRedirect(route('election.counting'))
@@ -187,6 +217,8 @@ test('a QR-assisted random manual audit writes a separately dual-approved audit 
         ->assertInertia(fn (Assert $page) => $page
             ->where('randomManualAudit.proposed_ballots', 0)
             ->where('randomManualAudit.approved_ballots', 1)
+            ->where('randomManualAudit.audit_tally.accepted_scans', 1)
+            ->where('randomManualAudit.audit_tally.latest.candidate_ids', fn (mixed $candidateIds): bool => collect($candidateIds)->contains('pres-ada'))
             ->where('randomManualAudit.tally.president.pres-ada', 1)
             ->where('randomManualAudit.reconciliation_report.passed', true)
             ->where('randomManualAudit.evidence_pack.artifact_count', 3)
