@@ -46,8 +46,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/{round:code}/{precinct:code}/print/redeem', [DemoRoomPrintStationController::class, 'redeem'])->middleware('throttle:10,1')->name('print.redeem');
         Route::post('/{round:code}/{precinct:code}/print/print', [DemoRoomPrintStationController::class, 'print'])->name('print.print');
         Route::post('/{round:code}/{precinct:code}/print/deposit', [DemoRoomPrintStationController::class, 'deposit'])->name('print.deposit');
-        Route::get('/{round:code}/{precinct:code}/print/tally-sheet', [DemoRoomPrintStationController::class, 'tallySheet'])->name('print.tally-sheet');
-        Route::get('/{round:code}/{precinct:code}/print/election-return', [DemoRoomPrintStationController::class, 'electionReturn'])->name('print.election-return');
+        Route::get('/{round:code}/{precinct:code}/print/tally-sheet/{profile?}', [DemoRoomPrintStationController::class, 'tallySheet'])->name('print.tally-sheet');
+        Route::get('/{round:code}/{precinct:code}/print/election-return/{profile?}', [DemoRoomPrintStationController::class, 'electionReturn'])->name('print.election-return');
     });
 
     Route::prefix('play')->name('public-simulation.')->group(function (): void {

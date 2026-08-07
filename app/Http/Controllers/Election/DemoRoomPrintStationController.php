@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\PrintFormProfile;
+use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\Support\ElectionStorage;
@@ -30,6 +32,7 @@ final class DemoRoomPrintStationController extends Controller
         PublicSimulationService $simulations,
         PrivateBallotRelease $releases,
         ElectionStorage $storage,
+        PrintFormProfileResolver $printProfiles,
     ): Response {
         $this->scope($round, $precinct, $simulations);
         $releaseId = $request->session()->get($this->printSessionKey($precinct));
@@ -37,6 +40,7 @@ final class DemoRoomPrintStationController extends Controller
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $precinctId = (string) ($configuration['precinct_id'] ?? '');
         $release = is_string($releaseId) ? $releases->find($releaseId) : [];
+        $profiles = $this->printProfiles($round, $precinct, $storage, $printProfiles, $precinctId);
 
         return Inertia::render('Election/DemoRoomPrintStation', [
             'round' => $this->round($round),
@@ -49,6 +53,7 @@ final class DemoRoomPrintStationController extends Controller
                 'tally_sheet_pdf' => is_file($storage->path('runtime/tally-sheet.pdf')),
                 'election_return_pdf' => $precinctId !== '' && is_file($storage->path("returns/{$precinctId}-return.pdf")),
             ],
+            'printProfiles' => $profiles,
             'release' => $release,
             'ballotPreview' => is_string($releaseId) ? $releases->printedBallotPreview($releaseId) : null,
             'depositFeedback' => $request->session()->get($this->depositSessionKey($precinct)),
@@ -114,7 +119,7 @@ final class DemoRoomPrintStationController extends Controller
         return to_route('election.demo-room.print.station', [$round, $precinct]);
     }
 
-    public function tallySheet(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse|RedirectResponse
+    public function tallySheet(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, ?string $profile = null): BinaryFileResponse|RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
         if (! $this->isEnabled($request, $precinct)) {
@@ -125,17 +130,18 @@ final class DemoRoomPrintStationController extends Controller
             return $this->stationRedirect($round, $precinct, 'Close the precinct first. The tally sheet is generated after closeout.');
         }
 
-        $path = $storage->path('runtime/tally-sheet.pdf');
+        $resolved = $printProfiles->from($profile ?? PrintFormProfile::A4->value);
+        $path = $storage->path("print-forms/tally-sheet/{$resolved->value}.pdf");
         if (! is_file($path)) {
             return $this->stationRedirect($round, $precinct, 'The tally sheet PDF is not available yet. Close the precinct again or refresh the Printing Station.');
         }
 
         return response()->file($path, [
-            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-tally-sheet.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-'.$resolved->value.'-tally-sheet.pdf"',
         ]);
     }
 
-    public function electionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse|RedirectResponse
+    public function electionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, ?string $profile = null): BinaryFileResponse|RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
         if (! $this->isEnabled($request, $precinct)) {
@@ -148,13 +154,14 @@ final class DemoRoomPrintStationController extends Controller
 
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $precinctId = (string) ($configuration['precinct_id'] ?? '');
-        $path = $storage->path("returns/{$precinctId}-return.pdf");
+        $resolved = $printProfiles->from($profile ?? PrintFormProfile::A4->value);
+        $path = $storage->path("print-forms/election-return/{$precinctId}/{$resolved->value}.pdf");
         if ($precinctId === '' || ! is_file($path)) {
             return $this->stationRedirect($round, $precinct, 'The Election Return PDF is not available yet. Close the precinct again or refresh the Printing Station.');
         }
 
         return response()->file($path, [
-            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-election-return.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-'.$resolved->value.'-election-return.pdf"',
         ]);
     }
 
@@ -245,6 +252,27 @@ final class DemoRoomPrintStationController extends Controller
     {
         return to_route('election.demo-room.print.station', [$round, $precinct])
             ->with($this->closeoutSessionKey($precinct), $message);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function printProfiles(SimulationRound $round, SimulationPrecinct $precinct, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, string $precinctId): array
+    {
+        return collect($printProfiles->available())
+            ->map(fn (PrintFormProfile $profile): array => [
+                'profile' => $profile->value,
+                'label' => $profile->label(),
+                'description' => $profile->description(),
+                'width_mm' => $profile->widthMillimetres(),
+                'thermal' => $profile->isThermal(),
+                'tally_available' => is_file($storage->path("print-forms/tally-sheet/{$profile->value}.pdf")),
+                'return_available' => $precinctId !== '' && is_file($storage->path("print-forms/election-return/{$precinctId}/{$profile->value}.pdf")),
+                'tally_url' => route('election.demo-room.print.tally-sheet', [$round, $precinct, $profile->value]),
+                'return_url' => route('election.demo-room.print.election-return', [$round, $precinct, $profile->value]),
+            ])
+            ->values()
+            ->all();
     }
 
     /** @return array<string, mixed> */

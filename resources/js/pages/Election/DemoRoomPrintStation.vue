@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import PrintStation from './PrintStation.vue';
 
-defineProps<{
+const props = defineProps<{
     round: { code: string; name: string };
     precinct: {
         code: string;
@@ -20,6 +21,17 @@ defineProps<{
         tally_sheet_pdf: boolean;
         election_return_pdf: boolean;
     };
+    printProfiles: Array<{
+        profile: string;
+        label: string;
+        description: string;
+        width_mm: number;
+        thermal: boolean;
+        tally_available: boolean;
+        return_available: boolean;
+        tally_url: string;
+        return_url: string;
+    }>;
     release: {
         release_id?: string;
         paper_ballot_serial?: string;
@@ -51,6 +63,27 @@ defineProps<{
     };
     printPinDigits: number;
 }>();
+
+const selectedProfile = ref('a4');
+
+const selectedPrintProfile = computed(() => {
+    return (
+        props.printProfiles.find(
+            (profile) => profile.profile === selectedProfile.value,
+        ) ??
+        props.printProfiles[0] ?? {
+            profile: 'a4',
+            label: 'A4 evidence copy',
+            description: 'Full-page review, posting, and evidence-copy layout.',
+            width_mm: 210,
+            thermal: false,
+            tally_available: props.artifacts.tally_sheet_pdf,
+            return_available: props.artifacts.election_return_pdf,
+            tally_url: props.actions.tally,
+            return_url: props.actions.return,
+        }
+    );
+});
 </script>
 
 <template>
@@ -63,7 +96,9 @@ defineProps<{
             />
         </div>
         <section class="mx-auto max-w-xl px-5 py-10 sm:px-8">
-            <Link :href="actions.officer" class="text-sm font-bold text-blue-800"
+            <Link
+                :href="actions.officer"
+                class="text-sm font-bold text-blue-800"
                 >Back to officer console</Link
             >
             <div class="mt-4 border border-stone-300 bg-white p-6">
@@ -124,10 +159,7 @@ defineProps<{
         </section>
     </main>
 
-    <main
-        v-else-if="isVoting"
-        class="min-h-screen bg-stone-950 text-stone-950"
-    >
+    <main v-else-if="isVoting" class="min-h-screen bg-stone-950 text-stone-950">
         <div class="bg-white px-5 py-3 text-sm sm:px-8">
             <a :href="actions.officer" class="font-bold text-blue-800"
                 >Officer console</a
@@ -162,7 +194,9 @@ defineProps<{
             />
         </div>
         <section class="mx-auto max-w-4xl px-5 py-10 sm:px-8">
-            <Link :href="actions.officer" class="text-sm font-bold text-blue-800"
+            <Link
+                :href="actions.officer"
+                class="text-sm font-bold text-blue-800"
                 >Back to officer console</Link
             >
             <div class="mt-4 border border-stone-300 bg-white p-6">
@@ -172,9 +206,7 @@ defineProps<{
                 >
                     {{ closeoutFeedback }}
                 </div>
-                <p class="text-sm font-bold text-blue-800">
-                    Closeout printing
-                </p>
+                <p class="text-sm font-bold text-blue-800">Closeout printing</p>
                 <h1 class="mt-2 text-3xl font-bold">
                     Print tally, Election Return, and handoff packet
                 </h1>
@@ -185,22 +217,75 @@ defineProps<{
                             : 'Close the precinct from the officer console before printing the tally sheet and Election Return.'
                     }}
                 </p>
+
+                <section
+                    class="mt-6 border border-stone-300 bg-stone-50 p-4"
+                    aria-labelledby="print-format-heading"
+                >
+                    <div
+                        class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                        <div>
+                            <h2
+                                id="print-format-heading"
+                                class="text-lg font-bold"
+                            >
+                                Print format
+                            </h2>
+                            <p class="mt-1 text-sm text-stone-700">
+                                {{ selectedPrintProfile.description }}
+                            </p>
+                        </div>
+                        <p class="text-sm font-bold text-stone-600">
+                            {{ selectedPrintProfile.width_mm }} mm
+                        </p>
+                    </div>
+                    <div class="mt-4 grid gap-2 sm:grid-cols-3">
+                        <button
+                            v-for="profile in printProfiles"
+                            :key="profile.profile"
+                            type="button"
+                            class="min-h-16 border-2 px-3 py-2 text-left"
+                            :class="
+                                selectedProfile === profile.profile
+                                    ? 'border-blue-800 bg-blue-800 text-white'
+                                    : 'border-stone-300 bg-white text-stone-950'
+                            "
+                            @click="selectedProfile = profile.profile"
+                        >
+                            <span class="block font-bold">{{
+                                profile.label
+                            }}</span>
+                            <span
+                                class="mt-1 block text-xs"
+                                :class="
+                                    selectedProfile === profile.profile
+                                        ? 'text-blue-50'
+                                        : 'text-stone-600'
+                                "
+                            >
+                                {{ profile.width_mm }} mm
+                            </span>
+                        </button>
+                    </div>
+                </section>
+
                 <div class="mt-6 grid gap-3 sm:grid-cols-2">
                     <a
-                        :href="actions.tally"
+                        :href="selectedPrintProfile.tally_url"
                         class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
                         :class="{
                             'pointer-events-none opacity-40':
-                                !artifacts.tally_sheet_pdf,
+                                !selectedPrintProfile.tally_available,
                         }"
                         >Open / print tally sheet</a
                     >
                     <a
-                        :href="actions.return"
+                        :href="selectedPrintProfile.return_url"
                         class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
                         :class="{
                             'pointer-events-none opacity-40':
-                                !artifacts.election_return_pdf,
+                                !selectedPrintProfile.return_available,
                         }"
                         >Open / print Election Return</a
                     >

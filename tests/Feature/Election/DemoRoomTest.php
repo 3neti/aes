@@ -170,6 +170,14 @@ test('the demo room runs a precinct through officer, voter, print station, watch
             ->where('artifacts.election_return_pdf', true)
             ->where('actions.tally', route('election.demo-room.print.tally-sheet', [$round, $precinct]))
             ->where('actions.return', route('election.demo-room.print.election-return', [$round, $precinct]))
+            ->has('printProfiles', 3)
+            ->where('printProfiles.0.profile', 'a4')
+            ->where('printProfiles.0.tally_available', true)
+            ->where('printProfiles.0.return_available', true)
+            ->where('printProfiles.1.profile', 'thermal-80')
+            ->where('printProfiles.1.tally_url', route('election.demo-room.print.tally-sheet', [$round, $precinct, 'thermal-80']))
+            ->where('printProfiles.1.return_url', route('election.demo-room.print.election-return', [$round, $precinct, 'thermal-80']))
+            ->where('printProfiles.2.profile', 'thermal-58')
         );
 
     $this->get(route('election.demo-room.print.tally-sheet', [$round, $precinct]))
@@ -177,6 +185,14 @@ test('the demo room runs a precinct through officer, voter, print station, watch
         ->assertHeader('Content-Type', 'application/pdf');
 
     $this->get(route('election.demo-room.print.election-return', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(route('election.demo-room.print.tally-sheet', [$round, $precinct, 'thermal-80']))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(route('election.demo-room.print.election-return', [$round, $precinct, 'thermal-58']))
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
 
@@ -192,6 +208,9 @@ test('the demo room runs a precinct through officer, voter, print station, watch
             ->where('isPublished', true)
             ->where('actions.tally', route('election.demo-room.print.tally-sheet', [$round, $precinct]))
             ->where('actions.return', route('election.demo-room.print.election-return', [$round, $precinct]))
+            ->where('printProfiles.1.profile', 'thermal-80')
+            ->where('printProfiles.1.tally_available', true)
+            ->where('printProfiles.1.return_available', true)
         );
 
     $this->get(route('election.demo-room.handoff', [$round, $precinct]))
