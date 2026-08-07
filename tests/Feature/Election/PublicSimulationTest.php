@@ -109,7 +109,10 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
             ->where('officerDefaults.second_board.officer_code', 'SIM-OFFICER-002')
             ->where('officerDefaults.second_board.officer_pin', '123456')
         );
-    $this->post(route('election.public-simulation.audit.select', [$round, $precinct]), $credentials)
+    $this->post(route('election.public-simulation.audit.select', [$round, $precinct]), [
+        'officer_code' => 'SIM-OFFICER-001',
+        'officer_pin' => '123456',
+    ])
         ->assertRedirect(route('election.public-simulation.audit.show', [$round, $precinct]));
     config()->set('election.devices.scanner.driver', 'camera');
     $this->post(route('election.public-simulation.audit.propose', [$round, $precinct]), [

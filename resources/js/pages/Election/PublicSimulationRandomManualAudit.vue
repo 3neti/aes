@@ -240,6 +240,10 @@ onBeforeUnmount(() => stopCamera(false));
                             {{ officerDefaults.assigned.officer_code }} /
                             {{ officerDefaults.assigned.officer_pin }}
                         </dd>
+                        <dd class="mt-1 text-xs text-stone-600">
+                            Use this for sample selection, scanning,
+                            reconciliation, evidence pack, and publication.
+                        </dd>
                     </div>
                     <div class="border border-blue-100 bg-white p-3">
                         <dt class="text-xs font-bold text-stone-600">
@@ -249,6 +253,10 @@ onBeforeUnmount(() => stopCamera(false));
                             {{ officerDefaults.first_board.officer_code }} /
                             {{ officerDefaults.first_board.officer_pin }}
                         </dd>
+                        <dd class="mt-1 text-xs text-stone-600">
+                            Also accepted for RMA controls; required for dual
+                            approval.
+                        </dd>
                     </div>
                     <div class="border border-blue-100 bg-white p-3">
                         <dt class="text-xs font-bold text-stone-600">
@@ -257,6 +265,10 @@ onBeforeUnmount(() => stopCamera(false));
                         <dd class="mt-1 font-mono font-bold">
                             {{ officerDefaults.second_board.officer_code }} /
                             {{ officerDefaults.second_board.officer_pin }}
+                        </dd>
+                        <dd class="mt-1 text-xs text-stone-600">
+                            Also accepted for RMA controls; required as the
+                            second dual approver.
                         </dd>
                     </div>
                 </dl>

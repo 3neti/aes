@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Attestation\OfficerRegistry;
 use App\Election\Audit\RandomManualAuditService;
 use App\Election\PublicSimulation\PublicRandomManualAuditPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
@@ -203,6 +204,10 @@ final class PublicSimulationRandomManualAuditController extends Controller
         try {
             $simulations->verifyOfficer($precinct, $validated['officer_code'], $validated['officer_pin']);
         } catch (RuntimeException $exception) {
+            if (app(OfficerRegistry::class)->verify($validated['officer_code'], $validated['officer_pin']) !== null) {
+                return $validated;
+            }
+
             throw ValidationException::withMessages(['officer_pin' => $exception->getMessage()]);
         }
 
