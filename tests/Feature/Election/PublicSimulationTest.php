@@ -222,6 +222,40 @@ test('a precinct admission capacity is reserved atomically inside the scoped ele
         ->toThrow(RuntimeException::class, 'active voter-admission limit');
 });
 
+test('a voter completion refresh after precinct close shows a safe closed precinct screen', function (): void {
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = [
+        'officer_code' => $precinct->officer_code,
+        'officer_pin' => '123456',
+    ];
+
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)
+        ->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
+
+    $this->post(route('election.public-simulation.close', [$round, $precinct]), $credentials)
+        ->assertRedirect(route('election.public-simulation.show', [$round, $precinct]));
+
+    $precinct->refresh();
+    expect($precinct->status)->toBe('results_ready');
+
+    $this->get(route('election.public-simulation.voter.complete', [$round, $precinct]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterComplete')
+            ->where('precinctClosed', true)
+            ->where('release', null)
+            ->where('precinct.code', $precinct->code)
+            ->where('returnAction', route('election.public-simulation.show', [$round, $precinct]))
+            ->missing('release.release_code')
+            ->missing('release.release_qr_data_uri')
+        );
+});
+
 test('an anonymous waiting ticket is released in order without exposing a control number', function (): void {
     config()->set('election.public_simulation.maximum_active_admissions', 1);
     config()->set('election.public_simulation.admission_queue.maximum_waiting_voters', 2);

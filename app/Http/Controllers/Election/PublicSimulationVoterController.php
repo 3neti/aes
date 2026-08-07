@@ -154,10 +154,31 @@ final class PublicSimulationVoterController extends Controller
     {
         $this->scope($round, $precinct, $simulations);
         $release = $request->session()->get($this->releaseSessionKey($precinct));
-        abort_unless(is_array($release), 404);
+
+        if (! is_array($release)) {
+            abort_unless($this->isPrecinctClosed($precinct), 404);
+
+            return Inertia::render('Election/VoterComplete', [
+                'release' => null,
+                'precinctClosed' => true,
+                'precinct' => [
+                    'code' => $precinct->code,
+                    'label' => $precinct->label,
+                ],
+                'returnAction' => route('election.public-simulation.show', [$round, $precinct]),
+                'resetAction' => route('election.public-simulation.voter.reset', [$round, $precinct]),
+                'publicSimulation' => true,
+            ]);
+        }
 
         return Inertia::render('Election/VoterComplete', [
             'release' => $release,
+            'precinctClosed' => false,
+            'precinct' => [
+                'code' => $precinct->code,
+                'label' => $precinct->label,
+            ],
+            'returnAction' => route('election.public-simulation.show', [$round, $precinct]),
             'resetAction' => route('election.public-simulation.voter.reset', [$round, $precinct]),
             'publicSimulation' => true,
         ]);
@@ -316,6 +337,11 @@ final class PublicSimulationVoterController extends Controller
     private function participationSessionKey(SimulationPrecinct $precinct): string
     {
         return "public_simulation.{$precinct->id}.participation_policy_hash";
+    }
+
+    private function isPrecinctClosed(SimulationPrecinct $precinct): bool
+    {
+        return in_array($precinct->status, ['results_ready', 'published', 'archived'], true);
     }
 
     private function printSessionKey(SimulationPrecinct $precinct): string
