@@ -102,7 +102,7 @@ test('printed ballot reserves space beside long contest titles for selection lim
         ->and(substr_count($pdf, '1 selected | maximum 1'))->toBe(1);
 });
 
-test('tally and election return paginate complete candidate listings deterministically', function (): void {
+test('tally sheet hides zero vote candidates while election return keeps complete listings', function (): void {
     [$configuration, $tally] = largePrintFormFixture();
     $tallyPdf = app(TallySheetPdf::class)->render($configuration, $tally);
     $return = [
@@ -121,7 +121,8 @@ test('tally and election return paginate complete candidate listings determinist
         ->and(substr_count($tallyPdf, 'COMMISSION ON ELECTIONS'))->toBe(pdfPageCount($tallyPdf))
         ->and(substr_count($returnPdf, 'COMMISSION ON ELECTIONS'))->toBe(pdfPageCount($returnPdf))
         ->and($tallyPdf)->toContain('CANDIDATE 001')
-        ->and($tallyPdf)->toContain('CANDIDATE 098')
+        ->and($tallyPdf)->not->toContain('CANDIDATE 007')
+        ->and($tallyPdf)->not->toContain('CANDIDATE 098')
         ->and($tallyPdf)->toContain('TALLY MARKS')
         ->and($tallyPdf)->toContain('% AES-TALLY-MARKS count=6 groups=1 remainder=1')
         ->and($returnPdf)->toContain('CANDIDATE 001')
@@ -135,7 +136,7 @@ test('tally and election return paginate complete candidate listings determinist
     foreach (range(1, 98) as $number) {
         $candidate = sprintf('CANDIDATE %03d', $number);
 
-        expect(substr_count($tallyPdf, $candidate))->toBe(1)
+        expect(substr_count($tallyPdf, $candidate))->toBe($number % 7 === 0 ? 0 : 1)
             ->and(substr_count($returnPdf, $candidate))->toBe(1);
     }
 });
@@ -166,8 +167,11 @@ test('lifecycle tally and return retain complete activated configuration order',
     $tallyPdf = file_get_contents($storage->path('runtime/tally-sheet.pdf'));
     $returnPdf = file_get_contents($storage->path('returns/0421-A-return.pdf'));
 
-    expect($tallyPdf)->toContain('Ada Santos')
-        ->and($tallyPdf)->toContain('Grace Reyes')
+    expect($tally['tally']['president']['pres-grace'])->toBe(0)
+        ->and($tally['display_tally']['president'])->toHaveKey('pres-ada')
+        ->and($tally['display_tally']['president'])->not->toHaveKey('pres-grace')
+        ->and($tallyPdf)->toContain('Ada Santos')
+        ->and($tallyPdf)->not->toContain('Grace Reyes')
         ->and($tallyPdf)->toContain('Cora Ramos')
         ->and($returnPdf)->toContain('Ada Santos')
         ->and($returnPdf)->toContain('Grace Reyes')

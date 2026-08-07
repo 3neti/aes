@@ -9,7 +9,7 @@ final class ThermalContestResultTable
      * @param  array<string, array<string, int>>  $tally
      * @return array{page: int, y: float, candidate_count: int}
      */
-    public function render(ThermalPdfDocument $document, array $configuration, array $tally, int $page, float $y): array
+    public function render(ThermalPdfDocument $document, array $configuration, array $tally, int $page, float $y, bool $onlyPositiveVotes = false, bool $emphasizeTallyMarks = false): array
     {
         $candidateCount = 0;
         $width = $document->right() - $document->left();
@@ -29,6 +29,7 @@ final class ThermalContestResultTable
             }
             [$page, $y] = $this->header($document, $page, $y, $title, (int) ($contest['max_selections'] ?? 1));
             $rowIndex = 0;
+            $contestCandidateCount = 0;
 
             foreach ((array) ($contest['candidates'] ?? []) as $candidate) {
                 if (! is_array($candidate)) {
@@ -36,6 +37,11 @@ final class ThermalContestResultTable
                 }
                 $candidateId = (string) ($candidate['id'] ?? '');
                 $votes = (int) ($tally[$contestId][$candidateId] ?? 0);
+
+                if ($onlyPositiveVotes && $votes <= 0) {
+                    continue;
+                }
+
                 $nameLines = $document->wrap((string) ($candidate['name'] ?? $candidateId), $marksX - $candidateX - 5, 6.4);
                 $height = max(15, (count($nameLines) * 8) + 5, $document->tallyMarkHeight($votes, $marksWidth));
                 if ($y - $height < $document->contentBottom()) {
@@ -50,12 +56,24 @@ final class ThermalContestResultTable
                 foreach ($nameLines as $index => $line) {
                     $document->text($page, $line, $candidateX, $y - 10 - ($index * 8), 6.4);
                 }
-                $document->tallyMarks($page, $votes, $marksX, $y, $marksWidth);
-                $document->text($page, (string) $votes, $document->right(), $y - 10, 7, true, 'right');
+                $document->tallyMarks($page, $votes, $marksX, $y, $marksWidth, $emphasizeTallyMarks ? 1.05 : 0.7);
+                $document->text($page, (string) $votes, $document->right(), $y - 10, $emphasizeTallyMarks ? 5.8 : 7, ! $emphasizeTallyMarks, 'right');
                 $document->line($page, $document->left(), $y - $height, $document->right(), $y - $height, 0.35, 0.82);
                 $y -= $height;
                 $rowIndex++;
                 $candidateCount++;
+                $contestCandidateCount++;
+            }
+
+            if ($contestCandidateCount === 0) {
+                if ($y - 20 < $document->contentBottom()) {
+                    $page = $document->addPage($title.' continued');
+                    $y = $document->contentTop();
+                    [$page, $y] = $this->header($document, $page, $y, $title, (int) ($contest['max_selections'] ?? 1), true);
+                }
+                $document->text($page, 'No votes recorded for this contest.', $candidateX, $y - 10, 6.4, true);
+                $document->line($page, $document->left(), $y - 20, $document->right(), $y - 20, 0.35, 0.82);
+                $y -= 20;
             }
             $y -= 14;
         }

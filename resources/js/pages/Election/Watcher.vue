@@ -19,6 +19,7 @@ const props = defineProps<{
     tally: {
         accepted_ballots?: number;
         tally?: Record<string, Record<string, number>>;
+        display_tally?: Record<string, Record<string, number>>;
     };
     electionReturn: Record<string, unknown>;
     randomManualAudit: {
@@ -62,6 +63,23 @@ function candidateName(contestId: string, candidateId: string): string {
             ?.find((contest) => contest.id === contestId)
             ?.candidates.find((candidate) => candidate.id === candidateId)
             ?.name ?? candidateId
+    );
+}
+
+function displayTally(): Record<string, Record<string, number>> {
+    return props.tally.display_tally ?? nonZeroTally(props.tally.tally ?? {});
+}
+
+function nonZeroTally(
+    tally: Record<string, Record<string, number>>,
+): Record<string, Record<string, number>> {
+    return Object.fromEntries(
+        Object.entries(tally).map(([contest, totals]) => [
+            contest,
+            Object.fromEntries(
+                Object.entries(totals).filter(([, votes]) => votes > 0),
+            ),
+        ]),
     );
 }
 </script>
@@ -127,7 +145,7 @@ function candidateName(contestId: string, candidateId: string): string {
                 </div>
                 <div class="mt-5 space-y-4">
                     <section
-                        v-for="(totals, contest) in tally.tally ?? {}"
+                        v-for="(totals, contest) in displayTally()"
                         :key="contest"
                         class="border border-stone-300"
                     >
@@ -136,7 +154,10 @@ function candidateName(contestId: string, candidateId: string): string {
                         >
                             {{ contestTitle(String(contest)) }}
                         </h3>
-                        <table class="w-full text-sm">
+                        <table
+                            v-if="Object.keys(totals).length > 0"
+                            class="w-full text-sm"
+                        >
                             <thead>
                                 <tr
                                     class="border-b border-stone-200 text-left text-xs text-stone-500"
@@ -171,13 +192,19 @@ function candidateName(contestId: string, candidateId: string): string {
                                         <TallyMarks :count="Number(votes)" />
                                     </td>
                                     <td
-                                        class="w-24 px-4 py-2.5 text-right text-base font-bold"
+                                        class="w-24 px-4 py-2.5 text-right text-sm font-semibold text-stone-600"
                                     >
                                         {{ votes }}
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
+                        <p
+                            v-else
+                            class="px-4 py-5 text-sm font-semibold text-stone-600"
+                        >
+                            No votes recorded for this contest.
+                        </p>
                     </section>
                 </div>
             </template>

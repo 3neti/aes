@@ -15,6 +15,8 @@ final class ContestResultTable
         array $tally,
         int $page,
         float $y,
+        bool $onlyPositiveVotes = false,
+        bool $emphasizeTallyMarks = false,
     ): array {
         $candidateCount = 0;
 
@@ -33,6 +35,7 @@ final class ContestResultTable
 
             [$page, $y] = $this->contestHeader($document, $page, $y, $title, $contest);
             $rowIndex = 0;
+            $contestCandidateCount = 0;
 
             foreach (($contest['candidates'] ?? []) as $candidate) {
                 if (! is_array($candidate)) {
@@ -40,9 +43,14 @@ final class ContestResultTable
                 }
 
                 $candidateId = (string) ($candidate['id'] ?? '');
+                $votes = (int) ($tally[$contestId][$candidateId] ?? 0);
+
+                if ($onlyPositiveVotes && $votes <= 0) {
+                    continue;
+                }
+
                 $name = (string) ($candidate['name'] ?? $candidateId);
                 $nameLines = $document->wrap($name, 225, 8.2);
-                $votes = (int) ($tally[$contestId][$candidateId] ?? 0);
                 $rowHeight = max(
                     17,
                     (count($nameLines) * 10) + 6,
@@ -68,12 +76,25 @@ final class ContestResultTable
                     $nameY -= 10;
                 }
 
-                $document->tallyMarks($page, $votes, 316, $y, 180);
-                $document->text($page, (string) $votes, 535, $y - 12, 9, true, 'right');
+                $document->tallyMarks($page, $votes, 316, $y, 180, $emphasizeTallyMarks ? 1.05 : 0.7);
+                $document->text($page, (string) $votes, 535, $y - 12, $emphasizeTallyMarks ? 7.2 : 9, ! $emphasizeTallyMarks, 'right');
                 $document->line($page, 42, $y - $rowHeight, 553, $y - $rowHeight, 0.35, 0.82);
                 $y -= $rowHeight;
                 $rowIndex++;
                 $candidateCount++;
+                $contestCandidateCount++;
+            }
+
+            if ($contestCandidateCount === 0) {
+                if ($y - 28 < ElectionPdfDocument::ContentBottom) {
+                    $page = $document->addPage($title.' - continued');
+                    $y = ElectionPdfDocument::ContentTop;
+                    [$page, $y] = $this->contestHeader($document, $page, $y, $title, $contest, true);
+                }
+
+                $document->text($page, 'No votes recorded for this contest.', 82, $y - 14, 8.2, true);
+                $document->line($page, 42, $y - 28, 553, $y - 28, 0.35, 0.82);
+                $y -= 28;
             }
 
             $y -= 18;

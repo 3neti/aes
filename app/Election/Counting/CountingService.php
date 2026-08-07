@@ -27,6 +27,7 @@ final class CountingService
         private readonly PaperBallotLedger $paperBallots,
         private readonly TabulationProfileResolver $tabulation,
         private readonly DeviceTabulationLedger $deviceLedger,
+        private readonly TallyPresentation $presentation,
     ) {}
 
     /**
@@ -174,9 +175,11 @@ final class CountingService
             'tabulation_profile' => $profile,
             'tally_source' => $source,
             'tally' => $tally,
+            'display_tally' => $this->presentation->displayTally($tally),
             'paper_ballot_accounting' => $this->paperBallots->summary(),
             'device_tabulation' => $this->deviceLedger->summary(),
         ];
+        $result['display_summary'] = $this->presentation->summary($result['display_tally']);
         $result['tally_hash'] = $this->json->hash($result);
         $this->storage->writeJson('runtime/tally.json', $result);
         $this->writeTallySheet($configuration, $result);
@@ -248,14 +251,16 @@ final class CountingService
             'Totals:',
         ];
 
-        array_push($lines, ...$this->labels->tallyLines($tally['tally'] ?? []));
+        $displayTally = $this->presentation->forHumanArtifacts($tally);
+
+        array_push($lines, ...$this->labels->displayTallyLines($displayTally['tally'] ?? []));
 
         $this->storage->writeText('runtime/tally-sheet.txt', implode(PHP_EOL, $lines).PHP_EOL);
         $this->storage->writeText(
             'runtime/tally-sheet.pdf',
-            $this->pdf->render($configuration, $tally),
+            $this->pdf->render($configuration, $displayTally),
         );
-        $this->forms->writeTally($configuration, $tally);
+        $this->forms->writeTally($configuration, $displayTally);
     }
 
     /**

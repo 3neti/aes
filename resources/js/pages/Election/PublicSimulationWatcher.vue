@@ -9,6 +9,7 @@ const props = defineProps<{
         status: string;
         accepted_ballots: number | null;
         tally: Record<string, Record<string, number>>;
+        display_tally: Record<string, Record<string, number>>;
     };
     ballot: {
         contests: Array<{
@@ -152,7 +153,7 @@ function candidateName(contestId: string, candidateId: string): string {
                     </div>
                 </section>
                 <section
-                    v-for="(candidates, contest) in precinct.tally"
+                    v-for="(candidates, contest) in precinct.display_tally"
                     :key="contest"
                     class="mt-6 border border-stone-300"
                 >
@@ -161,18 +162,30 @@ function candidateName(contestId: string, candidateId: string): string {
                     >
                         {{ contestTitle(String(contest)) }}
                     </h2>
-                    <div
-                        v-for="(votes, candidate) in candidates"
-                        :key="candidate"
-                        class="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-stone-100 px-4 py-3 text-sm"
+                    <template v-if="Object.keys(candidates).length > 0">
+                        <div
+                            v-for="(votes, candidate) in candidates"
+                            :key="candidate"
+                            class="grid grid-cols-[minmax(0,1fr)_minmax(180px,1.3fr)_auto] items-center gap-4 border-b border-stone-100 px-4 py-3 text-sm"
+                        >
+                            <span>{{
+                                candidateName(
+                                    String(contest),
+                                    String(candidate),
+                                )
+                            }}</span
+                            ><TallyMarks :count="Number(votes)" /><strong
+                                class="text-sm font-semibold text-stone-600"
+                                >{{ votes }}</strong
+                            >
+                        </div>
+                    </template>
+                    <p
+                        v-else
+                        class="px-4 py-5 text-sm font-semibold text-stone-600"
                     >
-                        <span>{{
-                            candidateName(String(contest), String(candidate))
-                        }}</span
-                        ><TallyMarks :count="Number(votes)" /><strong>{{
-                            votes
-                        }}</strong>
-                    </div>
+                        No votes recorded for this contest.
+                    </p>
                 </section></template
             ><template v-else
                 ><p

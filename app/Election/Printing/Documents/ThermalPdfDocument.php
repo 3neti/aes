@@ -127,7 +127,7 @@ final class ThermalPdfDocument
         return $groups === 0 ? 0 : (ceil($groups / max(1, (int) floor($width / 11))) * 10) + 4;
     }
 
-    public function tallyMarks(int $page, int $count, float $x, float $y, float $width): void
+    public function tallyMarks(int $page, int $count, float $x, float $y, float $width, float $strokeWidth = 0.7): void
     {
         $count = max(0, $count);
         $fullGroups = intdiv($count, 5);
@@ -148,11 +148,11 @@ final class ThermalPdfDocument
 
             for ($mark = 0; $mark < $marks; $mark++) {
                 $markX = $groupX + ($mark * 2.25);
-                $this->line($page, $markX, $centerY - 4, $markX, $centerY + 4, 0.7, 0.08);
+                $this->line($page, $markX, $centerY - 4, $markX, $centerY + 4, $strokeWidth, 0.08);
             }
 
             if ($group < $fullGroups) {
-                $this->line($page, $groupX - 1, $centerY + 4, $groupX + 7.75, $centerY - 4, 0.7, 0.08);
+                $this->line($page, $groupX - 1, $centerY + 4, $groupX + 7.75, $centerY - 4, $strokeWidth, 0.08);
             }
         }
     }

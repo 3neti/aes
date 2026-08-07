@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Counting\TallyPresentation;
 use App\Election\PublicSimulation\PublicRandomManualAuditPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicVvdatAuditExport;
@@ -15,7 +16,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class PublicSimulationWatcherController extends Controller
 {
-    public function show(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicVvdatAuditExport $exports, PublicRandomManualAuditPublication $auditPublication, ElectionStorage $storage): Response
+    public function show(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicVvdatAuditExport $exports, PublicRandomManualAuditPublication $auditPublication, ElectionStorage $storage, TallyPresentation $presentation): Response
     {
         $this->scope($round, $precinct, $simulations);
         $configuration = $storage->readJson('runtime/active-precinct.json');
@@ -29,6 +30,7 @@ final class PublicSimulationWatcherController extends Controller
                 'status' => $precinct->status,
                 'accepted_ballots' => $return['accepted_ballots'] ?? null,
                 'tally' => $return['tally'] ?? [],
+                'display_tally' => $presentation->displayTally((array) ($return['tally'] ?? [])),
             ],
             'ballot' => [
                 'contests' => collect($configuration['contests'] ?? [])

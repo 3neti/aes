@@ -120,6 +120,11 @@ const props = defineProps<{
         accepted_ballots: number;
         rejected_ballots: number;
         tally: Record<string, Record<string, number>>;
+        display_tally?: Record<string, Record<string, number>>;
+        display_summary?: Record<
+            string,
+            { candidate_rows: number; total_votes: number }
+        >;
     };
     closePollsLegalEvidence: LegalEvidence;
     countingLegalEvidence: LegalEvidence;
@@ -168,6 +173,9 @@ const routineScanningEnabled = computed(
 );
 const totalScans = computed(
     () => props.tally.accepted_ballots + props.tally.rejected_ballots,
+);
+const displayTally = computed(
+    () => props.tally.display_tally ?? nonZeroTally(props.tally.tally),
 );
 const pendingAudit = computed(() => props.randomManualAudit.pending_proposal);
 const auditSample = computed(() => props.randomManualAudit.sample_selection);
@@ -279,6 +287,19 @@ function candidateName(contestId: string, candidateId: string): string {
     );
 
     return candidate?.name ?? candidateId;
+}
+
+function nonZeroTally(
+    tally: Record<string, Record<string, number>>,
+): Record<string, Record<string, number>> {
+    return Object.fromEntries(
+        Object.entries(tally).map(([contest, totals]) => [
+            contest,
+            Object.fromEntries(
+                Object.entries(totals).filter(([, votes]) => votes > 0),
+            ),
+        ]),
+    );
 }
 
 onBeforeUnmount(() => stopCamera(false));
@@ -1349,7 +1370,7 @@ onBeforeUnmount(() => stopCamera(false));
 
             <div class="mt-5 space-y-4">
                 <section
-                    v-for="(totals, contest) in tally.tally"
+                    v-for="(totals, contest) in displayTally"
                     :key="contest"
                     class="border border-stone-300"
                 >
@@ -1360,10 +1381,17 @@ onBeforeUnmount(() => stopCamera(false));
                             {{ contestTitle(String(contest)) }}
                         </h3>
                         <span class="text-xs font-semibold text-stone-500">
-                            Candidate votes
+                            {{ Object.keys(totals).length }}
+                            candidate{{
+                                Object.keys(totals).length === 1 ? '' : 's'
+                            }}
+                            with votes
                         </span>
                     </header>
-                    <table class="w-full table-fixed text-sm">
+                    <table
+                        v-if="Object.keys(totals).length > 0"
+                        class="w-full table-fixed text-sm"
+                    >
                         <thead>
                             <tr>
                                 <th
@@ -1372,7 +1400,7 @@ onBeforeUnmount(() => stopCamera(false));
                                     Candidate
                                 </th>
                                 <th
-                                    class="px-4 py-2 text-left text-xs font-semibold text-stone-500"
+                                    class="w-[48%] px-4 py-2 text-left text-xs font-semibold text-stone-500"
                                 >
                                     Tally marks
                                 </th>
@@ -1396,20 +1424,26 @@ onBeforeUnmount(() => stopCamera(false));
                                         )
                                     }}
                                 </td>
-                                <td class="px-4 py-2.5 align-middle">
+                                <td class="w-[48%] px-4 py-2.5 align-middle">
                                     <TallyMarks :count="Number(votes)" />
                                 </td>
                                 <td
-                                    class="w-24 px-4 py-2.5 text-right text-base font-bold text-stone-950"
+                                    class="w-24 px-4 py-2.5 text-right text-sm font-semibold text-stone-600"
                                 >
                                     {{ votes }}
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                    <p
+                        v-else
+                        class="px-4 py-5 text-sm font-semibold text-stone-600"
+                    >
+                        No votes recorded for this contest.
+                    </p>
                 </section>
                 <p
-                    v-if="Object.keys(tally.tally).length === 0"
+                    v-if="Object.keys(displayTally).length === 0"
                     class="border border-stone-200 bg-stone-50 p-5 text-center text-sm text-stone-600"
                 >
                     Tally rows will appear after the first accepted ballot.

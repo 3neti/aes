@@ -17,7 +17,7 @@ final class TallySheetPdf
             'Precinct Tally Sheet',
             (string) ($tally['tally_hash'] ?? 'tally'),
             $precinctId,
-            'Complete candidate totals from accepted paper ballots',
+            'Candidates with votes from accepted paper ballots',
         );
         $page = $document->addPage('Tally summary');
         $document->rectangle($page, 42, 650, 511, 74, 0.93);
@@ -37,6 +37,8 @@ final class TallySheetPdf
             (array) ($tally['tally'] ?? []),
             $page,
             628,
+            true,
+            true,
         );
         $page = $result['page'];
         $y = $result['y'];

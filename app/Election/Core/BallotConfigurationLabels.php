@@ -64,6 +64,31 @@ final class BallotConfigurationLabels
     }
 
     /**
+     * @param  array<string, array<string, int>>  $tally
+     * @return array<int, string>
+     */
+    public function displayTallyLines(array $tally): array
+    {
+        $lines = [];
+
+        foreach ($tally as $contestId => $totals) {
+            $lines[] = strtoupper($this->contest((string) $contestId));
+
+            if ($totals === []) {
+                $lines[] = '  No votes recorded for this contest.';
+
+                continue;
+            }
+
+            foreach ($totals as $candidateId => $votes) {
+                $lines[] = '  '.$this->candidate((string) $contestId, (string) $candidateId).": {$votes}";
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
      * @return array<string, array<string, mixed>>
      */
     private function contestMap(): array
