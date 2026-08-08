@@ -309,7 +309,7 @@ test('voter ballot requires anonymous authorization and hands off a private prin
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
-            ->where('ballotUiProfile', 'touch_guided')
+            ->where('ballotUiProfile', 'paper_facsimile')
             ->where('ballot.precinct_id', '0421-A')
             ->has('ballot.contests', 3)
             ->missing('snapshot')

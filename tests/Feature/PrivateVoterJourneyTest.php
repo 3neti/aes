@@ -147,7 +147,7 @@ test('the private voter journey seals choices until polls close', function (): v
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
-            ->where('ballotUiProfile', 'touch_guided')
+            ->where('ballotUiProfile', 'paper_facsimile')
             ->has('ballot.contests', 3)
             ->missing('snapshot')
             ->missing('journal')
@@ -252,8 +252,8 @@ test('the private voter journey seals choices until polls close', function (): v
         ->and($eventTypes)->toContain('counting.routine_scan_blocked');
 });
 
-test('the private voter ballot can use the paper facsimile profile', function (): void {
-    config()->set('election.voter.ballot_ui_profile', 'paper_facsimile');
+test('the private voter ballot can use the touch guided profile', function (): void {
+    config()->set('election.voter.ballot_ui_profile', 'touch_guided');
 
     $authorization = app(AnonymousVoterAuthorization::class)->issue();
 
@@ -264,7 +264,7 @@ test('the private voter ballot can use the paper facsimile profile', function ()
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
-            ->where('ballotUiProfile', 'paper_facsimile')
+            ->where('ballotUiProfile', 'touch_guided')
             ->has('ballot.contests', 3)
         );
 });

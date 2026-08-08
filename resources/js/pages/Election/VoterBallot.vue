@@ -69,9 +69,9 @@ const reviewSummary = computed(() =>
         .join(', '),
 );
 const resolvedBallotUiProfile = computed(() =>
-    props.ballotUiProfile === 'paper_facsimile'
-        ? 'paper_facsimile'
-        : 'touch_guided',
+    props.ballotUiProfile === 'touch_guided'
+        ? 'touch_guided'
+        : 'paper_facsimile',
 );
 const ballotKicker = computed(() =>
     resolvedBallotUiProfile.value === 'paper_facsimile'

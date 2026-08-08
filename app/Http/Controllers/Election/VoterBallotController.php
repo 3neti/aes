@@ -109,10 +109,10 @@ final class VoterBallotController extends Controller
 
     private function ballotUiProfile(): string
     {
-        $profile = config('election.voter.ballot_ui_profile', 'touch_guided');
+        $profile = config('election.voter.ballot_ui_profile', 'paper_facsimile');
 
         return in_array($profile, ['touch_guided', 'paper_facsimile'], true)
             ? $profile
-            : 'touch_guided';
+            : 'paper_facsimile';
     }
 }
