@@ -147,6 +147,7 @@ test('the private voter journey seals choices until polls close', function (): v
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
+            ->where('ballotUiProfile', 'touch_guided')
             ->has('ballot.contests', 3)
             ->missing('snapshot')
             ->missing('journal')
@@ -249,6 +250,23 @@ test('the private voter journey seals choices until polls close', function (): v
         ->and($eventTypes)->toContain('printing.pin.rejected')
         ->and($eventTypes)->toContain('printing.ballot.generated_from_pin')
         ->and($eventTypes)->toContain('counting.routine_scan_blocked');
+});
+
+test('the private voter ballot can use the paper facsimile profile', function (): void {
+    config()->set('election.voter.ballot_ui_profile', 'paper_facsimile');
+
+    $authorization = app(AnonymousVoterAuthorization::class)->issue();
+
+    $this->post(route('election.voter.claim'), ['code' => $authorization['code']])
+        ->assertRedirect(route('election.voter.ballot'));
+
+    $this->get(route('election.voter.ballot'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterBallot')
+            ->where('ballotUiProfile', 'paper_facsimile')
+            ->has('ballot.contests', 3)
+        );
 });
 
 test('print PIN length is configurable between four and six digits', function (int $configured, int $expected): void {

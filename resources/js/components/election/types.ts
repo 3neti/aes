@@ -36,6 +36,21 @@ export type Contest = {
     candidates: Candidate[];
 };
 
+export type BallotSelections = Record<string, string[]>;
+
+export type BallotNavigationContest = {
+    id: string;
+    title: string;
+    label: string;
+    selected: number;
+    max: number;
+};
+
+export type BallotLetterJump = {
+    letter: string;
+    candidateId: string;
+};
+
 export type ReviewOfficerDefault = {
     code: string;
     pin: string;

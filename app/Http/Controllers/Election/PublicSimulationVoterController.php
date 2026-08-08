@@ -121,6 +121,7 @@ final class PublicSimulationVoterController extends Controller
             ],
             'finalizeAction' => route('election.public-simulation.voter.finalize', [$round, $precinct]),
             'publicSimulation' => true,
+            'ballotUiProfile' => $this->ballotUiProfile(),
         ]);
     }
 
@@ -342,6 +343,15 @@ final class PublicSimulationVoterController extends Controller
     private function isPrecinctClosed(SimulationPrecinct $precinct): bool
     {
         return in_array($precinct->status, ['results_ready', 'published', 'archived'], true);
+    }
+
+    private function ballotUiProfile(): string
+    {
+        $profile = config('election.voter.ballot_ui_profile', 'touch_guided');
+
+        return in_array($profile, ['touch_guided', 'paper_facsimile'], true)
+            ? $profile
+            : 'touch_guided';
     }
 
     private function printSessionKey(SimulationPrecinct $precinct): string

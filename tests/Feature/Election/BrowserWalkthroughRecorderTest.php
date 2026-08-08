@@ -443,14 +443,18 @@ test('browser walkthrough recorder follows the fixed booth print station labels'
 
 test('voter ballot includes position and candidate navigation aids', function (): void {
     $voterBallot = file_get_contents(resource_path('js/pages/Election/VoterBallot.vue'));
+    $positionNavigation = file_get_contents(resource_path('js/components/election/BallotPositionNavigation.vue'));
+    $alphabetNavigation = file_get_contents(resource_path('js/components/election/BallotAlphabetNavigation.vue'));
+    $reviewButton = file_get_contents(resource_path('js/components/election/BallotReviewSummaryButton.vue'));
+    $ballotNavigation = file_get_contents(resource_path('js/components/election/ballotNavigation.ts'));
 
-    expect($voterBallot)->toContain('Jump to position')
-        ->and($voterBallot)->toContain('Senator surname jump')
-        ->and($voterBallot)->toContain('Stays here while browsing this position')
-        ->and($voterBallot)->toContain('Review: {{ reviewSummary }}')
+    expect($positionNavigation)->toContain('Jump to position')
+        ->and($alphabetNavigation)->toContain('Stays here while browsing this position')
+        ->and($reviewButton)->toContain('Review: {{ summary }}')
         ->and($voterBallot)->toContain('function jumpToCandidateLetter')
-        ->and($voterBallot)->toContain('function candidateIndexKey')
-        ->and($voterBallot)->toContain('function contestShortLabel');
+        ->and($ballotNavigation)->toContain('Senator surname jump')
+        ->and($ballotNavigation)->toContain('function candidateIndexKey')
+        ->and($ballotNavigation)->toContain('function contestShortLabel');
 });
 
 test('demo room officer action cards include aligned descriptions', function (): void {

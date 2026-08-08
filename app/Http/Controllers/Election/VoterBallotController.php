@@ -37,6 +37,7 @@ final class VoterBallotController extends Controller
                 'ballot_style_id' => $configuration['ballot_style_id'] ?? null,
                 'contests' => $configuration['contests'] ?? [],
             ],
+            'ballotUiProfile' => $this->ballotUiProfile(),
         ]);
     }
 
@@ -104,5 +105,14 @@ final class VoterBallotController extends Controller
         ]);
 
         return redirect()->route('election.voter');
+    }
+
+    private function ballotUiProfile(): string
+    {
+        $profile = config('election.voter.ballot_ui_profile', 'touch_guided');
+
+        return in_array($profile, ['touch_guided', 'paper_facsimile'], true)
+            ? $profile
+            : 'touch_guided';
     }
 }
