@@ -458,7 +458,9 @@ test('voter ballot includes position and candidate navigation aids', function ()
         ->and($ballotNavigation)->toContain('function contestShortLabel')
         ->and($paperFacsimile)->toContain('Official ballot facsimile')
         ->and($paperFacsimile)->toContain('Vote for')
-        ->and($paperFacsimile)->toContain('columns-1 gap-4 lg:columns-2');
+        ->and($paperFacsimile)->toContain('function candidateColumns')
+        ->and($paperFacsimile)->toContain('grid-cols-1 md:grid-cols-2 xl:grid-cols-4')
+        ->and($paperFacsimile)->toContain('rounded-full');
 });
 
 test('demo room officer action cards include aligned descriptions', function (): void {

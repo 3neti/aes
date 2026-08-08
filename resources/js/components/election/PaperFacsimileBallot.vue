@@ -45,6 +45,52 @@ function isAtLimit(contest: Contest): boolean {
 function candidateNumber(candidate: Candidate): number {
     return candidate.ballot_number ?? candidate.ordinal;
 }
+
+function candidateColumns(contest: Contest): Candidate[][] {
+    const columnCount = contestColumnCount(contest);
+    const columnSize = Math.ceil(contest.candidates.length / columnCount);
+
+    return Array.from({ length: columnCount }, (_, index) =>
+        contest.candidates.slice(index * columnSize, (index + 1) * columnSize),
+    ).filter((candidates) => candidates.length > 0);
+}
+
+function contestColumnCount(contest: Contest): number {
+    if (contest.candidates.length >= 40) {
+        return 4;
+    }
+
+    if (contest.candidates.length >= 6) {
+        return 2;
+    }
+
+    return 1;
+}
+
+function contestColumnGridClass(contest: Contest): string {
+    const columnCount = contestColumnCount(contest);
+
+    if (columnCount === 4) {
+        return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+    }
+
+    if (columnCount === 2) {
+        return 'grid-cols-1 sm:grid-cols-2';
+    }
+
+    return 'grid-cols-1';
+}
+
+function columnRangeLabel(candidates: Candidate[]): string {
+    const first = candidates.at(0);
+    const last = candidates.at(-1);
+
+    if (!first || !last) {
+        return 'Candidates';
+    }
+
+    return `Candidates ${candidateNumber(first)} to ${candidateNumber(last)}`;
+}
 </script>
 
 <template>
@@ -81,12 +127,12 @@ function candidateNumber(candidate: Candidate): number {
         <div
             class="mt-3 grid gap-2 border-b border-stone-400 pb-3 text-xs font-semibold text-stone-700 sm:grid-cols-3"
         >
-            <p>Tap the mark box beside each chosen candidate.</p>
+            <p>Tap the circle beside each chosen candidate.</p>
             <p>Selections may be changed before review.</p>
             <p>The paper printout remains the official ballot.</p>
         </div>
 
-        <div class="mt-4 columns-1 gap-4 lg:columns-2">
+        <div class="mt-4 space-y-4">
             <section
                 v-for="(contest, contestIndex) in contests"
                 :id="contestAnchor(contest.id)"
@@ -151,55 +197,84 @@ function candidateNumber(candidate: Candidate): number {
                     />
                 </div>
 
-                <div class="divide-y divide-stone-300">
-                    <button
-                        v-for="candidate in contest.candidates"
-                        :id="candidateAnchor(contest.id, candidate.id)"
-                        :key="candidate.id"
-                        class="grid min-h-12 w-full scroll-mt-32 grid-cols-[44px_38px_1fr] items-center text-left disabled:cursor-not-allowed disabled:opacity-45"
-                        :class="
-                            selected(contest.id, candidate.id)
-                                ? 'bg-blue-50'
-                                : 'bg-white'
-                        "
-                        :data-testid="`candidate-${contest.id}-${candidate.id}`"
-                        :disabled="
-                            isAtLimit(contest) &&
-                            !selected(contest.id, candidate.id)
-                        "
-                        type="button"
-                        @click="emit('toggle', contest, candidate)"
+                <div class="grid" :class="contestColumnGridClass(contest)">
+                    <div
+                        v-for="(column, columnIndex) in candidateColumns(
+                            contest,
+                        )"
+                        :key="`${contest.id}-column-${columnIndex}`"
+                        class="border-stone-900"
+                        :class="{
+                            'xl:border-r':
+                                columnIndex <
+                                candidateColumns(contest).length - 1,
+                            'md:border-r xl:border-r-0':
+                                contestColumnCount(contest) === 4 &&
+                                columnIndex % 2 === 0,
+                            'sm:border-r':
+                                contestColumnCount(contest) === 2 &&
+                                columnIndex === 0,
+                        }"
                     >
-                        <span
-                            class="flex h-full items-center justify-center border-r border-stone-300 font-mono text-xs font-bold text-stone-700"
+                        <div
+                            class="border-b border-stone-900 bg-stone-50 px-2 py-1 text-center text-[10px] font-black tracking-wide text-stone-600 uppercase"
                         >
-                            {{ candidateNumber(candidate) }}
-                        </span>
-                        <span class="flex items-center justify-center">
-                            <span
-                                class="flex h-5 w-5 items-center justify-center border-2 text-[11px] font-black"
+                            {{ columnRangeLabel(column) }}
+                        </div>
+                        <div class="divide-y divide-stone-300">
+                            <button
+                                v-for="candidate in column"
+                                :id="candidateAnchor(contest.id, candidate.id)"
+                                :key="candidate.id"
+                                class="grid min-h-11 w-full scroll-mt-32 grid-cols-[40px_34px_1fr] items-center text-left disabled:cursor-not-allowed disabled:opacity-45"
                                 :class="
                                     selected(contest.id, candidate.id)
-                                        ? 'border-blue-900 bg-blue-900 text-white'
-                                        : 'border-stone-700 bg-white text-transparent'
+                                        ? 'bg-blue-50'
+                                        : 'bg-white odd:bg-stone-50/50'
                                 "
-                                aria-hidden="true"
+                                :data-testid="`candidate-${contest.id}-${candidate.id}`"
+                                :disabled="
+                                    isAtLimit(contest) &&
+                                    !selected(contest.id, candidate.id)
+                                "
+                                type="button"
+                                @click="emit('toggle', contest, candidate)"
                             >
-                                X
-                            </span>
-                        </span>
-                        <span class="min-w-0 px-2 py-2">
-                            <strong
-                                class="block text-[13px] leading-tight font-black uppercase"
-                            >
-                                {{ candidate.name }}
-                            </strong>
-                            <span class="block text-[11px] text-stone-600">{{
-                                candidate.political_party ||
-                                'Independent / no party listed'
-                            }}</span>
-                        </span>
-                    </button>
+                                <span
+                                    class="flex h-full items-center justify-center border-r border-stone-300 font-mono text-xs font-bold text-stone-700"
+                                >
+                                    {{ candidateNumber(candidate) }}
+                                </span>
+                                <span class="flex items-center justify-center">
+                                    <span
+                                        class="flex h-5 w-5 items-center justify-center rounded-full border-2 text-[10px] font-black"
+                                        :class="
+                                            selected(contest.id, candidate.id)
+                                                ? 'border-blue-900 bg-blue-900 text-white'
+                                                : 'border-stone-800 bg-white text-transparent'
+                                        "
+                                        aria-hidden="true"
+                                    >
+                                        X
+                                    </span>
+                                </span>
+                                <span class="min-w-0 px-2 py-1.5">
+                                    <strong
+                                        class="block truncate text-[12px] leading-tight font-black uppercase"
+                                    >
+                                        {{ candidate.name }}
+                                    </strong>
+                                    <span
+                                        class="block truncate text-[10px] font-semibold text-stone-600"
+                                        >{{
+                                            candidate.political_party ||
+                                            'Independent / no party listed'
+                                        }}</span
+                                    >
+                                </span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
