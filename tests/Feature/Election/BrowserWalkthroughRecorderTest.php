@@ -447,6 +447,7 @@ test('voter ballot includes position and candidate navigation aids', function ()
     $alphabetNavigation = file_get_contents(resource_path('js/components/election/BallotAlphabetNavigation.vue'));
     $reviewButton = file_get_contents(resource_path('js/components/election/BallotReviewSummaryButton.vue'));
     $ballotNavigation = file_get_contents(resource_path('js/components/election/ballotNavigation.ts'));
+    $paperFacsimile = file_get_contents(resource_path('js/components/election/PaperFacsimileBallot.vue'));
 
     expect($positionNavigation)->toContain('Jump to position')
         ->and($alphabetNavigation)->toContain('Stays here while browsing this position')
@@ -454,7 +455,10 @@ test('voter ballot includes position and candidate navigation aids', function ()
         ->and($voterBallot)->toContain('function jumpToCandidateLetter')
         ->and($ballotNavigation)->toContain('Senator surname jump')
         ->and($ballotNavigation)->toContain('function candidateIndexKey')
-        ->and($ballotNavigation)->toContain('function contestShortLabel');
+        ->and($ballotNavigation)->toContain('function contestShortLabel')
+        ->and($paperFacsimile)->toContain('Official ballot facsimile')
+        ->and($paperFacsimile)->toContain('Vote for')
+        ->and($paperFacsimile)->toContain('columns-1 gap-4 lg:columns-2');
 });
 
 test('demo room officer action cards include aligned descriptions', function (): void {
