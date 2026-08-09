@@ -17,6 +17,8 @@ import type {
 } from '@/components/election/types';
 import { finalize } from '@/routes/election/voter';
 
+type SelectionTarget = 'circle' | 'circle_with_label' | 'row';
+
 const props = defineProps<{
     ballot: {
         election_id: string;
@@ -27,6 +29,7 @@ const props = defineProps<{
     finalizeAction?: string;
     publicSimulation?: boolean;
     ballotUiProfile?: string;
+    selectionTarget?: string;
 }>();
 
 const step = ref<'ballot' | 'review'>('ballot');
@@ -72,6 +75,12 @@ const resolvedBallotUiProfile = computed(() =>
     props.ballotUiProfile === 'touch_guided'
         ? 'touch_guided'
         : 'paper_facsimile',
+);
+const resolvedSelectionTarget = computed<SelectionTarget>(() =>
+    props.selectionTarget === 'circle_with_label' ||
+    props.selectionTarget === 'row'
+        ? props.selectionTarget
+        : 'circle',
 );
 const ballotKicker = computed(() =>
     resolvedBallotUiProfile.value === 'paper_facsimile'
@@ -190,6 +199,7 @@ function jumpToCandidateLetter(
                         reviewRoom.enabled && selectionCount > 0
                     "
                     :review-summary="reviewSummary"
+                    :selection-target="resolvedSelectionTarget"
                     :selections="selections"
                     @jump-to-contest="scrollToElement(contestAnchor($event))"
                     @jump-to-letter="jumpToCandidateLetter"

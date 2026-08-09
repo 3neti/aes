@@ -148,6 +148,7 @@ test('the private voter journey seals choices until polls close', function (): v
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
             ->where('ballotUiProfile', 'paper_facsimile')
+            ->where('selectionTarget', 'circle')
             ->has('ballot.contests', 3)
             ->missing('snapshot')
             ->missing('journal')
@@ -265,7 +266,33 @@ test('the private voter ballot can use the touch guided profile', function (): v
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
             ->where('ballotUiProfile', 'touch_guided')
+            ->where('selectionTarget', 'circle')
             ->has('ballot.contests', 3)
+        );
+});
+
+test('the private voter ballot selection target is configurable', function (): void {
+    config()->set('election.voter.selection_target', 'circle_with_label');
+
+    $authorization = app(AnonymousVoterAuthorization::class)->issue();
+
+    $this->post(route('election.voter.claim'), ['code' => $authorization['code']])
+        ->assertRedirect(route('election.voter.ballot'));
+
+    $this->get(route('election.voter.ballot'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterBallot')
+            ->where('selectionTarget', 'circle_with_label')
+        );
+
+    config()->set('election.voter.selection_target', 'candidate-row');
+
+    $this->get(route('election.voter.ballot'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterBallot')
+            ->where('selectionTarget', 'circle')
         );
 });
 

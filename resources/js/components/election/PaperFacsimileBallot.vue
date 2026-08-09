@@ -16,6 +16,8 @@ import type {
     Contest,
 } from '@/components/election/types';
 
+type SelectionTarget = 'circle' | 'circle_with_label' | 'row';
+
 const props = defineProps<{
     contests: Contest[];
     contestNavigation: BallotNavigationContest[];
@@ -23,6 +25,7 @@ const props = defineProps<{
     activeLetters: Record<string, string>;
     reviewSummary: string;
     reviewEmphasized: boolean;
+    selectionTarget: SelectionTarget;
 }>();
 
 const emit = defineEmits<{
@@ -40,6 +43,26 @@ function isAtLimit(contest: Contest): boolean {
     return (
         (props.selections[contest.id] ?? []).length >= contest.max_selections
     );
+}
+
+function candidateDisabled(contest: Contest, candidate: Candidate): boolean {
+    return isAtLimit(contest) && !selected(contest.id, candidate.id);
+}
+
+function toggleCandidate(contest: Contest, candidate: Candidate): void {
+    if (candidateDisabled(contest, candidate)) {
+        return;
+    }
+
+    emit('toggle', contest, candidate);
+}
+
+function toggleCandidateFromRow(contest: Contest, candidate: Candidate): void {
+    if (props.selectionTarget !== 'row') {
+        return;
+    }
+
+    toggleCandidate(contest, candidate);
 }
 
 function candidateNumber(candidate: Candidate): number {
@@ -109,6 +132,12 @@ function columnRangeLabel(candidates: Candidate[]): string {
     }
 
     return `Candidates ${candidateNumber(first)} to ${candidateNumber(last)}`;
+}
+
+function markerLabel(contest: Contest, candidate: Candidate): string {
+    const action = selected(contest.id, candidate.id) ? 'Remove' : 'Select';
+
+    return `${action} candidate ${candidateNumber(candidate)} ${candidate.name}`;
 }
 </script>
 
@@ -230,42 +259,108 @@ function columnRangeLabel(candidates: Candidate[]): string {
                             {{ columnRangeLabel(column) }}
                         </div>
                         <div class="divide-y divide-stone-300">
-                            <button
+                            <div
                                 v-for="candidate in column"
                                 :id="candidateAnchor(contest.id, candidate.id)"
                                 :key="candidate.id"
-                                class="grid min-h-11 w-full scroll-mt-32 grid-cols-[40px_34px_1fr] items-center text-left disabled:cursor-not-allowed disabled:opacity-45"
-                                :class="
+                                class="grid min-h-11 w-full scroll-mt-32 grid-cols-[40px_34px_1fr] items-center text-left"
+                                :class="[
                                     selected(contest.id, candidate.id)
                                         ? 'bg-blue-50'
-                                        : 'bg-white odd:bg-stone-50/50'
-                                "
+                                        : 'bg-white odd:bg-stone-50/50',
+                                    candidateDisabled(contest, candidate)
+                                        ? 'opacity-45'
+                                        : '',
+                                    selectionTarget === 'row' &&
+                                    !candidateDisabled(contest, candidate)
+                                        ? 'cursor-pointer focus-within:ring-2 focus-within:ring-blue-700 hover:bg-blue-50'
+                                        : '',
+                                ]"
                                 :data-testid="`candidate-${contest.id}-${candidate.id}`"
-                                :disabled="
-                                    isAtLimit(contest) &&
-                                    !selected(contest.id, candidate.id)
+                                @click="
+                                    toggleCandidateFromRow(contest, candidate)
                                 "
-                                type="button"
-                                @click="emit('toggle', contest, candidate)"
                             >
-                                <span
-                                    class="flex h-full items-center justify-center border-r border-stone-300 font-mono text-xs font-bold text-stone-700"
+                                <button
+                                    v-if="
+                                        selectionTarget === 'circle_with_label'
+                                    "
+                                    class="col-span-2 grid h-full min-h-11 grid-cols-[40px_34px] items-center disabled:cursor-not-allowed disabled:opacity-45"
+                                    :aria-label="
+                                        markerLabel(contest, candidate)
+                                    "
+                                    :data-testid="`candidate-marker-${contest.id}-${candidate.id}`"
+                                    :disabled="
+                                        candidateDisabled(contest, candidate)
+                                    "
+                                    type="button"
+                                    @click.stop="
+                                        toggleCandidate(contest, candidate)
+                                    "
                                 >
-                                    {{ candidateNumber(candidate) }}
-                                </span>
-                                <span class="flex items-center justify-center">
                                     <span
-                                        class="flex h-5 w-5 items-center justify-center rounded-full border-2 text-[10px] font-black"
-                                        :class="
-                                            selected(contest.id, candidate.id)
-                                                ? 'border-blue-900 bg-blue-900 text-white'
-                                                : 'border-stone-800 bg-white text-transparent'
-                                        "
-                                        aria-hidden="true"
+                                        class="flex h-full items-center justify-center border-r border-stone-300 font-mono text-xs font-bold text-stone-700"
                                     >
-                                        X
+                                        {{ candidateNumber(candidate) }}
                                     </span>
-                                </span>
+                                    <span
+                                        class="flex h-full items-center justify-center"
+                                    >
+                                        <span
+                                            class="flex h-5 w-5 items-center justify-center rounded-full border-2 text-[10px] font-black"
+                                            :class="
+                                                selected(
+                                                    contest.id,
+                                                    candidate.id,
+                                                )
+                                                    ? 'border-blue-900 bg-blue-900 text-white'
+                                                    : 'border-stone-800 bg-white text-transparent'
+                                            "
+                                            aria-hidden="true"
+                                        >
+                                            X
+                                        </span>
+                                    </span>
+                                </button>
+                                <template v-else>
+                                    <span
+                                        class="flex h-full items-center justify-center border-r border-stone-300 font-mono text-xs font-bold text-stone-700"
+                                    >
+                                        {{ candidateNumber(candidate) }}
+                                    </span>
+                                    <button
+                                        class="flex h-full min-h-11 items-center justify-center disabled:cursor-not-allowed disabled:opacity-45"
+                                        :aria-label="
+                                            markerLabel(contest, candidate)
+                                        "
+                                        :data-testid="`candidate-marker-${contest.id}-${candidate.id}`"
+                                        :disabled="
+                                            candidateDisabled(
+                                                contest,
+                                                candidate,
+                                            )
+                                        "
+                                        type="button"
+                                        @click.stop="
+                                            toggleCandidate(contest, candidate)
+                                        "
+                                    >
+                                        <span
+                                            class="flex h-5 w-5 items-center justify-center rounded-full border-2 text-[10px] font-black"
+                                            :class="
+                                                selected(
+                                                    contest.id,
+                                                    candidate.id,
+                                                )
+                                                    ? 'border-blue-900 bg-blue-900 text-white'
+                                                    : 'border-stone-800 bg-white text-transparent'
+                                            "
+                                            aria-hidden="true"
+                                        >
+                                            X
+                                        </span>
+                                    </button>
+                                </template>
                                 <span class="min-w-0 px-2 py-1.5">
                                     <strong
                                         class="block truncate text-[12px] leading-tight font-black uppercase"
@@ -280,7 +375,7 @@ function columnRangeLabel(candidates: Candidate[]): string {
                                         }}</span
                                     >
                                 </span>
-                            </button>
+                            </div>
                         </div>
                     </div>
                 </div>

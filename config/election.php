@@ -71,6 +71,7 @@ return [
         'print_release_ttl_seconds' => (int) env('ELECTION_PRINT_RELEASE_TTL', 600),
         'print_pin_digits' => (int) env('ELECTION_PRINT_PIN_DIGITS', 4),
         'ballot_ui_profile' => (string) env('ELECTION_BALLOT_UI_PROFILE', 'paper_facsimile'),
+        'selection_target' => (string) env('ELECTION_BALLOT_SELECTION_TARGET', 'circle'),
         'candidate_photos_enabled' => false,
         'individual_ballot_disclosure' => false,
     ],

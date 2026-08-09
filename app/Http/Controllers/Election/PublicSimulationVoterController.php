@@ -128,6 +128,7 @@ final class PublicSimulationVoterController extends Controller
             'finalizeAction' => route('election.public-simulation.voter.finalize', [$round, $precinct]),
             'publicSimulation' => true,
             'ballotUiProfile' => $this->ballotUiProfile(),
+            'selectionTarget' => $this->selectionTarget(),
         ]);
     }
 
@@ -373,6 +374,15 @@ final class PublicSimulationVoterController extends Controller
         return in_array($profile, ['touch_guided', 'paper_facsimile'], true)
             ? $profile
             : 'paper_facsimile';
+    }
+
+    private function selectionTarget(): string
+    {
+        $target = config('election.voter.selection_target', 'circle');
+
+        return in_array($target, ['circle', 'circle_with_label', 'row'], true)
+            ? $target
+            : 'circle';
     }
 
     private function printSessionKey(SimulationPrecinct $precinct): string
