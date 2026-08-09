@@ -20,6 +20,7 @@ defineProps<{
         expires_at?: string;
     };
     publicSimulation?: boolean;
+    initialControlNumber?: string | null;
 }>();
 
 const page = usePage();
@@ -153,6 +154,7 @@ const reviewRoom = computed(
                         maxlength="4"
                         pattern="[0-9]{4}"
                         placeholder="0000"
+                        :value="initialControlNumber ?? ''"
                     />
                 </label>
                 <p v-if="errors.code" class="font-bold text-red-700">

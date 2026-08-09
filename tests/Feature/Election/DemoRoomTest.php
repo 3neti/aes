@@ -14,6 +14,8 @@ beforeEach(function (): void {
 });
 
 test('the demo room runs a precinct through officer, voter, print station, watcher, and handoff roles', function (): void {
+    config()->set('election.public_simulation.demo_control_number_share.enabled', true);
+
     $this->get(route('election.demo-room.index'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
@@ -60,7 +62,16 @@ test('the demo room runs a precinct through officer, voter, print station, watch
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('controlNumber.code', $authorization['code'])
+            ->where('controlNumber.voter_entry.url', route('election.public-simulation.voter.show', [$round, $precinct, 'code' => $authorization['code']]))
+            ->where('controlNumber.voter_entry.qr', fn (string $qr): bool => str_starts_with($qr, 'data:image/png;base64,'))
             ->where('actions.dismissControlNumber', route('election.demo-room.dismiss-control-number', [$round, $precinct]))
+        );
+
+    $this->get(route('election.public-simulation.voter.show', [$round, $precinct, 'code' => $authorization['code']]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterWelcome')
+            ->where('initialControlNumber', $authorization['code'])
         );
 
     $this->get(route('election.demo-room.officer', [$round, $precinct]))

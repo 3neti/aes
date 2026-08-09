@@ -36,6 +36,11 @@ final class PublicSimulationVoterController extends Controller
         abort_unless($lifecycle->current() === Lifecycle::Voting, 409);
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $policy = $participation->policy();
+        $initialControlNumber = $this->initialControlNumber($request);
+
+        if ($initialControlNumber !== null) {
+            $request->session()->put($this->participationSessionKey($precinct), $policy['policy_hash']);
+        }
 
         if ($this->participationRequired() && ! $this->hasAcceptedParticipation($request, $precinct, $policy)) {
             return Inertia::render('Election/PublicSimulationParticipation', [
@@ -53,6 +58,7 @@ final class PublicSimulationVoterController extends Controller
             'joinQueueAction' => route('election.public-simulation.voter.join-queue', [$round, $precinct]),
             'admissionQueue' => $queue->status($request->session()->get($this->queueSessionKey($precinct))),
             'publicSimulation' => true,
+            'initialControlNumber' => $initialControlNumber,
         ]);
     }
 
@@ -333,6 +339,21 @@ final class PublicSimulationVoterController extends Controller
     private function participationRequired(): bool
     {
         return (bool) config('election.public_simulation.participation_required', true);
+    }
+
+    private function initialControlNumber(Request $request): ?string
+    {
+        if (! config('election.public_simulation.demo_control_number_share.enabled')) {
+            return null;
+        }
+
+        $code = $request->query('code');
+
+        if (! is_string($code) || preg_match('/^[0-9]{4}$/', $code) !== 1) {
+            return null;
+        }
+
+        return $code;
     }
 
     private function participationSessionKey(SimulationPrecinct $precinct): string

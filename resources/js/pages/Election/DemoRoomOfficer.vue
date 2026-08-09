@@ -59,7 +59,11 @@ defineProps<{
     };
     officerDefaults: { officer_code: string; officer_pin: string };
     officerFeedback?: string | null;
-    controlNumber?: { code: string; expires_at: string } | null;
+    controlNumber?: {
+        code: string;
+        expires_at: string;
+        voter_entry?: { url: string; qr: string } | null;
+    } | null;
 }>();
 
 const showForceCloseoutConfirm = ref(false);
@@ -144,6 +148,36 @@ usePoll(
                             Stays here until dismissed. Expires
                             {{ controlNumber.expires_at }}.
                         </p>
+                        <div
+                            v-if="controlNumber.voter_entry"
+                            class="mt-4 grid gap-4 border border-blue-200 bg-white p-4 text-left sm:grid-cols-[auto_1fr] sm:items-center"
+                        >
+                            <img
+                                :src="controlNumber.voter_entry.qr"
+                                alt="Voter tablet entry QR code"
+                                class="h-32 w-32 border border-stone-300 bg-white p-2"
+                            />
+                            <div class="min-w-0">
+                                <p
+                                    class="text-sm font-bold text-blue-950 uppercase"
+                                >
+                                    Testing shortcut
+                                </p>
+                                <p class="mt-1 text-sm text-stone-700">
+                                    Share this QR or link with a test voter. It
+                                    opens the voter tablet page with this
+                                    control number prefilled.
+                                </p>
+                                <a
+                                    :href="controlNumber.voter_entry.url"
+                                    class="mt-3 block border border-blue-200 bg-blue-50 p-2 font-mono text-xs font-semibold break-all text-blue-900"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    {{ controlNumber.voter_entry.url }}
+                                </a>
+                            </div>
+                        </div>
                         <Form
                             :action="actions.dismissControlNumber"
                             method="post"

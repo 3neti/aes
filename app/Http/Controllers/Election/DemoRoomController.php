@@ -85,9 +85,11 @@ final class DemoRoomController extends Controller
         PublicSimulationContentionReport $contentionReport,
         PublicSimulationOperationalObservation $observations,
         PublicSimulationOperationsBoard $operationsBoard,
+        StandardQrCode $qrCode,
         Request $request,
     ): Response {
         $this->scope($round, $precinct, $simulations);
+        $controlNumber = $request->session()->get($this->controlNumberSessionKey($precinct));
 
         return Inertia::render('Election/DemoRoomOfficer', [
             'round' => $this->round($round),
@@ -116,7 +118,12 @@ final class DemoRoomController extends Controller
             ],
             'officerDefaults' => $this->officerDefaults($precinct),
             'officerFeedback' => $request->session()->get('public_simulation.officer_feedback'),
-            'controlNumber' => $request->session()->get($this->controlNumberSessionKey($precinct)),
+            'controlNumber' => $this->controlNumber(
+                is_array($controlNumber) ? $controlNumber : null,
+                $round,
+                $precinct,
+                $qrCode,
+            ),
         ]);
     }
 
@@ -250,6 +257,41 @@ final class DemoRoomController extends Controller
     private function controlNumberSessionKey(SimulationPrecinct $precinct): string
     {
         return "public_simulation.{$precinct->id}.control_number";
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $authorization
+     * @return array<string, mixed>|null
+     */
+    private function controlNumber(?array $authorization, SimulationRound $round, SimulationPrecinct $precinct, StandardQrCode $qrCode): ?array
+    {
+        if ($authorization === null) {
+            return null;
+        }
+
+        $controlNumber = [
+            'code' => $authorization['code'],
+            'expires_at' => $authorization['expires_at'],
+            'voter_entry' => null,
+        ];
+
+        if (! config('election.public_simulation.demo_control_number_share.enabled')) {
+            return $controlNumber;
+        }
+
+        $voterUrl = route('election.public-simulation.voter.show', [
+            $round,
+            $precinct,
+            'code' => $authorization['code'],
+        ]);
+
+        return [
+            ...$controlNumber,
+            'voter_entry' => [
+                'url' => $voterUrl,
+                'qr' => 'data:image/png;base64,'.base64_encode($qrCode->renderPng($voterUrl)),
+            ],
+        ];
     }
 
     /** @return array{officer_code: string, officer_pin: string} */

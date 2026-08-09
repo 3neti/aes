@@ -62,6 +62,9 @@ return [
             'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_ENABLED', true),
             'minimum_records' => (int) env('ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_MINIMUM_RECORDS', 1),
         ],
+        'demo_control_number_share' => [
+            'enabled' => (bool) env('ELECTION_DEMO_CONTROL_NUMBER_SHARE_ENABLED', (bool) env('ELECTION_REVIEW_MODE', false)),
+        ],
     ],
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', 300),
