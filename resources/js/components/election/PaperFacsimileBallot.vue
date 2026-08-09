@@ -81,6 +81,25 @@ function contestColumnGridClass(contest: Contest): string {
     return 'grid-cols-1';
 }
 
+function contestColumnBorderClass(
+    contest: Contest,
+    columnIndex: number,
+): string {
+    const columnCount = contestColumnCount(contest);
+
+    if (columnCount === 4) {
+        return columnIndex === 0 || columnIndex === 2
+            ? 'md:border-r-2 md:border-stone-900'
+            : '';
+    }
+
+    if (columnCount === 2 && columnIndex === 0) {
+        return 'sm:border-r-2 sm:border-stone-900';
+    }
+
+    return '';
+}
+
 function columnRangeLabel(candidates: Candidate[]): string {
     const first = candidates.at(0);
     const last = candidates.at(-1);
@@ -203,18 +222,7 @@ function columnRangeLabel(candidates: Candidate[]): string {
                             contest,
                         )"
                         :key="`${contest.id}-column-${columnIndex}`"
-                        class="border-stone-900"
-                        :class="{
-                            'xl:border-r':
-                                columnIndex <
-                                candidateColumns(contest).length - 1,
-                            'md:border-r xl:border-r-0':
-                                contestColumnCount(contest) === 4 &&
-                                columnIndex % 2 === 0,
-                            'sm:border-r':
-                                contestColumnCount(contest) === 2 &&
-                                columnIndex === 0,
-                        }"
+                        :class="contestColumnBorderClass(contest, columnIndex)"
                     >
                         <div
                             class="border-b border-stone-900 bg-stone-50 px-2 py-1 text-center text-[10px] font-black tracking-wide text-stone-600 uppercase"

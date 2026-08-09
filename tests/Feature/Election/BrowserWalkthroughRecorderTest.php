@@ -459,6 +459,9 @@ test('voter ballot includes position and candidate navigation aids', function ()
         ->and($paperFacsimile)->toContain('Official ballot facsimile')
         ->and($paperFacsimile)->toContain('Vote for')
         ->and($paperFacsimile)->toContain('function candidateColumns')
+        ->and($paperFacsimile)->toContain('function contestColumnBorderClass')
+        ->and($paperFacsimile)->toContain('columnIndex === 0 || columnIndex === 2')
+        ->and($paperFacsimile)->toContain('md:border-r-2 md:border-stone-900')
         ->and($paperFacsimile)->toContain('grid-cols-1 md:grid-cols-2 xl:grid-cols-4')
         ->and($paperFacsimile)->toContain('rounded-full');
 });
