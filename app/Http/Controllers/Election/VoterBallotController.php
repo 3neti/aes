@@ -8,6 +8,7 @@ use App\Election\Lifecycle\LifecycleState;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
+use App\Election\Voting\VoterBallotAnalytics;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FinalizePrivateBallotRequest;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +24,7 @@ final class VoterBallotController extends Controller
         ElectionStorage $storage,
         LifecycleState $lifecycle,
         AnonymousVoterAuthorization $authorizations,
+        VoterBallotAnalytics $analytics,
     ): Response {
         abort_unless($lifecycle->current() === Lifecycle::Voting, 409);
         $authorizationId = $request->session()->get('election.voter_authorization_id');
@@ -39,6 +41,7 @@ final class VoterBallotController extends Controller
             ],
             'ballotUiProfile' => $this->ballotUiProfile(),
             'selectionTarget' => $this->selectionTarget(),
+            'analytics' => $this->analyticsProps($analytics),
         ]);
     }
 
@@ -46,6 +49,7 @@ final class VoterBallotController extends Controller
         FinalizePrivateBallotRequest $request,
         AnonymousVoterAuthorization $authorizations,
         PrivateBallotRelease $releases,
+        VoterBallotAnalytics $analytics,
         LifecycleState $lifecycle,
     ): RedirectResponse {
         if ($lifecycle->current() !== Lifecycle::Voting) {
@@ -73,6 +77,17 @@ final class VoterBallotController extends Controller
         }
 
         $request->session()->forget('election.voter_authorization_id');
+        $analyticsSummary = $analytics->record($validated['analytics'] ?? [], [
+            'release_id' => $release['release_id'],
+            'precinct_id' => $release['precinct_id'] ?? null,
+            'ballot_ui_profile' => $this->ballotUiProfile(),
+            'selection_target' => $this->selectionTarget(),
+        ]);
+
+        if ($analyticsSummary !== null) {
+            $release['analytics'] = $analyticsSummary;
+        }
+
         $request->session()->put('election.voter_print_release', $release);
 
         return redirect()->route('election.voter.complete');
@@ -124,5 +139,16 @@ final class VoterBallotController extends Controller
         return in_array($target, ['circle', 'circle_with_label', 'row'], true)
             ? $target
             : 'circle';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function analyticsProps(VoterBallotAnalytics $analytics): array
+    {
+        return [
+            'enabled' => $analytics->enabled(),
+            'display_mode' => $analytics->displayMode(),
+        ];
     }
 }

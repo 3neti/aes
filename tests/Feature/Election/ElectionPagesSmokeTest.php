@@ -311,6 +311,7 @@ test('voter ballot requires anonymous authorization and hands off a private prin
             ->component('Election/VoterBallot')
             ->where('ballotUiProfile', 'paper_facsimile')
             ->where('selectionTarget', 'circle')
+            ->where('analytics.enabled', false)
             ->where('ballot.precinct_id', '0421-A')
             ->has('ballot.contests', 3)
             ->missing('snapshot')

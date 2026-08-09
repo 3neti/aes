@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import PaperFacsimileBallot from '@/components/election/PaperFacsimileBallot.vue';
 import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
 import TouchGuidedBallot from '@/components/election/TouchGuidedBallot.vue';
@@ -30,11 +30,28 @@ const props = defineProps<{
     publicSimulation?: boolean;
     ballotUiProfile?: string;
     selectionTarget?: string;
+    analytics?: {
+        enabled: boolean;
+        display_mode: 'hidden' | 'review' | 'presentation';
+    };
 }>();
 
 const step = ref<'ballot' | 'review'>('ballot');
 const selections = ref<Record<string, string[]>>({});
 const activeLetters = ref<Record<string, string>>({});
+const nowMs = ref(Date.now());
+const analyticsSessionId = ref('');
+const analyticsStartedAtMs = ref(Date.now());
+const firstSelectionAtMs = ref<number | null>(null);
+const lastSelectionAtMs = ref<number | null>(null);
+const reviewOpenedAtMs = ref<number | null>(null);
+const finalizedAtMs = ref<number | null>(null);
+const selectionEditCount = ref(0);
+const contestNavigationClicks = ref(0);
+const surnameNavigationClicks = ref(0);
+const reviewCount = ref(0);
+const overvoteAttemptsBlocked = ref(0);
+let timerInterval: number | undefined;
 const page = usePage();
 const reviewRoom = computed(
     () => page.props.electionReviewRoom as ElectionReviewRoomContext,
@@ -87,6 +104,45 @@ const ballotKicker = computed(() =>
         ? 'Official ballot'
         : 'Touch guided ballot',
 );
+const analyticsEnabled = computed(() => props.analytics?.enabled === true);
+const analyticsVisible = computed(
+    () =>
+        analyticsEnabled.value &&
+        ['review', 'presentation'].includes(
+            props.analytics?.display_mode ?? 'hidden',
+        ),
+);
+const elapsedSeconds = computed(() =>
+    Math.max(0, Math.floor((nowMs.value - analyticsStartedAtMs.value) / 1000)),
+);
+const timeToFirstSelectionSeconds = computed(() =>
+    firstSelectionAtMs.value === null
+        ? 0
+        : Math.max(
+              0,
+              Math.floor(
+                  (firstSelectionAtMs.value - analyticsStartedAtMs.value) /
+                      1000,
+              ),
+          ),
+);
+const formattedElapsed = computed(() => formatDuration(elapsedSeconds.value));
+const analyticsPayload = computed(() => ({
+    session_id: analyticsSessionId.value,
+    started_at: isoFromMs(analyticsStartedAtMs.value),
+    first_selection_at: isoFromMs(firstSelectionAtMs.value),
+    last_selection_at: isoFromMs(lastSelectionAtMs.value),
+    review_opened_at: isoFromMs(reviewOpenedAtMs.value),
+    finalized_at: isoFromMs(finalizedAtMs.value),
+    total_duration_seconds: elapsedSeconds.value,
+    time_to_first_selection_seconds: timeToFirstSelectionSeconds.value,
+    selection_edit_count: selectionEditCount.value,
+    contest_navigation_clicks: contestNavigationClicks.value,
+    surname_navigation_clicks: surnameNavigationClicks.value,
+    review_count: reviewCount.value,
+    overvote_attempts_blocked: overvoteAttemptsBlocked.value,
+    final_selection_count: selectionCount.value,
+}));
 
 function toggle(contest: Contest, candidate: Candidate): void {
     const current = selections.value[contest.id] ?? [];
@@ -95,13 +151,19 @@ function toggle(contest: Contest, candidate: Candidate): void {
         selections.value[contest.id] = current.filter(
             (id) => id !== candidate.id,
         );
+        recordSelectionEdit();
 
         return;
     }
 
     if (current.length < contest.max_selections) {
         selections.value[contest.id] = [...current, candidate.id];
+        recordSelectionEdit();
+
+        return;
     }
+
+    overvoteAttemptsBlocked.value += 1;
 }
 
 function clearDraft(): void {
@@ -115,13 +177,89 @@ function scrollToElement(elementId: string): void {
     });
 }
 
+function jumpToContest(contestId: string): void {
+    contestNavigationClicks.value += 1;
+    scrollToElement(contestAnchor(contestId));
+}
+
 function jumpToCandidateLetter(
     contest: Contest,
     letter: { letter: string; candidateId: string },
 ): void {
+    surnameNavigationClicks.value += 1;
     activeLetters.value[contest.id] = letter.letter;
     scrollToElement(candidateAnchor(contest.id, letter.candidateId));
 }
+
+function openReview(): void {
+    reviewCount.value += 1;
+    reviewOpenedAtMs.value ??= Date.now();
+    step.value = 'review';
+}
+
+function markFinalized(): void {
+    finalizedAtMs.value = Date.now();
+    nowMs.value = finalizedAtMs.value;
+}
+
+function transformSubmission(
+    data: Record<string, unknown>,
+): Record<string, unknown> {
+    markFinalized();
+
+    if (!analyticsEnabled.value) {
+        return data;
+    }
+
+    return {
+        ...data,
+        analytics: analyticsPayload.value,
+    };
+}
+
+function recordSelectionEdit(): void {
+    const changedAt = Date.now();
+
+    firstSelectionAtMs.value ??= changedAt;
+    lastSelectionAtMs.value = changedAt;
+    selectionEditCount.value += 1;
+}
+
+function isoFromMs(value: number | null): string {
+    return value === null ? '' : new Date(value).toISOString();
+}
+
+function formatDuration(totalSeconds: number): string {
+    const minutes = Math.floor(totalSeconds / 60)
+        .toString()
+        .padStart(2, '0');
+    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+
+    return `${minutes}:${seconds}`;
+}
+
+function createSessionId(): string {
+    if ('crypto' in window && 'randomUUID' in window.crypto) {
+        return window.crypto.randomUUID();
+    }
+
+    return `ballot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+onMounted(() => {
+    analyticsSessionId.value = createSessionId();
+    analyticsStartedAtMs.value = Date.now();
+    nowMs.value = analyticsStartedAtMs.value;
+    timerInterval = window.setInterval(() => {
+        nowMs.value = Date.now();
+    }, 1000);
+});
+
+onUnmounted(() => {
+    if (timerInterval !== undefined) {
+        window.clearInterval(timerInterval);
+    }
+});
 </script>
 
 <template>
@@ -147,6 +285,12 @@ function jumpToCandidateLetter(
                     <p class="text-sm font-semibold">
                         Precinct {{ ballot.precinct_id }}
                     </p>
+                    <p
+                        v-if="analyticsVisible"
+                        class="rounded-full border border-stone-300 bg-stone-50 px-3 py-1 font-mono text-xs font-bold text-stone-700"
+                    >
+                        Time {{ formattedElapsed }}
+                    </p>
                 </div>
             </div>
         </header>
@@ -157,6 +301,7 @@ function jumpToCandidateLetter(
                     ? { action: finalizeAction, method: 'post' }
                     : finalize.form()
             "
+            :transform="transformSubmission"
             #default="{ processing, errors }"
             class="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6"
             @success="clearDraft"
@@ -173,7 +318,6 @@ function jumpToCandidateLetter(
                     type="hidden"
                 />
             </template>
-
             <template v-if="step === 'ballot'">
                 <TouchGuidedBallot
                     v-if="resolvedBallotUiProfile === 'touch_guided'"
@@ -185,9 +329,9 @@ function jumpToCandidateLetter(
                     "
                     :review-summary="reviewSummary"
                     :selections="selections"
-                    @jump-to-contest="scrollToElement(contestAnchor($event))"
+                    @jump-to-contest="jumpToContest"
                     @jump-to-letter="jumpToCandidateLetter"
-                    @review="step = 'review'"
+                    @review="openReview"
                     @toggle="toggle"
                 />
                 <PaperFacsimileBallot
@@ -201,9 +345,9 @@ function jumpToCandidateLetter(
                     :review-summary="reviewSummary"
                     :selection-target="resolvedSelectionTarget"
                     :selections="selections"
-                    @jump-to-contest="scrollToElement(contestAnchor($event))"
+                    @jump-to-contest="jumpToContest"
                     @jump-to-letter="jumpToCandidateLetter"
-                    @review="step = 'review'"
+                    @review="openReview"
                     @toggle="toggle"
                 />
             </template>

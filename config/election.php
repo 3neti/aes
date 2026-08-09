@@ -72,6 +72,10 @@ return [
         'print_pin_digits' => (int) env('ELECTION_PRINT_PIN_DIGITS', 4),
         'ballot_ui_profile' => (string) env('ELECTION_BALLOT_UI_PROFILE', 'paper_facsimile'),
         'selection_target' => (string) env('ELECTION_BALLOT_SELECTION_TARGET', 'circle'),
+        'analytics' => [
+            'enabled' => (bool) env('ELECTION_BALLOT_ANALYTICS_ENABLED', (bool) env('ELECTION_REVIEW_MODE', false)),
+            'display_mode' => (string) env('ELECTION_BALLOT_ANALYTICS_DISPLAY_MODE', (bool) env('ELECTION_REVIEW_MODE', false) ? 'review' : 'hidden'),
+        ],
         'candidate_photos_enabled' => false,
         'individual_ballot_disclosure' => false,
     ],

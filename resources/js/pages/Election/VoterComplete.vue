@@ -10,6 +10,16 @@ defineProps<{
         pin_digits?: number;
         paper_ballot_serial?: string;
         expires_at: string;
+        analytics?: {
+            enabled: boolean;
+            display_mode: 'hidden' | 'review' | 'presentation';
+            total_duration_seconds: number;
+            selection_edit_count: number;
+            contest_navigation_clicks: number;
+            surname_navigation_clicks: number;
+            review_count: number;
+            final_selection_count: number;
+        };
     } | null;
     precinctClosed?: boolean;
     precinct?: {
@@ -22,6 +32,19 @@ defineProps<{
 
 function clearBoothDraft(): void {
     sessionStorage.removeItem('aes-voter-draft');
+}
+
+function formatDuration(totalSeconds: number): string {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    if (minutes === 0) {
+        return `${seconds} seconds`;
+    }
+
+    return `${minutes} minute${minutes === 1 ? '' : 's'} ${seconds
+        .toString()
+        .padStart(2, '0')} seconds`;
 }
 </script>
 
@@ -92,6 +115,32 @@ function clearBoothDraft(): void {
                 <p class="mt-2 text-sm text-stone-600">
                     Paper stock serial {{ release.paper_ballot_serial }}
                 </p>
+                <div
+                    v-if="
+                        release.analytics &&
+                        release.analytics.enabled &&
+                        release.analytics.display_mode !== 'hidden'
+                    "
+                    class="mt-5 border border-emerald-200 bg-emerald-50 p-4 text-left text-sm"
+                >
+                    <strong class="block text-emerald-950">
+                        Ballot timing summary
+                    </strong>
+                    <span class="mt-1 block text-emerald-950">
+                        Completed in
+                        {{
+                            formatDuration(
+                                release.analytics.total_duration_seconds,
+                            )
+                        }}.
+                    </span>
+                    <span class="mt-1 block text-emerald-900">
+                        {{ release.analytics.final_selection_count }}
+                        selections, {{ release.analytics.selection_edit_count }}
+                        selection changes,
+                        {{ release.analytics.review_count }} review visit.
+                    </span>
+                </div>
                 <div
                     class="mt-6 border border-amber-300 bg-amber-50 p-4 text-left text-sm"
                 >

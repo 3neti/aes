@@ -149,6 +149,7 @@ test('the private voter journey seals choices until polls close', function (): v
             ->component('Election/VoterBallot')
             ->where('ballotUiProfile', 'paper_facsimile')
             ->where('selectionTarget', 'circle')
+            ->where('analytics.enabled', false)
             ->has('ballot.contests', 3)
             ->missing('snapshot')
             ->missing('journal')
@@ -166,7 +167,9 @@ test('the private voter journey seals choices until polls close', function (): v
     $finalize->assertRedirect(route('election.voter.complete'));
     expect($release['release_qr_data_uri'])->toStartWith('data:image/png;base64,')
         ->and($release['release_code'])->toMatch('/^[0-9]{4}$/')
-        ->and($release['pin_digits'])->toBe(4);
+        ->and($release['pin_digits'])->toBe(4)
+        ->and($release)->not->toHaveKey('analytics')
+        ->and(app(ElectionStorage::class)->files('analytics/voter-sessions'))->toBeEmpty();
 
     $releasePath = app(ElectionStorage::class)->path("print-releases/{$release['release_id']}.json");
     $releaseContents = file_get_contents($releasePath);
@@ -267,6 +270,7 @@ test('the private voter ballot can use the touch guided profile', function (): v
             ->component('Election/VoterBallot')
             ->where('ballotUiProfile', 'touch_guided')
             ->where('selectionTarget', 'circle')
+            ->where('analytics.enabled', false)
             ->has('ballot.contests', 3)
         );
 });
@@ -294,6 +298,81 @@ test('the private voter ballot selection target is configurable', function (): v
             ->component('Election/VoterBallot')
             ->where('selectionTarget', 'circle')
         );
+});
+
+test('the private voter ballot records optional review analytics without selections', function (): void {
+    config()->set('election.voter.analytics.enabled', true);
+    config()->set('election.voter.analytics.display_mode', 'review');
+
+    $authorization = app(AnonymousVoterAuthorization::class)->issue();
+
+    $this->post(route('election.voter.claim'), ['code' => $authorization['code']])
+        ->assertRedirect(route('election.voter.ballot'));
+
+    $this->get(route('election.voter.ballot'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterBallot')
+            ->where('analytics.enabled', true)
+            ->where('analytics.display_mode', 'review')
+        );
+
+    $finalize = $this->post(route('election.voter.finalize'), [
+        'selections' => [
+            'president' => ['pres-ada'],
+        ],
+        'analytics' => [
+            'session_id' => 'ballot-session-001',
+            'started_at' => '2026-08-09T08:00:00.000Z',
+            'first_selection_at' => '2026-08-09T08:00:12.000Z',
+            'last_selection_at' => '2026-08-09T08:01:30.000Z',
+            'review_opened_at' => '2026-08-09T08:02:00.000Z',
+            'finalized_at' => '2026-08-09T08:02:15.000Z',
+            'total_duration_seconds' => 135,
+            'time_to_first_selection_seconds' => 12,
+            'selection_edit_count' => 3,
+            'contest_navigation_clicks' => 4,
+            'surname_navigation_clicks' => 5,
+            'review_count' => 1,
+            'overvote_attempts_blocked' => 0,
+            'final_selection_count' => 1,
+        ],
+    ]);
+
+    $release = $finalize->getSession()->get('election.voter_print_release');
+
+    $finalize->assertRedirect(route('election.voter.complete'));
+    expect($release['analytics']['total_duration_seconds'])->toBe(135)
+        ->and($release['analytics']['display_mode'])->toBe('review');
+
+    $analyticsPath = app(ElectionStorage::class)->files('analytics/voter-sessions')[0];
+    $analyticsContents = file_get_contents($analyticsPath);
+    $analyticsRecord = json_decode($analyticsContents, true, flags: JSON_THROW_ON_ERROR);
+
+    expect($analyticsRecord)
+        ->toMatchArray([
+            'schema_version' => 'voter-ballot-analytics-1',
+            'session_id' => 'ballot-session-001',
+            'total_duration_seconds' => 135,
+            'selection_edit_count' => 3,
+            'ballot_ui_profile' => 'paper_facsimile',
+            'selection_target' => 'circle',
+        ])
+        ->and($analyticsContents)
+        ->not->toContain('pres-ada')
+        ->not->toContain($release['release_code'])
+        ->not->toContain('release_qr_data_uri');
+
+    $this->get(route('election.voter.complete'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterComplete')
+            ->where('release.analytics.total_duration_seconds', 135)
+            ->where('release.analytics.selection_edit_count', 3)
+        );
+
+    expect(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+        ->toContain('voting.analytics_recorded');
 });
 
 test('print PIN length is configurable between four and six digits', function (int $configured, int $expected): void {

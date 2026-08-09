@@ -15,6 +15,7 @@ use App\Election\Support\PartyLabelNormalizer;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
 use App\Election\Voting\SealedBallotBox;
+use App\Election\Voting\VoterBallotAnalytics;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClaimVoterAuthorizationRequest;
 use App\Http\Requests\FinalizePrivateBallotRequest;
@@ -109,7 +110,7 @@ final class PublicSimulationVoterController extends Controller
         return to_route('election.public-simulation.voter.ballot', [$round, $precinct]);
     }
 
-    public function ballot(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, LifecycleState $lifecycle, AnonymousVoterAuthorization $authorizations, PartyLabelNormalizer $partyLabels): Response
+    public function ballot(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, LifecycleState $lifecycle, AnonymousVoterAuthorization $authorizations, PartyLabelNormalizer $partyLabels, VoterBallotAnalytics $analytics): Response
     {
         $this->scope($round, $precinct, $simulations);
         abort_unless($lifecycle->current() === Lifecycle::Voting, 409);
@@ -129,10 +130,11 @@ final class PublicSimulationVoterController extends Controller
             'publicSimulation' => true,
             'ballotUiProfile' => $this->ballotUiProfile(),
             'selectionTarget' => $this->selectionTarget(),
+            'analytics' => $this->analyticsProps($analytics),
         ]);
     }
 
-    public function finalize(FinalizePrivateBallotRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PrivateBallotRelease $releases, LifecycleState $lifecycle, PublicSimulationVotingGate $voting): RedirectResponse
+    public function finalize(FinalizePrivateBallotRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PrivateBallotRelease $releases, LifecycleState $lifecycle, PublicSimulationVotingGate $voting, VoterBallotAnalytics $analytics): RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
         $authorizationId = $request->session()->get($this->authorizationSessionKey($precinct));
@@ -153,6 +155,19 @@ final class PublicSimulationVoterController extends Controller
         }
 
         $request->session()->forget($this->authorizationSessionKey($precinct));
+        $analyticsSummary = $analytics->record($request->validated('analytics', []), [
+            'release_id' => $release['release_id'],
+            'precinct_id' => $release['precinct_id'] ?? null,
+            'public_simulation_round_code' => $round->code,
+            'public_simulation_precinct_code' => $precinct->code,
+            'ballot_ui_profile' => $this->ballotUiProfile(),
+            'selection_target' => $this->selectionTarget(),
+        ]);
+
+        if ($analyticsSummary !== null) {
+            $release['analytics'] = $analyticsSummary;
+        }
+
         $request->session()->put($this->releaseSessionKey($precinct), $release);
 
         return to_route('election.public-simulation.voter.complete', [$round, $precinct]);
@@ -383,6 +398,17 @@ final class PublicSimulationVoterController extends Controller
         return in_array($target, ['circle', 'circle_with_label', 'row'], true)
             ? $target
             : 'circle';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function analyticsProps(VoterBallotAnalytics $analytics): array
+    {
+        return [
+            'enabled' => $analytics->enabled(),
+            'display_mode' => $analytics->displayMode(),
+        ];
     }
 
     private function printSessionKey(SimulationPrecinct $precinct): string

@@ -539,6 +539,8 @@ final class ElectionStorage
             str_starts_with($relative, 'contention-reports/') => self::CeremonyDirectories['voting'].'/contention-reports/'.$basename,
             $relative === 'print-releases' => self::CeremonyDirectories['voting'].'/private-print-releases',
             str_starts_with($relative, 'print-releases/') => self::CeremonyDirectories['voting'].'/private-print-releases/'.$basename,
+            $relative === 'analytics/voter-sessions' => self::CeremonyDirectories['voting'].'/analytics/voter-sessions',
+            str_starts_with($relative, 'analytics/voter-sessions/') => self::CeremonyDirectories['voting'].'/analytics/voter-sessions/'.$basename,
             $relative === 'print-jobs' => self::CeremonyDirectories['voting'].'/print-jobs',
             str_starts_with($relative, 'print-jobs/') => self::CeremonyDirectories['voting'].'/print-jobs/'.$basename,
             $relative === 'paper-ballot-ledger' => self::CeremonyDirectories['voting'].'/paper-ballot-ledger',
