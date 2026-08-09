@@ -78,6 +78,15 @@ test('a voter code can be claimed once and expires', function (): void {
         ->assertSessionHasErrors('code');
 });
 
+test('a voter control number lifetime can be configured to four hours', function (): void {
+    config()->set('election.voter.authorization_ttl_seconds', 14400);
+    app(ElectionClock::class)->freeze('2026-08-09T08:00:00+08:00');
+
+    $authorization = app(AnonymousVoterAuthorization::class)->issue();
+
+    expect($authorization['expires_at'])->toBe('2026-08-09T12:00:00+08:00');
+});
+
 test('an officer replaces an expired voter code with journal evidence', function (): void {
     app(ElectionClock::class)->freeze('2026-05-11 08:00:00');
 
