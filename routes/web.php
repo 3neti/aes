@@ -49,7 +49,9 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/{round:code}/{precinct:code}/print/ballot-preview', [DemoRoomPrintStationController::class, 'ballotPreview'])->name('print.ballot-preview');
         Route::post('/{round:code}/{precinct:code}/print/deposit', [DemoRoomPrintStationController::class, 'deposit'])->name('print.deposit');
         Route::get('/{round:code}/{precinct:code}/print/tally-sheet/{profile?}', [DemoRoomPrintStationController::class, 'tallySheet'])->name('print.tally-sheet');
+        Route::post('/{round:code}/{precinct:code}/print/tally-sheet/submit/{profile?}', [DemoRoomPrintStationController::class, 'submitTallySheet'])->name('print.tally-sheet.submit');
         Route::get('/{round:code}/{precinct:code}/print/election-return/{profile?}', [DemoRoomPrintStationController::class, 'electionReturn'])->name('print.election-return');
+        Route::post('/{round:code}/{precinct:code}/print/election-return/submit/{profile?}', [DemoRoomPrintStationController::class, 'submitElectionReturn'])->name('print.election-return.submit');
     });
 
     Route::prefix('play')->name('public-simulation.')->group(function (): void {

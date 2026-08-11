@@ -31,7 +31,16 @@ const props = defineProps<{
         return_available: boolean;
         tally_url: string;
         return_url: string;
+        tally_submit_url: string;
+        return_submit_url: string;
     }>;
+    closeoutPrinter: {
+        driver: 'file' | 'cups' | 'disabled';
+        default_profile: string;
+        printer_name?: string | null;
+        enabled: boolean;
+        submit_label: string;
+    };
     release: {
         release_id?: string;
         paper_ballot_serial?: string;
@@ -83,7 +92,7 @@ const props = defineProps<{
     printPinDigits: number;
 }>();
 
-const selectedProfile = ref('a4');
+const selectedProfile = ref(props.closeoutPrinter.default_profile || 'a4');
 
 const selectedPrintProfile = computed(() => {
     return (
@@ -288,37 +297,104 @@ const selectedPrintProfile = computed(() => {
                             </span>
                         </button>
                     </div>
+                    <div
+                        class="mt-4 border border-blue-100 bg-white p-3 text-sm text-stone-700"
+                    >
+                        <strong class="text-stone-950"
+                            >Physical printer mode:</strong
+                        >
+                        <span class="font-mono">{{
+                            closeoutPrinter.driver
+                        }}</span>
+                        <span v-if="closeoutPrinter.printer_name">
+                            / {{ closeoutPrinter.printer_name }}
+                        </span>
+                    </div>
                 </section>
 
-                <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                    <a
-                        :href="selectedPrintProfile.tally_url"
-                        class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
-                        :class="{
-                            'pointer-events-none opacity-40':
-                                !selectedPrintProfile.tally_available,
-                        }"
-                        >Open / print tally sheet</a
-                    >
-                    <a
-                        :href="selectedPrintProfile.return_url"
-                        class="min-h-14 bg-blue-800 px-5 py-4 text-center font-bold text-white"
-                        :class="{
-                            'pointer-events-none opacity-40':
-                                !selectedPrintProfile.return_available,
-                        }"
-                        >Open / print Election Return</a
-                    >
-                    <a
-                        :href="actions.watch"
-                        class="secondary-button text-center"
-                        >Open watcher publication</a
-                    >
-                    <a
-                        :href="actions.handoff"
-                        class="secondary-button text-center"
-                        >Open handoff guide</a
-                    >
+                <div class="mt-6 grid gap-4 sm:grid-cols-2">
+                    <section class="border border-stone-300 bg-stone-50 p-4">
+                        <h2 class="font-bold">Tally sheet</h2>
+                        <div class="mt-3 grid gap-2">
+                            <a
+                                :href="selectedPrintProfile.tally_url"
+                                class="min-h-12 bg-blue-800 px-5 py-3 text-center font-bold text-white"
+                                :class="{
+                                    'pointer-events-none opacity-40':
+                                        !selectedPrintProfile.tally_available,
+                                }"
+                                >Open / print PDF</a
+                            >
+                            <Form
+                                :action="selectedPrintProfile.tally_submit_url"
+                                method="post"
+                                #default="{ processing }"
+                            >
+                                <button
+                                    class="min-h-12 w-full border-2 border-stone-900 bg-white px-5 py-3 font-bold text-stone-950 disabled:opacity-40"
+                                    type="submit"
+                                    :disabled="
+                                        processing ||
+                                        !closeoutPrinter.enabled ||
+                                        !selectedPrintProfile.tally_available
+                                    "
+                                >
+                                    {{
+                                        processing
+                                            ? 'Submitting...'
+                                            : closeoutPrinter.submit_label
+                                    }}
+                                </button>
+                            </Form>
+                        </div>
+                    </section>
+                    <section class="border border-stone-300 bg-stone-50 p-4">
+                        <h2 class="font-bold">Election Return</h2>
+                        <div class="mt-3 grid gap-2">
+                            <a
+                                :href="selectedPrintProfile.return_url"
+                                class="min-h-12 bg-blue-800 px-5 py-3 text-center font-bold text-white"
+                                :class="{
+                                    'pointer-events-none opacity-40':
+                                        !selectedPrintProfile.return_available,
+                                }"
+                                >Open / print PDF</a
+                            >
+                            <Form
+                                :action="selectedPrintProfile.return_submit_url"
+                                method="post"
+                                #default="{ processing }"
+                            >
+                                <button
+                                    class="min-h-12 w-full border-2 border-stone-900 bg-white px-5 py-3 font-bold text-stone-950 disabled:opacity-40"
+                                    type="submit"
+                                    :disabled="
+                                        processing ||
+                                        !closeoutPrinter.enabled ||
+                                        !selectedPrintProfile.return_available
+                                    "
+                                >
+                                    {{
+                                        processing
+                                            ? 'Submitting...'
+                                            : closeoutPrinter.submit_label
+                                    }}
+                                </button>
+                            </Form>
+                        </div>
+                    </section>
+                    <div class="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+                        <a
+                            :href="actions.watch"
+                            class="secondary-button text-center"
+                            >Open watcher publication</a
+                        >
+                        <a
+                            :href="actions.handoff"
+                            class="secondary-button text-center"
+                            >Open handoff guide</a
+                        >
+                    </div>
                 </div>
                 <p
                     v-if="

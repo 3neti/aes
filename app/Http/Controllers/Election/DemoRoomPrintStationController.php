@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\CloseoutArtifactPrinter;
 use App\Election\Printing\PrintFormProfile;
 use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\PublicSimulation\PublicSimulationService;
@@ -33,6 +34,7 @@ final class DemoRoomPrintStationController extends Controller
         PrivateBallotRelease $releases,
         ElectionStorage $storage,
         PrintFormProfileResolver $printProfiles,
+        CloseoutArtifactPrinter $closeoutPrinter,
     ): Response {
         $this->scope($round, $precinct, $simulations);
         $releaseId = $request->session()->get($this->printSessionKey($precinct));
@@ -54,6 +56,7 @@ final class DemoRoomPrintStationController extends Controller
                 'election_return_pdf' => $precinctId !== '' && is_file($storage->path("returns/{$precinctId}-return.pdf")),
             ],
             'printProfiles' => $profiles,
+            'closeoutPrinter' => $closeoutPrinter->status(),
             'release' => $release,
             'ballotPreview' => is_string($releaseId) ? $releases->printedBallotPreview($releaseId) : null,
             'ballotPreviewUrl' => is_string($releaseId) && $releases->printedBallotPdfPath($releaseId) !== null
@@ -166,6 +169,16 @@ final class DemoRoomPrintStationController extends Controller
         return response()->file($path, [
             'Content-Disposition' => 'inline; filename="'.$precinct->code.'-'.$resolved->value.'-election-return.pdf"',
         ]);
+    }
+
+    public function submitTallySheet(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, CloseoutArtifactPrinter $printer, ?string $profile = null): RedirectResponse
+    {
+        return $this->submitCloseoutArtifact($request, $round, $precinct, $simulations, $storage, $printProfiles, $printer, 'tally-sheet', $profile);
+    }
+
+    public function submitElectionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, CloseoutArtifactPrinter $printer, ?string $profile = null): RedirectResponse
+    {
+        return $this->submitCloseoutArtifact($request, $round, $precinct, $simulations, $storage, $printProfiles, $printer, 'election-return', $profile);
     }
 
     public function print(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases, BallotPrinter $printer, PublicSimulationVotingGate $voting): RedirectResponse
@@ -288,9 +301,30 @@ final class DemoRoomPrintStationController extends Controller
                 'return_available' => $precinctId !== '' && is_file($storage->path("print-forms/election-return/{$precinctId}/{$profile->value}.pdf")),
                 'tally_url' => route('election.demo-room.print.tally-sheet', [$round, $precinct, $profile->value]),
                 'return_url' => route('election.demo-room.print.election-return', [$round, $precinct, $profile->value]),
+                'tally_submit_url' => route('election.demo-room.print.tally-sheet.submit', [$round, $precinct, $profile->value]),
+                'return_submit_url' => route('election.demo-room.print.election-return.submit', [$round, $precinct, $profile->value]),
             ])
             ->values()
             ->all();
+    }
+
+    private function submitCloseoutArtifact(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, CloseoutArtifactPrinter $printer, string $artifact, ?string $profile = null): RedirectResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        if (! $this->isEnabled($request, $precinct)) {
+            return $this->stationRedirect($round, $precinct, 'Enable the central print station before submitting closeout forms.');
+        }
+
+        if (! $this->isCloseoutReady($precinct)) {
+            return $this->stationRedirect($round, $precinct, 'Close the precinct first. Closeout forms are generated after closeout.');
+        }
+
+        $configuration = $storage->readJson('runtime/active-precinct.json');
+        $precinctId = (string) ($configuration['precinct_id'] ?? '');
+        $resolved = $printProfiles->from($profile ?? PrintFormProfile::A4->value);
+        $result = $printer->print($artifact, $resolved, $precinct->code, $precinctId);
+
+        return $this->stationRedirect($round, $precinct, (string) $result['message']);
     }
 
     /** @return array<string, mixed> */

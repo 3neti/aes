@@ -1,15 +1,22 @@
 <?php
 
+use App\Election\Core\ActivityJournal;
+use App\Election\Printing\CloseoutArtifactPrinter;
+use App\Election\Printing\PrintFormProfile;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\Support\ElectionStorage;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
+use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Facades\Process;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
     config()->set('election.review.access.enabled', false);
     config()->set('election.public_simulation.enabled', true);
     config()->set('election.public_simulation.participation_required', false);
+    config()->set('election.closeout_printer.driver', 'file');
+    config()->set('election.closeout_printer.default_profile', 'thermal-80');
     $this->withoutVite();
 });
 
@@ -197,6 +204,9 @@ test('the demo room runs a precinct through officer, voter, print station, watch
             ->where('artifacts.election_return_pdf', true)
             ->where('actions.tally', route('election.demo-room.print.tally-sheet', [$round, $precinct]))
             ->where('actions.return', route('election.demo-room.print.election-return', [$round, $precinct]))
+            ->where('closeoutPrinter.driver', 'file')
+            ->where('closeoutPrinter.default_profile', 'thermal-80')
+            ->where('closeoutPrinter.submit_label', 'Prepare for local print')
             ->has('printProfiles', 3)
             ->where('printProfiles.0.profile', 'a4')
             ->where('printProfiles.0.tally_available', true)
@@ -204,6 +214,8 @@ test('the demo room runs a precinct through officer, voter, print station, watch
             ->where('printProfiles.1.profile', 'thermal-80')
             ->where('printProfiles.1.tally_url', route('election.demo-room.print.tally-sheet', [$round, $precinct, 'thermal-80']))
             ->where('printProfiles.1.return_url', route('election.demo-room.print.election-return', [$round, $precinct, 'thermal-80']))
+            ->where('printProfiles.1.tally_submit_url', route('election.demo-room.print.tally-sheet.submit', [$round, $precinct, 'thermal-80']))
+            ->where('printProfiles.1.return_submit_url', route('election.demo-room.print.election-return.submit', [$round, $precinct, 'thermal-80']))
             ->where('printProfiles.2.profile', 'thermal-58')
         );
 
@@ -222,6 +234,27 @@ test('the demo room runs a precinct through officer, voter, print station, watch
     $this->get(route('election.demo-room.print.election-return', [$round, $precinct, 'thermal-58']))
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->post(route('election.demo-room.print.tally-sheet.submit', [$round, $precinct, 'thermal-80']))
+        ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]))
+        ->assertSessionHas("demo_room.{$precinct->id}.closeout_feedback", 'Tally sheet 80 mm thermal roll PDF is ready for browser printing.');
+
+    config()->set('election.closeout_printer.driver', 'cups');
+    config()->set('election.closeout_printer.cups.name', 'USB_Thermal_Printer');
+    Process::fake();
+
+    $this->post(route('election.demo-room.print.election-return.submit', [$round, $precinct, 'thermal-58']))
+        ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]))
+        ->assertSessionHas("demo_room.{$precinct->id}.closeout_feedback", 'Election Return submitted to USB_Thermal_Printer.');
+
+    Process::assertRan(function (PendingProcess $process): bool {
+        return is_array($process->command)
+            && $process->command[0] === 'lp'
+            && $process->command[1] === '-d'
+            && $process->command[2] === 'USB_Thermal_Printer'
+            && str_contains((string) $process->command[4], 'Election Return')
+            && str_ends_with((string) $process->command[5], '/thermal-58.pdf');
+    });
 
     $this->post(route('election.demo-room.publish', [$round, $precinct]), $credentials)
         ->assertRedirect(route('election.demo-room.officer', [$round, $precinct]));
@@ -253,7 +286,41 @@ test('the demo room runs a precinct through officer, voter, print station, watch
 
     expect($return['accepted_ballots'])->toBe(1)
         ->and($storage->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
-        ->and($storage->path("returns/{$configuration['precinct_id']}-return.pdf"))->toBeReadableFile();
+        ->and($storage->path("returns/{$configuration['precinct_id']}-return.pdf"))->toBeReadableFile()
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+        ->toContain('closeout.print_requested', 'closeout.print_submitted');
+});
+
+test('closeout printer reports missing artifacts and failed cups configuration', function (): void {
+    app(ElectionStorage::class)->reset();
+    config()->set('election.closeout_printer.driver', 'file');
+
+    $missing = app(CloseoutArtifactPrinter::class)->print(
+        'election-return',
+        PrintFormProfile::A4,
+        'TONDO-01',
+        '39010001',
+    );
+
+    expect($missing['status'])->toBe('missing')
+        ->and($missing['message'])->toBe('Election Return PDF is not available for A4 evidence copy.');
+
+    $storage = app(ElectionStorage::class);
+    $storage->writeText('print-forms/tally-sheet/a4.pdf', '%PDF-1.4 closeout test');
+    config()->set('election.closeout_printer.driver', 'cups');
+    config()->set('election.closeout_printer.cups.name', '');
+
+    $failed = app(CloseoutArtifactPrinter::class)->print(
+        'tally-sheet',
+        PrintFormProfile::A4,
+        'TONDO-01',
+        '39010001',
+    );
+
+    expect($failed['status'])->toBe('failed')
+        ->and($failed['message'])->toBe('CUPS printer name is not configured.')
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+        ->toContain('closeout.print_failed');
 });
 
 test('the demo room can start a fresh three precinct set before closeout', function (): void {

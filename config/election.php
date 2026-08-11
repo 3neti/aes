@@ -122,6 +122,14 @@ return [
         'default_profile' => env('ELECTION_PRINT_FORM_PROFILE', 'a4'),
         'available_profiles' => ['a4', 'thermal-80', 'thermal-58'],
     ],
+    'closeout_printer' => [
+        'driver' => env('ELECTION_CLOSEOUT_PRINTER_DRIVER', 'file'),
+        'default_profile' => env('ELECTION_CLOSEOUT_PRINT_PROFILE', env('ELECTION_PRINT_FORM_PROFILE', 'a4')),
+        'cups' => [
+            'name' => env('ELECTION_CLOSEOUT_CUPS_PRINTER', ''),
+            'timeout' => (int) env('ELECTION_CLOSEOUT_CUPS_TIMEOUT', 10),
+        ],
+    ],
     'clc' => [
         'source_path' => env('ELECTION_CLC_SOURCE_PATH', resource_path('election/clc')),
         'profile' => env('ELECTION_CLC_PROFILE', 'comelec-clc-2025-nle'),
