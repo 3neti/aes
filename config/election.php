@@ -114,6 +114,9 @@ return [
             'VICE-MAYOR' => 1,
             'COUNCILOR' => 6,
         ],
+        'candidate_limits' => [
+            'SENATOR' => (int) env('ELECTION_DEMO_SENATOR_CANDIDATE_LIMIT', 64),
+        ],
     ],
     'pdf' => [
         'ghostscript_binary' => env('ELECTION_PDF_GHOSTSCRIPT_BINARY', 'gs'),

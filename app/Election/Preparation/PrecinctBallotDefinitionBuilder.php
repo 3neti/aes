@@ -36,7 +36,15 @@ final class PrecinctBallotDefinitionBuilder
                 $contestId = $this->contestId($contest);
                 $candidates = collect($contest['candidates'])
                     ->sortBy(fn (array $candidate): int => (int) $candidate['ballot_number'])
-                    ->values()
+                    ->values();
+
+                $candidateLimit = $this->candidateLimit($office);
+
+                if ($candidateLimit > 0) {
+                    $candidates = $candidates->take($candidateLimit)->values();
+                }
+
+                $candidates = $candidates
                     ->map(fn (array $candidate): array => $this->candidate($contestId, $candidate))
                     ->all();
 
@@ -173,6 +181,14 @@ final class PrecinctBallotDefinitionBuilder
             'COUNCILOR' => 60,
             default => 99,
         };
+    }
+
+    private function candidateLimit(string $office): int
+    {
+        $limits = config('election.pop.candidate_limits', []);
+        $limit = is_array($limits) ? ($limits[$office] ?? 0) : 0;
+
+        return max(0, (int) $limit);
     }
 
     /**

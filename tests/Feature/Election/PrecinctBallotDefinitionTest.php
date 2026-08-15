@@ -5,8 +5,18 @@ use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivatePrecinctBallotPackage;
 use App\Election\Preparation\PrecinctBallotDefinitionBuilder;
 use App\Election\Support\ElectionStorage;
+use App\Http\Middleware\BindBrowserWalkthroughRun;
+use App\Http\Middleware\ProtectReviewEnvironment;
+use App\Http\Middleware\RequireReviewRoomRole;
 
 beforeEach(function (): void {
+    config()->set('election.review.access.enabled', false);
+    $this->withoutMiddleware([
+        BindBrowserWalkthroughRun::class,
+        ProtectReviewEnvironment::class,
+        RequireReviewRoomRole::class,
+    ]);
+
     app(ElectionStorage::class)->reset();
     $this->artisan('election:pop-import', ['path' => resource_path('election/pop/2025NLE_POP.xlsx')])->assertSuccessful();
     $this->artisan('election:clc-import')->assertSuccessful();
@@ -18,7 +28,7 @@ test('tondo precinct ballot definition uses actual national and manila local can
     $contests = collect($definition['registries']['contests'])->keyBy('office');
 
     expect($report['contest_count'])->toBe(6)
-        ->and($report['candidate_count'])->toBe(387)
+        ->and($report['candidate_count'])->toBe(268)
         ->and($contests->keys()->all())->toBe([
             'SENATOR',
             'PARTY LIST',
@@ -34,7 +44,7 @@ test('tondo precinct ballot definition uses actual national and manila local can
         ->and($contests['MAYOR']['max_selections'])->toBe(1)
         ->and($contests['VICE-MAYOR']['max_selections'])->toBe(1)
         ->and($contests['COUNCILOR']['max_selections'])->toBe(6)
-        ->and(count($contests['SENATOR']['candidate_ids']))->toBe(183)
+        ->and(count($contests['SENATOR']['candidate_ids']))->toBe(64)
         ->and(count($contests['PARTY LIST']['candidate_ids']))->toBe(156)
         ->and(count($contests['MEMBER, HOUSE OF REPRESENTATIVES']['candidate_ids']))->toBe(4)
         ->and(count($contests['MAYOR']['candidate_ids']))->toBe(11)
@@ -48,6 +58,16 @@ test('tondo precinct ballot definition uses actual national and manila local can
         ->and($candidates->firstWhere('name', 'DOMAGOSO, ISKO MORENO'))->not->toBeNull();
 });
 
+test('tondo precinct ballot definition can expose the full imported senator list', function (): void {
+    config()->set('election.pop.candidate_limits.SENATOR', 0);
+
+    $definition = app(PrecinctBallotDefinitionBuilder::class)->build('39010001', 'FIRST DIST');
+    $contests = collect($definition['registries']['contests'])->keyBy('office');
+
+    expect($definition['report']['candidate_count'])->toBe(387)
+        ->and(count($contests['SENATOR']['candidate_ids']))->toBe(183);
+});
+
 test('tondo precinct ballot package activates deterministic configuration', function (): void {
     $activation = app(ActivatePrecinctBallotPackage::class)->handle('39010001', 'FIRST DIST');
     $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
@@ -56,7 +76,7 @@ test('tondo precinct ballot package activates deterministic configuration', func
         ->and($configuration['mapping_hash'])->toBe($activation['configuration']['mapping_hash'])
         ->and($configuration['contests'])->toHaveCount(6)
         ->and(collect($configuration['contests'])->pluck('office')->contains('PRESIDENT'))->toBeFalse()
-        ->and(collect($configuration['contests'])->sum(fn (array $contest): int => count($contest['candidates'])))->toBe(387)
+        ->and(collect($configuration['contests'])->sum(fn (array $contest): int => count($contest['candidates'])))->toBe(268)
         ->and(collect($configuration['contests'])
             ->flatMap(fn (array $contest): array => $contest['candidates'])
             ->pluck('political_party')
