@@ -1,5 +1,6 @@
 <?php
 
+use App\Election\Preparation\BallotPdfPartyReference;
 use App\Election\Preparation\ClcCandidateImporter;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\GhostscriptPdfTextExtractor;
@@ -8,10 +9,10 @@ beforeEach(function (): void {
     app(ElectionStorage::class)->reset();
 });
 
-test('clc candidate import writes deterministic registry artifacts from repository pdf fixtures', function (): void {
+test('clc candidate import writes deterministic registry artifacts from manila district workbook', function (): void {
     $this->artisan('election:clc-import')
-        ->expectsOutput('CLC candidate PDFs imported.')
-        ->expectsOutput('Sources: 21')
+        ->expectsOutput('Candidate source imported.')
+        ->expectsOutput('Sources: 1')
         ->expectsOutputToContain('Candidates: ')
         ->expectsOutputToContain('Needs review: ')
         ->assertSuccessful();
@@ -20,22 +21,24 @@ test('clc candidate import writes deterministic registry artifacts from reposito
     $manifest = $storage->readJson('registries/clc-2025-nle/manifest.json');
     $candidates = clcCandidates();
 
-    expect($manifest['source_count'])->toBe(21)
-        ->and($manifest['candidate_count'])->toBeGreaterThan(1200)
-        ->and($manifest['needs_review_count'])->toBeGreaterThanOrEqual(0)
+    expect($manifest['source_count'])->toBe(1)
+        ->and($manifest['profile'])->toBe('manila-districts-ballot-workbook')
+        ->and($manifest['candidate_count'])->toBe(200)
+        ->and($manifest['needs_review_count'])->toBe(0)
+        ->and($manifest['party_reference']['matched_candidates'])->toBeGreaterThan(100)
         ->and($manifest['candidates_path'])->toBeReadableFile()
         ->and($manifest['contests_path'])->toBeReadableFile()
         ->and($manifest['source_files_path'])->toBeReadableFile()
         ->and($manifest['needs_review_path'])->toBeReadableFile()
-        ->and(clcFindCandidate($candidates, 'CLC2025_Senator.pdf', 'ABALOS, BENHUR (PFP)'))->not->toBeNull()
-        ->and(clcFindCandidate($candidates, 'CLC2025_Partylist.pdf', '4PS'))->not->toBeNull()
-        ->and(clcFindCandidate($candidates, 'MANILA.pdf', 'DOMAGOSO, ISKO MORENO'))->not->toBeNull()
-        ->and(clcFindCandidate($candidates, 'CITY_OF_MAKATI.pdf', 'BINAY, NANCY (UNA)'))->not->toBeNull();
+        ->and(clcFindCandidate($candidates, 'Manila_Districts_1and2.xlsx', 'MARCOS, BONGBONG'))->not->toBeNull()
+        ->and(clcFindCandidate($candidates, 'Manila_Districts_1and2.xlsx', 'VALERIANO, ROLAN CRV'))->not->toBeNull()
+        ->and(clcFindCandidate($candidates, 'Manila_Districts_1and2.xlsx', 'KAMALAYAN'))->not->toBeNull();
 
-    $candidate = clcFindCandidate($candidates, 'CLC2025_Senator.pdf', 'ABALOS, BENHUR (PFP)');
+    $candidate = clcFindCandidate($candidates, 'Manila_Districts_1and2.xlsx', 'MARCOS, BONGBONG');
 
-    expect($candidate['candidate_image']['status'])->toBe('placeholder')
-        ->and($candidate['candidate_image']['alt_text'])->toBe('Candidate photo placeholder for ABALOS, BENHUR (PFP)');
+    expect($candidate['political_party'])->toBe('PFP')
+        ->and($candidate['candidate_image']['status'])->toBe('placeholder')
+        ->and($candidate['candidate_image']['alt_text'])->toBe('Candidate photo placeholder for MARCOS, BONGBONG');
 
     $firstHash = $manifest['registry_hash'];
     app(ClcCandidateImporter::class)->import();
@@ -43,10 +46,22 @@ test('clc candidate import writes deterministic registry artifacts from reposito
     expect($storage->readJson('registries/clc-2025-nle/manifest.json')['registry_hash'])->toBe($firstHash);
 });
 
+test('ballot pdf party reference resolves wrapped party labels from the manila facsimile', function (): void {
+    $reference = app(BallotPdfPartyReference::class);
+    $parties = $reference->parties(resource_path('election/ballots/MANILA-2ND_DISTRICT.pdf'));
+
+    expect($parties)->toHaveKey($reference->key('ABELLA, ERNIE'), 'IND')
+        ->and($parties)->toHaveKey($reference->key('GONZALES, NORBERTO'), 'PDSP')
+        ->and($parties)->toHaveKey($reference->key('MARCOS, BONGBONG'), 'PFP')
+        ->and($parties)->toHaveKey($reference->key('VALERIANO, ROLAN CRV'), 'NUP')
+        ->and($parties)->toHaveKey($reference->key('LACUNA, HONEY'), 'ASENSO')
+        ->and($parties)->toHaveKey($reference->key('SAHIDULLA, LADY ANNE'), 'PDDS');
+});
+
 test('clc candidate import reports missing ghostscript clearly', function (): void {
     config()->set('election.pdf.ghostscript_binary', 'missing-gs-binary-for-test');
 
-    $this->artisan('election:clc-import')
+    $this->artisan('election:clc-import', ['source' => resource_path('election/clc')])
         ->expectsOutputToContain('Unable to extract PDF text with Ghostscript')
         ->assertFailed();
 });

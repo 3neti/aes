@@ -43,9 +43,9 @@ return [
         'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_ENABLED', true),
         'default_name' => (string) env('ELECTION_PUBLIC_SIMULATION_NAME', 'Public Election Simulation'),
         'precincts' => [
-            ['code' => 'TONDO-01', 'clustered_precinct' => '39010001', 'district' => 'FIRST DIST', 'label' => 'Tondo Precinct 01'],
-            ['code' => 'TONDO-02', 'clustered_precinct' => '39010001', 'district' => 'FIRST DIST', 'label' => 'Tondo Precinct 02'],
-            ['code' => 'TONDO-03', 'clustered_precinct' => '39010001', 'district' => 'FIRST DIST', 'label' => 'Tondo Precinct 03'],
+            ['code' => 'TONDO-01', 'clustered_precinct' => '39010402', 'district' => 'SECOND DIST', 'label' => 'Tondo Precinct 01'],
+            ['code' => 'TONDO-02', 'clustered_precinct' => '39010402', 'district' => 'SECOND DIST', 'label' => 'Tondo Precinct 02'],
+            ['code' => 'TONDO-03', 'clustered_precinct' => '39010402', 'district' => 'SECOND DIST', 'label' => 'Tondo Precinct 03'],
         ],
         'god_mode' => [
             'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_GOD_MODE_ENABLED', false),
@@ -70,7 +70,8 @@ return [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', (bool) env('ELECTION_REVIEW_MODE', false) ? 14400 : 300),
         'print_release_ttl_seconds' => (int) env('ELECTION_PRINT_RELEASE_TTL', 600),
         'print_pin_digits' => (int) env('ELECTION_PRINT_PIN_DIGITS', 4),
-        'ballot_ui_profile' => (string) env('ELECTION_BALLOT_UI_PROFILE', 'paper_facsimile'),
+        'ballot_ui_profile' => (string) env('ELECTION_BALLOT_UI_PROFILE', 'comelec_2022_facsimile'),
+        'paper_facsimile_max_columns' => (int) env('ELECTION_BALLOT_PAPER_FACSIMILE_MAX_COLUMNS', 4),
         'selection_target' => (string) env('ELECTION_BALLOT_SELECTION_TARGET', 'circle'),
         'demo_random_fill_enabled' => (bool) env('ELECTION_BALLOT_DEMO_RANDOM_FILL', (bool) env('ELECTION_REVIEW_MODE', false)),
         'role_demo_random_fill_enabled' => (bool) env('ELECTION_ROLE_DEMO_RANDOM_FILL', true),
@@ -107,9 +108,11 @@ return [
     'pop' => [
         'source_path' => env('ELECTION_POP_SOURCE_PATH', resource_path('election/pop/2025NLE_POP.xlsx')),
         'profile' => env('ELECTION_POP_PROFILE', 'comelec-pop-2025-nle'),
-        'clustered_precinct' => env('ELECTION_POP_CLUSTERED_PRECINCT', '39010001'),
-        'district' => env('ELECTION_POP_DISTRICT', 'FIRST DIST'),
+        'clustered_precinct' => env('ELECTION_POP_CLUSTERED_PRECINCT', '39010402'),
+        'district' => env('ELECTION_POP_DISTRICT', 'SECOND DIST'),
         'contest_rules' => [
+            'PRESIDENT' => 1,
+            'VICE PRESIDENT' => 1,
             'SENATOR' => 12,
             'PARTY LIST' => 1,
             'MEMBER, HOUSE OF REPRESENTATIVES' => 1,
@@ -137,9 +140,22 @@ return [
         ],
     ],
     'clc' => [
-        'source_path' => env('ELECTION_CLC_SOURCE_PATH', resource_path('election/clc')),
-        'profile' => env('ELECTION_CLC_PROFILE', 'comelec-clc-2025-nle'),
+        'source_path' => env('ELECTION_CLC_SOURCE_PATH', resource_path('election/ballots/Manila_Districts_1and2.xlsx')),
+        'profile' => env('ELECTION_CLC_PROFILE', 'manila-districts-ballot-workbook'),
         'registry_version' => env('ELECTION_CLC_REGISTRY_VERSION', 'clc-2025-nle'),
+        'workbook_election_id' => env('ELECTION_CANDIDATE_WORKBOOK_ELECTION_ID', 'MAY-9-2022-NLE-MANILA-FACSIMILE-DEMO'),
+        'workbook_active_sheet' => env('ELECTION_CANDIDATE_WORKBOOK_ACTIVE_SHEET', 'Manila 2nd District'),
+        'workbook_party_reference_pdf' => env('ELECTION_CANDIDATE_WORKBOOK_PARTY_REFERENCE_PDF', resource_path('election/ballots/MANILA-2ND_DISTRICT.pdf')),
+        'workbook_sheets' => [
+            'Manila 1st District' => [
+                'geography' => 'NCR - MANILA',
+                'district' => 'FIRST DIST',
+            ],
+            'Manila 2nd District' => [
+                'geography' => 'NCR - MANILA',
+                'district' => 'SECOND DIST',
+            ],
+        ],
         'precinct_aliases' => [
             'BINONDO' => 'CITY OF MANILA',
             'ERMITA' => 'CITY OF MANILA',

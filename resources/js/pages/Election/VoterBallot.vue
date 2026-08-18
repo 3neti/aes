@@ -101,7 +101,9 @@ const reviewSummary = computed(() =>
 const resolvedBallotUiProfile = computed(() =>
     props.ballotUiProfile === 'touch_guided'
         ? 'touch_guided'
-        : 'paper_facsimile',
+        : props.ballotUiProfile === 'paper_facsimile'
+          ? 'paper_facsimile'
+          : 'comelec_2022_facsimile',
 );
 const resolvedSelectionTarget = computed<SelectionTarget>(() =>
     props.selectionTarget === 'circle_with_label' ||
@@ -110,7 +112,7 @@ const resolvedSelectionTarget = computed<SelectionTarget>(() =>
         : 'circle',
 );
 const ballotKicker = computed(() =>
-    resolvedBallotUiProfile.value === 'paper_facsimile'
+    resolvedBallotUiProfile.value !== 'touch_guided'
         ? 'Official ballot'
         : 'Touch guided ballot',
 );
@@ -477,6 +479,7 @@ onUnmounted(() => {
                     "
                     :review-summary="reviewSummary"
                     :max-columns="ballotMaxColumns ?? 4"
+                    :profile="resolvedBallotUiProfile"
                     :selection-target="resolvedSelectionTarget"
                     :selections="selections"
                     @jump-to-contest="jumpToContest"

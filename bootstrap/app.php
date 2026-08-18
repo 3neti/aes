@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ElectionScenarioCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'review-room-role' => RequireReviewRoomRole::class,
         ]);

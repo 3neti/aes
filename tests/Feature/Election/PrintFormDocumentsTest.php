@@ -12,9 +12,12 @@ use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
 use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\StandardQrCode;
 
 beforeEach(function (): void {
     config()->set('election.tabulation.profile', TabulationProfile::PaperFirst->value);
+    config()->set('election.devices.printer.driver', 'file');
+    config()->set('election.voter.ballot_ui_profile', 'touch_guided');
     app(ElectionStorage::class)->reset();
 });
 
@@ -104,6 +107,76 @@ test('printed ballot reserves space beside long contest titles for selection lim
         ->and(substr_count($pdf, '1 selected | maximum 1'))->toBe(1);
 });
 
+test('official facsimile ballot pdf renders the complete candidate face and qr verification copy', function (): void {
+    config()->set('election.voter.ballot_ui_profile', 'comelec_2022_facsimile');
+    $payload = [
+        'ballot_id' => 'facsimile-test-ballot',
+        'election_id' => 'MAY-9-2022-NLE-MANILA-FACSIMILE-DEMO',
+        'precinct_id' => '39010402',
+        'ballot_style_id' => 'BS-2025NLE-39010402',
+        'paper_ballot_serial' => '39010402-DEMO-000001',
+        'qr_artifact_path' => sampleQrPath(),
+        'qr_payload' => 'aes-ballot-compact-1:fixture',
+        'payload_hash' => str_repeat('a', 64),
+        'mapping_hash' => str_repeat('b', 64),
+        'selections' => [
+            'president' => ['president-1'],
+            'senator' => ['senator-1'],
+        ],
+    ];
+    $configuration = [
+        'contests' => [
+            [
+                'id' => 'president',
+                'office' => 'PRESIDENT',
+                'title' => 'PRESIDENT - PHILIPPINES',
+                'max_selections' => 1,
+                'candidates' => [
+                    ['id' => 'president-1', 'ballot_number' => 1, 'name' => 'ABELLA, ERNIE'],
+                    ['id' => 'president-2', 'ballot_number' => 2, 'name' => 'DE GUZMAN, LEODY'],
+                ],
+            ],
+            [
+                'id' => 'senator',
+                'office' => 'SENATOR',
+                'title' => 'SENATOR - PHILIPPINES',
+                'max_selections' => 12,
+                'candidates' => collect(range(1, 64))
+                    ->map(fn (int $number): array => [
+                        'id' => "senator-{$number}",
+                        'ballot_number' => $number,
+                        'name' => sprintf('SENATORIAL CANDIDATE %02d', $number),
+                    ])
+                    ->all(),
+            ],
+            [
+                'id' => 'party_list',
+                'office' => 'PARTY LIST',
+                'title' => 'PARTY LIST - PHILIPPINES',
+                'max_selections' => 1,
+                'candidates' => [
+                    ['id' => 'party-list-1', 'ballot_number' => 1, 'name' => 'KAMALAYAN'],
+                ],
+            ],
+        ],
+    ];
+
+    $pdf = app(OfficialBallotPdf::class)->render($payload, $configuration);
+
+    expect($pdf)
+        ->toContain('COMELEC-Style Simulation Ballot')
+        ->toContain('PRESIDENT / Vote for 1')
+        ->toContain('SENATOR / Vote for 12')
+        ->toContain('SENATORIAL CANDIDATE 64')
+        ->toContain('PARTY LIST / Vote for 1')
+        ->toContain('KAMALAYAN')
+        ->toContain('BALLOT QR VERIFICATION COPY')
+        ->toContain(' c f')
+        ->toContain(' c S')
+        ->not->toContain('(X) Tj')
+        ->and(pdfPageCount($pdf))->toBeGreaterThanOrEqual(3);
+});
+
 test('tally sheet hides zero vote candidates while election return keeps complete listings', function (): void {
     [$configuration, $tally] = largePrintFormFixture();
     $tallyPdf = app(TallySheetPdf::class)->render($configuration, $tally);
@@ -186,6 +259,18 @@ function pdfPageCount(string $pdf): int
     preg_match_all('/\/Type \/Page\b/', $pdf, $matches);
 
     return count($matches[0]);
+}
+
+function sampleQrPath(): string
+{
+    $path = storage_path('framework/testing/sample-ballot-qr.png');
+    if (! is_dir(dirname($path))) {
+        mkdir(dirname($path), 0777, true);
+    }
+
+    file_put_contents($path, app(StandardQrCode::class)->renderPng('aes-ballot-compact-1:fixture'));
+
+    return $path;
 }
 
 /**

@@ -7,8 +7,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('election:clc-import {source? : CLC PDF file or directory path}')]
-#[Description('Import COMELEC CLC candidate PDFs into deterministic local registry files.')]
+#[Signature('election:clc-import {source? : CLC PDF file, PDF directory, or candidate XLSX workbook path}')]
+#[Description('Import COMELEC CLC candidate PDFs or a candidate workbook into deterministic local registry files.')]
 final class ImportClcCandidatesCommand extends Command
 {
     public function handle(ClcCandidateImporter $importer): int
@@ -21,7 +21,7 @@ final class ImportClcCandidatesCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('CLC candidate PDFs imported.');
+        $this->info('Candidate source imported.');
         $this->line("Sources: {$manifest['source_count']}");
         $this->line("Candidates: {$manifest['candidate_count']}");
         $this->line("Needs review: {$manifest['needs_review_count']}");

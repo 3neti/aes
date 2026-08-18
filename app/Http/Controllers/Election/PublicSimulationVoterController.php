@@ -385,11 +385,11 @@ final class PublicSimulationVoterController extends Controller
 
     private function ballotUiProfile(): string
     {
-        $profile = config('election.voter.ballot_ui_profile', 'paper_facsimile');
+        $profile = config('election.voter.ballot_ui_profile', 'comelec_2022_facsimile');
 
-        return in_array($profile, ['touch_guided', 'paper_facsimile'], true)
+        return in_array($profile, ['touch_guided', 'paper_facsimile', 'comelec_2022_facsimile'], true)
             ? $profile
-            : 'paper_facsimile';
+            : 'comelec_2022_facsimile';
     }
 
     private function selectionTarget(): string

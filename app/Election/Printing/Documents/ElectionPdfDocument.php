@@ -167,6 +167,60 @@ final class ElectionPdfDocument
         );
     }
 
+    public function circle(
+        int $page,
+        float $centerX,
+        float $centerY,
+        float $radius,
+        float $gray = 0.08,
+        bool $fill = false,
+        float $strokeWidth = 0.45,
+    ): void {
+        $curve = $radius * 0.5522847498;
+        $operator = $fill ? 'f' : 'S';
+        $color = $fill ? 'rg' : 'RG';
+        $lineWidth = $fill ? '' : sprintf(' %.2F w', $strokeWidth);
+
+        $this->command(
+            $page,
+            sprintf(
+                '%.2F %.2F %.2F %s%s %.2F %.2F m %.2F %.2F %.2F %.2F %.2F %.2F c %.2F %.2F %.2F %.2F %.2F %.2F c %.2F %.2F %.2F %.2F %.2F %.2F c %.2F %.2F %.2F %.2F %.2F %.2F c %s',
+                $gray,
+                $gray,
+                $gray,
+                $color,
+                $lineWidth,
+                $centerX,
+                $centerY + $radius,
+                $centerX + $curve,
+                $centerY + $radius,
+                $centerX + $radius,
+                $centerY + $curve,
+                $centerX + $radius,
+                $centerY,
+                $centerX + $radius,
+                $centerY - $curve,
+                $centerX + $curve,
+                $centerY - $radius,
+                $centerX,
+                $centerY - $radius,
+                $centerX - $curve,
+                $centerY - $radius,
+                $centerX - $radius,
+                $centerY - $curve,
+                $centerX - $radius,
+                $centerY,
+                $centerX - $radius,
+                $centerY + $curve,
+                $centerX - $curve,
+                $centerY + $radius,
+                $centerX,
+                $centerY + $radius,
+                $operator,
+            ),
+        );
+    }
+
     public function tallyMarkHeight(int $count, float $width): float
     {
         $groupCount = $this->tallyMarkGroupCount($count);

@@ -14,6 +14,8 @@ beforeEach(function (): void {
     config()->set('election.public_simulation.participation_required', false);
     config()->set('election.public_simulation.demo_control_number_share.enabled', true);
     config()->set('election.voter.demo_random_fill_enabled', true);
+    config()->set('election.voter.ballot_ui_profile', 'comelec_2022_facsimile');
+    config()->set('election.voter.paper_facsimile_max_columns', 4);
     config()->set('election.devices.printer.driver', 'file');
     app(ElectionStorage::class)->reset();
     $this->withoutVite();
@@ -68,10 +70,12 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
             ->where('finalizeAction', route('election.role-demo.voter.finalize'))
-            ->where('ballotMaxColumns', 2)
+            ->where('ballotUiProfile', 'comelec_2022_facsimile')
+            ->where('ballotMaxColumns', 4)
             ->where('demoRandomFillEnabled', true)
-            ->has('ballot.contests', 6)
-            ->has('ballot.contests.0.candidates', 64)
+            ->has('ballot.contests', 8)
+            ->where('ballot.contests.0.office', 'PRESIDENT')
+            ->has('ballot.contests.0.candidates', 10)
         );
 
     app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
@@ -181,15 +185,17 @@ test('role demo voter can generate a self service control number before claiming
             ->component('Election/VoterBallot')
             ->where('finalizeAction', route('election.role-demo.voter.finalize'))
             ->where('demoRandomFillEnabled', true)
-            ->has('ballot.contests', 6)
-            ->has('ballot.contests.0.candidates', 64)
+            ->where('ballotUiProfile', 'comelec_2022_facsimile')
+            ->has('ballot.contests', 8)
+            ->where('ballot.contests.0.office', 'PRESIDENT')
+            ->has('ballot.contests.0.candidates', 10)
         );
 });
 
 test('role demo heals an open precinct with a missing ballot package before rendering voter ballot', function (): void {
     $this->get(route('election.role-demo.index'))->assertSuccessful();
     app(ElectionStorage::class)->writeJson('runtime/active-precinct.json', [
-        'precinct_id' => '39010001',
+        'precinct_id' => '39010402',
         'contests' => [],
     ]);
 
@@ -205,8 +211,9 @@ test('role demo heals an open precinct with a missing ballot package before rend
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
-            ->has('ballot.contests', 6)
-            ->has('ballot.contests.0.candidates', 64)
+            ->has('ballot.contests', 8)
+            ->where('ballot.contests.0.office', 'PRESIDENT')
+            ->has('ballot.contests.0.candidates', 10)
         );
 });
 

@@ -255,8 +255,8 @@ final class RoleDemoController extends Controller
             ],
             'finalizeAction' => route('election.role-demo.voter.finalize'),
             'publicSimulation' => true,
-            'ballotUiProfile' => 'paper_facsimile',
-            'ballotMaxColumns' => 2,
+            'ballotUiProfile' => $this->ballotUiProfile(),
+            'ballotMaxColumns' => $this->ballotMaxColumns(),
             'selectionTarget' => $this->selectionTarget(),
             'demoRandomFillEnabled' => (bool) config('election.voter.role_demo_random_fill_enabled', true),
             'analytics' => [
@@ -291,7 +291,7 @@ final class RoleDemoController extends Controller
             'release_id' => $release['release_id'],
             'precinct_id' => $release['precinct_id'] ?? null,
             'public_simulation_precinct_code' => $precinct->code,
-            'ballot_ui_profile' => 'role_demo_two_column',
+            'ballot_ui_profile' => $this->ballotUiProfile(),
             'selection_target' => $this->selectionTarget(),
         ]);
 
@@ -512,6 +512,20 @@ final class RoleDemoController extends Controller
         return in_array($target, ['circle', 'circle_with_label', 'row'], true)
             ? $target
             : 'circle';
+    }
+
+    private function ballotUiProfile(): string
+    {
+        $profile = config('election.voter.ballot_ui_profile', 'comelec_2022_facsimile');
+
+        return in_array($profile, ['touch_guided', 'paper_facsimile', 'comelec_2022_facsimile'], true)
+            ? (string) $profile
+            : 'comelec_2022_facsimile';
+    }
+
+    private function ballotMaxColumns(): int
+    {
+        return min(4, max(1, (int) config('election.voter.paper_facsimile_max_columns', 4)));
     }
 
     private function initialControlNumber(Request $request): ?string

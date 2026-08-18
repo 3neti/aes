@@ -20,6 +20,7 @@ final class ClcCandidateImporter
         private readonly CanonicalJson $json,
         private readonly ElectionClock $clock,
         private readonly ActivityJournal $journal,
+        private readonly XlsxCandidateWorkbookImporter $workbookImporter,
     ) {}
 
     /**
@@ -52,6 +53,29 @@ final class ClcCandidateImporter
             $seenCandidates = [];
             $candidateCount = 0;
             $needsReviewCount = 0;
+            $partyReference = null;
+
+            if ($this->workbookImporter->supports($source)) {
+                $copiedPath = $this->storage->path('imports/clc/'.basename($source));
+                $this->files->copy($source, $copiedPath);
+                $workbook = $this->workbookImporter->extract($source);
+                $sourceRecords = collect($workbook['source_records'])
+                    ->map(function (array $record) use ($copiedPath): array {
+                        $record['copied_path'] = $copiedPath;
+
+                        return $record;
+                    })
+                    ->all();
+                $contests = $workbook['contests'];
+                $partyReference = $workbook['party_reference'];
+
+                foreach ($workbook['candidates'] as $record) {
+                    $line = json_encode($record, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).PHP_EOL;
+                    fwrite($candidateHandle, $line);
+                    hash_update($candidateHash, $line);
+                    $candidateCount++;
+                }
+            }
 
             foreach ($pdfs as $pdf) {
                 $copiedPath = $this->storage->path('imports/clc/'.basename($pdf));
@@ -126,7 +150,7 @@ final class ClcCandidateImporter
                 'profile' => $profile,
                 'registry_version' => $registryVersion,
                 'source_path' => $source,
-                'source_count' => count($pdfs),
+                'source_count' => count($sourceRecords),
                 'candidate_count' => $candidateCount,
                 'contest_count' => count($contests),
                 'needs_review_count' => $needsReviewCount,
@@ -136,6 +160,7 @@ final class ClcCandidateImporter
                 'contest_index_path' => "{$registryRoot}/contest-index.json",
                 'source_files_path' => "{$registryRoot}/source-files.json",
                 'needs_review_path' => $needsReviewPath,
+                'party_reference' => $partyReference,
             ];
             $manifest['manifest_hash'] = $this->json->hash($manifest);
             $manifest['artifact_path'] = $this->storage->writeJson("registries/{$registryVersion}/manifest.json", $manifest);
@@ -168,6 +193,10 @@ final class ClcCandidateImporter
      */
     private function pdfs(string $source): array
     {
+        if ($this->workbookImporter->supports($source)) {
+            return [];
+        }
+
         if ($this->files->isFile($source)) {
             return [realpath($source) ?: $source];
         }

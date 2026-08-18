@@ -10,6 +10,7 @@ beforeEach(function (): void {
     config()->set('election.public_simulation.enabled', true);
     config()->set('election.public_simulation.participation_required', false);
     config()->set('election.voter.demo_random_fill_enabled', true);
+    config()->set('election.voter.ballot_ui_profile', 'comelec_2022_facsimile');
     app(ElectionStorage::class)->reset();
 });
 
@@ -25,7 +26,7 @@ test('role demo voter reaches a populated ballot and can fill remaining choices'
         ->assertSee('Enter your Voter Control Number')
         ->click('Begin voting')
         ->assertSee('Select your candidates')
-        ->assertSee('ABALOS')
+        ->assertSee('ABELLA')
         ->assertSee('Fill remaining choices')
         ->click('@fill-remaining-choices')
         ->assertSee('Review:')

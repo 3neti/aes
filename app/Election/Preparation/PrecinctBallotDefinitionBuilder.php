@@ -61,8 +61,8 @@ final class PrecinctBallotDefinitionBuilder
             })
             ->all();
 
-        if (count($contests) !== 6) {
-            throw new RuntimeException("Expected 6 contests for precinct [{$clusteredPrecinct}], found ".count($contests).'.');
+        if (count($contests) !== 8) {
+            throw new RuntimeException("Expected 8 contests for precinct [{$clusteredPrecinct}], found ".count($contests).'.');
         }
 
         $candidates = collect($contests)
@@ -161,6 +161,8 @@ final class PrecinctBallotDefinitionBuilder
     private function isSupportedContest(string $office): bool
     {
         return in_array($office, [
+            'PRESIDENT',
+            'VICE PRESIDENT',
             'SENATOR',
             'PARTY LIST',
             'MEMBER, HOUSE OF REPRESENTATIVES',
@@ -173,12 +175,14 @@ final class PrecinctBallotDefinitionBuilder
     private function contestOrder(string $office): int
     {
         return match ($office) {
-            'SENATOR' => 10,
-            'PARTY LIST' => 20,
-            'MEMBER, HOUSE OF REPRESENTATIVES' => 30,
-            'MAYOR' => 40,
-            'VICE-MAYOR' => 50,
-            'COUNCILOR' => 60,
+            'PRESIDENT' => 10,
+            'VICE PRESIDENT' => 20,
+            'SENATOR' => 30,
+            'MEMBER, HOUSE OF REPRESENTATIVES' => 40,
+            'MAYOR' => 50,
+            'VICE-MAYOR' => 60,
+            'COUNCILOR' => 70,
+            'PARTY LIST' => 80,
             default => 99,
         };
     }
