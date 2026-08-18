@@ -319,6 +319,7 @@ async function useGeneratedControlNumber(): Promise<void> {
                 <div class="mt-5 grid gap-3 sm:grid-cols-2">
                     <button
                         class="min-h-12 bg-blue-800 px-4 font-bold text-white"
+                        data-testid="use-generated-control-number"
                         type="button"
                         @click="useGeneratedControlNumber"
                     >

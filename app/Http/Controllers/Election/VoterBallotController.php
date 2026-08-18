@@ -41,6 +41,7 @@ final class VoterBallotController extends Controller
             ],
             'ballotUiProfile' => $this->ballotUiProfile(),
             'selectionTarget' => $this->selectionTarget(),
+            'demoRandomFillEnabled' => (bool) config('election.voter.demo_random_fill_enabled', false),
             'analytics' => $this->analyticsProps($analytics),
         ]);
     }

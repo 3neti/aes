@@ -258,6 +258,7 @@ final class RoleDemoController extends Controller
             'ballotUiProfile' => 'paper_facsimile',
             'ballotMaxColumns' => 2,
             'selectionTarget' => $this->selectionTarget(),
+            'demoRandomFillEnabled' => (bool) config('election.voter.role_demo_random_fill_enabled', true),
             'analytics' => [
                 'enabled' => $analytics->enabled(),
                 'display_mode' => $analytics->displayMode(),

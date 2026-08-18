@@ -72,6 +72,8 @@ return [
         'print_pin_digits' => (int) env('ELECTION_PRINT_PIN_DIGITS', 4),
         'ballot_ui_profile' => (string) env('ELECTION_BALLOT_UI_PROFILE', 'paper_facsimile'),
         'selection_target' => (string) env('ELECTION_BALLOT_SELECTION_TARGET', 'circle'),
+        'demo_random_fill_enabled' => (bool) env('ELECTION_BALLOT_DEMO_RANDOM_FILL', (bool) env('ELECTION_REVIEW_MODE', false)),
+        'role_demo_random_fill_enabled' => (bool) env('ELECTION_ROLE_DEMO_RANDOM_FILL', true),
         'analytics' => [
             'enabled' => (bool) env('ELECTION_BALLOT_ANALYTICS_ENABLED', (bool) env('ELECTION_REVIEW_MODE', false)),
             'display_mode' => (string) env('ELECTION_BALLOT_ANALYTICS_DISPLAY_MODE', (bool) env('ELECTION_REVIEW_MODE', false) ? 'review' : 'hidden'),

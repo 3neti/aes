@@ -1,6 +1,7 @@
 <?php
 
 use App\Election\Core\ActivityJournal;
+use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\Support\ElectionStorage;
 use App\Models\SimulationPrecinct;
@@ -12,6 +13,7 @@ beforeEach(function (): void {
     config()->set('election.public_simulation.enabled', true);
     config()->set('election.public_simulation.participation_required', false);
     config()->set('election.public_simulation.demo_control_number_share.enabled', true);
+    config()->set('election.voter.demo_random_fill_enabled', true);
     config()->set('election.devices.printer.driver', 'file');
     app(ElectionStorage::class)->reset();
     $this->withoutVite();
@@ -67,6 +69,7 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->component('Election/VoterBallot')
             ->where('finalizeAction', route('election.role-demo.voter.finalize'))
             ->where('ballotMaxColumns', 2)
+            ->where('demoRandomFillEnabled', true)
             ->has('ballot.contests', 6)
             ->has('ballot.contests.0.candidates', 64)
         );
@@ -165,6 +168,7 @@ test('role demo voter can generate a self service control number before claiming
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
             ->where('finalizeAction', route('election.role-demo.voter.finalize'))
+            ->where('demoRandomFillEnabled', true)
             ->has('ballot.contests', 6)
             ->has('ballot.contests.0.candidates', 64)
         );
@@ -212,14 +216,19 @@ test('role demo self service control number recycles the oldest unused issued nu
         ->and($replacement)->toMatch('/^[0-9]{4}$/');
 
     $this->post(route('election.role-demo.voter.claim'), [
-        'code' => $first,
-    ])->assertSessionHasErrors('code');
-
-    $this->post(route('election.role-demo.voter.claim'), [
         'code' => $replacement,
     ])->assertRedirectToRoute('election.role-demo.voter.ballot');
 
-    expect(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+    $authorizationStatuses = collect(app(ElectionStorage::class)->files('voter-authorizations'))
+        ->map(fn (string $path): array => app(ElectionStorage::class)->readJson('voter-authorizations/'.basename($path)))
+        ->countBy('status');
+
+    expect($first)->not->toBe($second)
+        ->and($replacement)->not->toBe($first)
+        ->and($replacement)->not->toBe($second)
+        ->and($authorizationStatuses['expired'] ?? 0)->toBe(1)
+        ->and(app(PublicSimulationAdmissionCapacity::class)->summary()['active_admissions'])->toBe(2)
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
         ->toContain('role_demo.self_service_control_number_recycled');
 });
 

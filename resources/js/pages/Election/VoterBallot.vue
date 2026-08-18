@@ -31,6 +31,7 @@ const props = defineProps<{
     ballotUiProfile?: string;
     ballotMaxColumns?: number;
     selectionTarget?: string;
+    demoRandomFillEnabled?: boolean;
     analytics?: {
         enabled: boolean;
         display_mode: 'hidden' | 'review' | 'presentation';
@@ -48,6 +49,8 @@ const lastSelectionAtMs = ref<number | null>(null);
 const reviewOpenedAtMs = ref<number | null>(null);
 const finalizedAtMs = ref<number | null>(null);
 const selectionEditCount = ref(0);
+const randomFillClickCount = ref(0);
+const randomFillCompletedContests = ref(0);
 const contestNavigationClicks = ref(0);
 const surnameNavigationClicks = ref(0);
 const reviewCount = ref(0);
@@ -72,6 +75,12 @@ watch(
 const selectionCount = computed(() =>
     Object.values(selections.value).reduce(
         (total, selected) => total + selected.length,
+        0,
+    ),
+);
+const maximumSelectionCount = computed(() =>
+    props.ballot.contests.reduce(
+        (total, contest) => total + contest.max_selections,
         0,
     ),
 );
@@ -113,6 +122,15 @@ const analyticsVisible = computed(
             props.analytics?.display_mode ?? 'hidden',
         ),
 );
+const ballotCandidateCount = computed(() =>
+    props.ballot.contests.reduce(
+        (total, contest) => total + contest.candidates.length,
+        0,
+    ),
+);
+const hasBallotChoices = computed(
+    () => props.ballot.contests.length > 0 && ballotCandidateCount.value > 0,
+);
 const elapsedSeconds = computed(() =>
     Math.max(0, Math.floor((nowMs.value - analyticsStartedAtMs.value) / 1000)),
 );
@@ -138,6 +156,9 @@ const analyticsPayload = computed(() => ({
     total_duration_seconds: elapsedSeconds.value,
     time_to_first_selection_seconds: timeToFirstSelectionSeconds.value,
     selection_edit_count: selectionEditCount.value,
+    random_fill_used: randomFillClickCount.value > 0,
+    random_fill_clicks: randomFillClickCount.value,
+    random_fill_completed_contests: randomFillCompletedContests.value,
     contest_navigation_clicks: contestNavigationClicks.value,
     surname_navigation_clicks: surnameNavigationClicks.value,
     review_count: reviewCount.value,
@@ -169,6 +190,48 @@ function toggle(contest: Contest, candidate: Candidate): void {
 
 function clearDraft(): void {
     sessionStorage.removeItem('aes-voter-draft');
+}
+
+function clearSelections(): void {
+    selections.value = {};
+    sessionStorage.removeItem('aes-voter-draft');
+}
+
+function fillRemainingChoices(): void {
+    randomFillClickCount.value += 1;
+    randomFillCompletedContests.value = 0;
+
+    props.ballot.contests.forEach((contest) => {
+        const current = selections.value[contest.id] ?? [];
+        const remainingSlots = Math.max(
+            0,
+            contest.max_selections - current.length,
+        );
+
+        if (remainingSlots === 0) {
+            randomFillCompletedContests.value += 1;
+
+            return;
+        }
+
+        const selectedCandidates = new Set(current);
+        const additions = shuffle(
+            contest.candidates.filter(
+                (candidate) => !selectedCandidates.has(candidate.id),
+            ),
+        )
+            .slice(0, remainingSlots)
+            .map((candidate) => candidate.id);
+
+        if (additions.length === 0) {
+            return;
+        }
+
+        selections.value[contest.id] = [...current, ...additions];
+        randomFillCompletedContests.value += 1;
+    });
+
+    recordSelectionEdit();
 }
 
 function scrollToElement(elementId: string): void {
@@ -237,6 +300,19 @@ function formatDuration(totalSeconds: number): string {
     const seconds = (totalSeconds % 60).toString().padStart(2, '0');
 
     return `${minutes}:${seconds}`;
+}
+
+function shuffle<T>(items: T[]): T[] {
+    return items
+        .map((item) => ({
+            item,
+            order:
+                'crypto' in window && 'getRandomValues' in window.crypto
+                    ? window.crypto.getRandomValues(new Uint32Array(1))[0]
+                    : Math.random(),
+        }))
+        .sort((left, right) => left.order - right.order)
+        .map(({ item }) => item);
 }
 
 function createSessionId(): string {
@@ -320,8 +396,64 @@ onUnmounted(() => {
                 />
             </template>
             <template v-if="step === 'ballot'">
+                <section
+                    v-if="!hasBallotChoices"
+                    class="border-2 border-amber-400 bg-amber-50 p-5 text-amber-950"
+                >
+                    <p class="text-sm font-black tracking-wide uppercase">
+                        Ballot package needs refresh
+                    </p>
+                    <h2 class="mt-2 text-xl font-black">
+                        No candidate choices are available on this tablet.
+                    </h2>
+                    <p class="mt-2 text-sm font-semibold">
+                        Return to the precinct lobby or ask the Election
+                        Officer to reset the demo room before continuing. The
+                        app will not let a blank ballot proceed silently.
+                    </p>
+                </section>
+
+                <section
+                    v-if="demoRandomFillEnabled && hasBallotChoices"
+                    class="flex flex-wrap items-center justify-between gap-3 border border-blue-200 bg-blue-50 p-4"
+                    aria-label="Demo ballot helper"
+                >
+                    <div>
+                        <p class="text-sm font-black text-blue-950">
+                            Demo helper only
+                        </p>
+                        <p class="mt-1 text-sm font-semibold text-blue-900">
+                            Existing selections are preserved. Use this to fill
+                            the remaining choices quickly during walkthroughs.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            class="min-h-11 bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
+                            data-testid="fill-remaining-choices"
+                            type="button"
+                            :disabled="selectionCount >= maximumSelectionCount"
+                            @click="fillRemainingChoices"
+                        >
+                            Fill remaining choices
+                        </button>
+                        <button
+                            class="min-h-11 border border-blue-300 bg-white px-4 font-bold text-blue-900 disabled:opacity-50"
+                            data-testid="clear-ballot"
+                            type="button"
+                            :disabled="selectionCount === 0"
+                            @click="clearSelections"
+                        >
+                            Clear ballot
+                        </button>
+                    </div>
+                </section>
+
                 <TouchGuidedBallot
-                    v-if="resolvedBallotUiProfile === 'touch_guided'"
+                    v-if="
+                        hasBallotChoices &&
+                        resolvedBallotUiProfile === 'touch_guided'
+                    "
                     :active-letters="activeLetters"
                     :contest-navigation="contestNavigation"
                     :contests="ballot.contests"
@@ -336,7 +468,7 @@ onUnmounted(() => {
                     @toggle="toggle"
                 />
                 <PaperFacsimileBallot
-                    v-else
+                    v-else-if="hasBallotChoices"
                     :active-letters="activeLetters"
                     :contest-navigation="contestNavigation"
                     :contests="ballot.contests"
