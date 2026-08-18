@@ -1,5 +1,6 @@
 <?php
 
+use App\Election\Core\ActivityJournal;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\Support\ElectionStorage;
 use App\Models\SimulationPrecinct;
@@ -52,6 +53,7 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->component('Election/VoterWelcome')
             ->where('initialControlNumber', $authorization['code'])
             ->where('claimAction', route('election.role-demo.voter.claim'))
+            ->where('demoControlNumberAction', route('election.role-demo.voter.control-number'))
         );
 
     $this->post(route('election.role-demo.voter.claim'), [
@@ -128,6 +130,39 @@ test('role demo runs officer voter print and watcher points of view without clos
     expect($precinct->fresh()->status)->toBe('open')
         ->and(app(ElectionStorage::class)->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
         ->and(app(ElectionStorage::class)->path("returns/{$configuration['precinct_id']}-return.pdf"))->toBeReadableFile();
+});
+
+test('role demo voter can generate a self service control number before claiming the ballot', function (): void {
+    $this->get(route('election.role-demo.voter'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterWelcome')
+            ->where('claimAction', route('election.role-demo.voter.claim'))
+            ->where('demoControlNumberAction', route('election.role-demo.voter.control-number'))
+            ->where('publicSimulation', true)
+        );
+
+    $response = $this->postJson(route('election.role-demo.voter.control-number'));
+
+    $response
+        ->assertSuccessful()
+        ->assertJsonStructure(['code', 'expires_at']);
+
+    $code = $response->json('code');
+    expect($code)->toMatch('/^[0-9]{4}$/')
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+        ->toContain('role_demo.self_service_control_number_issued');
+
+    $this->post(route('election.role-demo.voter.claim'), [
+        'code' => $code,
+    ])->assertRedirectToRoute('election.role-demo.voter.ballot');
+
+    $this->get(route('election.role-demo.voter.ballot'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterBallot')
+            ->where('finalizeAction', route('election.role-demo.voter.finalize'))
+        );
 });
 
 test('role demo reset replaces the live precinct with a freshly opened one', function (): void {

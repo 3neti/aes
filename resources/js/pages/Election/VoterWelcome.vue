@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { Form, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Form, router, usePage } from '@inertiajs/vue3';
+import { computed, nextTick, ref } from 'vue';
 import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
 import type { ElectionReviewRoomContext } from '@/components/election/types';
 import { claim } from '@/routes/election/voter';
 
-defineProps<{
+const props = defineProps<{
     precinct: {
         election_id: string;
         precinct_id: string;
     };
     claimAction?: string;
+    demoControlNumberAction?: string;
     joinQueueAction?: string;
     admissionQueue?: {
         enabled: boolean;
@@ -27,6 +28,111 @@ const page = usePage();
 const reviewRoom = computed(
     () => page.props.electionReviewRoom as ElectionReviewRoomContext,
 );
+const fallbackClaimForm = claim.form();
+const claimUrl = computed(() => props.claimAction ?? fallbackClaimForm.action);
+const errors = computed(() => page.props.errors as Record<string, string>);
+const controlNumber = ref(props.initialControlNumber ?? '');
+const controlInput = ref<HTMLInputElement | null>(null);
+const submitting = ref(false);
+const generating = ref(false);
+const generationError = ref<string | null>(null);
+const generatedControlNumber = ref<{
+    code: string;
+    expires_at: string;
+} | null>(null);
+const showGeneratedControlNumber = ref(false);
+
+const shouldGenerateDemoControlNumber = computed(() => {
+    const value = controlNumber.value.trim();
+
+    return (
+        Boolean(props.demoControlNumberAction) &&
+        (value === '' || !/^[0-9]{4}$/.test(value) || /^0+$/.test(value))
+    );
+});
+
+function csrfToken(): string | null {
+    return document
+        .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+        ?.getAttribute('content') ?? null;
+}
+
+async function generateDemoControlNumber(): Promise<void> {
+    if (!props.demoControlNumberAction || generating.value) {
+        return;
+    }
+
+    generating.value = true;
+    generationError.value = null;
+
+    try {
+        const token = csrfToken();
+        const response = await fetch(props.demoControlNumberAction, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+            },
+            body: JSON.stringify({}),
+        });
+        const payload = await response.json();
+
+        if (!response.ok) {
+            const message =
+                payload?.errors?.control_number?.[0] ??
+                payload?.message ??
+                'Unable to generate a voter control number.';
+
+            throw new Error(message);
+        }
+
+        generatedControlNumber.value = {
+            code: payload.code,
+            expires_at: payload.expires_at,
+        };
+        showGeneratedControlNumber.value = true;
+    } catch (error) {
+        generationError.value =
+            error instanceof Error
+                ? error.message
+                : 'Unable to generate a voter control number.';
+    } finally {
+        generating.value = false;
+    }
+}
+
+function submitControlNumber(): void {
+    if (shouldGenerateDemoControlNumber.value) {
+        void generateDemoControlNumber();
+
+        return;
+    }
+
+    submitting.value = true;
+    router.post(
+        claimUrl.value,
+        { code: controlNumber.value.trim() },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                submitting.value = false;
+            },
+        },
+    );
+}
+
+async function useGeneratedControlNumber(): Promise<void> {
+    if (!generatedControlNumber.value) {
+        return;
+    }
+
+    controlNumber.value = generatedControlNumber.value.code;
+    showGeneratedControlNumber.value = false;
+    await nextTick();
+    controlInput.value?.focus();
+}
 </script>
 
 <template>
@@ -129,36 +235,33 @@ const reviewRoom = computed(
                 </template>
             </section>
 
-            <Form
-                v-bind="
-                    claimAction
-                        ? { action: claimAction, method: 'post' }
-                        : claim.form()
-                "
-                #default="{ errors, processing }"
-                class="mt-7 space-y-4"
-                reset-on-success
-            >
+            <form class="mt-7 space-y-4" @submit.prevent="submitControlNumber">
                 <label class="block">
                     <span class="text-sm font-bold text-stone-700"
                         >Voter Control Number</span
                     >
                     <input
+                        ref="controlInput"
+                        v-model="controlNumber"
                         class="mt-1 min-h-14 w-full border-2 border-stone-400 px-4 text-center font-mono text-3xl font-bold"
                         name="code"
                         type="text"
-                        required
                         autocomplete="off"
                         autofocus
                         inputmode="numeric"
                         maxlength="4"
                         pattern="[0-9]{4}"
                         placeholder="0000"
-                        :value="initialControlNumber ?? ''"
                     />
                 </label>
                 <p v-if="errors.code" class="font-bold text-red-700">
                     {{ errors.code }}
+                </p>
+                <p
+                    v-if="generationError"
+                    class="border border-red-200 bg-red-50 p-3 font-bold text-red-700"
+                >
+                    {{ generationError }}
                 </p>
                 <button
                     class="min-h-14 w-full bg-blue-800 px-5 py-3 text-lg font-bold text-white disabled:opacity-50"
@@ -166,21 +269,71 @@ const reviewRoom = computed(
                         'review-next-action-button': reviewRoom.enabled,
                     }"
                     type="submit"
-                    :disabled="processing"
+                    :disabled="submitting || generating"
                 >
                     {{
-                        processing
-                            ? 'Checking control number...'
-                            : 'Begin voting'
+                        generating
+                            ? 'Generating voter control number...'
+                            : submitting
+                              ? 'Checking control number...'
+                              : 'Begin voting'
                     }}
                 </button>
-            </Form>
+            </form>
 
             <p
                 class="mt-6 border-t border-stone-200 pt-4 text-sm text-stone-600"
             >
                 Precinct {{ precinct.precinct_id }} | {{ precinct.election_id }}
             </p>
+        </section>
+
+        <section
+            v-if="showGeneratedControlNumber && generatedControlNumber"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/60 p-5"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="generated-control-number-title"
+        >
+            <div class="w-full max-w-md bg-white p-6 shadow-xl">
+                <p class="text-sm font-bold text-blue-800">Voter demo helper</p>
+                <h2
+                    id="generated-control-number-title"
+                    class="mt-2 text-2xl font-bold text-stone-950"
+                >
+                    Use this voter control number
+                </h2>
+                <p class="mt-3 text-stone-700">
+                    This number was created for this demo tablet. In the actual
+                    precinct flow, the Election Officer still issues the number
+                    after physical voter verification.
+                </p>
+                <p
+                    class="mt-5 border-2 border-blue-800 bg-blue-50 px-4 py-5 text-center font-mono text-5xl font-bold tracking-widest text-blue-950"
+                >
+                    {{ generatedControlNumber.code }}
+                </p>
+                <p class="mt-3 text-sm text-stone-600">
+                    Expires {{ generatedControlNumber.expires_at }}.
+                </p>
+                <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                    <button
+                        class="min-h-12 bg-blue-800 px-4 font-bold text-white"
+                        type="button"
+                        @click="useGeneratedControlNumber"
+                    >
+                        Use this voter control number
+                    </button>
+                    <button
+                        class="min-h-12 border border-stone-300 px-4 font-bold text-stone-800"
+                        type="button"
+                        :disabled="generating"
+                        @click="generateDemoControlNumber"
+                    >
+                        Generate another number
+                    </button>
+                </div>
+            </div>
         </section>
     </main>
 </template>

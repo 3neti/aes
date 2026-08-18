@@ -39,6 +39,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/officer/accept-print', [RoleDemoController::class, 'acceptPrint'])->middleware('throttle:20,1')->name('print.accept');
         Route::get('/officer/last-printed-ballot', [RoleDemoController::class, 'lastPrintedBallot'])->name('print.last-ballot');
         Route::get('/voter', [RoleDemoController::class, 'voter'])->name('voter');
+        Route::post('/voter/control-number', [RoleDemoController::class, 'controlNumber'])->middleware('throttle:20,1')->name('voter.control-number');
         Route::post('/voter/claim', [RoleDemoController::class, 'claim'])->middleware('throttle:20,1')->name('voter.claim');
         Route::get('/voter/ballot', [RoleDemoController::class, 'ballot'])->name('voter.ballot');
         Route::post('/voter/ballot', [RoleDemoController::class, 'finalize'])->name('voter.finalize');

@@ -25,6 +25,7 @@ use App\Http\Requests\ClaimVoterAuthorizationRequest;
 use App\Http\Requests\FinalizePrivateBallotRequest;
 use App\Http\Requests\RedeemPrintReleaseRequest;
 use App\Models\SimulationPrecinct;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -174,8 +175,32 @@ final class RoleDemoController extends Controller
                 'precinct_id' => $configuration['precinct_id'] ?? null,
             ],
             'claimAction' => route('election.role-demo.voter.claim'),
+            'demoControlNumberAction' => route('election.role-demo.voter.control-number'),
             'publicSimulation' => true,
             'initialControlNumber' => $this->initialControlNumber($request),
+        ]);
+    }
+
+    public function controlNumber(PublicSimulationService $simulations, PublicSimulationAdmissionCapacity $capacity, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting, ActivityJournal $journal): JsonResponse
+    {
+        $precinct = $this->precinct($simulations);
+
+        try {
+            $authorization = $voting->execute(fn (): array => $capacity->issue($authorizations));
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['control_number' => $exception->getMessage()]);
+        }
+
+        $journal->record('role_demo.self_service_control_number_issued', [
+            'authorization_id' => $authorization['authorization_id'],
+            'precinct_code' => $precinct->code,
+            'expires_at' => $authorization['expires_at'],
+            'mode' => 'self-service-voter-demo',
+        ]);
+
+        return response()->json([
+            'code' => $authorization['code'],
+            'expires_at' => $authorization['expires_at'],
         ]);
     }
 
