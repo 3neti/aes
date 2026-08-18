@@ -13,6 +13,7 @@ beforeEach(function (): void {
     config()->set('election.public_simulation.participation_required', false);
     config()->set('election.public_simulation.demo_control_number_share.enabled', true);
     config()->set('election.devices.printer.driver', 'file');
+    app(ElectionStorage::class)->reset();
     $this->withoutVite();
 });
 
@@ -66,6 +67,8 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->component('Election/VoterBallot')
             ->where('finalizeAction', route('election.role-demo.voter.finalize'))
             ->where('ballotMaxColumns', 2)
+            ->has('ballot.contests', 6)
+            ->has('ballot.contests.0.candidates', 64)
         );
 
     app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
@@ -162,6 +165,32 @@ test('role demo voter can generate a self service control number before claiming
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
             ->where('finalizeAction', route('election.role-demo.voter.finalize'))
+            ->has('ballot.contests', 6)
+            ->has('ballot.contests.0.candidates', 64)
+        );
+});
+
+test('role demo heals an open precinct with a missing ballot package before rendering voter ballot', function (): void {
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    app(ElectionStorage::class)->writeJson('runtime/active-precinct.json', [
+        'precinct_id' => '39010001',
+        'contests' => [],
+    ]);
+
+    $authorization = $this->postJson(route('election.role-demo.voter.control-number'))
+        ->assertSuccessful()
+        ->json('code');
+
+    $this->post(route('election.role-demo.voter.claim'), [
+        'code' => $authorization,
+    ])->assertRedirectToRoute('election.role-demo.voter.ballot');
+
+    $this->get(route('election.role-demo.voter.ballot'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterBallot')
+            ->has('ballot.contests', 6)
+            ->has('ballot.contests.0.candidates', 64)
         );
 });
 

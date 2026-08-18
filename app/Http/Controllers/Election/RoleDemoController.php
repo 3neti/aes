@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Counting\TallyPresentation;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
+use App\Election\Preparation\ActivateConfiguredPrecinct;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\PrintFormProfile;
 use App\Election\Printing\PrintFormProfileResolver;
@@ -426,9 +427,30 @@ final class RoleDemoController extends Controller
             $simulations->applyScope($precinct);
         }
 
+        $this->ensurePrecinctPackageActivated($precinct);
         app(LifecycleState::class)->set(Lifecycle::Voting);
 
         return $precinct->fresh('round');
+    }
+
+    private function ensurePrecinctPackageActivated(SimulationPrecinct $precinct): void
+    {
+        $storage = app(ElectionStorage::class);
+        $configuration = $storage->readJson('runtime/active-precinct.json');
+        $contests = $configuration['contests'] ?? [];
+        $candidateCount = collect(is_array($contests) ? $contests : [])
+            ->sum(fn (array $contest): int => count($contest['candidates'] ?? []));
+
+        if (
+            ($configuration['precinct_id'] ?? null) === $precinct->clustered_precinct
+            && is_array($contests)
+            && count($contests) > 0
+            && $candidateCount > 0
+        ) {
+            return;
+        }
+
+        app(ActivateConfiguredPrecinct::class)->handle();
     }
 
     /**
