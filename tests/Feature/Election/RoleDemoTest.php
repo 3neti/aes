@@ -165,6 +165,35 @@ test('role demo voter can generate a self service control number before claiming
         );
 });
 
+test('role demo self service control number recycles the oldest unused issued number when capacity is full', function (): void {
+    config()->set('election.public_simulation.maximum_active_admissions', 2);
+
+    $first = $this->postJson(route('election.role-demo.voter.control-number'))
+        ->assertSuccessful()
+        ->json('code');
+    $second = $this->postJson(route('election.role-demo.voter.control-number'))
+        ->assertSuccessful()
+        ->json('code');
+    $replacement = $this->postJson(route('election.role-demo.voter.control-number'))
+        ->assertSuccessful()
+        ->json('code');
+
+    expect($first)->toMatch('/^[0-9]{4}$/')
+        ->and($second)->toMatch('/^[0-9]{4}$/')
+        ->and($replacement)->toMatch('/^[0-9]{4}$/');
+
+    $this->post(route('election.role-demo.voter.claim'), [
+        'code' => $first,
+    ])->assertSessionHasErrors('code');
+
+    $this->post(route('election.role-demo.voter.claim'), [
+        'code' => $replacement,
+    ])->assertRedirectToRoute('election.role-demo.voter.ballot');
+
+    expect(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+        ->toContain('role_demo.self_service_control_number_recycled');
+});
+
 test('role demo reset replaces the live precinct with a freshly opened one', function (): void {
     $this->get(route('election.role-demo.index'))->assertSuccessful();
     $firstRound = SimulationRound::query()->sole();

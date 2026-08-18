@@ -185,10 +185,28 @@ final class RoleDemoController extends Controller
     {
         $precinct = $this->precinct($simulations);
 
+        $recycledAuthorization = null;
+
         try {
             $authorization = $voting->execute(fn (): array => $capacity->issue($authorizations));
         } catch (RuntimeException $exception) {
-            throw ValidationException::withMessages(['control_number' => $exception->getMessage()]);
+            $recycledAuthorization = $authorizations->expireOldestIssued('role-demo-self-service-capacity-recycled');
+
+            if ($recycledAuthorization === null) {
+                throw ValidationException::withMessages(['control_number' => $exception->getMessage()]);
+            }
+
+            $journal->record('role_demo.self_service_control_number_recycled', [
+                'authorization_id' => $recycledAuthorization['authorization_id'],
+                'precinct_code' => $precinct->code,
+                'reason' => 'active admission limit reached',
+            ]);
+
+            try {
+                $authorization = $voting->execute(fn (): array => $capacity->issue($authorizations));
+            } catch (RuntimeException $retryException) {
+                throw ValidationException::withMessages(['control_number' => $retryException->getMessage()]);
+            }
         }
 
         $journal->record('role_demo.self_service_control_number_issued', [
@@ -196,6 +214,7 @@ final class RoleDemoController extends Controller
             'precinct_code' => $precinct->code,
             'expires_at' => $authorization['expires_at'],
             'mode' => 'self-service-voter-demo',
+            'recycled_authorization_id' => $recycledAuthorization['authorization_id'] ?? null,
         ]);
 
         return response()->json([

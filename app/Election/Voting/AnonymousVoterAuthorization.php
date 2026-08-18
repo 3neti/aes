@@ -88,6 +88,39 @@ final class AnonymousVoterAuthorization
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public function expireOldestIssued(string $reason): ?array
+    {
+        return $this->operationLock->execute(
+            'voter-authorization',
+            function () use ($reason): ?array {
+                $record = collect($this->storage->files('voter-authorizations'))
+                    ->map(fn (string $path): array => $this->storage->readJson('voter-authorizations/'.basename($path)))
+                    ->filter(fn (array $candidate): bool => ($candidate['status'] ?? null) === 'issued')
+                    ->sortBy(fn (array $candidate): string => (string) ($candidate['issued_at'] ?? ''))
+                    ->first();
+
+                if (! is_array($record)) {
+                    return null;
+                }
+
+                $record['status'] = 'expired';
+                $record['expired_at'] = $this->clock->now()->toIso8601String();
+                $record['expired_reason'] = $reason;
+                $this->storage->writeJson("voter-authorizations/{$record['authorization_id']}.json", $record);
+                $this->journal->record('voter.authorization_expired', [
+                    'authorization_id' => $record['authorization_id'],
+                    'expired_at' => $record['expired_at'],
+                    'reason' => $reason,
+                ]);
+
+                return $record;
+            },
+        );
+    }
+
+    /**
      * @return array{authorization_id: string, code: string, expires_at: string}
      */
     private function issueUnlocked(?string $previousAuthorizationId): array
