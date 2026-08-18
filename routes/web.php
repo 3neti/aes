@@ -44,6 +44,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/voter/ballot', [RoleDemoController::class, 'ballot'])->name('voter.ballot');
         Route::post('/voter/ballot', [RoleDemoController::class, 'finalize'])->name('voter.finalize');
         Route::get('/voter/complete', [RoleDemoController::class, 'complete'])->name('voter.complete');
+        Route::get('/voter/complete/ballot-preview', [RoleDemoController::class, 'voterBallotPreview'])->name('voter.complete.ballot-preview');
         Route::post('/voter/reset', [RoleDemoController::class, 'resetVoter'])->name('voter.reset');
         Route::get('/watcher', [RoleDemoController::class, 'watcher'])->name('watcher');
         Route::get('/tally-sheet/{profile?}', [RoleDemoController::class, 'tallySheet'])->name('tally-sheet');

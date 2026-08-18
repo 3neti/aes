@@ -99,7 +99,19 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->component('Election/VoterComplete')
             ->where('release.release_code', $release['release_code'])
             ->where('resetAction', route('election.role-demo.voter.reset'))
+            ->where('demoBallotPreviewEnabled', true)
+            ->where('ballotPreviewAction', route('election.role-demo.voter.complete.ballot-preview'))
         );
+
+    $this->get(route('election.role-demo.voter.complete.ballot-preview'))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf')
+        ->assertHeader('content-disposition', 'inline; filename="role-demo-voter-ballot-preview.pdf"');
+
+    expect(app(ElectionStorage::class)->readJson("print-releases/{$release['release_id']}.json")['status'])->toBe('pending')
+        ->and(app(ElectionStorage::class)->files('counting/sealed'))->toBeEmpty()
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+        ->toContain('role_demo.voter_ballot_preview_generated');
 
     $this->post(route('election.role-demo.print.accept'), [
         'code' => $release['release_code'],

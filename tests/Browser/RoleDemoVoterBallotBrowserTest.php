@@ -31,6 +31,14 @@ test('role demo voter reaches a populated ballot and can fill remaining choices'
         ->assertSee('Review:')
         ->assertSee('Sen. (12)')
         ->assertSee('Party List (1)')
+        ->click('@review-ballot')
+        ->assertSee('Review your ballot')
+        ->click('Finalize and get print PIN')
+        ->assertSee('Write down your print PIN')
+        ->assertSee('Demo shortcut: tap the PIN to preview the printable ballot.')
+        ->click('@open-voter-ballot-preview')
+        ->assertSee('Printable ballot preview')
+        ->assertSee('This preview does not deposit, count, or accept the ballot.')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });

@@ -5,6 +5,9 @@ namespace App\Election\Voting;
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\PrintFormArtifactService;
+use App\Election\Printing\PrintFormProfile;
+use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Support\Facades\Crypt;
@@ -22,6 +25,8 @@ final class PrivateBallotRelease
         private readonly StandardQrCode $qrCode,
         private readonly BallotQrPayload $qrPayload,
         private readonly ActivityJournal $journal,
+        private readonly PrintFormArtifactService $forms,
+        private readonly PrintFormProfileResolver $profiles,
     ) {}
 
     /**
@@ -316,6 +321,46 @@ final class PrivateBallotRelease
         }
 
         return $path;
+    }
+
+    public function previewBallotPdfPath(string $releaseId, ?PrintFormProfile $profile = null): ?string
+    {
+        $record = $this->record($releaseId);
+
+        if (! in_array($record['status'], ['pending', 'redeemed', 'printed'], true)) {
+            return null;
+        }
+
+        $payload = $this->decryptPayload($record);
+        $payload['qr_artifact_path'] = $this->storage->writeText(
+            "ballots/previews/{$payload['ballot_id']}-qr.png",
+            $this->qrCode->renderPng($payload['qr_payload']),
+        );
+        $configuration = $this->storage->readJson('runtime/active-precinct.json');
+        $selectedProfile = $profile ?? $this->profiles->default();
+        $forms = $this->forms->writeBallot($payload, $configuration, $selectedProfile);
+        $form = $forms[$selectedProfile->value] ?? null;
+        $sourcePath = $form['artifact_path'] ?? null;
+
+        if (! is_string($sourcePath) || ! is_file($sourcePath)) {
+            return null;
+        }
+
+        $previewPath = $this->storage->writeText(
+            "ballots/previews/{$payload['ballot_id']}-{$selectedProfile->value}.pdf",
+            file_get_contents($sourcePath) ?: '',
+        );
+        $this->journal->record('role_demo.voter_ballot_preview_generated', [
+            'release_id' => $releaseId,
+            'ballot_id' => $payload['ballot_id'],
+            'payload_hash' => $payload['payload_hash'],
+            'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
+            'preview_pdf_path' => $previewPath,
+            'print_form_profile' => $selectedProfile->value,
+            'status_preserved' => $record['status'],
+        ]);
+
+        return $previewPath;
     }
 
     public function markDeposited(string $releaseId): void

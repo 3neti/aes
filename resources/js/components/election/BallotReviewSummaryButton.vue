@@ -14,6 +14,7 @@ const emit = defineEmits<{
         <button
             class="min-h-12 w-full bg-blue-800 px-6 py-3 text-sm leading-snug font-bold text-white sm:text-base"
             :class="{ 'review-next-action-button': emphasized }"
+            data-testid="review-ballot"
             type="button"
             @click="emit('review')"
         >

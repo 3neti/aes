@@ -74,6 +74,7 @@ return [
         'selection_target' => (string) env('ELECTION_BALLOT_SELECTION_TARGET', 'circle'),
         'demo_random_fill_enabled' => (bool) env('ELECTION_BALLOT_DEMO_RANDOM_FILL', (bool) env('ELECTION_REVIEW_MODE', false)),
         'role_demo_random_fill_enabled' => (bool) env('ELECTION_ROLE_DEMO_RANDOM_FILL', true),
+        'role_demo_voter_ballot_preview_enabled' => (bool) env('ELECTION_ROLE_DEMO_VOTER_BALLOT_PREVIEW', true),
         'analytics' => [
             'enabled' => (bool) env('ELECTION_BALLOT_ANALYTICS_ENABLED', (bool) env('ELECTION_REVIEW_MODE', false)),
             'display_mode' => (string) env('ELECTION_BALLOT_ANALYTICS_DISPLAY_MODE', (bool) env('ELECTION_REVIEW_MODE', false) ? 'review' : 'hidden'),

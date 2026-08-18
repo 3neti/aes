@@ -318,7 +318,24 @@ final class RoleDemoController extends Controller
             ],
             'returnAction' => route('election.role-demo.index'),
             'resetAction' => route('election.role-demo.voter.reset'),
+            'demoBallotPreviewEnabled' => (bool) config('election.voter.role_demo_voter_ballot_preview_enabled', true),
+            'ballotPreviewAction' => is_array($release) ? route('election.role-demo.voter.complete.ballot-preview') : null,
             'publicSimulation' => true,
+        ]);
+    }
+
+    public function voterBallotPreview(PublicSimulationService $simulations, PrivateBallotRelease $releases, Request $request): BinaryFileResponse
+    {
+        abort_unless(config('election.voter.role_demo_voter_ballot_preview_enabled', true), 404);
+        $this->precinct($simulations);
+        $release = $request->session()->get('role_demo.release');
+        abort_unless(is_array($release) && isset($release['release_id']), 404);
+
+        $path = $releases->previewBallotPdfPath((string) $release['release_id']);
+        abort_unless($path !== null, 404);
+
+        return response()->file($path, [
+            'Content-Disposition' => 'inline; filename="role-demo-voter-ballot-preview.pdf"',
         ]);
     }
 

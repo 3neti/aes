@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
 
 defineProps<{
@@ -28,7 +29,11 @@ defineProps<{
     };
     returnAction?: string;
     resetAction: string;
+    demoBallotPreviewEnabled?: boolean;
+    ballotPreviewAction?: string | null;
 }>();
+
+const previewOpen = ref(false);
 
 function clearBoothDraft(): void {
     sessionStorage.removeItem('aes-voter-draft');
@@ -109,8 +114,23 @@ function formatDuration(totalSeconds: number): string {
                         release.pin_digits ?? release.release_code.length
                     }}-digit print PIN
                 </p>
-                <p class="mt-1 font-mono text-5xl font-bold">
+                <button
+                    v-if="demoBallotPreviewEnabled && ballotPreviewAction"
+                    class="mt-1 w-full border-2 border-dashed border-blue-300 bg-blue-50 px-4 py-3 font-mono text-5xl font-bold text-blue-950 transition hover:border-blue-800 hover:bg-blue-100 focus:ring-4 focus:ring-blue-200 focus:outline-none"
+                    data-testid="open-voter-ballot-preview"
+                    type="button"
+                    @click="previewOpen = true"
+                >
                     {{ release.release_code }}
+                </button>
+                <p v-else class="mt-1 font-mono text-5xl font-bold">
+                    {{ release.release_code }}
+                </p>
+                <p
+                    v-if="demoBallotPreviewEnabled && ballotPreviewAction"
+                    class="mt-2 text-sm font-semibold text-blue-800"
+                >
+                    Demo shortcut: tap the PIN to preview the printable ballot.
                 </p>
                 <p class="mt-2 text-sm text-stone-600">
                     Paper stock serial {{ release.paper_ballot_serial }}
@@ -173,6 +193,68 @@ function formatDuration(totalSeconds: number): string {
                     </button>
                 </Form>
             </template>
+        </section>
+
+        <section
+            v-if="previewOpen && ballotPreviewAction"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="voter-ballot-preview-title"
+        >
+            <div
+                class="flex max-h-[92vh] w-full max-w-5xl flex-col bg-white shadow-2xl"
+            >
+                <header
+                    class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 p-4 text-left"
+                >
+                    <div>
+                        <p class="text-sm font-bold text-blue-800">
+                            Demonstration preview only
+                        </p>
+                        <h2
+                            id="voter-ballot-preview-title"
+                            class="mt-1 text-2xl font-bold text-stone-950"
+                        >
+                            Printable ballot preview
+                        </h2>
+                        <p class="mt-1 max-w-3xl text-sm text-stone-700">
+                            In a real precinct, the voter tablet does not show
+                            this preview. The print PIN remains valid for the
+                            central print station.
+                        </p>
+                    </div>
+                    <button
+                        class="min-h-11 border border-stone-300 px-4 font-bold text-stone-800"
+                        type="button"
+                        @click="previewOpen = false"
+                    >
+                        Close preview
+                    </button>
+                </header>
+                <div class="min-h-0 flex-1 bg-stone-100 p-3">
+                    <iframe
+                        :src="ballotPreviewAction"
+                        class="h-[70vh] w-full border border-stone-300 bg-white"
+                        title="Printable ballot PDF preview"
+                    />
+                </div>
+                <footer
+                    class="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 p-4 text-left"
+                >
+                    <p class="text-sm font-semibold text-stone-700">
+                        This preview does not deposit, count, or accept the
+                        ballot.
+                    </p>
+                    <a
+                        :href="ballotPreviewAction"
+                        class="inline-flex min-h-11 items-center justify-center bg-blue-800 px-4 font-bold text-white"
+                        target="_blank"
+                    >
+                        Open PDF in new tab
+                    </a>
+                </footer>
+            </div>
         </section>
     </main>
 </template>
