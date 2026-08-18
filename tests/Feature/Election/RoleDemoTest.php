@@ -217,6 +217,45 @@ test('role demo heals an open precinct with a missing ballot package before rend
         );
 });
 
+test('role demo replaces a stale open round after configured precincts change', function (): void {
+    $staleRound = SimulationRound::query()->create([
+        'code' => 'ROUND-STALE1',
+        'name' => 'Stale Public Election Simulation',
+        'status' => 'open',
+        'opened_at' => now()->subHour(),
+    ]);
+    $staleRound->precincts()->create([
+        'code' => 'TONDO-01',
+        'clustered_precinct' => '39010001',
+        'district' => 'FIRST DIST',
+        'label' => 'Tondo Precinct 01',
+        'city_municipality' => 'CITY OF MANILA',
+        'province' => 'NATIONAL CAPITAL REGION',
+        'status' => 'open',
+        'officer_name' => 'Volunteer Election Officer 1',
+        'officer_code' => 'SIM-1-OLD',
+        'officer_pin_hash' => hash('sha256', '123456'),
+        'opened_at' => now()->subHour(),
+    ]);
+
+    $this->get(route('election.role-demo.index'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/RoleDemoLobby')
+            ->where('precinct.clustered_precinct', '39010402')
+            ->where('precinct.status', 'open')
+        );
+
+    $freshRound = SimulationRound::query()
+        ->where('status', 'open')
+        ->with('precincts')
+        ->sole();
+
+    expect($staleRound->fresh()->status)->toBe('archived')
+        ->and($freshRound->code)->not->toBe($staleRound->code)
+        ->and($freshRound->precincts->pluck('clustered_precinct')->unique()->values()->all())->toBe(['39010402']);
+});
+
 test('role demo self service control number recycles the oldest unused issued number when capacity is full', function (): void {
     config()->set('election.public_simulation.maximum_active_admissions', 2);
 

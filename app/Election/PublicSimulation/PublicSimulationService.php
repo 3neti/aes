@@ -28,7 +28,15 @@ final class PublicSimulationService
             ->latest('id')
             ->first();
 
-        return $round ?? $this->createRound();
+        if ($round === null) {
+            return $this->createRound();
+        }
+
+        if ($this->matchesConfiguredPrecincts($round)) {
+            return $round;
+        }
+
+        return $this->refreshDemoSet()['fresh'];
     }
 
     public function createWalkthroughRound(): SimulationRound
@@ -174,6 +182,28 @@ final class PublicSimulationService
 
             return $round->load('precincts');
         }, attempts: 5);
+    }
+
+    private function matchesConfiguredPrecincts(SimulationRound $round): bool
+    {
+        $configured = collect(config('election.public_simulation.precincts', []))
+            ->mapWithKeys(fn (array $definition): array => [
+                (string) $definition['code'] => [
+                    'clustered_precinct' => (string) $definition['clustered_precinct'],
+                    'district' => (string) ($definition['district'] ?? ''),
+                    'label' => (string) $definition['label'],
+                ],
+            ]);
+        $actual = $round->precincts
+            ->mapWithKeys(fn (SimulationPrecinct $precinct): array => [
+                $precinct->code => [
+                    'clustered_precinct' => $precinct->clustered_precinct,
+                    'district' => (string) ($precinct->district ?? ''),
+                    'label' => $precinct->label,
+                ],
+            ]);
+
+        return $actual->all() === $configured->all();
     }
 
     private function ensureOfficer(SimulationPrecinct $precinct, string $code, string $pin): void
