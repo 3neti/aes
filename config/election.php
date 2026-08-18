@@ -145,7 +145,7 @@ return [
         'registry_version' => env('ELECTION_CLC_REGISTRY_VERSION', 'clc-2025-nle'),
         'workbook_election_id' => env('ELECTION_CANDIDATE_WORKBOOK_ELECTION_ID', 'MAY-9-2022-NLE-MANILA-FACSIMILE-DEMO'),
         'workbook_active_sheet' => env('ELECTION_CANDIDATE_WORKBOOK_ACTIVE_SHEET', 'Manila 2nd District'),
-        'workbook_party_reference_pdf' => env('ELECTION_CANDIDATE_WORKBOOK_PARTY_REFERENCE_PDF', resource_path('election/ballots/MANILA-2ND_DISTRICT.pdf')),
+        'workbook_party_reference_pdf' => env('ELECTION_CANDIDATE_WORKBOOK_PARTY_REFERENCE_PDF', resource_path('election/ballots/MANILA-2ND_DISTRICT-party-reference.json')),
         'workbook_sheets' => [
             'Manila 1st District' => [
                 'geography' => 'NCR - MANILA',

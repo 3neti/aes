@@ -58,6 +58,16 @@ test('ballot pdf party reference resolves wrapped party labels from the manila f
         ->and($parties)->toHaveKey($reference->key('SAHIDULLA, LADY ANNE'), 'PDDS');
 });
 
+test('ballot party reference can load precomputed json without pdf extraction', function (): void {
+    $reference = app(BallotPdfPartyReference::class);
+    $parties = $reference->parties(resource_path('election/ballots/MANILA-2ND_DISTRICT-party-reference.json'));
+
+    expect($parties)->toHaveCount(104)
+        ->and($parties)->toHaveKey($reference->key('MARCOS, BONGBONG'), 'PFP')
+        ->and($parties)->toHaveKey($reference->key('VALERIANO, ROLAN CRV'), 'NUP')
+        ->and($parties)->toHaveKey($reference->key('LACUNA, HONEY'), 'ASENSO');
+});
+
 test('clc candidate import reports missing ghostscript clearly', function (): void {
     config()->set('election.pdf.ghostscript_binary', 'missing-gs-binary-for-test');
 

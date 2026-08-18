@@ -17,6 +17,19 @@ final readonly class BallotPdfPartyReference
             return [];
         }
 
+        if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'json') {
+            $parties = json_decode((string) file_get_contents($path), true);
+
+            if (! is_array($parties)) {
+                return [];
+            }
+
+            return collect($parties)
+                ->filter(fn (mixed $party, mixed $name): bool => is_string($name) && is_string($party) && trim($party) !== '')
+                ->mapWithKeys(fn (string $party, string $name): array => [$this->key($name) => trim($party)])
+                ->all();
+        }
+
         $records = [];
 
         foreach ($this->extractor->extract($path) as $page) {
