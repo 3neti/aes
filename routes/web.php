@@ -17,6 +17,7 @@ use App\Http\Controllers\Election\PublicSimulationVoterController;
 use App\Http\Controllers\Election\PublicSimulationWatcherController;
 use App\Http\Controllers\Election\ReturnsController;
 use App\Http\Controllers\Election\ReviewRoomController;
+use App\Http\Controllers\Election\RoleDemoController;
 use App\Http\Controllers\Election\TransmissionController;
 use App\Http\Controllers\Election\VoterAuthorizationController;
 use App\Http\Controllers\Election\VoterBallotController;
@@ -29,6 +30,25 @@ Route::get('/', HomeController::class)
     ->name('home');
 
 Route::prefix('election')->name('election.')->group(function (): void {
+    Route::prefix('role-demo')->name('role-demo.')->group(function (): void {
+        Route::get('/', [RoleDemoController::class, 'index'])->name('index');
+        Route::post('/reset', [RoleDemoController::class, 'reset'])->name('reset');
+        Route::get('/officer', [RoleDemoController::class, 'officer'])->name('officer');
+        Route::post('/officer/admit', [RoleDemoController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
+        Route::post('/officer/dismiss-control-number', [RoleDemoController::class, 'dismissControlNumber'])->name('dismiss-control-number');
+        Route::post('/officer/accept-print', [RoleDemoController::class, 'acceptPrint'])->middleware('throttle:20,1')->name('print.accept');
+        Route::get('/officer/last-printed-ballot', [RoleDemoController::class, 'lastPrintedBallot'])->name('print.last-ballot');
+        Route::get('/voter', [RoleDemoController::class, 'voter'])->name('voter');
+        Route::post('/voter/claim', [RoleDemoController::class, 'claim'])->middleware('throttle:20,1')->name('voter.claim');
+        Route::get('/voter/ballot', [RoleDemoController::class, 'ballot'])->name('voter.ballot');
+        Route::post('/voter/ballot', [RoleDemoController::class, 'finalize'])->name('voter.finalize');
+        Route::get('/voter/complete', [RoleDemoController::class, 'complete'])->name('voter.complete');
+        Route::post('/voter/reset', [RoleDemoController::class, 'resetVoter'])->name('voter.reset');
+        Route::get('/watcher', [RoleDemoController::class, 'watcher'])->name('watcher');
+        Route::get('/tally-sheet/{profile?}', [RoleDemoController::class, 'tallySheet'])->name('tally-sheet');
+        Route::get('/election-return/{profile?}', [RoleDemoController::class, 'electionReturn'])->name('election-return');
+    });
+
     Route::prefix('demo-room')->name('demo-room.')->group(function (): void {
         Route::get('/', [DemoRoomController::class, 'index'])->name('index');
         Route::post('/refresh', [DemoRoomController::class, 'refresh'])->name('refresh');

@@ -29,6 +29,7 @@ const props = defineProps<{
     finalizeAction?: string;
     publicSimulation?: boolean;
     ballotUiProfile?: string;
+    ballotMaxColumns?: number;
     selectionTarget?: string;
     analytics?: {
         enabled: boolean;
@@ -343,6 +344,7 @@ onUnmounted(() => {
                         reviewRoom.enabled && selectionCount > 0
                     "
                     :review-summary="reviewSummary"
+                    :max-columns="ballotMaxColumns ?? 4"
                     :selection-target="resolvedSelectionTarget"
                     :selections="selections"
                     @jump-to-contest="jumpToContest"

@@ -15,6 +15,7 @@ beforeEach(function (): void {
     config()->set('election.review.access.enabled', false);
     config()->set('election.public_simulation.enabled', true);
     config()->set('election.public_simulation.participation_required', false);
+    config()->set('election.devices.printer.driver', 'file');
     config()->set('election.closeout_printer.driver', 'file');
     config()->set('election.closeout_printer.default_profile', 'thermal-80');
     $this->withoutVite();

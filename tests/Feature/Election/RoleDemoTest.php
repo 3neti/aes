@@ -1,0 +1,148 @@
+<?php
+
+use App\Election\PublicSimulation\PublicSimulationScope;
+use App\Election\Support\ElectionStorage;
+use App\Models\SimulationPrecinct;
+use App\Models\SimulationRound;
+use Inertia\Testing\AssertableInertia as Assert;
+
+beforeEach(function (): void {
+    config()->set('election.review.access.enabled', false);
+    config()->set('election.public_simulation.enabled', true);
+    config()->set('election.public_simulation.participation_required', false);
+    config()->set('election.public_simulation.demo_control_number_share.enabled', true);
+    config()->set('election.devices.printer.driver', 'file');
+    $this->withoutVite();
+});
+
+test('role demo runs officer voter print and watcher points of view without closing the precinct', function (): void {
+    $this->get(route('election.role-demo.index'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/RoleDemoLobby')
+            ->where('precinct.status', 'open')
+            ->where('actions.officer', route('election.role-demo.officer'))
+            ->where('actions.voter', route('election.role-demo.voter'))
+            ->where('actions.watcher', route('election.role-demo.watcher'))
+        );
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class)
+        ->and($precinct->fresh()->status)->toBe('open');
+
+    $this->get(route('election.role-demo.officer'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/RoleDemoOfficer')
+            ->where('currentTally.accepted_ballots', 0)
+            ->where('actions.acceptPrint', route('election.role-demo.print.accept'))
+        );
+
+    $this->post(route('election.role-demo.admit'))
+        ->assertRedirectToRoute('election.role-demo.officer');
+
+    $authorization = session('role_demo.control_number');
+    expect($authorization)->toBeArray()
+        ->and($authorization['code'])->toMatch('/^[0-9]{4}$/');
+
+    $this->get(route('election.role-demo.voter', ['code' => $authorization['code']]))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterWelcome')
+            ->where('initialControlNumber', $authorization['code'])
+            ->where('claimAction', route('election.role-demo.voter.claim'))
+        );
+
+    $this->post(route('election.role-demo.voter.claim'), [
+        'code' => $authorization['code'],
+    ])->assertRedirectToRoute('election.role-demo.voter.ballot');
+
+    $this->get(route('election.role-demo.voter.ballot'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterBallot')
+            ->where('finalizeAction', route('election.role-demo.voter.finalize'))
+            ->where('ballotMaxColumns', 2)
+        );
+
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
+    $selections = collect($configuration['contests'])
+        ->mapWithKeys(fn (array $contest): array => [
+            $contest['id'] => collect($contest['candidates'])
+                ->take(min(1, (int) $contest['max_selections']))
+                ->pluck('id')
+                ->all(),
+        ])
+        ->all();
+
+    $this->post(route('election.role-demo.voter.finalize'), [
+        'selections' => $selections,
+    ])->assertRedirectToRoute('election.role-demo.voter.complete');
+
+    $release = session('role_demo.release');
+    expect($release)->toBeArray()
+        ->and($release['release_code'])->toMatch('/^[0-9]{4,6}$/');
+
+    $this->get(route('election.role-demo.voter.complete'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/VoterComplete')
+            ->where('release.release_code', $release['release_code'])
+            ->where('resetAction', route('election.role-demo.voter.reset'))
+        );
+
+    $this->post(route('election.role-demo.print.accept'), [
+        'code' => $release['release_code'],
+    ])->assertRedirectToRoute('election.role-demo.officer');
+
+    $this->get(route('election.role-demo.officer'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('currentTally.accepted_ballots', 1)
+            ->where('printFeedback.status', 'accepted')
+        );
+
+    $this->get(route('election.role-demo.watcher'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/RoleDemoWatcher')
+            ->where('precinct.accepted_ballots', 1)
+            ->where('downloads.tally', route('election.role-demo.tally-sheet'))
+            ->where('downloads.return', route('election.role-demo.election-return'))
+        );
+
+    $this->get(route('election.role-demo.print.last-ballot'))
+        ->assertSuccessful()
+        ->assertHeader('content-disposition', 'inline; filename="role-demo-last-printed-ballot.pdf"');
+
+    $this->get(route('election.role-demo.tally-sheet'))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(route('election.role-demo.election-return', ['profile' => 'thermal-80']))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    expect($precinct->fresh()->status)->toBe('open')
+        ->and(app(ElectionStorage::class)->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
+        ->and(app(ElectionStorage::class)->path("returns/{$configuration['precinct_id']}-return.pdf"))->toBeReadableFile();
+});
+
+test('role demo reset replaces the live precinct with a freshly opened one', function (): void {
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $firstRound = SimulationRound::query()->sole();
+
+    $this->post(route('election.role-demo.reset'))
+        ->assertRedirectToRoute('election.role-demo.index');
+
+    $freshRound = SimulationRound::query()
+        ->where('status', 'open')
+        ->with('precincts')
+        ->sole();
+
+    expect($firstRound->fresh()->status)->toBe('archived')
+        ->and(SimulationRound::query()->where('status', 'open')->count())->toBe(1)
+        ->and($freshRound->precincts->where('status', 'open'))->toHaveCount(1);
+});

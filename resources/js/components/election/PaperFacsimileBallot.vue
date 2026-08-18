@@ -26,6 +26,7 @@ const props = defineProps<{
     reviewSummary: string;
     reviewEmphasized: boolean;
     selectionTarget: SelectionTarget;
+    maxColumns?: number;
 }>();
 
 const emit = defineEmits<{
@@ -79,12 +80,14 @@ function candidateColumns(contest: Contest): Candidate[][] {
 }
 
 function contestColumnCount(contest: Contest): number {
+    const maximumColumns = Math.min(4, Math.max(1, props.maxColumns ?? 4));
+
     if (contest.candidates.length >= 40) {
-        return 4;
+        return Math.min(4, maximumColumns);
     }
 
     if (contest.candidates.length >= 6) {
-        return 2;
+        return Math.min(2, maximumColumns);
     }
 
     return 1;
@@ -98,7 +101,7 @@ function contestColumnGridClass(contest: Contest): string {
     }
 
     if (columnCount === 2) {
-        return 'grid-cols-1 sm:grid-cols-2';
+        return 'grid-cols-1 md:grid-cols-2';
     }
 
     return 'grid-cols-1';
