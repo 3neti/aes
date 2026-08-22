@@ -25,7 +25,7 @@ final class ElectionPdfDocument
     private array $pages = [];
 
     /**
-     * @var array<string, array{width: int, height: int, data: string}>
+     * @var array<string, array{width: int, height: int, data: string, color_space: string}>
      */
     private array $images = [];
 
@@ -304,7 +304,44 @@ final class ElectionPdfDocument
         );
     }
 
-    public function registerPng(string $name, string $path): void
+    /**
+     * @param  array{0: float, 1: float, 2: float}  $rgb
+     */
+    public function rectangleRgb(
+        int $page,
+        float $x,
+        float $y,
+        float $width,
+        float $height,
+        array $rgb,
+        bool $fill = true,
+    ): void {
+        $operator = $fill ? 'f' : 'S';
+        $color = $fill ? 'rg' : 'RG';
+
+        $this->command(
+            $page,
+            sprintf(
+                '%.3F %.3F %.3F %s %.2F %.2F %.2F %.2F re %s',
+                $rgb[0],
+                $rgb[1],
+                $rgb[2],
+                $color,
+                $x,
+                $y,
+                $width,
+                $height,
+                $operator,
+            ),
+        );
+    }
+
+    public function registerPng(string $name, string $path, bool $colored = false): void
+    {
+        $this->registerImage($name, $path, $colored);
+    }
+
+    public function registerImage(string $name, string $path, bool $colored = false): void
     {
         if (! is_file($path)) {
             throw new RuntimeException("PDF image [{$path}] does not exist.");
@@ -313,9 +350,9 @@ final class ElectionPdfDocument
         $image = new Imagick($path);
         $image->setImageBackgroundColor('white');
         $image->setImageAlphaChannel(Imagick::ALPHACHANNEL_REMOVE);
-        $image->setImageColorspace(Imagick::COLORSPACE_GRAY);
+        $image->setImageColorspace($colored ? Imagick::COLORSPACE_RGB : Imagick::COLORSPACE_GRAY);
         $image->setImageDepth(8);
-        $image->setImageFormat('gray');
+        $image->setImageFormat($colored ? 'RGB' : 'gray');
         $data = $image->getImageBlob();
         $compressed = gzcompress($data, 9);
 
@@ -330,6 +367,7 @@ final class ElectionPdfDocument
             'width' => $image->getImageWidth(),
             'height' => $image->getImageHeight(),
             'data' => $compressed,
+            'color_space' => $colored ? '/DeviceRGB' : '/DeviceGray',
         ];
 
         $image->clear();
@@ -379,9 +417,10 @@ final class ElectionPdfDocument
         foreach ($this->images as $name => $image) {
             $imageObjects[$name] = $nextObject;
             $objects[$nextObject] = sprintf(
-                "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent 8 /Interpolate false /Filter /FlateDecode /Length %d >>\nstream\n%s\nendstream",
+                "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace %s /BitsPerComponent 8 /Interpolate false /Filter /FlateDecode /Length %d >>\nstream\n%s\nendstream",
                 $image['width'],
                 $image['height'],
+                $image['color_space'],
                 strlen($image['data']),
                 $image['data'],
             );

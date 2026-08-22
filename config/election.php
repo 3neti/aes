@@ -9,6 +9,12 @@ return [
     'storage' => [
         'directory' => env('ELECTION_STORAGE_DIRECTORY', 'election'),
     ],
+    'branding' => [
+        'print_colored' => (bool) env('ELECTION_BALLOT_PRINT_COLORED', true),
+        'comelec_logo' => (string) env('ELECTION_COMELEC_LOGO_PATH', resource_path('election/branding/comelec.png')),
+        'bagong_pilipinas_logo' => (string) env('ELECTION_BAGONG_PILIPINAS_LOGO_PATH', resource_path('election/branding/bagong-pilipinas.png')),
+        'republic_seal' => (string) env('ELECTION_REPUBLIC_SEAL_PATH', resource_path('election/branding/republic-seal.jpg')),
+    ],
     'runtime' => [
         'run_type' => env('ELECTION_RUN_TYPE'),
     ],
@@ -71,6 +77,7 @@ return [
         'print_release_ttl_seconds' => (int) env('ELECTION_PRINT_RELEASE_TTL', 600),
         'print_pin_digits' => (int) env('ELECTION_PRINT_PIN_DIGITS', 4),
         'ballot_ui_profile' => (string) env('ELECTION_BALLOT_UI_PROFILE', 'comelec_2022_facsimile'),
+        'ballot_artifact_profile' => (string) env('ELECTION_BALLOT_ARTIFACT_PROFILE', 'selected_candidates_official'),
         'paper_facsimile_max_columns' => (int) env('ELECTION_BALLOT_PAPER_FACSIMILE_MAX_COLUMNS', 4),
         'selection_target' => (string) env('ELECTION_BALLOT_SELECTION_TARGET', 'circle'),
         'demo_random_fill_enabled' => (bool) env('ELECTION_BALLOT_DEMO_RANDOM_FILL', (bool) env('ELECTION_REVIEW_MODE', false)),

@@ -18,10 +18,11 @@ beforeEach(function (): void {
     config()->set('election.tabulation.profile', TabulationProfile::PaperFirst->value);
     config()->set('election.devices.printer.driver', 'file');
     config()->set('election.voter.ballot_ui_profile', 'touch_guided');
+    config()->set('election.voter.ballot_artifact_profile', 'selected_candidates_official');
     app(ElectionStorage::class)->reset();
 });
 
-test('printed ballot embeds its qr image and every voter selection', function (): void {
+test('printed ballot embeds its qr image and only the voter selected candidates', function (): void {
     app(ActivateSamplePackage::class)->handle();
     $payload = app(BallotPayloadService::class)->finalize([
         'president' => ['pres-ada'],
@@ -35,10 +36,19 @@ test('printed ballot embeds its qr image and every voter selection', function ()
     expect($pdf)
         ->toContain('/Subtype /Image')
         ->toContain('/BallotQr')
+        ->toContain('/RepublicSeal')
+        ->toContain('/BagongPilipinasLogo')
+        ->toContain('/ComelecLogo')
+        ->toContain('/DeviceRGB')
         ->toContain('/Interpolate false')
-        ->toContain('1. Ada Santos')
-        ->toContain('2. Lina Mercado')
-        ->toContain('1. Ana Lopez; 3. Cora Ramos')
+        ->toContain("Voter's Result Ballot")
+        ->toContain('PRINTED PAPER BALLOT - SELECTED CANDIDATES ONLY')
+        ->toContain('Ada Santos')
+        ->toContain('Lina Mercado')
+        ->toContain('Ana Lopez')
+        ->toContain('Cora Ramos')
+        ->not->toContain('Grace Reyes')
+        ->not->toContain('Marco Diaz')
         ->toContain('BALLOT QR VERIFICATION COPY')
         ->toContain('SCAN THIS LARGE QR FOR AUDIT VERIFICATION')
         ->not->toContain('QR Artifact:')
@@ -48,6 +58,39 @@ test('printed ballot embeds its qr image and every voter selection', function ()
 
     $qr->clear();
     $qr->destroy();
+});
+
+test('printed ballot branding can fall back to monochrome', function (): void {
+    config()->set('election.branding.print_colored', false);
+
+    app(ActivateSamplePackage::class)->handle();
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+    ], 'monochrome-branded-ballot');
+    $pdf = app(OfficialBallotPdf::class)->render($payload, app(ElectionStorage::class)->readJson('runtime/active-precinct.json'));
+
+    expect($pdf)
+        ->toContain('/RepublicSeal')
+        ->toContain('/BagongPilipinasLogo')
+        ->toContain('/ComelecLogo')
+        ->not->toContain('/DeviceRGB');
+});
+
+test('printed ballot artifact profile is independent from the tablet ballot ui profile', function (): void {
+    config()->set('election.voter.ballot_ui_profile', 'comelec_2022_facsimile');
+    config()->set('election.voter.ballot_artifact_profile', 'selected_candidates_official');
+
+    app(ActivateSamplePackage::class)->handle();
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+    ], 'selected-only-despite-facsimile-ui');
+    $pdf = app(OfficialBallotPdf::class)->render($payload, app(ElectionStorage::class)->readJson('runtime/active-precinct.json'));
+
+    expect($pdf)
+        ->toContain("Voter's Result Ballot")
+        ->toContain('Ada Santos')
+        ->not->toContain('Grace Reyes')
+        ->not->toContain('COMELEC-Style Simulation Ballot');
 });
 
 test('print-form profiles render A4 and thermal evidence from the same sealed records', function (): void {
@@ -78,6 +121,8 @@ test('print-form profiles render A4 and thermal evidence from the same sealed re
 });
 
 test('printed ballot reserves space beside long contest titles for selection limits', function (): void {
+    config()->set('election.voter.ballot_artifact_profile', 'recorded_selections');
+
     app(ActivateSamplePackage::class)->handle();
     $payload = app(BallotPayloadService::class)->finalize([
         'president' => ['pres-ada'],
@@ -109,6 +154,7 @@ test('printed ballot reserves space beside long contest titles for selection lim
 
 test('official facsimile ballot pdf renders the complete candidate face and qr verification copy', function (): void {
     config()->set('election.voter.ballot_ui_profile', 'comelec_2022_facsimile');
+    config()->set('election.voter.ballot_artifact_profile', 'comelec_2022_facsimile');
     $payload = [
         'ballot_id' => 'facsimile-test-ballot',
         'election_id' => 'MAY-9-2022-NLE-MANILA-FACSIMILE-DEMO',
