@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Process;
 use RuntimeException;
 use Throwable;
 
+/**
+ * Prints ballots through a certified CUPS queue, falling back to the file
+ * printer (journaled) whenever no certified physical printer is available.
+ */
 final class CupsBallotPrinter implements BallotPrinter
 {
     public function __construct(
@@ -24,11 +28,11 @@ final class CupsBallotPrinter implements BallotPrinter
      */
     public function print(array $payload, ?PrintFormProfile $profile = null): array
     {
-        if ($this->printerName === '') {
-            throw new RuntimeException('CUPS printer name is not configured.');
-        }
+        $fallbackReason = $this->fallbackReason();
 
-        $this->ensureCertified();
+        if ($fallbackReason !== null) {
+            return $this->printWithFileFallback($payload, $profile, $fallbackReason);
+        }
 
         $job = $this->files->print($payload, $profile);
         $artifactPath = $job['selected_pdf_artifact_path'] ?? $job['pdf_artifact_path'] ?? $job['artifact_path'] ?? null;
@@ -59,8 +63,12 @@ final class CupsBallotPrinter implements BallotPrinter
         return $job;
     }
 
-    private function ensureCertified(): void
+    private function fallbackReason(): ?string
     {
+        if ($this->printerName === '') {
+            return 'cups-printer-not-configured';
+        }
+
         $report = $this->storage->readJson('certification/device-certification-report.json');
         $printer = $report['devices']['printer'] ?? [];
 
@@ -70,8 +78,32 @@ final class CupsBallotPrinter implements BallotPrinter
             || ($printer['status'] ?? null) !== 'ready'
             || ($printer['printer'] ?? null) !== $this->printerName
         ) {
-            throw PrinterCertificationRequired::forCupsPrinter($this->printerName);
+            return 'device-certification-not-passing';
         }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function printWithFileFallback(array $payload, ?PrintFormProfile $profile, string $reason): array
+    {
+        $job = $this->files->print($payload, $profile);
+        $job['printer_fallback_reason'] = $reason;
+        $job['requested_cups_printer'] = $this->printerName;
+
+        $this->storage->writeJson("print-jobs/{$payload['ballot_id']}.json", $job);
+        $this->journal->record('ballot.print_fallback', [
+            'ballot_id' => $job['ballot_id'],
+            'payload_hash' => $job['payload_hash'],
+            'printer' => 'file',
+            'requested_cups_printer' => $this->printerName,
+            'reason' => $reason,
+        ]);
+
+        return $job;
     }
 
     /**

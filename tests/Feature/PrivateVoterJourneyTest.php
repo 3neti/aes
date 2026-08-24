@@ -156,7 +156,7 @@ test('the private voter journey seals choices until polls close', function (): v
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterBallot')
-            ->where('ballotUiProfile', 'paper_facsimile')
+            ->where('ballotUiProfile', 'comelec_2022_facsimile')
             ->where('selectionTarget', 'circle')
             ->where('analytics.enabled', false)
             ->has('ballot.contests', 3)
@@ -364,7 +364,7 @@ test('the private voter ballot records optional review analytics without selecti
             'session_id' => 'ballot-session-001',
             'total_duration_seconds' => 135,
             'selection_edit_count' => 3,
-            'ballot_ui_profile' => 'paper_facsimile',
+            'ballot_ui_profile' => 'comelec_2022_facsimile',
             'selection_target' => 'circle',
         ])
         ->and($analyticsContents)

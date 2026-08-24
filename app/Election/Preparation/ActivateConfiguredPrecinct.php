@@ -3,6 +3,7 @@
 namespace App\Election\Preparation;
 
 use App\Election\Core\CanonicalJson;
+use App\Election\Devices\DeviceCertificationService;
 use App\Election\Support\ElectionStorage;
 
 final class ActivateConfiguredPrecinct
@@ -14,6 +15,7 @@ final class ActivateConfiguredPrecinct
         private readonly ActivateImportedPrecinctPackage $activateImportedPrecinct,
         private readonly ActivatePrecinctBallotPackage $activatePrecinctBallot,
         private readonly CanonicalJson $json,
+        private readonly DeviceCertificationService $devices,
     ) {}
 
     /**
@@ -75,6 +77,7 @@ final class ActivateConfiguredPrecinct
         $report['activation_hash'] = $this->json->hash($report);
         $report['artifact_path'] = $this->storage->path('packages/configured-precinct-activation.json');
         $this->storage->writeJson('packages/configured-precinct-activation.json', $report);
+        $certification = $this->devices->run();
 
         return [
             ...$activation,
@@ -82,6 +85,7 @@ final class ActivateConfiguredPrecinct
             'clc_import' => $clcManifest,
             'imported_package' => $importedPackage,
             'activation_report' => $report,
+            'device_certification' => $certification,
         ];
     }
 

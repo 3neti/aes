@@ -21,12 +21,12 @@ use App\Election\Lifecycle\CeremonyActions;
 use App\Election\Lifecycle\ElectionRunType;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
+use App\Election\Preparation\ActivateConfiguredPrecinct;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Preparation\DeterministicMapper;
 use App\Election\Preparation\PrecinctSetupService;
 use App\Election\Preparation\SampleElectionData;
 use App\Election\Printing\BallotPrinter;
-use App\Election\Printing\PrinterCertificationRequired;
 use App\Election\Printing\SpoilBallot;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Scanning\BallotScanner;
@@ -842,7 +842,7 @@ test('cups ballot printer records failed submissions without losing artifacts', 
     }
 });
 
-test('cups ballot printer requires passing device certification before submission', function (): void {
+test('cups ballot printer falls back to file printing when certification is not passing', function (): void {
     config()->set('election.devices.printer.driver', 'cups');
     config()->set('election.devices.printer.cups.name', 'Precinct_Printer');
     Process::fake();
@@ -855,15 +855,59 @@ test('cups ballot printer requires passing device certification before submissio
             'mayor' => ['mayor-lina'],
             'council' => ['council-ana'],
         ], 'test-ballot-cups-uncertified');
+        $job = app(BallotPrinter::class)->print($payload);
+        $events = app(ActivityJournal::class)->entries();
 
-        expect(fn () => app(BallotPrinter::class)->print($payload))
-            ->toThrow(PrinterCertificationRequired::class);
+        expect($job['printer'])->toBe('file')
+            ->and($job['status'])->toBe('printed')
+            ->and($job['printer_fallback_reason'])->toBe('device-certification-not-passing')
+            ->and($job['requested_cups_printer'])->toBe('Precinct_Printer')
+            ->and(file_exists($job['pdf_artifact_path']))->toBeTrue()
+            ->and(collect($events)->pluck('event_type'))->toContain('ballot.print_fallback');
 
         Process::assertNothingRan();
-        expect(app(ElectionStorage::class)->files('print-jobs'))->toHaveCount(0);
+
+        $record = app(ElectionStorage::class)->readJson('print-jobs/test-ballot-cups-uncertified.json');
+        expect($record['printer_fallback_reason'])->toBe('device-certification-not-passing');
     } finally {
         config()->set('election.devices.printer.driver', 'file');
     }
+});
+
+test('cups ballot printer falls back to file printing when no printer name is configured', function (): void {
+    config()->set('election.devices.printer.driver', 'cups');
+    config()->set('election.devices.printer.cups.name', '');
+    Process::fake();
+
+    try {
+        app(ActivateSamplePackage::class)->handle();
+
+        $payload = app(BallotPayloadService::class)->finalize([
+            'president' => ['pres-ada'],
+            'mayor' => ['mayor-lina'],
+            'council' => ['council-ana'],
+        ], 'test-ballot-cups-unconfigured');
+        $job = app(BallotPrinter::class)->print($payload);
+
+        expect($job['printer'])->toBe('file')
+            ->and($job['printer_fallback_reason'])->toBe('cups-printer-not-configured');
+
+        Process::assertNothingRan();
+    } finally {
+        config()->set('election.devices.printer.driver', 'file');
+    }
+});
+
+test('configured precinct activation automatically certifies devices', function (): void {
+    app(ElectionStorage::class)->reset();
+
+    $result = app(ActivateConfiguredPrecinct::class)->handle();
+    $report = app(ElectionStorage::class)->readJson('certification/device-certification-report.json');
+    $events = app(ActivityJournal::class)->entries();
+
+    expect($result['device_certification']['passed'])->toBeTrue()
+        ->and($report['passed'])->toBeTrue()
+        ->and(collect($events)->pluck('event_type'))->toContain('devices.certification_passed');
 });
 
 test('rendered standards compliant qr artifact decodes to the finalized ballot payload', function (): void {
