@@ -4,6 +4,7 @@ namespace App\Election\Preparation;
 
 use App\Election\Core\CanonicalJson;
 use App\Election\Devices\DeviceCertificationService;
+use App\Election\Support\ElectionOperationLock;
 use App\Election\Support\ElectionStorage;
 
 final class ActivateConfiguredPrecinct
@@ -16,6 +17,7 @@ final class ActivateConfiguredPrecinct
         private readonly ActivatePrecinctBallotPackage $activatePrecinctBallot,
         private readonly CanonicalJson $json,
         private readonly DeviceCertificationService $devices,
+        private readonly ElectionOperationLock $lock,
     ) {}
 
     /**
@@ -23,8 +25,27 @@ final class ActivateConfiguredPrecinct
      */
     public function handle(): array
     {
+        return $this->lock->execute(
+            'configured-precinct-activation',
+            fn (): array => $this->handleWithinLock(),
+            leaseSeconds: 120,
+            waitSeconds: 30,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function handleWithinLock(): array
+    {
         $clusteredPrecinct = (string) config('election.pop.clustered_precinct');
         $currentRun = $this->storage->currentRun();
+
+        $existing = $this->existingActivation($clusteredPrecinct);
+
+        if ($existing !== []) {
+            return $existing;
+        }
 
         if ($currentRun === [] || ($currentRun['precinct_id'] ?? null) !== $clusteredPrecinct) {
             $this->storage->startRun(
@@ -95,5 +116,39 @@ final class ActivateConfiguredPrecinct
     public function summary(): array
     {
         return $this->storage->readJson('packages/configured-precinct-activation.json');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function existingActivation(string $clusteredPrecinct): array
+    {
+        $configuration = $this->storage->readJson('runtime/active-precinct.json');
+        $activation = $this->storage->readJson('packages/configured-precinct-activation.json');
+        $contests = $configuration['contests'] ?? [];
+        $candidateCount = collect(is_array($contests) ? $contests : [])
+            ->sum(fn (array $contest): int => count($contest['candidates'] ?? []));
+
+        if (
+            ($configuration['precinct_id'] ?? null) !== $clusteredPrecinct
+            || ($activation['precinct_id'] ?? null) !== $clusteredPrecinct
+            || ! is_array($contests)
+            || count($contests) === 0
+            || $candidateCount === 0
+        ) {
+            return [];
+        }
+
+        return [
+            'configuration' => $configuration,
+            'activation_report' => $activation,
+            'pop_import' => $activation['pop'] ?? [],
+            'clc_import' => $activation['clc'] ?? [],
+            'imported_package' => [
+                'location' => $activation['location'] ?? [],
+            ],
+            'device_certification' => $this->storage->readJson('certification/device-certification.json'),
+            'cached' => true,
+        ];
     }
 }
