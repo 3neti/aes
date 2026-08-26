@@ -77,6 +77,18 @@ test('compact selected candidates ballot keeps paired offices grids and a single
     ];
 
     $pdf = app(OfficialBallotPdf::class)->render($payload, compactResultConfiguration());
+    $sectionOffsets = [
+        'president' => strpos($pdf, 'PRESIDENT'),
+        'vice_president' => strpos($pdf, 'VICE PRESIDENT'),
+        'senator' => strpos($pdf, 'SENATOR / 12 selected'),
+        'governor' => strpos($pdf, 'GOVERNOR'),
+        'vice_governor' => strpos($pdf, 'VICE GOVERNOR'),
+        'representative' => strpos($pdf, 'REPRESENTATIVE'),
+        'party_list' => strpos($pdf, 'PARTY LIST'),
+        'mayor' => strpos($pdf, 'MAYOR'),
+        'vice_mayor' => strpos($pdf, 'VICE-MAYOR'),
+        'councilor' => strpos($pdf, 'COUNCILOR / 6 selected'),
+    ];
 
     expect($pdf)
         ->toContain("Voter's Result Ballot")
@@ -87,7 +99,7 @@ test('compact selected candidates ballot keeps paired offices grids and a single
         ->toContain('VICE GOVERNOR')
         ->toContain('REPRESENTATIVE')
         ->toContain('MAYOR')
-        ->toContain('VICE MAYOR')
+        ->toContain('VICE-MAYOR')
         ->toContain('PARTY LIST')
         ->toContain('SENATOR / 12 selected')
         ->toContain('COUNCILOR / 6 selected')
@@ -100,7 +112,16 @@ test('compact selected candidates ballot keeps paired offices grids and a single
         ->not->toContain('Senator Choice 13')
         ->not->toContain('BALLOT QR VERIFICATION COPY')
         ->not->toContain('SCAN THIS LARGE QR FOR AUDIT VERIFICATION')
-        ->and(pdfPageCount($pdf))->toBe(1);
+        ->and(pdfPageCount($pdf))->toBe(1)
+        ->and($sectionOffsets)->each->not->toBeFalse()
+        ->and($sectionOffsets['president'])->toBeLessThan($sectionOffsets['senator'])
+        ->and($sectionOffsets['vice_president'])->toBeLessThan($sectionOffsets['senator'])
+        ->and($sectionOffsets['senator'])->toBeLessThan($sectionOffsets['governor'])
+        ->and($sectionOffsets['vice_governor'])->toBeLessThan($sectionOffsets['representative'])
+        ->and($sectionOffsets['representative'])->toBeLessThan($sectionOffsets['party_list'])
+        ->and($sectionOffsets['party_list'])->toBeLessThan($sectionOffsets['mayor'])
+        ->and($sectionOffsets['mayor'])->toBeLessThan($sectionOffsets['vice_mayor'])
+        ->and($sectionOffsets['vice_mayor'])->toBeLessThan($sectionOffsets['councilor']);
 });
 
 test('printed ballot branding can fall back to monochrome', function (): void {
@@ -461,7 +482,7 @@ function compactResultConfiguration(): array
             singleSeatContest('vice_governor', 'VICE GOVERNOR', 'Vice Governor Choice'),
             singleSeatContest('representative', 'REPRESENTATIVE', 'Representative Choice'),
             singleSeatContest('mayor', 'MAYOR', 'Mayor Choice'),
-            singleSeatContest('vice_mayor', 'VICE MAYOR', 'Vice Mayor Choice'),
+            singleSeatContest('vice_mayor', 'VICE-MAYOR', 'Vice Mayor Choice'),
             singleSeatContest('party_list', 'PARTY LIST', 'Party List Choice'),
             [
                 'id' => 'senator',

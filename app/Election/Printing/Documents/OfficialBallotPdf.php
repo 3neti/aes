@@ -58,39 +58,44 @@ final class OfficialBallotPdf
         $pairWidth = (511.0 - $gutter) / 2;
 
         foreach ([
-            ['president', 'vice president'],
-            ['governor', 'vice governor'],
-            ['representative', 'mayor'],
-            ['vice mayor', 'party list'],
-        ] as $pair) {
-            [$leftOffice, $rightOffice] = $pair;
-            $leftContest = $contestsByOffice->get($leftOffice);
-            $rightContest = $contestsByOffice->get($rightOffice);
+            ['type' => 'pair', 'offices' => ['president', 'vice president']],
+            ['type' => 'grid', 'office' => 'senator'],
+            ['type' => 'pair', 'offices' => ['governor', 'vice governor']],
+            ['type' => 'pair', 'offices' => ['representative', 'party list']],
+            ['type' => 'pair', 'offices' => ['mayor', 'vice mayor']],
+            ['type' => 'grid', 'office' => 'councilor'],
+        ] as $section) {
+            if ($section['type'] === 'pair') {
+                [$leftOffice, $rightOffice] = $section['offices'];
+                $leftContest = $contestsByOffice->get($leftOffice);
+                $rightContest = $contestsByOffice->get($rightOffice);
 
-            if (! is_array($leftContest) && ! is_array($rightContest)) {
+                if (! is_array($leftContest) && ! is_array($rightContest)) {
+                    continue;
+                }
+
+                $height = max(
+                    is_array($leftContest) ? $this->compactSingleContestHeight($document, $leftContest, $payload, $pairWidth) : 0,
+                    is_array($rightContest) ? $this->compactSingleContestHeight($document, $rightContest, $payload, $pairWidth) : 0,
+                    54,
+                );
+
+                if (is_array($leftContest)) {
+                    $this->drawCompactSingleContest($document, $page, $leftContest, $payload, $left, $y, $pairWidth, $height);
+                    $rendered[] = $leftOffice;
+                }
+
+                if (is_array($rightContest)) {
+                    $this->drawCompactSingleContest($document, $page, $rightContest, $payload, $left + $pairWidth + $gutter, $y, $pairWidth, $height);
+                    $rendered[] = $rightOffice;
+                }
+
+                $y -= $height + 8;
+
                 continue;
             }
 
-            $height = max(
-                is_array($leftContest) ? $this->compactSingleContestHeight($document, $leftContest, $payload, $pairWidth) : 0,
-                is_array($rightContest) ? $this->compactSingleContestHeight($document, $rightContest, $payload, $pairWidth) : 0,
-                54,
-            );
-
-            if (is_array($leftContest)) {
-                $this->drawCompactSingleContest($document, $page, $leftContest, $payload, $left, $y, $pairWidth, $height);
-                $rendered[] = $leftOffice;
-            }
-
-            if (is_array($rightContest)) {
-                $this->drawCompactSingleContest($document, $page, $rightContest, $payload, $left + $pairWidth + $gutter, $y, $pairWidth, $height);
-                $rendered[] = $rightOffice;
-            }
-
-            $y -= $height + 8;
-        }
-
-        foreach (['senator', 'councilor', 'council'] as $office) {
+            $office = (string) $section['office'];
             $contest = $contestsByOffice->get($office);
 
             if (! is_array($contest)) {
@@ -401,8 +406,8 @@ final class OfficialBallotPdf
     private function officeKey(array $contest): string
     {
         $office = mb_strtolower(trim((string) ($contest['office'] ?? $contest['title'] ?? $contest['id'] ?? '')));
+        $office = str_replace(['vice-president', 'vice-mayor', 'vice-governor', 'party-list'], ['vice president', 'vice mayor', 'vice governor', 'party list'], $office);
         $office = preg_replace('/\s*-\s*.*/', '', $office) ?? $office;
-        $office = str_replace(['vice-president', 'vice-mayor', 'vice-governor'], ['vice president', 'vice mayor', 'vice governor'], $office);
 
         if (str_contains($office, 'senator')) {
             return 'senator';
