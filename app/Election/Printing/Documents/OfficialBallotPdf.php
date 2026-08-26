@@ -237,26 +237,26 @@ final class OfficialBallotPdf
      */
     private function drawCompactResultHeader(ElectionPdfDocument $document, int $page, array $payload, array $configuration, string $precinctId): void
     {
-        $this->drawBrandingLogos($document, $page, 42, 708, 26);
-        $document->text($page, 'Election', 132, 724, 7, true);
-        $document->wrappedText($page, (string) ($payload['election_id'] ?? 'unknown'), 182, 724, 150, 7, 8);
-        $document->text($page, 'Precinct', 352, 724, 7, true);
-        $document->wrappedText($page, $precinctId, 404, 724, 64, 7, 8);
-        $document->text($page, 'Serial', 470, 724, 7, true);
-        $document->wrappedText($page, (string) ($payload['paper_ballot_serial'] ?? 'UNNUMBERED'), 506, 724, 45, 6, 7);
+        $this->drawBrandingLogos($document, $page, 452, 786, 24);
+        $document->text($page, 'Election', 42, 724, 7, true);
+        $document->wrappedText($page, (string) ($payload['election_id'] ?? 'unknown'), 92, 724, 180, 7, 8);
+        $document->text($page, 'Precinct', 302, 724, 7, true);
+        $document->wrappedText($page, $precinctId, 354, 724, 64, 7, 8);
+        $document->text($page, 'Serial', 426, 724, 7, true);
+        $document->wrappedText($page, (string) ($payload['paper_ballot_serial'] ?? 'UNNUMBERED'), 462, 724, 88, 6, 7);
 
-        $document->text($page, 'Locality', 132, 704, 7, true);
+        $document->text($page, 'Locality', 42, 704, 7, true);
         $document->wrappedText(
             $page,
             (string) ($configuration['jurisdiction_label'] ?? 'CITY OF MANILA, NATIONAL CAPITAL REGION'),
-            182,
+            92,
             704,
-            220,
+            250,
             7,
             8,
         );
-        $document->text($page, 'Ballot', 418, 704, 7, true);
-        $document->wrappedText($page, (string) ($payload['ballot_id'] ?? 'unknown'), 456, 704, 94, 6, 7, monospace: true);
+        $document->text($page, 'Ballot', 360, 704, 7, true);
+        $document->wrappedText($page, (string) ($payload['ballot_id'] ?? 'unknown'), 398, 704, 152, 6, 7, monospace: true);
 
         $document->rectangleRgb($page, 42, 637, 511, 26, [0.72, 0.86, 0.98]);
         $document->text($page, 'SELECTED CANDIDATES ONLY', 54, 653, 8, true);
