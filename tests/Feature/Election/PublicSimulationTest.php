@@ -25,6 +25,7 @@ beforeEach(function (): void {
     config()->set('election.review.access.enabled', false);
     config()->set('election.public_simulation.enabled', true);
     config()->set('election.public_simulation.participation_required', false);
+    config()->set('election.devices.printer.driver', 'file');
     $this->withoutVite();
 });
 
@@ -150,7 +151,7 @@ test('a public precinct keeps its voting, VVDAT, tally, and return evidence isol
     $watcher = $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
         ->assertSuccessful();
     expect($watcher->inertiaProps('published'))->toBeTrue()
-        ->and($watcher->inertiaProps('ballot.contests.0.title'))->toBe('SENATOR - PHILIPPINES')
+        ->and($watcher->inertiaProps('ballot.contests.0.title'))->toBe('PRESIDENT - PHILIPPINES')
         ->and($watcher->inertiaProps('randomManualAudit.discrepancy_ballots'))->toBe(1)
         ->and($watcher->inertiaProps('randomManualAudit.passed'))->toBeFalse();
     expect(array_keys($watcher->inertiaProps('randomManualAudit')))->toBe([
@@ -263,6 +264,74 @@ test('a voter completion refresh after precinct close shows a safe closed precin
             ->missing('release.release_code')
             ->missing('release.release_qr_data_uri')
         );
+});
+
+test('watcher ballot review can show a QR-derived ballot carousel before close for demo mode', function (): void {
+    config()->set('election.public_simulation.watcher_ballot_viewer.during_voting', true);
+
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+
+    publicSimulationDepositBallot($this, $round, $precinct, 0);
+    publicSimulationDepositBallot($this, $round, $precinct, 1);
+
+    $watcher = $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
+        ->assertSuccessful();
+
+    expect($watcher->inertiaProps('published'))->toBeFalse()
+        ->and($watcher->inertiaProps('demoTransparencyMode'))->toBeTrue()
+        ->and($watcher->inertiaProps('ballotReview.allowed'))->toBeTrue()
+        ->and($watcher->inertiaProps('ballotReview.record_count'))->toBe(2)
+        ->and($watcher->inertiaProps('ballotReview.ballots.0.sequence'))->toBe(1)
+        ->and($watcher->inertiaProps('ballotReview.ballots.1.sequence'))->toBe(2)
+        ->and($watcher->inertiaProps('ballotReview.ballots.0.qr_decode_status'))->toBe('decoded')
+        ->and($watcher->inertiaProps('ballotReview.ballots.0.selected_candidates.0.candidates.0.name'))->toContain('1 ')
+        ->and($watcher->inertiaProps('ballotReview.ballots.0.cumulative_tally'))->not->toBeEmpty()
+        ->and($watcher->inertiaProps('ballotReview.ballots.1.cumulative_tally'))->not->toBeEmpty()
+        ->and($watcher->inertiaProps('ballotReview.ballots.0.pdf_url'))->toContain('/watch/ballots/1');
+
+    $this->get(route('election.public-simulation.watcher.ballot-pdf', [
+        $round,
+        $precinct,
+        'sequence' => 1,
+    ]))->assertSuccessful()
+        ->assertHeader('content-disposition', 'inline; filename="'.$precinct->code.'-ballot-001.pdf"');
+});
+
+test('watcher ballot review is locked before close when demo transparency is disabled', function (): void {
+    config()->set('election.public_simulation.watcher_ballot_viewer.during_voting', false);
+
+    $this->get(route('election.public-simulation.index'))->assertSuccessful();
+
+    $round = SimulationRound::query()->with('precincts')->sole();
+    $precinct = $round->precincts->first();
+    expect($precinct)->toBeInstanceOf(SimulationPrecinct::class);
+
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    $this->post(route('election.public-simulation.open', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+
+    publicSimulationDepositBallot($this, $round, $precinct, 0);
+
+    $watcher = $this->get(route('election.public-simulation.watcher.show', [$round, $precinct]))
+        ->assertSuccessful();
+
+    expect($watcher->inertiaProps('demoTransparencyMode'))->toBeFalse()
+        ->and($watcher->inertiaProps('ballotReview.allowed'))->toBeFalse()
+        ->and($watcher->inertiaProps('ballotReview.record_count'))->toBe(0);
+
+    $this->get(route('election.public-simulation.watcher.ballot-pdf', [
+        $round,
+        $precinct,
+        'sequence' => 1,
+    ]))->assertNotFound();
 });
 
 test('an anonymous waiting ticket is released in order without exposing a control number', function (): void {
@@ -1023,3 +1092,36 @@ test('the facilitator god mode remains disabled until explicitly enabled', funct
             ->where('privacyNotice', 'This facilitator screen intentionally excludes voter selections, control numbers, print releases, paper serials, QR payloads, and participant identity.')
         );
 });
+
+function publicSimulationDepositBallot(mixed $test, SimulationRound $round, SimulationPrecinct $precinct, int $candidateOffset = 0): void
+{
+    $credentials = ['officer_code' => $precinct->officer_code, 'officer_pin' => '123456'];
+    app(PublicSimulationScope::class)->apply($precinct->fresh('round'));
+    $configuration = app(ElectionStorage::class)->readJson('runtime/active-precinct.json');
+    $selections = collect($configuration['contests'])
+        ->mapWithKeys(fn (array $contest): array => [
+            $contest['id'] => collect($contest['candidates'])
+                ->slice($candidateOffset)
+                ->take(min(1, (int) $contest['max_selections']))
+                ->pluck('id')
+                ->all(),
+        ])
+        ->all();
+
+    $test->post(route('election.public-simulation.admit', [$round, $precinct]), $credentials)
+        ->assertRedirect();
+    $authorization = session('public_simulation.control_number');
+
+    $test->post(route('election.public-simulation.voter.claim', [$round, $precinct]), ['code' => $authorization['code']])
+        ->assertRedirect();
+    $test->post(route('election.public-simulation.voter.finalize', [$round, $precinct]), ['selections' => $selections])
+        ->assertRedirect();
+    $release = session("public_simulation.{$precinct->id}.release");
+
+    $test->post(route('election.public-simulation.print.redeem', [$round, $precinct]), ['code' => $release['release_code']])
+        ->assertRedirect();
+    $test->post(route('election.public-simulation.print.print', [$round, $precinct]))
+        ->assertRedirect();
+    $test->post(route('election.public-simulation.print.deposit', [$round, $precinct]))
+        ->assertRedirect();
+}

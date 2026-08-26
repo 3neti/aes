@@ -68,6 +68,12 @@ return [
             'enabled' => (bool) env('ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_ENABLED', true),
             'minimum_records' => (int) env('ELECTION_PUBLIC_SIMULATION_VVDAT_AUDIT_EXPORT_MINIMUM_RECORDS', 1),
         ],
+        'watcher_ballot_viewer' => [
+            'enabled' => (bool) env('ELECTION_WATCHER_BALLOT_VIEWER_ENABLED', true),
+            'during_voting' => (bool) env('ELECTION_WATCHER_BALLOT_VIEWER_DURING_VOTING', true),
+            'download_enabled' => (bool) env('ELECTION_WATCHER_BALLOT_DOWNLOAD_ENABLED', true),
+            'qr_audit_tally_enabled' => (bool) env('ELECTION_WATCHER_QR_AUDIT_TALLY_ENABLED', true),
+        ],
         'demo_control_number_share' => [
             'enabled' => (bool) env('ELECTION_DEMO_CONTROL_NUMBER_SHARE_ENABLED', (bool) env('ELECTION_REVIEW_MODE', false)),
         ],

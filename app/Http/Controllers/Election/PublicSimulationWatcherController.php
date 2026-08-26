@@ -6,6 +6,7 @@ use App\Election\Counting\TallyPresentation;
 use App\Election\PublicSimulation\PublicRandomManualAuditPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicVvdatAuditExport;
+use App\Election\PublicSimulation\WatcherBallotReview;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
 use App\Models\SimulationPrecinct;
@@ -16,19 +17,24 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class PublicSimulationWatcherController extends Controller
 {
-    public function show(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicVvdatAuditExport $exports, PublicRandomManualAuditPublication $auditPublication, ElectionStorage $storage, TallyPresentation $presentation): Response
+    public function show(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicVvdatAuditExport $exports, PublicRandomManualAuditPublication $auditPublication, ElectionStorage $storage, TallyPresentation $presentation, WatcherBallotReview $ballotReview): Response
     {
         $this->scope($round, $precinct, $simulations);
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $return = $configuration === [] ? [] : $storage->readJson("returns/{$configuration['precinct_id']}-return.json");
         $publication = $storage->readJson('returns/publication-manifest.json');
+        $review = $this->withBallotPdfUrls(
+            $ballotReview->summary($this->ballotReviewAllowed($precinct), $this->ballotReviewDownloadEnabled()),
+            $round,
+            $precinct,
+        );
 
         return Inertia::render('Election/PublicSimulationWatcher', [
             'precinct' => [
                 'label' => $precinct->label,
                 'code' => $precinct->code,
                 'status' => $precinct->status,
-                'accepted_ballots' => $return['accepted_ballots'] ?? null,
+                'accepted_ballots' => $return['accepted_ballots'] ?? $review['record_count'],
                 'tally' => $return['tally'] ?? [],
                 'display_tally' => $presentation->displayTally((array) ($return['tally'] ?? [])),
             ],
@@ -49,6 +55,8 @@ final class PublicSimulationWatcherController extends Controller
                     ->all(),
             ],
             'published' => $publication !== [],
+            'demoTransparencyMode' => $review['allowed'] === true && ! $this->isPrecinctClosed($precinct),
+            'ballotReview' => $review,
             'auditExportAvailable' => $publication !== [] && $exports->isAvailable(),
             'randomManualAudit' => $publication === [] ? [] : $auditPublication->watcherSummary(),
             'publication' => [
@@ -61,6 +69,18 @@ final class PublicSimulationWatcherController extends Controller
                 'vvdat_audit_export' => route('election.public-simulation.watcher.vvdat-audit-export', [$round, $precinct]),
                 'random_manual_audit' => route('election.public-simulation.watcher.rma-audit', [$round, $precinct]),
             ],
+        ]);
+    }
+
+    public function ballotPdf(SimulationRound $round, SimulationPrecinct $precinct, int $sequence, PublicSimulationService $simulations, WatcherBallotReview $ballotReview): BinaryFileResponse
+    {
+        $this->scope($round, $precinct, $simulations);
+        abort_unless($this->ballotReviewAllowed($precinct) && $this->ballotReviewDownloadEnabled(), 404);
+        $path = $ballotReview->pdfPath($sequence);
+        abort_unless(is_string($path) && is_file($path), 404);
+
+        return response()->file($path, [
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-ballot-'.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT).'.pdf"',
         ]);
     }
 
@@ -111,5 +131,54 @@ final class PublicSimulationWatcherController extends Controller
     {
         return $precinct->status === 'published'
             && $storage->readJson('returns/publication-manifest.json') !== [];
+    }
+
+    private function ballotReviewAllowed(SimulationPrecinct $precinct): bool
+    {
+        if (! (bool) config('election.public_simulation.watcher_ballot_viewer.enabled', true)) {
+            return false;
+        }
+
+        if ($this->isPrecinctClosed($precinct)) {
+            return true;
+        }
+
+        return (bool) config('election.public_simulation.watcher_ballot_viewer.during_voting', true);
+    }
+
+    private function ballotReviewDownloadEnabled(): bool
+    {
+        return (bool) config('election.public_simulation.watcher_ballot_viewer.download_enabled', true);
+    }
+
+    private function isPrecinctClosed(SimulationPrecinct $precinct): bool
+    {
+        return in_array($precinct->status, ['results_ready', 'published', 'archived'], true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $review
+     * @return array<string, mixed>
+     */
+    private function withBallotPdfUrls(array $review, SimulationRound $round, SimulationPrecinct $precinct): array
+    {
+        if (! ($review['download_enabled'] ?? false)) {
+            return $review;
+        }
+
+        $review['ballots'] = collect($review['ballots'] ?? [])
+            ->map(function (array $ballot) use ($round, $precinct): array {
+                $ballot['pdf_url'] = route('election.public-simulation.watcher.ballot-pdf', [
+                    $round,
+                    $precinct,
+                    'sequence' => $ballot['sequence'],
+                ]);
+
+                return $ballot;
+            })
+            ->values()
+            ->all();
+
+        return $review;
     }
 }

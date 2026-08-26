@@ -114,6 +114,9 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/{round:code}/{precinct:code}/print/deposit', [PublicSimulationVoterController::class, 'deposit'])->name('print.deposit');
 
         Route::get('/{round:code}/{precinct:code}/watch', [PublicSimulationWatcherController::class, 'show'])->name('watcher.show');
+        Route::get('/{round:code}/{precinct:code}/watch/ballots/{sequence}', [PublicSimulationWatcherController::class, 'ballotPdf'])
+            ->whereNumber('sequence')
+            ->name('watcher.ballot-pdf');
         Route::get('/{round:code}/{precinct:code}/watch/tally-sheet', [PublicSimulationWatcherController::class, 'tally'])->name('watcher.tally');
         Route::get('/{round:code}/{precinct:code}/watch/election-return', [PublicSimulationWatcherController::class, 'electionReturn'])->name('watcher.return');
         Route::get('/{round:code}/{precinct:code}/watch/vvdat-audit-export', [PublicSimulationWatcherController::class, 'vvdatAuditExport'])->name('watcher.vvdat-audit-export');
