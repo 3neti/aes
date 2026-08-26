@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { Form, Head, Link, usePoll } from '@inertiajs/vue3';
+import { Form, Head, Link, router, usePoll } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
     precinct: {
@@ -63,10 +63,33 @@ const props = defineProps<{
     bulkBallots: {
         enabled: boolean;
         max_count: number;
+        chunk_size: number;
         rendered_pdf_limit: number;
         presets: number[];
+        run: {
+            target: number | null;
+            generated: number;
+            remaining: number;
+            status: string;
+            updated_at: string | null;
+        };
     };
 }>();
+
+const customBulkCount = ref<number | null>(null);
+const bulkLoading = ref(false);
+const bulkMessage = ref<string | null>(null);
+const bulkError = ref<string | null>(null);
+const liveBulkRun = ref({ ...props.bulkBallots.run });
+
+watch(
+    () => props.bulkBallots.run,
+    (run) => {
+        if (!bulkLoading.value) {
+            liveBulkRun.value = { ...run };
+        }
+    },
+);
 
 const largestPreset = computed<number>(() =>
     Math.max(...props.bulkBallots.presets, props.bulkBallots.max_count),
@@ -80,6 +103,92 @@ function confirmBulk(count: number): boolean {
           );
 }
 
+const displayedBulkRun = computed(() => liveBulkRun.value);
+
+const bulkProgressPercent = computed<number>(() => {
+    const target = displayedBulkRun.value.target ?? 0;
+
+    if (target < 1) {
+        return 0;
+    }
+
+    return Math.min(100, Math.round((displayedBulkRun.value.generated / target) * 100));
+});
+
+function csrfToken(): string | null {
+    return (
+        document
+            .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+            ?.getAttribute('content') ?? null
+    );
+}
+
+async function loadBulkBallots(count: number): Promise<void> {
+    if (bulkLoading.value) {
+        return;
+    }
+
+    if (!confirmBulk(count)) {
+        return;
+    }
+
+    bulkLoading.value = true;
+    bulkError.value = null;
+    bulkMessage.value = null;
+
+    try {
+        let summary = null;
+
+        do {
+            const token = csrfToken();
+            const response = await fetch(props.actions.bulkBallots, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                },
+                body: JSON.stringify({ count }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    result?.message ||
+                        result?.errors?.count?.[0] ||
+                        'Demo ballot loading did not finish.',
+                );
+            }
+
+            summary = result.summary;
+            bulkMessage.value = result.message;
+            liveBulkRun.value = {
+                target: summary.target,
+                generated: summary.generated,
+                remaining: summary.remaining,
+                status: summary.status,
+                updated_at: new Date().toISOString(),
+            };
+
+            if (summary.status !== 'complete') {
+                await new Promise((resolve) => window.setTimeout(resolve, 150));
+            }
+        } while (summary?.status !== 'complete');
+
+        router.reload({
+            only: ['operationsBoard', 'currentTally', 'bulkBallots', 'feedback'],
+        });
+    } catch (error) {
+        bulkError.value =
+            error instanceof Error
+                ? error.message
+                : 'Demo ballot loading stopped before it finished.';
+    } finally {
+        bulkLoading.value = false;
+    }
+}
+
 usePoll(
     4000,
     {
@@ -90,6 +199,7 @@ usePoll(
             'controlNumber',
             'feedback',
             'printFeedback',
+            'bulkBallots',
         ],
     },
     { keepAlive: true },
@@ -349,39 +459,75 @@ usePoll(
                     Bulk demo ballot generation is disabled by configuration.
                 </div>
                 <template v-else>
-                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                        <Form
-                            v-for="preset in bulkBallots.presets"
-                            :key="preset"
-                            :action="actions.bulkBallots"
-                            method="post"
-                            #default="{ processing }"
-                        >
-                            <input type="hidden" name="count" :value="preset" />
+                    <div
+                        v-if="displayedBulkRun.target"
+                        class="mt-4 border border-blue-200 bg-blue-50 p-4"
+                    >
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-bold text-blue-900">
+                                    Loading progress
+                                </p>
+                                <p class="mt-1 text-sm text-blue-900">
+                                    {{ displayedBulkRun.generated }} of
+                                    {{ displayedBulkRun.target }} deposited ballots
+                                    loaded.
+                                    <span v-if="displayedBulkRun.remaining > 0">
+                                        {{ displayedBulkRun.remaining }} remaining.
+                                    </span>
+                                </p>
+                            </div>
                             <button
-                                class="min-h-12 w-full border-2 border-blue-800 bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
-                                type="submit"
-                                :disabled="
-                                    processing || preset > bulkBallots.max_count
+                                v-if="
+                                    displayedBulkRun.status !== 'complete' &&
+                                    displayedBulkRun.target
                                 "
-                                @click="(event) => !confirmBulk(preset) && event.preventDefault()"
+                                class="min-h-11 border-2 border-blue-800 bg-white px-4 text-sm font-bold text-blue-800 disabled:opacity-50"
+                                type="button"
+                                :disabled="bulkLoading"
+                                @click="loadBulkBallots(displayedBulkRun.target)"
                             >
-                                {{ processing ? 'Generating...' : `${preset} ballots` }}
+                                {{
+                                    bulkLoading
+                                        ? 'Loading...'
+                                        : 'Continue loading'
+                                }}
                             </button>
-                        </Form>
+                        </div>
+                        <div class="mt-3 h-3 overflow-hidden border border-blue-300 bg-white">
+                            <div
+                                class="h-full bg-blue-800 transition-all"
+                                :style="{ width: `${bulkProgressPercent}%` }"
+                            />
+                        </div>
                     </div>
 
-                    <Form
-                        :action="actions.bulkBallots"
-                        method="post"
-                        #default="{ errors, processing }"
-                        class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"
-                    >
+                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                        <button
+                            v-for="preset in bulkBallots.presets"
+                            :key="preset"
+                            class="min-h-12 w-full border-2 border-blue-800 bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
+                            type="button"
+                            :disabled="
+                                bulkLoading || preset > bulkBallots.max_count
+                            "
+                            @click="loadBulkBallots(preset)"
+                        >
+                            {{
+                                bulkLoading &&
+                                displayedBulkRun.target === preset
+                                    ? 'Loading...'
+                                    : `Load to ${preset} ballots`
+                            }}
+                        </button>
+                    </div>
+
+                    <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
                         <label class="block">
                             <span class="text-sm font-bold">Custom count</span>
                             <input
+                                v-model.number="customBulkCount"
                                 class="mt-1 min-h-12 w-full border-2 border-stone-400 px-4 font-mono text-xl font-bold"
-                                name="count"
                                 type="number"
                                 min="1"
                                 :max="bulkBallots.max_count"
@@ -390,28 +536,36 @@ usePoll(
                         </label>
                         <button
                             class="min-h-12 self-end border-2 border-blue-800 bg-white px-5 font-bold text-blue-800 disabled:opacity-50"
-                            type="submit"
-                            :disabled="processing"
-                            @click="
-                                (event) =>
-                                    !window.confirm(
-                                        'Generate this many deposited demo ballots?',
-                                    ) && event.preventDefault()
+                            type="button"
+                            :disabled="
+                                bulkLoading ||
+                                !customBulkCount ||
+                                customBulkCount < 1 ||
+                                customBulkCount > bulkBallots.max_count
                             "
+                            @click="loadBulkBallots(customBulkCount || 0)"
                         >
-                            {{ processing ? 'Generating...' : 'Generate custom' }}
+                            {{ bulkLoading ? 'Loading...' : 'Load custom' }}
                         </button>
                         <p
-                            v-if="errors.count"
+                            v-if="bulkError"
                             class="font-bold text-red-700 sm:col-span-2"
                         >
-                            {{ errors.count }}
+                            {{ bulkError }}
                         </p>
-                    </Form>
+                        <p
+                            v-if="bulkMessage"
+                            class="font-semibold text-blue-900 sm:col-span-2"
+                        >
+                            {{ bulkMessage }}
+                        </p>
+                    </div>
 
                     <p class="mt-3 text-xs text-stone-600">
-                        Maximum {{ bulkBallots.max_count }} per request. Use
-                        Reset role demo precinct before loading a fresh batch.
+                        Maximum {{ bulkBallots.max_count }} total demo ballots.
+                        Loads {{ bulkBallots.chunk_size }} ballots per step so
+                        the page stays responsive. Use Reset role demo precinct
+                        before loading a fresh batch.
                     </p>
                 </template>
             </section>

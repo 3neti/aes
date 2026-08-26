@@ -326,16 +326,35 @@ test('role demo reset replaces the live precinct with a freshly opened one', fun
 
 test('role demo officer can bulk generate deposited ballots for watcher review', function (): void {
     config()->set('election.public_simulation.role_demo_bulk_ballots.max_count', 12);
+    config()->set('election.public_simulation.role_demo_bulk_ballots.chunk_size', 5);
     config()->set('election.public_simulation.role_demo_bulk_ballots.rendered_pdf_limit', 3);
     config()->set('election.public_simulation.role_demo_bulk_ballots.presets', [3, 12]);
 
     $this->get(route('election.role-demo.index'))->assertSuccessful();
 
-    $this->post(route('election.role-demo.bulk-ballots'), [
+    $this->postJson(route('election.role-demo.bulk-ballots'), [
         'count' => 12,
     ])
-        ->assertRedirectToRoute('election.role-demo.officer')
-        ->assertSessionHasNoErrors();
+        ->assertSuccessful()
+        ->assertJsonPath('summary.status', 'running')
+        ->assertJsonPath('summary.generated', 5)
+        ->assertJsonPath('summary.remaining', 7);
+
+    $this->postJson(route('election.role-demo.bulk-ballots'), [
+        'count' => 12,
+    ])
+        ->assertSuccessful()
+        ->assertJsonPath('summary.status', 'running')
+        ->assertJsonPath('summary.generated', 10)
+        ->assertJsonPath('summary.remaining', 2);
+
+    $this->postJson(route('election.role-demo.bulk-ballots'), [
+        'count' => 12,
+    ])
+        ->assertSuccessful()
+        ->assertJsonPath('summary.status', 'complete')
+        ->assertJsonPath('summary.generated', 12)
+        ->assertJsonPath('summary.remaining', 0);
 
     $this->get(route('election.role-demo.officer'))
         ->assertSuccessful()
@@ -343,7 +362,11 @@ test('role demo officer can bulk generate deposited ballots for watcher review',
             ->component('Election/RoleDemoOfficer')
             ->where('currentTally.accepted_ballots', 12)
             ->where('bulkBallots.max_count', 12)
+            ->where('bulkBallots.chunk_size', 5)
             ->where('bulkBallots.rendered_pdf_limit', 3)
+            ->where('bulkBallots.run.status', 'complete')
+            ->where('bulkBallots.run.generated', 12)
+            ->where('bulkBallots.run.remaining', 0)
         );
 
     $this->get(route('election.role-demo.watcher'))
@@ -369,7 +392,7 @@ test('role demo officer can bulk generate deposited ballots for watcher review',
 
     expect(app(ElectionStorage::class)->files('counting/sealed'))->toHaveCount(12)
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
-        ->toContain('role_demo.bulk_ballots_generated')
+        ->toContain('role_demo.bulk_ballots_chunk_generated')
         ->toContain('role_demo.bulk_ballot_print_simulated');
 });
 

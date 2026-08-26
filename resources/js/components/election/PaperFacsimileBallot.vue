@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import BallotAlphabetNavigation from '@/components/election/BallotAlphabetNavigation.vue';
-import BallotPositionNavigation from '@/components/election/BallotPositionNavigation.vue';
-import BallotReviewSummaryButton from '@/components/election/BallotReviewSummaryButton.vue';
 import {
     candidateAnchor,
     contestAnchor,
     letterIndex,
     letterNavigationLabel,
 } from '@/components/election/ballotNavigation';
+import BallotPositionNavigation from '@/components/election/BallotPositionNavigation.vue';
+import BallotReviewSummaryButton from '@/components/election/BallotReviewSummaryButton.vue';
 import type {
     BallotLetterJump,
     BallotNavigationContest,

@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { Form, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import PaperFacsimileBallot from '@/components/election/PaperFacsimileBallot.vue';
-import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
-import TouchGuidedBallot from '@/components/election/TouchGuidedBallot.vue';
 import {
     candidateAnchor,
     candidateName,
     contestAnchor,
     contestShortLabel,
 } from '@/components/election/ballotNavigation';
+import PaperFacsimileBallot from '@/components/election/PaperFacsimileBallot.vue';
+import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
+import TouchGuidedBallot from '@/components/election/TouchGuidedBallot.vue';
 import type {
     Candidate,
     Contest,

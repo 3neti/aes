@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { Head, Link, usePoll } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import BallotPagination from '@/components/election/BallotPagination.vue';
 import TallyMarks from '@/components/election/TallyMarks.vue';
 
 type Tally = Record<string, Record<string, number>>;
@@ -127,14 +128,6 @@ function selectBallot(index: number): void {
         Math.max(index, 0),
         Math.max(props.ballotReview.ballots.length - 1, 0),
     );
-}
-
-function previousBallot(): void {
-    selectBallot(selectedIndex.value - 1);
-}
-
-function nextBallot(): void {
-    selectBallot(selectedIndex.value + 1);
 }
 </script>
 
@@ -297,27 +290,6 @@ function nextBallot(): void {
                                     }}
                                 </h3>
                             </div>
-                            <div class="flex gap-2">
-                                <button
-                                    type="button"
-                                    class="secondary-button disabled:opacity-40"
-                                    :disabled="selectedIndex === 0"
-                                    @click="previousBallot"
-                                >
-                                    Previous
-                                </button>
-                                <button
-                                    type="button"
-                                    class="secondary-button disabled:opacity-40"
-                                    :disabled="
-                                        selectedIndex >=
-                                        ballotReview.ballots.length - 1
-                                    "
-                                    @click="nextBallot"
-                                >
-                                    Next
-                                </button>
-                            </div>
                         </div>
                         <iframe
                             v-if="selectedBallot.pdf_url"
@@ -329,22 +301,11 @@ function nextBallot(): void {
                             Rendered ballot PDF is not available for this
                             deposited record.
                         </div>
-                        <div class="flex flex-wrap gap-2 border-t border-stone-200 p-3">
-                            <button
-                                v-for="(ballotRecord, index) in ballotReview.ballots"
-                                :key="ballotRecord.sequence"
-                                type="button"
-                                class="h-9 min-w-9 border px-3 text-sm font-bold"
-                                :class="
-                                    index === selectedIndex
-                                        ? 'border-blue-700 bg-blue-700 text-white'
-                                        : 'border-stone-300 bg-white text-stone-700'
-                                "
-                                @click="selectBallot(index)"
-                            >
-                                {{ ballotRecord.sequence }}
-                            </button>
-                        </div>
+                        <BallotPagination
+                            :selected-index="selectedIndex"
+                            :total="ballotReview.ballots.length"
+                            @update:selected-index="selectBallot"
+                        />
                     </div>
 
                     <aside class="p-4">

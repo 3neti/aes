@@ -37,7 +37,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/officer/admit', [RoleDemoController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
         Route::post('/officer/dismiss-control-number', [RoleDemoController::class, 'dismissControlNumber'])->name('dismiss-control-number');
         Route::post('/officer/accept-print', [RoleDemoController::class, 'acceptPrint'])->middleware('throttle:20,1')->name('print.accept');
-        Route::post('/officer/bulk-ballots', [RoleDemoController::class, 'bulkBallots'])->middleware('throttle:5,1')->name('bulk-ballots');
+        Route::post('/officer/bulk-ballots', [RoleDemoController::class, 'bulkBallots'])->middleware('throttle:60,1')->name('bulk-ballots');
         Route::get('/officer/last-printed-ballot', [RoleDemoController::class, 'lastPrintedBallot'])->name('print.last-ballot');
         Route::get('/voter', [RoleDemoController::class, 'voter'])->name('voter');
         Route::post('/voter/control-number', [RoleDemoController::class, 'controlNumber'])->middleware('throttle:20,1')->name('voter.control-number');

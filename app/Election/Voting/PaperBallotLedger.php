@@ -25,7 +25,7 @@ final class PaperBallotLedger
 
         $start = (int) ($setup['inventory']['ballot_stock_start'] ?? 0);
         $end = (int) ($setup['inventory']['ballot_stock_end'] ?? -1);
-        $issued = collect($this->events())->where('event_type', 'paper_ballot.issued')->count();
+        $issued = $this->issuedCount();
         $number = $start + $issued;
 
         if ($number > $end) {
@@ -40,13 +40,19 @@ final class PaperBallotLedger
         return $this->nextSerial() ?? sprintf(
             '%s-DEMO-%06d',
             $this->serialPrefix($precinctId),
-            collect($this->events())->where('event_type', 'paper_ballot.issued')->count() + 1,
+            $this->issuedCount() + 1,
         );
     }
 
     public function recordIssued(string $serial, string $ballotId, string $payloadHash): void
     {
         $this->append('paper_ballot.issued', [
+            'paper_ballot_serial' => $serial,
+            'ballot_id' => $ballotId,
+            'payload_hash' => $payloadHash,
+        ]);
+        $this->storage->writeJson("paper-ballot-ledger/index/{$payloadHash}.json", [
+            'schema_version' => 'paper-ballot-ledger-payload-index-1',
             'paper_ballot_serial' => $serial,
             'ballot_id' => $ballotId,
             'payload_hash' => $payloadHash,
@@ -156,6 +162,7 @@ final class PaperBallotLedger
     {
         return collect($this->storage->files('paper-ballot-ledger'))
             ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
+            ->filter(fn (array $record): bool => ($record['schema_version'] ?? null) === 'paper-ballot-ledger-event-1')
             ->sortBy('sequence')
             ->values()
             ->all();
@@ -163,17 +170,21 @@ final class PaperBallotLedger
 
     private function recordForPayload(string $eventType, string $payloadHash): void
     {
-        $issue = collect($this->events())
-            ->first(fn (array $event): bool => ($event['event_type'] ?? null) === 'paper_ballot.issued'
-                && ($event['payload']['payload_hash'] ?? null) === $payloadHash);
+        $issue = $this->storage->readJson("paper-ballot-ledger/index/{$payloadHash}.json");
 
-        if (! is_array($issue)) {
+        if ($issue === []) {
+            $issue = collect($this->events())
+                ->first(fn (array $event): bool => ($event['event_type'] ?? null) === 'paper_ballot.issued'
+                    && ($event['payload']['payload_hash'] ?? null) === $payloadHash);
+        }
+
+        if (! is_array($issue) || $issue === []) {
             return;
         }
 
         $this->append($eventType, [
-            'paper_ballot_serial' => $issue['payload']['paper_ballot_serial'],
-            'ballot_id' => $issue['payload']['ballot_id'],
+            'paper_ballot_serial' => $issue['paper_ballot_serial'] ?? $issue['payload']['paper_ballot_serial'],
+            'ballot_id' => $issue['ballot_id'] ?? $issue['payload']['ballot_id'],
             'payload_hash' => $payloadHash,
         ]);
     }
@@ -183,11 +194,12 @@ final class PaperBallotLedger
      */
     private function append(string $eventType, array $payload): void
     {
-        $events = $this->events();
-        $previousHash = $events === [] ? str_repeat('0', 64) : (string) end($events)['event_hash'];
+        $state = $this->ledgerState();
+        $sequence = (int) ($state['sequence'] ?? 0) + 1;
+        $previousHash = (string) ($state['event_hash'] ?? str_repeat('0', 64));
         $event = [
             'schema_version' => 'paper-ballot-ledger-event-1',
-            'sequence' => count($events) + 1,
+            'sequence' => $sequence,
             'event_type' => $eventType,
             'occurred_at' => $this->clock->now()->toIso8601String(),
             'payload' => $payload,
@@ -198,6 +210,54 @@ final class PaperBallotLedger
             sprintf('paper-ballot-ledger/%06d-%s.json', $event['sequence'], str_replace('.', '-', $eventType)),
             $event,
         );
+        $this->storage->writeJson('paper-ballot-ledger/state/current.json', [
+            'schema_version' => 'paper-ballot-ledger-state-1',
+            'sequence' => $sequence,
+            'event_hash' => $event['event_hash'],
+            'issued_count' => (int) ($state['issued_count'] ?? 0) + ($eventType === 'paper_ballot.issued' ? 1 : 0),
+            'updated_at' => $event['occurred_at'],
+        ]);
+    }
+
+    private function issuedCount(): int
+    {
+        $state = $this->storage->readJson('paper-ballot-ledger/state/current.json');
+
+        if (isset($state['issued_count'])) {
+            return (int) $state['issued_count'];
+        }
+
+        return collect($this->events())->where('event_type', 'paper_ballot.issued')->count();
+    }
+
+    /**
+     * @return array{sequence?: int, event_hash?: string, issued_count?: int}
+     */
+    private function ledgerState(): array
+    {
+        $state = $this->storage->readJson('paper-ballot-ledger/state/current.json');
+
+        if ($state !== []) {
+            return $state;
+        }
+
+        $events = $this->events();
+
+        if ($events === []) {
+            return [
+                'sequence' => 0,
+                'event_hash' => str_repeat('0', 64),
+                'issued_count' => 0,
+            ];
+        }
+
+        $last = end($events);
+
+        return [
+            'sequence' => count($events),
+            'event_hash' => (string) $last['event_hash'],
+            'issued_count' => collect($events)->where('event_type', 'paper_ballot.issued')->count(),
+        ];
     }
 
     private function serialPrefix(string $precinctId): string

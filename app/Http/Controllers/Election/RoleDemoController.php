@@ -75,6 +75,7 @@ final class RoleDemoController extends Controller
         PublicSimulationOperationsBoard $operationsBoard,
         ElectionStorage $storage,
         RoleDemoInterimCloseout $forms,
+        RoleDemoBulkBallotSeeder $bulkBallots,
         Request $request,
     ): Response {
         $precinct = $this->precinct($simulations);
@@ -113,12 +114,14 @@ final class RoleDemoController extends Controller
             'bulkBallots' => [
                 'enabled' => (bool) config('election.public_simulation.role_demo_bulk_ballots.enabled', true),
                 'max_count' => max(1, (int) config('election.public_simulation.role_demo_bulk_ballots.max_count', 700)),
+                'chunk_size' => max(1, (int) config('election.public_simulation.role_demo_bulk_ballots.chunk_size', 25)),
                 'rendered_pdf_limit' => max(0, (int) config('election.public_simulation.role_demo_bulk_ballots.rendered_pdf_limit', 50)),
                 'presets' => collect(config('election.public_simulation.role_demo_bulk_ballots.presets', [10, 100, 700]))
                     ->map(fn (mixed $preset): int => (int) $preset)
                     ->filter(fn (int $preset): bool => $preset > 0)
                     ->values()
                     ->all(),
+                'run' => $bulkBallots->summary(),
             ],
         ]);
     }
@@ -146,7 +149,7 @@ final class RoleDemoController extends Controller
         return to_route('election.role-demo.officer');
     }
 
-    public function bulkBallots(Request $request, PublicSimulationService $simulations, RoleDemoBulkBallotSeeder $bulkBallots): RedirectResponse
+    public function bulkBallots(Request $request, PublicSimulationService $simulations, RoleDemoBulkBallotSeeder $bulkBallots): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
             'count' => [
@@ -164,8 +167,27 @@ final class RoleDemoController extends Controller
             throw ValidationException::withMessages(['count' => $exception->getMessage()]);
         }
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'summary' => $summary,
+                'message' => $this->bulkBallotFeedback($summary),
+            ]);
+        }
+
         return to_route('election.role-demo.officer')
-            ->with('role_demo.feedback', "{$summary['generated']} demo ballots generated. {$summary['rendered_pdfs']} rendered ballot PDFs are available for preview; all generated ballots are included in the watcher tally.");
+            ->with('role_demo.feedback', $this->bulkBallotFeedback($summary));
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     */
+    private function bulkBallotFeedback(array $summary): string
+    {
+        if (($summary['status'] ?? null) === 'complete') {
+            return "{$summary['generated']} demo ballots are now loaded. {$summary['rendered_pdfs']} rendered ballot PDFs were produced in the last chunk; all loaded ballots are included in the watcher tally.";
+        }
+
+        return "{$summary['generated']} of {$summary['target']} demo ballots loaded. {$summary['remaining']} remaining; continue loading to finish the watcher demo set.";
     }
 
     public function acceptPrint(RedeemPrintReleaseRequest $request, PublicSimulationService $simulations, PrivateBallotRelease $releases, BallotPrinter $printer, SealedBallotBox $ballotBox, PublicSimulationVotingGate $voting, RoleDemoInterimCloseout $forms): RedirectResponse

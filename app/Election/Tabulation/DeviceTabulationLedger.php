@@ -30,17 +30,19 @@ final class DeviceTabulationLedger
             if ($this->storage->readJson('counting/vvdat-ledger-freeze.json') !== []) {
                 throw new RuntimeException('The VVDAT ledger is frozen and cannot accept another deposited ballot.');
             }
-            foreach ($this->records() as $record) {
-                if (($record['payload_hash'] ?? null) === ($payload['payload_hash'] ?? null)) {
-                    throw new RuntimeException('This ballot already has a device tabulation record.');
-                }
+
+            $payloadHash = (string) ($payload['payload_hash'] ?? '');
+            $files = $this->storage->files('device-tabulation-ledger');
+
+            if (collect($files)->contains(fn (string $path): bool => str_contains(basename($path), $payloadHash))) {
+                throw new RuntimeException('This ballot already has a device tabulation record.');
             }
 
             $record = [
                 'schema_version' => 'vvdat-ledger-record-1',
-                'sequence' => count($this->records()) + 1,
+                'sequence' => count($files) + 1,
                 'ballot_id' => $payload['ballot_id'],
-                'payload_hash' => $payload['payload_hash'],
+                'payload_hash' => $payloadHash,
                 'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
                 'encrypted_selections' => Crypt::encryptString($this->json->encode($payload['selections'])),
                 'recorded_at' => $this->clock->now()->toIso8601String(),

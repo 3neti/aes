@@ -766,7 +766,8 @@ test('paper ballot ledger reconciles issuance printing spoilage and deposit', fu
         ->and($summary['deposited'])->toBe(1)
         ->and($summary['unused'])->toBe(998)
         ->and($summary['balanced'])->toBeTrue()
-        ->and(app(ElectionStorage::class)->files('paper-ballot-ledger'))->toHaveCount(6);
+        ->and($summary['event_count'])->toBe(6)
+        ->and(app(ElectionStorage::class)->files('paper-ballot-ledger'))->toHaveCount(9);
 });
 
 test('cups ballot printer submits generated artifact when configured', function (): void {
