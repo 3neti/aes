@@ -21,6 +21,7 @@ type ReviewBallot = {
     }>;
     this_ballot_tally: Tally;
     cumulative_tally: Tally;
+    pdf_available: boolean;
     pdf_url: string | null;
 };
 

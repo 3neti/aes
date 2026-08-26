@@ -77,6 +77,12 @@ return [
         'demo_control_number_share' => [
             'enabled' => (bool) env('ELECTION_DEMO_CONTROL_NUMBER_SHARE_ENABLED', (bool) env('ELECTION_REVIEW_MODE', false)),
         ],
+        'role_demo_bulk_ballots' => [
+            'enabled' => (bool) env('ELECTION_ROLE_DEMO_BULK_BALLOTS_ENABLED', true),
+            'max_count' => (int) env('ELECTION_ROLE_DEMO_BULK_BALLOTS_MAX', 700),
+            'rendered_pdf_limit' => (int) env('ELECTION_ROLE_DEMO_BULK_BALLOT_PDF_LIMIT', 10),
+            'presets' => [10, 100, 700],
+        ],
     ],
     'voter' => [
         'authorization_ttl_seconds' => (int) env('ELECTION_VOTER_AUTHORIZATION_TTL', (bool) env('ELECTION_REVIEW_MODE', false) ? 14400 : 300),

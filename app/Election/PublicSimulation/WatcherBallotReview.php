@@ -41,6 +41,7 @@ final class WatcherBallotReview
                 'selected_candidates' => $this->selectedCandidates((array) ($decoded['selections'] ?? [])),
                 'this_ballot_tally' => $this->presentation->displayTally($this->tallyFromSelections($selections)),
                 'cumulative_tally' => $this->presentation->displayTally($runningTally),
+                'pdf_available' => $this->pdfAvailable($record),
                 'pdf_url' => null,
             ];
         }
@@ -72,6 +73,17 @@ final class WatcherBallotReview
         }
 
         return $path;
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     */
+    private function pdfAvailable(array $record): bool
+    {
+        $job = $this->storage->readJson('print-jobs/'.($record['ballot_id'] ?? '').'.json');
+        $path = $job['pdf_artifact_path'] ?? $job['selected_pdf_artifact_path'] ?? null;
+
+        return is_string($path) && is_file($path);
     }
 
     /**

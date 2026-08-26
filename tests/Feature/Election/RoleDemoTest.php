@@ -43,6 +43,8 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->component('Election/RoleDemoOfficer')
             ->where('currentTally.accepted_ballots', 0)
             ->where('actions.acceptPrint', route('election.role-demo.print.accept'))
+            ->where('actions.bulkBallots', route('election.role-demo.bulk-ballots'))
+            ->where('bulkBallots.enabled', true)
         );
 
     $this->post(route('election.role-demo.admit'))
@@ -139,6 +141,7 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('ballotReview.record_count', 1)
             ->where('ballotReview.ballots.0.sequence', 1)
             ->where('ballotReview.ballots.0.qr_decode_status', 'decoded')
+            ->where('ballotReview.ballots.0.pdf_available', true)
             ->where('ballotReview.ballots.0.pdf_url', route('election.role-demo.watcher.ballot', ['sequence' => 1]))
             ->has('ballotReview.ballots.0.selected_candidates')
             ->has('ballotReview.qr_audit_tally')
@@ -319,4 +322,67 @@ test('role demo reset replaces the live precinct with a freshly opened one', fun
     expect($firstRound->fresh()->status)->toBe('archived')
         ->and(SimulationRound::query()->where('status', 'open')->count())->toBe(1)
         ->and($freshRound->precincts->where('status', 'open'))->toHaveCount(1);
+});
+
+test('role demo officer can bulk generate deposited ballots for watcher review', function (): void {
+    config()->set('election.public_simulation.role_demo_bulk_ballots.max_count', 12);
+    config()->set('election.public_simulation.role_demo_bulk_ballots.rendered_pdf_limit', 3);
+    config()->set('election.public_simulation.role_demo_bulk_ballots.presets', [3, 12]);
+
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+
+    $this->post(route('election.role-demo.bulk-ballots'), [
+        'count' => 12,
+    ])
+        ->assertRedirectToRoute('election.role-demo.officer')
+        ->assertSessionHasNoErrors();
+
+    $this->get(route('election.role-demo.officer'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/RoleDemoOfficer')
+            ->where('currentTally.accepted_ballots', 12)
+            ->where('bulkBallots.max_count', 12)
+            ->where('bulkBallots.rendered_pdf_limit', 3)
+        );
+
+    $this->get(route('election.role-demo.watcher'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/RoleDemoWatcher')
+            ->where('precinct.accepted_ballots', 12)
+            ->where('ballotReview.record_count', 12)
+            ->where('ballotReview.ballots.0.pdf_available', true)
+            ->where('ballotReview.ballots.0.pdf_url', route('election.role-demo.watcher.ballot', ['sequence' => 1]))
+            ->where('ballotReview.ballots.2.pdf_available', true)
+            ->where('ballotReview.ballots.3.pdf_available', false)
+            ->where('ballotReview.ballots.3.pdf_url', null)
+            ->has('ballotReview.qr_audit_tally')
+        );
+
+    $this->get(route('election.role-demo.watcher.ballot', ['sequence' => 1]))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(route('election.role-demo.watcher.ballot', ['sequence' => 4]))
+        ->assertNotFound();
+
+    expect(app(ElectionStorage::class)->files('counting/sealed'))->toHaveCount(12)
+        ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
+        ->toContain('role_demo.bulk_ballots_generated')
+        ->toContain('role_demo.bulk_ballot_print_simulated');
+});
+
+test('role demo bulk ballot generation respects the configured maximum', function (): void {
+    config()->set('election.public_simulation.role_demo_bulk_ballots.max_count', 5);
+
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+
+    $this->post(route('election.role-demo.bulk-ballots'), [
+        'count' => 6,
+    ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('count');
+
+    expect(app(ElectionStorage::class)->files('counting/sealed'))->toBeEmpty();
 });

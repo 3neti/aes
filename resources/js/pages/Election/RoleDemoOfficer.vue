@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Form, Head, Link, usePoll } from '@inertiajs/vue3';
 
-defineProps<{
+const props = defineProps<{
     precinct: {
         code: string;
         label: string;
@@ -51,6 +52,7 @@ defineProps<{
         admit: string;
         dismissControlNumber: string;
         acceptPrint: string;
+        bulkBallots: string;
         lastBallot: string;
         tally: string;
         return: string;
@@ -58,7 +60,25 @@ defineProps<{
         reset: string;
     };
     printPinDigits: number;
+    bulkBallots: {
+        enabled: boolean;
+        max_count: number;
+        rendered_pdf_limit: number;
+        presets: number[];
+    };
 }>();
+
+const largestPreset = computed<number>(() =>
+    Math.max(...props.bulkBallots.presets, props.bulkBallots.max_count),
+);
+
+function confirmBulk(count: number): boolean {
+    return count < largestPreset.value
+        ? true
+        : window.confirm(
+              `Generate ${count} deposited demo ballots? This can take a little while.`,
+          );
+}
 
 usePoll(
     4000,
@@ -308,6 +328,92 @@ usePoll(
                         Thermal ER
                     </a>
                 </div>
+            </section>
+
+            <section class="mt-5 border border-blue-300 bg-white p-5">
+                <p class="text-sm font-bold text-blue-800">Demo load tools</p>
+                <h2 class="mt-1 text-xl font-bold">
+                    Generate deposited demo ballots
+                </h2>
+                <p class="mt-2 text-sm text-stone-700">
+                    Use this to populate the watcher POV quickly. Every generated
+                    ballot is sealed into the VVDAT record set and included in
+                    the running tally. Rendered ballot PDFs are generated for the
+                    first {{ bulkBallots.rendered_pdf_limit }} ballots so the
+                    media viewer stays responsive.
+                </p>
+                <div
+                    v-if="!bulkBallots.enabled"
+                    class="mt-4 border-l-4 border-stone-500 bg-stone-50 p-4 text-sm font-semibold text-stone-700"
+                >
+                    Bulk demo ballot generation is disabled by configuration.
+                </div>
+                <template v-else>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                        <Form
+                            v-for="preset in bulkBallots.presets"
+                            :key="preset"
+                            :action="actions.bulkBallots"
+                            method="post"
+                            #default="{ processing }"
+                        >
+                            <input type="hidden" name="count" :value="preset" />
+                            <button
+                                class="min-h-12 w-full border-2 border-blue-800 bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
+                                type="submit"
+                                :disabled="
+                                    processing || preset > bulkBallots.max_count
+                                "
+                                @click="(event) => !confirmBulk(preset) && event.preventDefault()"
+                            >
+                                {{ processing ? 'Generating...' : `${preset} ballots` }}
+                            </button>
+                        </Form>
+                    </div>
+
+                    <Form
+                        :action="actions.bulkBallots"
+                        method="post"
+                        #default="{ errors, processing }"
+                        class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"
+                    >
+                        <label class="block">
+                            <span class="text-sm font-bold">Custom count</span>
+                            <input
+                                class="mt-1 min-h-12 w-full border-2 border-stone-400 px-4 font-mono text-xl font-bold"
+                                name="count"
+                                type="number"
+                                min="1"
+                                :max="bulkBallots.max_count"
+                                placeholder="700"
+                            />
+                        </label>
+                        <button
+                            class="min-h-12 self-end border-2 border-blue-800 bg-white px-5 font-bold text-blue-800 disabled:opacity-50"
+                            type="submit"
+                            :disabled="processing"
+                            @click="
+                                (event) =>
+                                    !window.confirm(
+                                        'Generate this many deposited demo ballots?',
+                                    ) && event.preventDefault()
+                            "
+                        >
+                            {{ processing ? 'Generating...' : 'Generate custom' }}
+                        </button>
+                        <p
+                            v-if="errors.count"
+                            class="font-bold text-red-700 sm:col-span-2"
+                        >
+                            {{ errors.count }}
+                        </p>
+                    </Form>
+
+                    <p class="mt-3 text-xs text-stone-600">
+                        Maximum {{ bulkBallots.max_count }} per request. Use
+                        Reset role demo precinct before loading a fresh batch.
+                    </p>
+                </template>
             </section>
 
             <section class="mt-5 border border-stone-300 bg-white p-5">

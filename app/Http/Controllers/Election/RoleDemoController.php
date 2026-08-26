@@ -14,6 +14,7 @@ use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationOperationsBoard;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
+use App\Election\PublicSimulation\RoleDemoBulkBallotSeeder;
 use App\Election\PublicSimulation\RoleDemoInterimCloseout;
 use App\Election\PublicSimulation\WatcherBallotReview;
 use App\Election\Support\ElectionStorage;
@@ -101,6 +102,7 @@ final class RoleDemoController extends Controller
                 'admit' => route('election.role-demo.admit'),
                 'dismissControlNumber' => route('election.role-demo.dismiss-control-number'),
                 'acceptPrint' => route('election.role-demo.print.accept'),
+                'bulkBallots' => route('election.role-demo.bulk-ballots'),
                 'lastBallot' => route('election.role-demo.print.last-ballot'),
                 'tally' => route('election.role-demo.tally-sheet'),
                 'return' => route('election.role-demo.election-return'),
@@ -108,6 +110,16 @@ final class RoleDemoController extends Controller
                 'reset' => route('election.role-demo.reset'),
             ],
             'printPinDigits' => min(6, max(4, (int) config('election.voter.print_pin_digits', 4))),
+            'bulkBallots' => [
+                'enabled' => (bool) config('election.public_simulation.role_demo_bulk_ballots.enabled', true),
+                'max_count' => max(1, (int) config('election.public_simulation.role_demo_bulk_ballots.max_count', 700)),
+                'rendered_pdf_limit' => max(0, (int) config('election.public_simulation.role_demo_bulk_ballots.rendered_pdf_limit', 50)),
+                'presets' => collect(config('election.public_simulation.role_demo_bulk_ballots.presets', [10, 100, 700]))
+                    ->map(fn (mixed $preset): int => (int) $preset)
+                    ->filter(fn (int $preset): bool => $preset > 0)
+                    ->values()
+                    ->all(),
+            ],
         ]);
     }
 
@@ -132,6 +144,28 @@ final class RoleDemoController extends Controller
         $request->session()->forget('role_demo.control_number');
 
         return to_route('election.role-demo.officer');
+    }
+
+    public function bulkBallots(Request $request, PublicSimulationService $simulations, RoleDemoBulkBallotSeeder $bulkBallots): RedirectResponse
+    {
+        $validated = $request->validate([
+            'count' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:'.max(1, (int) config('election.public_simulation.role_demo_bulk_ballots.max_count', 700)),
+            ],
+        ]);
+        $precinct = $this->precinct($simulations);
+
+        try {
+            $summary = $bulkBallots->generate($precinct, (int) $validated['count']);
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['count' => $exception->getMessage()]);
+        }
+
+        return to_route('election.role-demo.officer')
+            ->with('role_demo.feedback', "{$summary['generated']} demo ballots generated. {$summary['rendered_pdfs']} rendered ballot PDFs are available for preview; all generated ballots are included in the watcher tally.");
     }
 
     public function acceptPrint(RedeemPrintReleaseRequest $request, PublicSimulationService $simulations, PrivateBallotRelease $releases, BallotPrinter $printer, SealedBallotBox $ballotBox, PublicSimulationVotingGate $voting, RoleDemoInterimCloseout $forms): RedirectResponse
@@ -452,9 +486,11 @@ final class RoleDemoController extends Controller
     {
         $review['ballots'] = collect($review['ballots'] ?? [])
             ->map(function (array $ballot): array {
-                $ballot['pdf_url'] = route('election.role-demo.watcher.ballot', [
-                    'sequence' => $ballot['sequence'],
-                ]);
+                $ballot['pdf_url'] = ($ballot['pdf_available'] ?? false)
+                    ? route('election.role-demo.watcher.ballot', [
+                        'sequence' => $ballot['sequence'],
+                    ])
+                    : null;
 
                 return $ballot;
             })

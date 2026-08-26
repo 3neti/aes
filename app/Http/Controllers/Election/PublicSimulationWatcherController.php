@@ -168,11 +168,13 @@ final class PublicSimulationWatcherController extends Controller
 
         $review['ballots'] = collect($review['ballots'] ?? [])
             ->map(function (array $ballot) use ($round, $precinct): array {
-                $ballot['pdf_url'] = route('election.public-simulation.watcher.ballot-pdf', [
-                    $round,
-                    $precinct,
-                    'sequence' => $ballot['sequence'],
-                ]);
+                $ballot['pdf_url'] = ($ballot['pdf_available'] ?? false)
+                    ? route('election.public-simulation.watcher.ballot-pdf', [
+                        $round,
+                        $precinct,
+                        'sequence' => $ballot['sequence'],
+                    ])
+                    : null;
 
                 return $ballot;
             })

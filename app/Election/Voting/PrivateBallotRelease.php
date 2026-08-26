@@ -205,6 +205,62 @@ final class PrivateBallotRelease
     /**
      * @return array<string, mixed>
      */
+    public function simulatePrintedForRoleDemo(string $releaseId): array
+    {
+        $record = $this->record($releaseId);
+
+        if (! in_array($record['status'], ['pending', 'redeemed'], true)) {
+            throw new RuntimeException('This paper ballot has already been printed.');
+        }
+
+        $payload = $this->decryptPayload($record);
+        $payload['qr_artifact_path'] = $this->storage->writeText(
+            "ballots/{$payload['ballot_id']}-qr.png",
+            $this->qrCode->renderPng($payload['qr_payload']),
+        );
+        $artifactPath = $this->storage->writeText(
+            "ballots/{$payload['ballot_id']}-bulk-demo.txt",
+            implode("\n", [
+                'ROLE DEMO BULK PRINT PLACEHOLDER',
+                "Ballot: {$payload['ballot_id']}",
+                'Paper Ballot Serial: '.($payload['paper_ballot_serial'] ?? 'UNNUMBERED'),
+                "Payload Hash: {$payload['payload_hash']}",
+                "QR Artifact: {$payload['qr_artifact_path']}",
+                '',
+            ]),
+        );
+        $job = [
+            'schema_version' => 'print-job-1',
+            'ballot_id' => $payload['ballot_id'],
+            'payload_hash' => $payload['payload_hash'],
+            'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
+            'printer' => 'role-demo-bulk-placeholder',
+            'status' => 'printed',
+            'artifact_path' => $artifactPath,
+            'pdf_artifact_path' => null,
+            'selected_pdf_artifact_path' => null,
+            'form_artifacts' => [],
+        ];
+
+        $record['status'] = 'printed';
+        $record['printed_at'] = $this->clock->now()->toIso8601String();
+        $this->storage->writeJson("print-releases/{$releaseId}.json", $record);
+        $this->storage->writeJson("print-jobs/{$payload['ballot_id']}.json", $job);
+        $this->paperBallots->recordPrinted($payload['payload_hash']);
+        $this->journal->record('ballot.printed', $job);
+        $this->journal->record('role_demo.bulk_ballot_print_simulated', [
+            'release_id' => $releaseId,
+            'ballot_id' => $payload['ballot_id'],
+            'payload_hash' => $payload['payload_hash'],
+            'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
+        ]);
+
+        return $job;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function payloadForDeposit(string $releaseId): array
     {
         $record = $this->record($releaseId);
