@@ -15,6 +15,7 @@ use App\Election\PublicSimulation\PublicSimulationOperationsBoard;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\PublicSimulation\RoleDemoInterimCloseout;
+use App\Election\PublicSimulation\WatcherBallotReview;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\PartyLabelNormalizer;
 use App\Election\Voting\AnonymousVoterAuthorization;
@@ -357,11 +358,12 @@ final class RoleDemoController extends Controller
         return to_route('election.role-demo.voter');
     }
 
-    public function watcher(PublicSimulationService $simulations, ElectionStorage $storage, TallyPresentation $presentation, RoleDemoInterimCloseout $forms): Response
+    public function watcher(PublicSimulationService $simulations, ElectionStorage $storage, TallyPresentation $presentation, RoleDemoInterimCloseout $forms, WatcherBallotReview $ballotReview): Response
     {
         $precinct = $this->precinct($simulations);
         $tally = $forms->tally();
         $configuration = $storage->readJson('runtime/active-precinct.json');
+        $review = $this->withRoleDemoBallotPdfUrls($ballotReview->summary(true, $this->roleDemoBallotReviewDownloadEnabled()));
 
         return Inertia::render('Election/RoleDemoWatcher', [
             'precinct' => [
@@ -387,10 +389,25 @@ final class RoleDemoController extends Controller
                     ->values()
                     ->all(),
             ],
+            'demoTransparencyMode' => true,
+            'ballotReview' => $review,
             'downloads' => [
                 'tally' => route('election.role-demo.tally-sheet'),
                 'return' => route('election.role-demo.election-return'),
             ],
+        ]);
+    }
+
+    public function watcherBallot(PublicSimulationService $simulations, WatcherBallotReview $ballotReview, int $sequence): BinaryFileResponse
+    {
+        $precinct = $this->precinct($simulations);
+        abort_unless($this->roleDemoBallotReviewDownloadEnabled(), 404);
+
+        $path = $ballotReview->pdfPath($sequence);
+        abort_unless($path !== null, 404);
+
+        return response()->file($path, [
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-role-demo-ballot-'.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT).'.pdf"',
         ]);
     }
 
@@ -420,6 +437,31 @@ final class RoleDemoController extends Controller
         return response()->file($path, [
             'Content-Disposition' => 'inline; filename="'.$precinct->code.'-'.$resolved->value.'-interim-election-return.pdf"',
         ]);
+    }
+
+    private function roleDemoBallotReviewDownloadEnabled(): bool
+    {
+        return (bool) config('election.public_simulation.watcher_ballot_viewer.download_enabled', true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $review
+     * @return array<string, mixed>
+     */
+    private function withRoleDemoBallotPdfUrls(array $review): array
+    {
+        $review['ballots'] = collect($review['ballots'] ?? [])
+            ->map(function (array $ballot): array {
+                $ballot['pdf_url'] = route('election.role-demo.watcher.ballot', [
+                    'sequence' => $ballot['sequence'],
+                ]);
+
+                return $ballot;
+            })
+            ->values()
+            ->all();
+
+        return $review;
     }
 
     public function lastPrintedBallot(Request $request): BinaryFileResponse

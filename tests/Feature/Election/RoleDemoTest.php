@@ -133,9 +133,23 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/RoleDemoWatcher')
             ->where('precinct.accepted_ballots', 1)
+            ->where('demoTransparencyMode', true)
+            ->where('ballotReview.enabled', true)
+            ->where('ballotReview.allowed', true)
+            ->where('ballotReview.record_count', 1)
+            ->where('ballotReview.ballots.0.sequence', 1)
+            ->where('ballotReview.ballots.0.qr_decode_status', 'decoded')
+            ->where('ballotReview.ballots.0.pdf_url', route('election.role-demo.watcher.ballot', ['sequence' => 1]))
+            ->has('ballotReview.ballots.0.selected_candidates')
+            ->has('ballotReview.qr_audit_tally')
             ->where('downloads.tally', route('election.role-demo.tally-sheet'))
             ->where('downloads.return', route('election.role-demo.election-return'))
         );
+
+    $this->get(route('election.role-demo.watcher.ballot', ['sequence' => 1]))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf')
+        ->assertHeader('content-disposition', 'inline; filename="TONDO-01-role-demo-ballot-001.pdf"');
 
     $this->get(route('election.role-demo.print.last-ballot'))
         ->assertSuccessful()
