@@ -20,7 +20,117 @@ final class OfficialBallotPdf
             return $this->renderRecordedSelections($payload, $configuration);
         }
 
+        if ($artifactProfile === 'selected_candidates_compact_official') {
+            return $this->renderSelectedCandidatesCompactOfficial($payload, $configuration);
+        }
+
         return $this->renderSelectedCandidatesOfficial($payload, $configuration);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $configuration
+     */
+    private function renderSelectedCandidatesCompactOfficial(array $payload, array $configuration): string
+    {
+        $ballotId = (string) ($payload['ballot_id'] ?? 'unknown');
+        $precinctId = (string) ($payload['precinct_id'] ?? 'unknown');
+        $document = new ElectionPdfDocument(
+            "Voter's Result Ballot",
+            $ballotId,
+            $precinctId,
+            'Compact selected-candidates paper ballot artifact - simulation only',
+        );
+        $document->registerPng('BallotQr', (string) $payload['qr_artifact_path']);
+        $this->registerBrandingImages($document);
+
+        $page = $document->addPage('Compact selected candidates');
+        $this->drawCompactResultHeader($document, $page, $payload, $configuration, $precinctId);
+
+        $contests = collect($configuration['contests'] ?? [])
+            ->filter(fn (mixed $contest): bool => is_array($contest))
+            ->values();
+        $contestsByOffice = $contests->keyBy(fn (array $contest): string => $this->officeKey($contest));
+        $rendered = [];
+        $y = 612.0;
+        $left = 42.0;
+        $gutter = 10.0;
+        $pairWidth = (511.0 - $gutter) / 2;
+
+        foreach ([
+            ['president', 'vice president'],
+            ['governor', 'vice governor'],
+            ['representative', 'mayor'],
+            ['vice mayor', 'party list'],
+        ] as $pair) {
+            [$leftOffice, $rightOffice] = $pair;
+            $leftContest = $contestsByOffice->get($leftOffice);
+            $rightContest = $contestsByOffice->get($rightOffice);
+
+            if (! is_array($leftContest) && ! is_array($rightContest)) {
+                continue;
+            }
+
+            $height = max(
+                is_array($leftContest) ? $this->compactSingleContestHeight($document, $leftContest, $payload, $pairWidth) : 0,
+                is_array($rightContest) ? $this->compactSingleContestHeight($document, $rightContest, $payload, $pairWidth) : 0,
+                54,
+            );
+
+            if (is_array($leftContest)) {
+                $this->drawCompactSingleContest($document, $page, $leftContest, $payload, $left, $y, $pairWidth, $height);
+                $rendered[] = $leftOffice;
+            }
+
+            if (is_array($rightContest)) {
+                $this->drawCompactSingleContest($document, $page, $rightContest, $payload, $left + $pairWidth + $gutter, $y, $pairWidth, $height);
+                $rendered[] = $rightOffice;
+            }
+
+            $y -= $height + 8;
+        }
+
+        foreach (['senator', 'councilor', 'council'] as $office) {
+            $contest = $contestsByOffice->get($office);
+
+            if (! is_array($contest)) {
+                continue;
+            }
+
+            $height = $this->compactGridContestHeight($document, $contest, $payload);
+
+            if ($y - $height < 168) {
+                $height = max(52, $y - 168);
+            }
+
+            $this->drawCompactGridContest($document, $page, $contest, $payload, 42, $y, 511, $height);
+            $rendered[] = $office;
+            $y -= $height + 8;
+        }
+
+        foreach ($contests as $contest) {
+            $office = $this->officeKey($contest);
+
+            if (in_array($office, $rendered, true)) {
+                continue;
+            }
+
+            $height = min(
+                $this->compactSingleContestHeight($document, $contest, $payload, 511),
+                max(44, $y - 168),
+            );
+
+            if ($y - $height < 168) {
+                break;
+            }
+
+            $this->drawCompactSingleContest($document, $page, $contest, $payload, 42, $y, 511, $height);
+            $y -= $height + 8;
+        }
+
+        $this->drawCompactResultFooter($document, $page, $payload);
+
+        return $document->render();
     }
 
     /**
@@ -114,6 +224,219 @@ final class OfficialBallotPdf
         $this->drawLargeQrPage($document, $payload);
 
         return $document->render();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $configuration
+     */
+    private function drawCompactResultHeader(ElectionPdfDocument $document, int $page, array $payload, array $configuration, string $precinctId): void
+    {
+        $this->drawBrandingLogos($document, $page, 42, 708, 26);
+        $document->text($page, 'Election', 132, 724, 7, true);
+        $document->wrappedText($page, (string) ($payload['election_id'] ?? 'unknown'), 182, 724, 150, 7, 8);
+        $document->text($page, 'Precinct', 352, 724, 7, true);
+        $document->wrappedText($page, $precinctId, 404, 724, 64, 7, 8);
+        $document->text($page, 'Serial', 470, 724, 7, true);
+        $document->wrappedText($page, (string) ($payload['paper_ballot_serial'] ?? 'UNNUMBERED'), 506, 724, 45, 6, 7);
+
+        $document->text($page, 'Locality', 132, 704, 7, true);
+        $document->wrappedText(
+            $page,
+            (string) ($configuration['jurisdiction_label'] ?? 'CITY OF MANILA, NATIONAL CAPITAL REGION'),
+            182,
+            704,
+            220,
+            7,
+            8,
+        );
+        $document->text($page, 'Ballot', 418, 704, 7, true);
+        $document->wrappedText($page, (string) ($payload['ballot_id'] ?? 'unknown'), 456, 704, 94, 6, 7, monospace: true);
+
+        $document->rectangleRgb($page, 42, 637, 511, 26, [0.72, 0.86, 0.98]);
+        $document->text($page, 'SELECTED CANDIDATES ONLY', 54, 653, 8, true);
+        $document->wrappedText(
+            $page,
+            'The voter verifies this paper before deposit. The QR below carries the audit verification payload for this ballot.',
+            54,
+            642,
+            460,
+            6.6,
+            7.6,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $contest
+     * @param  array<string, mixed>  $payload
+     */
+    private function compactSingleContestHeight(ElectionPdfDocument $document, array $contest, array $payload, float $width): float
+    {
+        $rows = $this->selectedCandidateRows($contest, $payload);
+        $lineCount = max(
+            1,
+            collect($rows)
+                ->map(fn (array $candidate): int => max(1, count($document->wrap($this->selectedCandidateLabel($candidate), $width - 42, 7.2))))
+                ->sum(),
+        );
+
+        return 25 + ($lineCount * 9.4);
+    }
+
+    /**
+     * @param  array<string, mixed>  $contest
+     * @param  array<string, mixed>  $payload
+     */
+    private function drawCompactSingleContest(ElectionPdfDocument $document, int $page, array $contest, array $payload, float $left, float $top, float $width, float $height): void
+    {
+        $document->rectangle($page, $left, $top - $height, $width, $height, 1, false);
+        $this->contestHeaderRectangle($document, $page, $left, $top - 15, $width, 15, [0.72, 0.91, 0.78]);
+        $document->text($page, $this->compactOfficeTitle($contest), $left + 8, $top - 10.2, 7, true);
+
+        $rows = $this->selectedCandidateRows($contest, $payload);
+
+        if ($rows === []) {
+            $document->text($page, 'No selection recorded.', $left + 11, $top - 30, 6.8);
+
+            return;
+        }
+
+        $y = $top - 27;
+
+        foreach ($rows as $candidate) {
+            $document->circle($page, $left + 12, $y + 2.4, 3.3, fill: true);
+            $document->text($page, (string) ($candidate['ballot_number'] ?? $candidate['ordinal'] ?? ''), $left + 22, $y, 6.3, true);
+            $y = $document->wrappedText($page, $this->selectedCandidateLabel($candidate), $left + 40, $y + 2.2, $width - 46, 7.2, 8.4, true);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $contest
+     * @param  array<string, mixed>  $payload
+     */
+    private function compactGridContestHeight(ElectionPdfDocument $document, array $contest, array $payload): float
+    {
+        $rows = $this->selectedCandidateRows($contest, $payload);
+        $rowCount = max(1, (int) ceil(count($rows) / 3));
+        $lineCount = collect($rows)
+            ->map(fn (array $candidate): int => count($document->wrap($this->selectedCandidateLabel($candidate), 126, 6.4)))
+            ->max() ?: 1;
+
+        return 21 + ($rowCount * max(22, 9 + ($lineCount * 7.2)));
+    }
+
+    /**
+     * @param  array<string, mixed>  $contest
+     * @param  array<string, mixed>  $payload
+     */
+    private function drawCompactGridContest(ElectionPdfDocument $document, int $page, array $contest, array $payload, float $left, float $top, float $width, float $height): void
+    {
+        $document->rectangle($page, $left, $top - $height, $width, $height, 1, false);
+        $this->contestHeaderRectangle($document, $page, $left, $top - 15, $width, 15, [0.72, 0.86, 0.98]);
+        $document->text($page, sprintf('%s / %d selected', $this->compactOfficeTitle($contest), count($this->selectedCandidateRows($contest, $payload))), $left + 8, $top - 10.2, 7, true);
+
+        $rows = $this->selectedCandidateRows($contest, $payload);
+
+        if ($rows === []) {
+            $document->text($page, 'No selection recorded.', $left + 11, $top - 31, 6.8);
+
+            return;
+        }
+
+        $columnWidth = $width / 3;
+        $cellHeight = max(20, ($height - 15) / max(1, ceil(count($rows) / 3)));
+
+        foreach (range(1, 2) as $columnLine) {
+            $x = $left + ($columnLine * $columnWidth);
+            $document->line($page, $x, $top - 15, $x, $top - $height, 0.25, 0.65);
+        }
+
+        foreach ($rows as $index => $candidate) {
+            $column = $index % 3;
+            $row = intdiv($index, 3);
+            $x = $left + ($column * $columnWidth);
+            $y = $top - 29 - ($row * $cellHeight);
+
+            $document->circle($page, $x + 10, $y + 2.2, 3, fill: true);
+            $document->text($page, (string) ($candidate['ballot_number'] ?? $candidate['ordinal'] ?? ''), $x + 19, $y, 5.8, true);
+            $document->wrappedText($page, $this->selectedCandidateLabel($candidate), $x + 34, $y + 2, $columnWidth - 38, 6.4, 7.2, true);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function drawCompactResultFooter(ElectionPdfDocument $document, int $page, array $payload): void
+    {
+        $document->line($page, 42, 176, 553, 176, 0.7, 0.2);
+        $document->text($page, 'VOTER VERIFICATION BEFORE DEPOSIT', 42, 157, 8.5, true);
+        $document->wrappedText(
+            $page,
+            'If any selected name is wrong, incomplete, or unreadable, return this paper to the Electoral Board for spoilage and replacement before deposit.',
+            42,
+            143,
+            330,
+            6.8,
+            8,
+        );
+
+        $document->rectangle($page, 422, 72, 98, 98, 0.97);
+        $document->image($page, 'BallotQr', 428, 78, 86, 86);
+        $document->text($page, 'Ballot QR Verification', 471, 60, 7.4, true, 'center');
+        $document->wrappedText(
+            $page,
+            substr((string) ($payload['payload_hash'] ?? 'unknown'), 0, 32),
+            42,
+            100,
+            330,
+            6.2,
+            7.2,
+            monospace: true,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $contest
+     */
+    private function officeKey(array $contest): string
+    {
+        $office = mb_strtolower(trim((string) ($contest['office'] ?? $contest['title'] ?? $contest['id'] ?? '')));
+        $office = preg_replace('/\s*-\s*.*/', '', $office) ?? $office;
+        $office = str_replace(['vice-president', 'vice-mayor', 'vice-governor'], ['vice president', 'vice mayor', 'vice governor'], $office);
+
+        if (str_contains($office, 'senator')) {
+            return 'senator';
+        }
+
+        if (str_contains($office, 'councilor') || str_contains($office, 'council')) {
+            return 'councilor';
+        }
+
+        if (str_contains($office, 'party list') || str_contains($office, 'party-list')) {
+            return 'party list';
+        }
+
+        if (str_contains($office, 'representative') || str_contains($office, 'house of representatives')) {
+            return 'representative';
+        }
+
+        return $office;
+    }
+
+    /**
+     * @param  array<string, mixed>  $contest
+     */
+    private function compactOfficeTitle(array $contest): string
+    {
+        $office = trim((string) ($contest['office'] ?? ''));
+
+        if ($office !== '') {
+            return mb_strtoupper($office);
+        }
+
+        $title = (string) ($contest['title'] ?? $contest['id'] ?? 'CONTEST');
+
+        return mb_strtoupper((string) preg_replace('/\s*-\s*.*/', '', $title));
     }
 
     /**

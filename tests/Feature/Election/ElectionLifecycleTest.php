@@ -706,6 +706,8 @@ test('officer registry can rotate a local pin with evidence artifact', function 
 });
 
 test('ballot finalization creates deterministic qr payload and print artifact', function (): void {
+    config()->set('election.voter.ballot_artifact_profile', 'recorded_selections');
+
     app(ActivateSamplePackage::class)->handle();
 
     $payload = app(BallotPayloadService::class)->finalize([

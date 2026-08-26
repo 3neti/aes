@@ -167,8 +167,10 @@ test('the demo room runs a precinct through officer, voter, print station, watch
 
     expect($printedBallotPdf)->toBeString()
         ->and(file_get_contents($printedBallotPdf))->toStartWith('%PDF-')
-        ->and(file_get_contents($printedBallotPdf))->toContain('aes-ballot-compact-1')
-        ->and(substr_count(file_get_contents($printedBallotPdf), '/Type /Page'))->toBeGreaterThanOrEqual(2);
+        ->and(file_get_contents($printedBallotPdf))->toContain('SELECTED CANDIDATES ONLY')
+        ->and(file_get_contents($printedBallotPdf))->toContain('Ballot QR Verification')
+        ->and(file_get_contents($printedBallotPdf))->not->toContain('BALLOT QR VERIFICATION COPY')
+        ->and(file_get_contents($printedBallotPdf))->toContain('/Count 1');
 
     $this->post(route('election.demo-room.print.deposit', [$round, $precinct]))
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]));

@@ -90,7 +90,7 @@ return [
         'print_release_ttl_seconds' => (int) env('ELECTION_PRINT_RELEASE_TTL', 600),
         'print_pin_digits' => (int) env('ELECTION_PRINT_PIN_DIGITS', 4),
         'ballot_ui_profile' => (string) env('ELECTION_BALLOT_UI_PROFILE', 'comelec_2022_facsimile'),
-        'ballot_artifact_profile' => (string) env('ELECTION_BALLOT_ARTIFACT_PROFILE', 'selected_candidates_official'),
+        'ballot_artifact_profile' => (string) env('ELECTION_BALLOT_ARTIFACT_PROFILE', 'selected_candidates_compact_official'),
         'paper_facsimile_max_columns' => (int) env('ELECTION_BALLOT_PAPER_FACSIMILE_MAX_COLUMNS', 4),
         'selection_target' => (string) env('ELECTION_BALLOT_SELECTION_TARGET', 'circle'),
         'demo_random_fill_enabled' => (bool) env('ELECTION_BALLOT_DEMO_RANDOM_FILL', (bool) env('ELECTION_REVIEW_MODE', false)),

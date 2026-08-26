@@ -60,6 +60,49 @@ test('printed ballot embeds its qr image and only the voter selected candidates'
     $qr->destroy();
 });
 
+test('compact selected candidates ballot keeps paired offices grids and a single qr page', function (): void {
+    config()->set('election.voter.ballot_artifact_profile', 'selected_candidates_compact_official');
+
+    $payload = [
+        'ballot_id' => 'compact-result-ballot',
+        'election_id' => 'MAY-9-2022-NLE-MANILA-COMPACT-DEMO',
+        'precinct_id' => '39010402',
+        'ballot_style_id' => 'BS-COMPACT-RESULT',
+        'paper_ballot_serial' => '39010402-DEMO-000001',
+        'qr_artifact_path' => sampleQrPath(),
+        'qr_payload' => 'aes-ballot-compact-1:fixture',
+        'payload_hash' => str_repeat('c', 64),
+        'mapping_hash' => str_repeat('d', 64),
+        'selections' => compactResultSelections(),
+    ];
+
+    $pdf = app(OfficialBallotPdf::class)->render($payload, compactResultConfiguration());
+
+    expect($pdf)
+        ->toContain("Voter's Result Ballot")
+        ->toContain('SELECTED CANDIDATES ONLY')
+        ->toContain('PRESIDENT')
+        ->toContain('VICE PRESIDENT')
+        ->toContain('GOVERNOR')
+        ->toContain('VICE GOVERNOR')
+        ->toContain('REPRESENTATIVE')
+        ->toContain('MAYOR')
+        ->toContain('VICE MAYOR')
+        ->toContain('PARTY LIST')
+        ->toContain('SENATOR / 12 selected')
+        ->toContain('COUNCILOR / 6 selected')
+        ->toContain('President Choice')
+        ->toContain('Vice President Choice')
+        ->toContain('Senator Choice 12')
+        ->toContain('Councilor Choice 06')
+        ->toContain('Ballot QR Verification')
+        ->not->toContain('Unselected President')
+        ->not->toContain('Senator Choice 13')
+        ->not->toContain('BALLOT QR VERIFICATION COPY')
+        ->not->toContain('SCAN THIS LARGE QR FOR AUDIT VERIFICATION')
+        ->and(pdfPageCount($pdf))->toBe(1);
+});
+
 test('printed ballot branding can fall back to monochrome', function (): void {
     config()->set('election.branding.print_colored', false);
 
@@ -379,5 +422,107 @@ function largePrintFormFixture(): array
             'tally_hash' => str_repeat('a', 64),
             'tally' => $tallyRows,
         ],
+    ];
+}
+
+/**
+ * @return array<string, array<int, string>>
+ */
+function compactResultSelections(): array
+{
+    return [
+        'president' => ['president-1'],
+        'vice_president' => ['vice_president-1'],
+        'governor' => ['governor-1'],
+        'vice_governor' => ['vice-governor-1'],
+        'representative' => ['representative-1'],
+        'mayor' => ['mayor-1'],
+        'vice_mayor' => ['vice-mayor-1'],
+        'party_list' => ['party-list-1'],
+        'senator' => collect(range(1, 12))->map(fn (int $number): string => "senator-{$number}")->all(),
+        'councilor' => collect(range(1, 6))->map(fn (int $number): string => "councilor-{$number}")->all(),
+    ];
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function compactResultConfiguration(): array
+{
+    return [
+        'election_id' => 'MAY-9-2022-NLE-MANILA-COMPACT-DEMO',
+        'precinct_id' => '39010402',
+        'ballot_style_id' => 'BS-COMPACT-RESULT',
+        'jurisdiction_label' => 'CITY OF MANILA, NATIONAL CAPITAL REGION',
+        'contests' => [
+            singleSeatContest('president', 'PRESIDENT', 'President Choice', 'Unselected President'),
+            singleSeatContest('vice_president', 'VICE PRESIDENT', 'Vice President Choice'),
+            singleSeatContest('governor', 'GOVERNOR', 'Governor Choice'),
+            singleSeatContest('vice_governor', 'VICE GOVERNOR', 'Vice Governor Choice'),
+            singleSeatContest('representative', 'REPRESENTATIVE', 'Representative Choice'),
+            singleSeatContest('mayor', 'MAYOR', 'Mayor Choice'),
+            singleSeatContest('vice_mayor', 'VICE MAYOR', 'Vice Mayor Choice'),
+            singleSeatContest('party_list', 'PARTY LIST', 'Party List Choice'),
+            [
+                'id' => 'senator',
+                'office' => 'SENATOR',
+                'title' => 'SENATOR - PHILIPPINES',
+                'max_selections' => 12,
+                'candidates' => collect(range(1, 13))
+                    ->map(fn (int $number): array => [
+                        'id' => "senator-{$number}",
+                        'ballot_number' => $number,
+                        'name' => sprintf('Senator Choice %02d', $number),
+                        'political_party' => 'SEN',
+                    ])
+                    ->all(),
+            ],
+            [
+                'id' => 'councilor',
+                'office' => 'COUNCILOR',
+                'title' => 'COUNCILOR - CITY OF MANILA',
+                'max_selections' => 6,
+                'candidates' => collect(range(1, 6))
+                    ->map(fn (int $number): array => [
+                        'id' => "councilor-{$number}",
+                        'ballot_number' => $number,
+                        'name' => sprintf('Councilor Choice %02d', $number),
+                        'political_party' => 'LOC',
+                    ])
+                    ->all(),
+            ],
+        ],
+    ];
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function singleSeatContest(string $id, string $office, string $selectedName, ?string $unselectedName = null): array
+{
+    $candidates = [
+        [
+            'id' => "{$id}-1",
+            'ballot_number' => 1,
+            'name' => $selectedName,
+            'political_party' => 'DEM',
+        ],
+    ];
+
+    if ($unselectedName !== null) {
+        $candidates[] = [
+            'id' => "{$id}-2",
+            'ballot_number' => 2,
+            'name' => $unselectedName,
+            'political_party' => 'DEM',
+        ];
+    }
+
+    return [
+        'id' => $id,
+        'office' => $office,
+        'title' => "{$office} - TEST",
+        'max_selections' => 1,
+        'candidates' => $candidates,
     ];
 }
