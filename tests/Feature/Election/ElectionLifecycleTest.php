@@ -1053,7 +1053,11 @@ test('election return artifact is generated from tally', function (): void {
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Alternative Election System - Simulation Evidence Artifact')
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Paper ballots remain the legal source of truth.')
         ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('Ada Santos')
-        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('ELECTORAL BOARD CERTIFICATION');
+        ->and(file_get_contents(app(ElectionStorage::class)->path('returns/0421-A-return.pdf')))->toContain('ELECTORAL BOARD CERTIFICATION')
+        ->and(app(ElectionStorage::class)->path('returns/0421-A-return-national.pdf'))->toBeReadableFile()
+        ->and(app(ElectionStorage::class)->path('returns/0421-A-return-local.pdf'))->toBeReadableFile()
+        ->and(app(ElectionStorage::class)->path('returns/0421-A-return-combined.pdf'))->toBeReadableFile()
+        ->and(app(ElectionStorage::class)->readJson('returns/0421-A-return-manifest.json')['schema_version'])->toBe('election-return-split-manifest-1');
 });
 
 test('election return legal evidence artifact is generated from return', function (): void {

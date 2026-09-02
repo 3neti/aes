@@ -147,6 +147,9 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->has('ballotReview.qr_audit_tally')
             ->where('downloads.tally', route('election.role-demo.tally-sheet'))
             ->where('downloads.return', route('election.role-demo.election-return'))
+            ->where('downloads.returns.national', route('election.role-demo.election-return.scoped', ['scope' => 'national']))
+            ->where('downloads.returns.local', route('election.role-demo.election-return.scoped', ['scope' => 'local']))
+            ->where('downloads.returns.combined', route('election.role-demo.election-return.scoped', ['scope' => 'combined']))
         );
 
     $this->get(route('election.role-demo.watcher.ballot', ['sequence' => 1]))
@@ -163,6 +166,14 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertHeader('Content-Type', 'application/pdf');
 
     $this->get(route('election.role-demo.election-return', ['profile' => 'thermal-80']))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(route('election.role-demo.election-return.scoped', ['scope' => 'national', 'profile' => 'thermal-80']))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(route('election.role-demo.election-return.scoped', ['scope' => 'local', 'profile' => 'thermal-80']))
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
 

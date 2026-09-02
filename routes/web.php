@@ -52,6 +52,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
             ->whereNumber('sequence')
             ->name('watcher.ballot');
         Route::get('/tally-sheet/{profile?}', [RoleDemoController::class, 'tallySheet'])->name('tally-sheet');
+        Route::get('/election-returns/{scope}/{profile?}', [RoleDemoController::class, 'scopedElectionReturn'])->name('election-return.scoped');
         Route::get('/election-return/{profile?}', [RoleDemoController::class, 'electionReturn'])->name('election-return');
     });
 
@@ -76,6 +77,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/{round:code}/{precinct:code}/print/deposit', [DemoRoomPrintStationController::class, 'deposit'])->name('print.deposit');
         Route::get('/{round:code}/{precinct:code}/print/tally-sheet/{profile?}', [DemoRoomPrintStationController::class, 'tallySheet'])->name('print.tally-sheet');
         Route::post('/{round:code}/{precinct:code}/print/tally-sheet/submit/{profile?}', [DemoRoomPrintStationController::class, 'submitTallySheet'])->name('print.tally-sheet.submit');
+        Route::get('/{round:code}/{precinct:code}/print/election-returns/{scope}/{profile?}', [DemoRoomPrintStationController::class, 'scopedElectionReturn'])->name('print.election-return.scoped');
+        Route::post('/{round:code}/{precinct:code}/print/election-returns/{scope}/submit/{profile?}', [DemoRoomPrintStationController::class, 'submitScopedElectionReturn'])->name('print.election-return.scoped.submit');
         Route::get('/{round:code}/{precinct:code}/print/election-return/{profile?}', [DemoRoomPrintStationController::class, 'electionReturn'])->name('print.election-return');
         Route::post('/{round:code}/{precinct:code}/print/election-return/submit/{profile?}', [DemoRoomPrintStationController::class, 'submitElectionReturn'])->name('print.election-return.submit');
     });
@@ -122,6 +125,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
             ->whereNumber('sequence')
             ->name('watcher.ballot-pdf');
         Route::get('/{round:code}/{precinct:code}/watch/tally-sheet', [PublicSimulationWatcherController::class, 'tally'])->name('watcher.tally');
+        Route::get('/{round:code}/{precinct:code}/watch/election-returns/{scope}', [PublicSimulationWatcherController::class, 'scopedElectionReturn'])->name('watcher.return.scoped');
         Route::get('/{round:code}/{precinct:code}/watch/election-return', [PublicSimulationWatcherController::class, 'electionReturn'])->name('watcher.return');
         Route::get('/{round:code}/{precinct:code}/watch/vvdat-audit-export', [PublicSimulationWatcherController::class, 'vvdatAuditExport'])->name('watcher.vvdat-audit-export');
         Route::get('/{round:code}/{precinct:code}/watch/random-manual-audit', [PublicSimulationWatcherController::class, 'randomManualAudit'])->name('watcher.rma-audit');

@@ -7,6 +7,7 @@ use App\Election\Printing\Documents\ElectionReturnPdf;
 use App\Election\Printing\Documents\OfficialBallotPdf;
 use App\Election\Printing\Documents\TallySheetPdf;
 use App\Election\Printing\PrintFormProfile;
+use App\Election\Returns\ElectionReturnScope;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\SimplePdf;
@@ -180,8 +181,12 @@ test('print-form profiles render A4 and thermal evidence from the same sealed re
 
     expect($storage->readJson('print-forms/tally-sheet/manifest.json')['source_hash'])->toBe($tally['tally_hash'])
         ->and($storage->readJson('print-forms/election-return/0421-A/manifest.json')['source_hash'])->toBe($return['return_hash'])
+        ->and($storage->readJson('print-forms/election-return/0421-A/national/manifest.json')['document_type'])->toBe('election-return-national')
+        ->and($storage->readJson('print-forms/election-return/0421-A/local/manifest.json')['document_type'])->toBe('election-return-local')
         ->and($storage->readText('print-forms/tally-sheet/thermal-58.pdf'))->toContain('/MediaBox [0 0 164.41 792]')
-        ->and($storage->readText('print-forms/election-return/0421-A/thermal-80.pdf'))->toContain('Roll segment 1 of');
+        ->and($storage->readText('print-forms/election-return/0421-A/thermal-80.pdf'))->toContain('Roll segment 1 of')
+        ->and($storage->readText('print-forms/election-return/0421-A/national/a4.pdf'))->toContain('Election Returns for National Positions')
+        ->and($storage->readText('print-forms/election-return/0421-A/local/a4.pdf'))->toContain('Election Returns for Local Positions');
 });
 
 test('printed ballot reserves space beside long contest titles for selection limits', function (): void {
@@ -324,6 +329,40 @@ test('tally sheet hides zero vote candidates while election return keeps complet
         expect(substr_count($tallyPdf, $candidate))->toBe($number % 7 === 0 ? 0 : 1)
             ->and(substr_count($returnPdf, $candidate))->toBe(1);
     }
+});
+
+test('election return pdf can be rendered as national, local, or combined forms', function (): void {
+    [$configuration, $tally] = largePrintFormFixture();
+    $return = [
+        'election_id' => $configuration['election_id'],
+        'precinct_id' => $configuration['precinct_id'],
+        'accepted_ballots' => $tally['accepted_ballots'],
+        'rejected_ballots' => $tally['rejected_ballots'],
+        'tally' => $tally['tally'],
+        'tally_hash' => $tally['tally_hash'],
+        'return_hash' => str_repeat('c', 64),
+    ];
+
+    $nationalPdf = app(ElectionReturnPdf::class)->render($configuration, $return, ElectionReturnScope::National);
+    $localPdf = app(ElectionReturnPdf::class)->render($configuration, $return, ElectionReturnScope::Local);
+    $combinedPdf = app(ElectionReturnPdf::class)->render($configuration, $return, ElectionReturnScope::Combined);
+
+    expect($nationalPdf)
+        ->toContain('National Election Return')
+        ->toContain('SENATOR - PHILIPPINES')
+        ->toContain('CANDIDATE 001')
+        ->not->toContain('COUNCILOR - CITY OF MANILA')
+        ->not->toContain('CANDIDATE 098')
+        ->and($localPdf)
+        ->toContain('Local Election Return')
+        ->toContain('COUNCILOR - CITY OF MANILA')
+        ->toContain('CANDIDATE 098')
+        ->not->toContain('SENATOR - PHILIPPINES')
+        ->not->toContain('CANDIDATE 001')
+        ->and($combinedPdf)
+        ->toContain('Combined Election Return')
+        ->toContain('SENATOR - PHILIPPINES')
+        ->toContain('COUNCILOR - CITY OF MANILA');
 });
 
 test('supporting evidence pdf paginates without dropping lines', function (): void {

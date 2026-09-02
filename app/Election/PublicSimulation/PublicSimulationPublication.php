@@ -61,6 +61,10 @@ final class PublicSimulationPublication
                 'tally_sheet_pdf' => 'runtime/tally-sheet.pdf',
                 'election_return_json' => $returnPath,
                 'election_return_pdf' => "returns/{$precinctId}-return.pdf",
+                'election_return_national_pdf' => "returns/{$precinctId}-return-national.pdf",
+                'election_return_local_pdf' => "returns/{$precinctId}-return-local.pdf",
+                'election_return_combined_pdf' => "returns/{$precinctId}-return-combined.pdf",
+                'election_return_manifest' => "returns/{$precinctId}-return-manifest.json",
                 'vvdat_freeze' => 'counting/vvdat-ledger-freeze.json',
             ]),
         ];

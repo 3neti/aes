@@ -2,26 +2,34 @@
 
 namespace App\Election\Printing\Documents;
 
+use App\Election\Returns\ElectionReturnContestScopes;
+use App\Election\Returns\ElectionReturnScope;
+
 final class ElectionReturnPdf
 {
-    public function __construct(private readonly ContestResultTable $results) {}
+    public function __construct(
+        private readonly ContestResultTable $results,
+        private readonly ElectionReturnContestScopes $scopes,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $configuration
      * @param  array<string, mixed>  $return
      */
-    public function render(array $configuration, array $return): string
+    public function render(array $configuration, array $return, ElectionReturnScope $scope = ElectionReturnScope::Combined): string
     {
         $precinctId = (string) ($return['precinct_id'] ?? 'unknown');
+        $configuration = $this->scopes->configurationFor($configuration, $scope);
         $document = new ElectionPdfDocument(
-            'Election Return',
+            $scope->label(),
             (string) ($return['return_hash'] ?? 'return'),
             $precinctId,
-            'Precinct results for posting, distribution, and custody review',
+            $scope->title(),
         );
         $page = $document->addPage('Return summary');
         $document->rectangle($page, 42, 688, 511, 36, 0.88);
         $document->text($page, 'SIMULATION COPY - SUBJECT TO COMELEC FORM APPROVAL', 297.5, 701, 9.5, true, 'center');
+        $document->text($page, mb_strtoupper($scope->title()), 297.5, 682, 10.5, true, 'center');
         $document->text($page, 'Election', 42, 665, 7.5, true);
         $document->text($page, (string) ($return['election_id'] ?? 'unknown'), 105, 665, 9);
         $document->text($page, 'Clustered precinct', 320, 665, 7.5, true);
@@ -34,7 +42,7 @@ final class ElectionReturnPdf
         $document->text($page, (string) ($return['return_hash'] ?? 'unknown'), 128, 619, 7, false, monospace: true);
         $document->wrappedText(
             $page,
-            'The Electoral Board certifies that the following totals were generated from the accepted paper-ballot records for this clustered precinct. Paper ballots and signed records remain controlling evidence.',
+            'The Electoral Board certifies that the following totals were generated from the accepted paper-ballot records for this clustered precinct. Paper ballots, VVDAT records, and signed forms remain controlling evidence.',
             42,
             594,
             511,
@@ -61,7 +69,7 @@ final class ElectionReturnPdf
         $document->text($page, 'ELECTORAL BOARD CERTIFICATION', 54, $y - 22, 10, true);
         $document->wrappedText(
             $page,
-            'We certify that this Election Return contains the complete candidate listing and vote totals produced for the clustered precinct identified above, subject to verification against the paper ballots, tally sheet, minutes, and prescribed COMELEC forms.',
+            'We certify that this '.$scope->label().' contains the complete candidate listing and vote totals for the positions shown above, subject to verification against the paper ballots, tally sheet, minutes, and prescribed COMELEC forms.',
             54,
             $y - 42,
             485,

@@ -219,6 +219,11 @@ test('the demo room runs a precinct through officer, voter, print station, watch
             ->where('printProfiles.1.return_url', route('election.demo-room.print.election-return', [$round, $precinct, 'thermal-80']))
             ->where('printProfiles.1.tally_submit_url', route('election.demo-room.print.tally-sheet.submit', [$round, $precinct, 'thermal-80']))
             ->where('printProfiles.1.return_submit_url', route('election.demo-room.print.election-return.submit', [$round, $precinct, 'thermal-80']))
+            ->where('printProfiles.1.return_variants.0.label', 'National Election Return')
+            ->where('printProfiles.1.return_variants.0.url', route('election.demo-room.print.election-return.scoped', [$round, $precinct, 'national', 'thermal-80']))
+            ->where('printProfiles.1.return_variants.1.label', 'Local Election Return')
+            ->where('printProfiles.1.return_variants.1.url', route('election.demo-room.print.election-return.scoped', [$round, $precinct, 'local', 'thermal-80']))
+            ->where('printProfiles.1.return_variants.2.label', 'Combined Election Return')
             ->where('printProfiles.2.profile', 'thermal-58')
         );
 
@@ -238,6 +243,14 @@ test('the demo room runs a precinct through officer, voter, print station, watch
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
 
+    $this->get(route('election.demo-room.print.election-return.scoped', [$round, $precinct, 'national', 'thermal-58']))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(route('election.demo-room.print.election-return.scoped', [$round, $precinct, 'local', 'thermal-58']))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
     $this->post(route('election.demo-room.print.tally-sheet.submit', [$round, $precinct, 'thermal-80']))
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]))
         ->assertSessionHas("demo_room.{$precinct->id}.closeout_feedback", 'Tally sheet 80 mm thermal roll PDF is ready for browser printing.');
@@ -246,16 +259,16 @@ test('the demo room runs a precinct through officer, voter, print station, watch
     config()->set('election.closeout_printer.cups.name', 'USB_Thermal_Printer');
     Process::fake();
 
-    $this->post(route('election.demo-room.print.election-return.submit', [$round, $precinct, 'thermal-58']))
+    $this->post(route('election.demo-room.print.election-return.scoped.submit', [$round, $precinct, 'national', 'thermal-58']))
         ->assertRedirect(route('election.demo-room.print.station', [$round, $precinct]))
-        ->assertSessionHas("demo_room.{$precinct->id}.closeout_feedback", 'Election Return submitted to USB_Thermal_Printer.');
+        ->assertSessionHas("demo_room.{$precinct->id}.closeout_feedback", 'National Election Return submitted to USB_Thermal_Printer.');
 
     Process::assertRan(function (PendingProcess $process): bool {
         return is_array($process->command)
             && $process->command[0] === 'lp'
             && $process->command[1] === '-d'
             && $process->command[2] === 'USB_Thermal_Printer'
-            && str_contains((string) $process->command[4], 'Election Return')
+            && str_contains((string) $process->command[4], 'National Election Return')
             && str_ends_with((string) $process->command[5], '/thermal-58.pdf');
     });
 
@@ -306,7 +319,7 @@ test('closeout printer reports missing artifacts and failed cups configuration',
     );
 
     expect($missing['status'])->toBe('missing')
-        ->and($missing['message'])->toBe('Election Return PDF is not available for A4 evidence copy.');
+        ->and($missing['message'])->toBe('Combined Election Return PDF is not available for A4 evidence copy.');
 
     $storage = app(ElectionStorage::class);
     $storage->writeText('print-forms/tally-sheet/a4.pdf', '%PDF-1.4 closeout test');

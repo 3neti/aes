@@ -56,6 +56,11 @@ const props = defineProps<{
     downloads: {
         tally: string;
         return: string;
+        returns?: {
+            national: string;
+            local: string;
+            combined: string;
+        };
     };
 }>();
 
@@ -148,8 +153,23 @@ function selectBallot(index: number): void {
                 <a :href="downloads.tally" class="secondary-button">
                     Open interim tally PDF
                 </a>
-                <a :href="downloads.return" class="secondary-button">
-                    Open interim Election Return PDF
+                <a
+                    :href="downloads.returns?.national ?? downloads.return"
+                    class="secondary-button"
+                >
+                    Open interim National ER PDF
+                </a>
+                <a
+                    :href="downloads.returns?.local ?? downloads.return"
+                    class="secondary-button"
+                >
+                    Open interim Local ER PDF
+                </a>
+                <a
+                    :href="downloads.returns?.combined ?? downloads.return"
+                    class="secondary-button"
+                >
+                    Open interim combined ER packet
                 </a>
             </div>
 

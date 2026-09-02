@@ -9,6 +9,7 @@ use App\Election\Printing\PrintFormProfile;
 use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
+use App\Election\Returns\ElectionReturnScope;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\PrivateBallotRelease;
 use App\Election\Voting\SealedBallotBox;
@@ -54,6 +55,9 @@ final class DemoRoomPrintStationController extends Controller
             'artifacts' => [
                 'tally_sheet_pdf' => is_file($storage->path('runtime/tally-sheet.pdf')),
                 'election_return_pdf' => $precinctId !== '' && is_file($storage->path("returns/{$precinctId}-return.pdf")),
+                'national_election_return_pdf' => $precinctId !== '' && is_file($storage->path("returns/{$precinctId}-return-national.pdf")),
+                'local_election_return_pdf' => $precinctId !== '' && is_file($storage->path("returns/{$precinctId}-return-local.pdf")),
+                'combined_election_return_pdf' => $precinctId !== '' && is_file($storage->path("returns/{$precinctId}-return-combined.pdf")),
             ],
             'printProfiles' => $profiles,
             'closeoutPrinter' => $closeoutPrinter->status(),
@@ -149,6 +153,11 @@ final class DemoRoomPrintStationController extends Controller
 
     public function electionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, ?string $profile = null): BinaryFileResponse|RedirectResponse
     {
+        return $this->scopedElectionReturn($request, $round, $precinct, $simulations, $storage, $printProfiles, ElectionReturnScope::Combined->value, $profile);
+    }
+
+    public function scopedElectionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, string $scope, ?string $profile = null): BinaryFileResponse|RedirectResponse
+    {
         $this->scope($round, $precinct, $simulations);
         if (! $this->isEnabled($request, $precinct)) {
             return $this->stationRedirect($round, $precinct, 'Enable the central print station before opening closeout forms.');
@@ -161,13 +170,14 @@ final class DemoRoomPrintStationController extends Controller
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $precinctId = (string) ($configuration['precinct_id'] ?? '');
         $resolved = $printProfiles->from($profile ?? PrintFormProfile::A4->value);
-        $path = $storage->path("print-forms/election-return/{$precinctId}/{$resolved->value}.pdf");
+        $returnScope = $this->returnScope($scope);
+        $path = $this->electionReturnPrintFormPath($storage, $precinctId, $resolved, $returnScope);
         if ($precinctId === '' || ! is_file($path)) {
-            return $this->stationRedirect($round, $precinct, 'The Election Return PDF is not available yet. Close the precinct again or refresh the Printing Station.');
+            return $this->stationRedirect($round, $precinct, "The {$returnScope->label()} PDF is not available yet. Close the precinct again or refresh the Printing Station.");
         }
 
         return response()->file($path, [
-            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-'.$resolved->value.'-election-return.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-'.$resolved->value.'-'.$returnScope->filenameSuffix().'.pdf"',
         ]);
     }
 
@@ -178,7 +188,14 @@ final class DemoRoomPrintStationController extends Controller
 
     public function submitElectionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, CloseoutArtifactPrinter $printer, ?string $profile = null): RedirectResponse
     {
-        return $this->submitCloseoutArtifact($request, $round, $precinct, $simulations, $storage, $printProfiles, $printer, 'election-return', $profile);
+        return $this->submitScopedElectionReturn($request, $round, $precinct, $simulations, $storage, $printProfiles, $printer, ElectionReturnScope::Combined->value, $profile);
+    }
+
+    public function submitScopedElectionReturn(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $printProfiles, CloseoutArtifactPrinter $printer, string $scope, ?string $profile = null): RedirectResponse
+    {
+        $returnScope = $this->returnScope($scope);
+
+        return $this->submitCloseoutArtifact($request, $round, $precinct, $simulations, $storage, $printProfiles, $printer, 'election-return-'.$returnScope->value, $profile);
     }
 
     public function print(Request $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases, BallotPrinter $printer, PublicSimulationVotingGate $voting): RedirectResponse
@@ -303,6 +320,28 @@ final class DemoRoomPrintStationController extends Controller
                 'return_url' => route('election.demo-room.print.election-return', [$round, $precinct, $profile->value]),
                 'tally_submit_url' => route('election.demo-room.print.tally-sheet.submit', [$round, $precinct, $profile->value]),
                 'return_submit_url' => route('election.demo-room.print.election-return.submit', [$round, $precinct, $profile->value]),
+                'return_variants' => $this->returnVariants($round, $precinct, $storage, $profile, $precinctId),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function returnVariants(SimulationRound $round, SimulationPrecinct $precinct, ElectionStorage $storage, PrintFormProfile $profile, string $precinctId): array
+    {
+        return collect(ElectionReturnScope::splitScopes())
+            ->map(fn (ElectionReturnScope $scope): array => [
+                'scope' => $scope->value,
+                'label' => $scope->label(),
+                'available' => $precinctId !== '' && is_file($this->electionReturnPrintFormPath($storage, $precinctId, $profile, $scope)),
+                'url' => $scope === ElectionReturnScope::Combined
+                    ? route('election.demo-room.print.election-return', [$round, $precinct, $profile->value])
+                    : route('election.demo-room.print.election-return.scoped', [$round, $precinct, $scope->value, $profile->value]),
+                'submit_url' => $scope === ElectionReturnScope::Combined
+                    ? route('election.demo-room.print.election-return.submit', [$round, $precinct, $profile->value])
+                    : route('election.demo-room.print.election-return.scoped.submit', [$round, $precinct, $scope->value, $profile->value]),
             ])
             ->values()
             ->all();
@@ -325,6 +364,18 @@ final class DemoRoomPrintStationController extends Controller
         $result = $printer->print($artifact, $resolved, $precinct->code, $precinctId);
 
         return $this->stationRedirect($round, $precinct, (string) $result['message']);
+    }
+
+    private function returnScope(string $scope): ElectionReturnScope
+    {
+        return ElectionReturnScope::tryFrom($scope) ?? abort(404);
+    }
+
+    private function electionReturnPrintFormPath(ElectionStorage $storage, string $precinctId, PrintFormProfile $profile, ElectionReturnScope $scope): string
+    {
+        return $scope === ElectionReturnScope::Combined
+            ? $storage->path("print-forms/election-return/{$precinctId}/{$profile->value}.pdf")
+            : $storage->path("print-forms/election-return/{$precinctId}/{$scope->value}/{$profile->value}.pdf");
     }
 
     /** @return array<string, mixed> */

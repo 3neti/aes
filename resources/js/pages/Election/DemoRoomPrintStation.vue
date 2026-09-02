@@ -20,6 +20,9 @@ const props = defineProps<{
     artifacts: {
         tally_sheet_pdf: boolean;
         election_return_pdf: boolean;
+        national_election_return_pdf: boolean;
+        local_election_return_pdf: boolean;
+        combined_election_return_pdf: boolean;
     };
     printProfiles: Array<{
         profile: string;
@@ -33,6 +36,13 @@ const props = defineProps<{
         return_url: string;
         tally_submit_url: string;
         return_submit_url: string;
+        return_variants: Array<{
+            scope: 'national' | 'local' | 'combined';
+            label: string;
+            available: boolean;
+            url: string;
+            submit_url: string;
+        }>;
     }>;
     closeoutPrinter: {
         driver: 'file' | 'cups' | 'disabled';
@@ -109,6 +119,17 @@ const selectedPrintProfile = computed(() => {
             return_available: props.artifacts.election_return_pdf,
             tally_url: props.actions.tally,
             return_url: props.actions.return,
+            tally_submit_url: props.actions.tally,
+            return_submit_url: props.actions.return,
+            return_variants: [
+                {
+                    scope: 'combined',
+                    label: 'Combined Election Return',
+                    available: props.artifacts.election_return_pdf,
+                    url: props.actions.return,
+                    submit_url: props.actions.return,
+                },
+            ],
         }
     );
 });
@@ -349,38 +370,59 @@ const selectedPrintProfile = computed(() => {
                         </div>
                     </section>
                     <section class="border border-stone-300 bg-stone-50 p-4">
-                        <h2 class="font-bold">Election Return</h2>
+                        <h2 class="font-bold">Election Returns</h2>
                         <div class="mt-3 grid gap-2">
+                            <div
+                                v-for="returnVariant in selectedPrintProfile.return_variants"
+                                :key="returnVariant.scope"
+                                class="border border-stone-200 bg-white p-3"
+                            >
+                                <h3 class="text-sm font-bold">
+                                    {{ returnVariant.label }}
+                                </h3>
+                                <div class="mt-2 grid gap-2">
+                                    <a
+                                        :href="returnVariant.url"
+                                        class="min-h-12 bg-blue-800 px-5 py-3 text-center font-bold text-white"
+                                        :class="{
+                                            'pointer-events-none opacity-40':
+                                                !returnVariant.available,
+                                        }"
+                                        >Open / print PDF</a
+                                    >
+                                    <Form
+                                        :action="returnVariant.submit_url"
+                                        method="post"
+                                        #default="{ processing }"
+                                    >
+                                        <button
+                                            class="min-h-12 w-full border-2 border-stone-900 bg-white px-5 py-3 font-bold text-stone-950 disabled:opacity-40"
+                                            type="submit"
+                                            :disabled="
+                                                processing ||
+                                                !closeoutPrinter.enabled ||
+                                                !returnVariant.available
+                                            "
+                                        >
+                                            {{
+                                                processing
+                                                    ? 'Submitting...'
+                                                    : closeoutPrinter.submit_label
+                                            }}
+                                        </button>
+                                    </Form>
+                                </div>
+                            </div>
                             <a
                                 :href="selectedPrintProfile.return_url"
-                                class="min-h-12 bg-blue-800 px-5 py-3 text-center font-bold text-white"
+                                class="text-center text-sm font-bold text-blue-800"
                                 :class="{
                                     'pointer-events-none opacity-40':
                                         !selectedPrintProfile.return_available,
                                 }"
-                                >Open / print PDF</a
                             >
-                            <Form
-                                :action="selectedPrintProfile.return_submit_url"
-                                method="post"
-                                #default="{ processing }"
-                            >
-                                <button
-                                    class="min-h-12 w-full border-2 border-stone-900 bg-white px-5 py-3 font-bold text-stone-950 disabled:opacity-40"
-                                    type="submit"
-                                    :disabled="
-                                        processing ||
-                                        !closeoutPrinter.enabled ||
-                                        !selectedPrintProfile.return_available
-                                    "
-                                >
-                                    {{
-                                        processing
-                                            ? 'Submitting...'
-                                            : closeoutPrinter.submit_label
-                                    }}
-                                </button>
-                            </Form>
+                                Open legacy combined ER link
+                            </a>
                         </div>
                     </section>
                     <div class="grid gap-3 sm:col-span-2 sm:grid-cols-2">

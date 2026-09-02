@@ -8,6 +8,7 @@ use App\Election\Printing\Documents\TallySheetPdf;
 use App\Election\Printing\Documents\ThermalBallotPdf;
 use App\Election\Printing\Documents\ThermalElectionReturnPdf;
 use App\Election\Printing\Documents\ThermalTallySheetPdf;
+use App\Election\Returns\ElectionReturnScope;
 use App\Election\Support\ElectionStorage;
 
 final class PrintFormArtifactService
@@ -62,17 +63,27 @@ final class PrintFormArtifactService
     /**
      * @param  array<string, mixed>  $configuration
      * @param  array<string, mixed>  $return
-     * @return array<string, array{profile: string, label: string, width_mm: int, artifact_path: string, sha256: string}>
+     * @return array<string, array<string, array{profile: string, label: string, width_mm: int, artifact_path: string, sha256: string}>>
      */
     public function writeElectionReturn(array $configuration, array $return): array
     {
         $precinctId = (string) ($return['precinct_id'] ?? 'unknown');
+        $artifacts = [];
 
-        return $this->writeAll("print-forms/election-return/{$precinctId}", 'election-return', (string) ($return['return_hash'] ?? ''), function (PrintFormProfile $profile) use ($configuration, $return): string {
-            return $profile === PrintFormProfile::A4
-                ? $this->a4Return->render($configuration, $return)
-                : $this->thermalReturn->render($configuration, $return, $profile);
-        });
+        foreach (ElectionReturnScope::splitScopes() as $scope) {
+            $artifacts[$scope->value] = $this->writeAll(
+                $this->electionReturnDirectory($precinctId, $scope),
+                "election-return-{$scope->value}",
+                (string) ($return['return_hash'] ?? ''),
+                function (PrintFormProfile $profile) use ($configuration, $return, $scope): string {
+                    return $profile === PrintFormProfile::A4
+                        ? $this->a4Return->render($configuration, $return, $scope)
+                        : $this->thermalReturn->render($configuration, $return, $profile, $scope);
+                },
+            );
+        }
+
+        return $artifacts;
     }
 
     /**
@@ -105,5 +116,12 @@ final class PrintFormArtifactService
         ]);
 
         return $artifacts;
+    }
+
+    private function electionReturnDirectory(string $precinctId, ElectionReturnScope $scope): string
+    {
+        return $scope === ElectionReturnScope::Combined
+            ? "print-forms/election-return/{$precinctId}"
+            : "print-forms/election-return/{$precinctId}/{$scope->value}";
     }
 }

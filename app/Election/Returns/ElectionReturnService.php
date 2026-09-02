@@ -46,8 +46,9 @@ final class ElectionReturnService
         $this->storage->writeText("returns/{$return['precinct_id']}-return.txt", $this->renderText($return));
         $this->storage->writeText(
             "returns/{$return['precinct_id']}-return.pdf",
-            $this->pdf->render($configuration, $return),
+            $this->pdf->render($configuration, $return, ElectionReturnScope::Combined),
         );
+        $this->writeScopedReturnArtifacts($configuration, $return);
         $this->forms->writeElectionReturn($configuration, $return);
         $this->journal->record('return.generated', [
             'precinct_id' => $return['precinct_id'],
@@ -56,6 +57,41 @@ final class ElectionReturnService
         $this->legalEvidence->write($return);
 
         return $return;
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @param  array<string, mixed>  $return
+     */
+    private function writeScopedReturnArtifacts(array $configuration, array $return): void
+    {
+        $precinctId = (string) ($return['precinct_id'] ?? 'unknown');
+        $artifacts = [];
+
+        foreach (ElectionReturnScope::splitScopes() as $scope) {
+            $contents = $this->pdf->render($configuration, $return, $scope);
+            $relativePath = "returns/{$precinctId}-return-{$scope->value}.pdf";
+            $path = $this->storage->writeText($relativePath, $contents);
+            $artifacts[$scope->value] = [
+                'label' => $scope->label(),
+                'path' => $relativePath,
+                'sha256' => hash('sha256', $contents),
+            ];
+
+            if ($scope !== ElectionReturnScope::Combined) {
+                $this->storage->writeJson("returns/{$precinctId}-return-{$scope->value}.json", [
+                    ...$return,
+                    'return_scope' => $scope->value,
+                ]);
+            }
+        }
+
+        $this->storage->writeJson("returns/{$precinctId}-return-manifest.json", [
+            'schema_version' => 'election-return-split-manifest-1',
+            'precinct_id' => $precinctId,
+            'return_hash' => $return['return_hash'] ?? null,
+            'artifacts' => $artifacts,
+        ]);
     }
 
     /**

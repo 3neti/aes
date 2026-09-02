@@ -3,6 +3,7 @@
 namespace App\Election\Printing;
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Returns\ElectionReturnScope;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Support\Facades\Process;
 use RuntimeException;
@@ -115,7 +116,7 @@ final class CloseoutArtifactPrinter
 
     private function artifact(string $artifact): string
     {
-        if (! in_array($artifact, ['tally-sheet', 'election-return'], true)) {
+        if (! in_array($artifact, ['tally-sheet', 'election-return', 'election-return-combined', 'election-return-national', 'election-return-local'], true)) {
             throw new RuntimeException("Unsupported closeout print artifact [{$artifact}].");
         }
 
@@ -126,7 +127,9 @@ final class CloseoutArtifactPrinter
     {
         return match ($artifact) {
             'tally-sheet' => 'Tally sheet',
-            'election-return' => 'Election Return',
+            'election-return', 'election-return-combined' => 'Combined Election Return',
+            'election-return-national' => 'National Election Return',
+            'election-return-local' => 'Local Election Return',
             default => throw new RuntimeException("Unsupported closeout print artifact [{$artifact}]."),
         };
     }
@@ -135,8 +138,18 @@ final class CloseoutArtifactPrinter
     {
         return match ($artifact) {
             'tally-sheet' => $this->storage->path("print-forms/tally-sheet/{$profile->value}.pdf"),
-            'election-return' => $this->storage->path("print-forms/election-return/{$precinctId}/{$profile->value}.pdf"),
+            'election-return', 'election-return-combined' => $this->storage->path("print-forms/election-return/{$precinctId}/{$profile->value}.pdf"),
+            'election-return-national', 'election-return-local' => $this->storage->path("print-forms/election-return/{$precinctId}/".$this->scopeFromArtifact($artifact)->value."/{$profile->value}.pdf"),
             default => throw new RuntimeException("Unsupported closeout print artifact [{$artifact}]."),
+        };
+    }
+
+    private function scopeFromArtifact(string $artifact): ElectionReturnScope
+    {
+        return match ($artifact) {
+            'election-return-national' => ElectionReturnScope::National,
+            'election-return-local' => ElectionReturnScope::Local,
+            default => ElectionReturnScope::Combined,
         };
     }
 

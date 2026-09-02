@@ -74,6 +74,11 @@ const props = defineProps<{
     downloads: {
         tally: string;
         return: string;
+        returns?: {
+            national: string;
+            local: string;
+            combined: string;
+        };
         vvdat_audit_export: string;
         random_manual_audit: string;
     };
@@ -154,8 +159,18 @@ function selectBallot(index: number): void {
                 <div class="mt-5 flex flex-wrap gap-3">
                     <a :href="downloads.tally" class="secondary-button"
                         >Download tally sheet PDF</a
-                    ><a :href="downloads.return" class="secondary-button"
-                        >Download Election Return PDF</a
+                    ><a
+                        :href="downloads.returns?.national ?? downloads.return"
+                        class="secondary-button"
+                        >Download National ER PDF</a
+                    ><a
+                        :href="downloads.returns?.local ?? downloads.return"
+                        class="secondary-button"
+                        >Download Local ER PDF</a
+                    ><a
+                        :href="downloads.returns?.combined ?? downloads.return"
+                        class="secondary-button"
+                        >Download combined ER packet</a
                     ><a
                         v-if="auditExportAvailable"
                         :href="downloads.vvdat_audit_export"

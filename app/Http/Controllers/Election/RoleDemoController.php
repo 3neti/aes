@@ -17,6 +17,7 @@ use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\PublicSimulation\RoleDemoBulkBallotSeeder;
 use App\Election\PublicSimulation\RoleDemoInterimCloseout;
 use App\Election\PublicSimulation\WatcherBallotReview;
+use App\Election\Returns\ElectionReturnScope;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\PartyLabelNormalizer;
 use App\Election\Voting\AnonymousVoterAuthorization;
@@ -450,6 +451,11 @@ final class RoleDemoController extends Controller
             'downloads' => [
                 'tally' => route('election.role-demo.tally-sheet'),
                 'return' => route('election.role-demo.election-return'),
+                'returns' => [
+                    'national' => route('election.role-demo.election-return.scoped', [ElectionReturnScope::National->value]),
+                    'local' => route('election.role-demo.election-return.scoped', [ElectionReturnScope::Local->value]),
+                    'combined' => route('election.role-demo.election-return.scoped', [ElectionReturnScope::Combined->value]),
+                ],
             ],
         ]);
     }
@@ -482,16 +488,24 @@ final class RoleDemoController extends Controller
 
     public function electionReturn(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, ?string $profile = null): BinaryFileResponse
     {
+        return $this->scopedElectionReturn($simulations, $storage, $profiles, $forms, ElectionReturnScope::Combined->value, $profile);
+    }
+
+    public function scopedElectionReturn(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, string $scope, ?string $profile = null): BinaryFileResponse
+    {
         $precinct = $this->precinct($simulations);
         $forms->generate($precinct, 'role-demo-return-download');
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $precinctId = (string) ($configuration['precinct_id'] ?? '');
         $resolved = $profiles->from($profile ?? PrintFormProfile::A4->value);
-        $path = $storage->path("print-forms/election-return/{$precinctId}/{$resolved->value}.pdf");
+        $returnScope = ElectionReturnScope::tryFrom($scope) ?? abort(404);
+        $path = $returnScope === ElectionReturnScope::Combined
+            ? $storage->path("print-forms/election-return/{$precinctId}/{$resolved->value}.pdf")
+            : $storage->path("print-forms/election-return/{$precinctId}/{$returnScope->value}/{$resolved->value}.pdf");
         abort_unless($precinctId !== '' && is_file($path), 404);
 
         return response()->file($path, [
-            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-'.$resolved->value.'-interim-election-return.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-'.$resolved->value.'-interim-'.$returnScope->filenameSuffix().'.pdf"',
         ]);
     }
 

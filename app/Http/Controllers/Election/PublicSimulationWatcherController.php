@@ -7,6 +7,7 @@ use App\Election\PublicSimulation\PublicRandomManualAuditPublication;
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicVvdatAuditExport;
 use App\Election\PublicSimulation\WatcherBallotReview;
+use App\Election\Returns\ElectionReturnScope;
 use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
 use App\Models\SimulationPrecinct;
@@ -66,6 +67,11 @@ final class PublicSimulationWatcherController extends Controller
             'downloads' => [
                 'tally' => route('election.public-simulation.watcher.tally', [$round, $precinct]),
                 'return' => route('election.public-simulation.watcher.return', [$round, $precinct]),
+                'returns' => [
+                    'national' => route('election.public-simulation.watcher.return.scoped', [$round, $precinct, ElectionReturnScope::National->value]),
+                    'local' => route('election.public-simulation.watcher.return.scoped', [$round, $precinct, ElectionReturnScope::Local->value]),
+                    'combined' => route('election.public-simulation.watcher.return.scoped', [$round, $precinct, ElectionReturnScope::Combined->value]),
+                ],
                 'vvdat_audit_export' => route('election.public-simulation.watcher.vvdat-audit-export', [$round, $precinct]),
                 'random_manual_audit' => route('election.public-simulation.watcher.rma-audit', [$round, $precinct]),
             ],
@@ -94,13 +100,21 @@ final class PublicSimulationWatcherController extends Controller
 
     public function electionReturn(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse
     {
+        return $this->scopedElectionReturn($round, $precinct, $simulations, $storage, ElectionReturnScope::Combined->value);
+    }
+
+    public function scopedElectionReturn(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, ElectionStorage $storage, string $scope): BinaryFileResponse
+    {
         $this->scope($round, $precinct, $simulations);
         $configuration = $storage->readJson('runtime/active-precinct.json');
         $precinctId = (string) ($configuration['precinct_id'] ?? '');
-        $path = $storage->path("returns/{$precinctId}-return.pdf");
+        $returnScope = ElectionReturnScope::tryFrom($scope) ?? abort(404);
+        $path = $returnScope === ElectionReturnScope::Combined
+            ? $storage->path("returns/{$precinctId}-return.pdf")
+            : $storage->path("returns/{$precinctId}-return-{$returnScope->value}.pdf");
         abort_unless($this->isPublished($precinct, $storage) && $precinctId !== '' && file_exists($path), 404);
 
-        return response()->download($path, "{$precinct->code}-election-return.pdf");
+        return response()->download($path, "{$precinct->code}-{$returnScope->filenameSuffix()}.pdf");
     }
 
     public function vvdatAuditExport(SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PublicVvdatAuditExport $exports, ElectionStorage $storage): BinaryFileResponse
