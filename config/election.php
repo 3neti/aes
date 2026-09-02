@@ -151,6 +151,23 @@ return [
         'default_profile' => env('ELECTION_PRINT_FORM_PROFILE', 'a4'),
         'available_profiles' => ['a4', 'thermal-80', 'thermal-58'],
     ],
+    'election_return_form' => [
+        'election_label' => env('ELECTION_RETURN_ELECTION_LABEL', 'MAY 9, 2022 NATIONAL AND LOCAL ELECTIONS'),
+        'province' => env('ELECTION_RETURN_PROVINCE', 'NATIONAL CAPITAL REGION'),
+        'city_municipality' => env('ELECTION_RETURN_CITY_MUNICIPALITY', 'CITY OF MANILA'),
+        'barangay' => env('ELECTION_RETURN_BARANGAY', 'TONDO'),
+        'voting_center' => env('ELECTION_RETURN_VOTING_CENTER', 'PUBLIC SIMULATION PRECINCT'),
+        'registered_voters' => (int) env('ELECTION_RETURN_REGISTERED_VOTERS', 186),
+        'ballots_diverted' => (int) env('ELECTION_RETURN_BALLOTS_DIVERTED', 0),
+        'machine_id' => env('ELECTION_RETURN_MACHINE_ID', env('ELECTION_REVIEW_DEVICE_SERIAL', 'WAES-PI-39010402-001')),
+        'machine_status' => env('ELECTION_RETURN_MACHINE_STATUS', 'CLOSED'),
+        'generated_at' => env('ELECTION_RETURN_GENERATED_AT', 'May 9, 2022 at 19:18:50'),
+        'electoral_board' => [
+            'chairperson' => env('ELECTION_RETURN_CHAIRPERSON_NAME', 'ROGEL A. PASCUA'),
+            'poll_clerk' => env('ELECTION_RETURN_POLL_CLERK_NAME', 'MAGDALENA DAYAG'),
+            'third_member' => env('ELECTION_RETURN_THIRD_MEMBER_NAME', 'MINERVA P. ADVINCULA'),
+        ],
+    ],
     'closeout_printer' => [
         'driver' => env('ELECTION_CLOSEOUT_PRINTER_DRIVER', 'file'),
         'default_profile' => env('ELECTION_CLOSEOUT_PRINT_PROFILE', env('ELECTION_PRINT_FORM_PROFILE', 'a4')),

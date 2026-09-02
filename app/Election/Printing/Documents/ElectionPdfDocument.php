@@ -34,6 +34,7 @@ final class ElectionPdfDocument
         private readonly string $documentCode,
         private readonly string $precinctId,
         private readonly string $subtitle = 'Alternative Election System - Simulation Document',
+        private readonly string $headerStyle = 'evidence',
     ) {}
 
     public function addPage(string $section = ''): int
@@ -470,6 +471,10 @@ final class ElectionPdfDocument
 
     private function headerCommands(string $section): string
     {
+        if ($this->headerStyle === 'plain') {
+            return '0.10 0.10 0.10 RG 0.9 w 24 24 547 794 re S';
+        }
+
         $sectionText = $section === '' ? '' : $this->encode($section);
 
         return implode("\n", [

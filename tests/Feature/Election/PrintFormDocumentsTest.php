@@ -185,8 +185,8 @@ test('print-form profiles render A4 and thermal evidence from the same sealed re
         ->and($storage->readJson('print-forms/election-return/0421-A/local/manifest.json')['document_type'])->toBe('election-return-local')
         ->and($storage->readText('print-forms/tally-sheet/thermal-58.pdf'))->toContain('/MediaBox [0 0 164.41 792]')
         ->and($storage->readText('print-forms/election-return/0421-A/thermal-80.pdf'))->toContain('Roll segment 1 of')
-        ->and($storage->readText('print-forms/election-return/0421-A/national/a4.pdf'))->toContain('Election Returns for National Positions')
-        ->and($storage->readText('print-forms/election-return/0421-A/local/a4.pdf'))->toContain('Election Returns for Local Positions');
+        ->and($storage->readText('print-forms/election-return/0421-A/national/a4.pdf'))->toContain('ELECTION RETURNS FOR NATIONAL POSITIONS')
+        ->and($storage->readText('print-forms/election-return/0421-A/local/a4.pdf'))->toContain('ELECTION RETURNS FOR LOCAL POSITIONS');
 });
 
 test('printed ballot reserves space beside long contest titles for selection limits', function (): void {
@@ -348,15 +348,34 @@ test('election return pdf can be rendered as national, local, or combined forms'
     $combinedPdf = app(ElectionReturnPdf::class)->render($configuration, $return, ElectionReturnScope::Combined);
 
     expect($nationalPdf)
-        ->toContain('National Election Return')
+        ->toContain('ELECTION RETURNS FOR NATIONAL POSITIONS')
+        ->toContain('Republic of the Philippines')
+        ->toContain('COMMISSION ON ELECTIONS')
+        ->toContain('MAY 9, 2022 NATIONAL AND LOCAL ELECTIONS')
+        ->toContain('Province:')
+        ->toContain('City/Municipality:')
+        ->toContain('Machine ID:')
+        ->toContain('Clustered Precinct ID:')
+        ->toContain('WAES Machine Status:')
+        ->toContain('Result hash:')
         ->toContain('SENATOR - PHILIPPINES')
         ->toContain('CANDIDATE 001')
+        ->toContain('WE HEREBY CERTIFY')
+        ->toContain('THE ELECTORAL BOARD')
+        ->toContain('Right Thumbmark')
+        ->toContain('WATCHERS')
         ->not->toContain('COUNCILOR - CITY OF MANILA')
         ->not->toContain('CANDIDATE 098')
         ->and($localPdf)
-        ->toContain('Local Election Return')
+        ->toContain('ELECTION RETURNS FOR LOCAL POSITIONS')
+        ->toContain('REPRESENTATIVE')
+        ->toContain('MAYOR')
+        ->toContain('VICE-MAYOR')
+        ->toContain('SANGGUNIAN BAYAN')
         ->toContain('COUNCILOR - CITY OF MANILA')
         ->toContain('CANDIDATE 098')
+        ->toContain('WE HEREBY CERTIFY')
+        ->toContain('THE ELECTORAL BOARD')
         ->not->toContain('SENATOR - PHILIPPINES')
         ->not->toContain('CANDIDATE 001')
         ->and($combinedPdf)

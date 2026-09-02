@@ -25,30 +25,38 @@ final class ElectionReturnPdf
             (string) ($return['return_hash'] ?? 'return'),
             $precinctId,
             $scope->title(),
+            $scope === ElectionReturnScope::Combined ? 'evidence' : 'plain',
         );
         $page = $document->addPage('Return summary');
-        $document->rectangle($page, 42, 688, 511, 36, 0.88);
-        $document->text($page, 'SIMULATION COPY - SUBJECT TO COMELEC FORM APPROVAL', 297.5, 701, 9.5, true, 'center');
-        $document->text($page, mb_strtoupper($scope->title()), 297.5, 682, 10.5, true, 'center');
-        $document->text($page, 'Election', 42, 665, 7.5, true);
-        $document->text($page, (string) ($return['election_id'] ?? 'unknown'), 105, 665, 9);
-        $document->text($page, 'Clustered precinct', 320, 665, 7.5, true);
-        $document->text($page, $precinctId, 543, 665, 9, true, 'right');
-        $document->text($page, 'Accepted paper ballots', 42, 643, 7.5, true);
-        $document->text($page, (string) ($return['accepted_ballots'] ?? 0), 165, 643, 10, true);
-        $document->text($page, 'Rejected scans', 215, 643, 7.5, true);
-        $document->text($page, (string) ($return['rejected_ballots'] ?? 0), 300, 643, 10, true);
-        $document->text($page, 'Return SHA-256', 42, 619, 7.5, true);
-        $document->text($page, (string) ($return['return_hash'] ?? 'unknown'), 128, 619, 7, false, monospace: true);
-        $document->wrappedText(
-            $page,
-            'The Electoral Board certifies that the following totals were generated from the accepted paper-ballot records for this clustered precinct. Paper ballots, VVDAT records, and signed forms remain controlling evidence.',
-            42,
-            594,
-            511,
-            8.5,
-            11,
-        );
+        $tableTop = 552.0;
+
+        if ($scope === ElectionReturnScope::Combined) {
+            $document->rectangle($page, 42, 688, 511, 36, 0.88);
+            $document->text($page, 'SIMULATION COPY - SUBJECT TO COMELEC FORM APPROVAL', 297.5, 701, 9.5, true, 'center');
+            $document->text($page, mb_strtoupper($scope->title()), 297.5, 682, 10.5, true, 'center');
+            $document->text($page, 'Election', 42, 665, 7.5, true);
+            $document->text($page, (string) ($return['election_id'] ?? 'unknown'), 105, 665, 9);
+            $document->text($page, 'Clustered precinct', 320, 665, 7.5, true);
+            $document->text($page, $precinctId, 543, 665, 9, true, 'right');
+            $document->text($page, 'Accepted paper ballots', 42, 643, 7.5, true);
+            $document->text($page, (string) ($return['accepted_ballots'] ?? 0), 165, 643, 10, true);
+            $document->text($page, 'Rejected scans', 215, 643, 7.5, true);
+            $document->text($page, (string) ($return['rejected_ballots'] ?? 0), 300, 643, 10, true);
+            $document->text($page, 'Return SHA-256', 42, 619, 7.5, true);
+            $document->text($page, (string) ($return['return_hash'] ?? 'unknown'), 128, 619, 7, false, monospace: true);
+            $document->wrappedText(
+                $page,
+                'The Electoral Board certifies that the following totals were generated from the accepted paper-ballot records for this clustered precinct. Paper ballots, VVDAT records, and signed forms remain controlling evidence.',
+                42,
+                594,
+                511,
+                8.5,
+                11,
+            );
+        } else {
+            $this->renderOfficialHeader($document, $page, $configuration, $return, $scope);
+            $tableTop = 574.0;
+        }
 
         $result = $scope === ElectionReturnScope::Combined
             ? $this->results->render(
@@ -56,7 +64,7 @@ final class ElectionReturnPdf
                 $configuration,
                 (array) ($return['tally'] ?? []),
                 $page,
-                552,
+                $tableTop,
             )
             : $this->renderCompactScopedReturn(
                 $document,
@@ -64,14 +72,22 @@ final class ElectionReturnPdf
                 (array) ($return['tally'] ?? []),
                 $scope,
                 $page,
-                552,
+                $tableTop,
             );
         $page = $result['page'];
         $y = $result['y'];
 
-        if ($y < 252) {
+        $minimumCertificationSpace = $scope === ElectionReturnScope::Combined ? 252 : 220;
+
+        if ($y < $minimumCertificationSpace) {
             $page = $document->addPage('Electoral Board certification');
-            $y = ElectionPdfDocument::ContentTop;
+            $y = $scope === ElectionReturnScope::Combined ? ElectionPdfDocument::ContentTop : 734;
+        }
+
+        if ($scope !== ElectionReturnScope::Combined) {
+            $this->renderOfficialCertification($document, $page, $return, $scope, $y);
+
+            return $document->render();
         }
 
         $document->rectangle($page, 42, $y - 178, 511, 178, 0.94, false);
@@ -132,7 +148,7 @@ final class ElectionReturnPdf
             ['title' => 'PARTY-LIST', 'contest' => $this->findContest($configuration, ['party list', 'party_list', 'partylist']), 'x' => 384.0, 'width' => 169.0],
         ];
 
-        return $this->renderColumnPages($document, $columns, $tally, $page, $y, ElectionPdfDocument::ContentBottom);
+        return $this->renderColumnPages($document, $columns, $tally, $page, $y, 218);
     }
 
     /**
@@ -380,6 +396,188 @@ final class ElectionReturnPdf
             'rendered' => $rendered,
             'remaining' => $offset + $rendered < count($candidates),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @param  array<string, mixed>  $return
+     */
+    private function renderOfficialHeader(ElectionPdfDocument $document, int $page, array $configuration, array $return, ElectionReturnScope $scope): void
+    {
+        $this->registerComelecSeal($document);
+
+        if ($this->hasComelecSeal()) {
+            $document->image($page, 'ComelecSeal', 276, 773, 44, 44);
+        }
+
+        $document->text($page, 'Republic of the Philippines', 297.5, 762, 8.5, true, 'center');
+        $document->text($page, 'COMMISSION ON ELECTIONS', 297.5, 748, 10.5, true, 'center');
+        $document->text($page, $this->electionLabel($return), 297.5, 734, 8.5, true, 'center');
+        $document->text($page, mb_strtoupper($scope->title()), 297.5, 714, 11, true, 'center');
+        $document->line($page, 201, 704, 394, 704, 1.0, 0.08);
+        $document->line($page, 201, 696, 394, 696, 0.7, 0.08);
+
+        $leftRows = [
+            ['Province', $this->configurationValue($configuration, 'province', (string) config('election.election_return_form.province'))],
+            ['City/Municipality', $this->configurationValue($configuration, 'city_municipality', (string) config('election.election_return_form.city_municipality'))],
+            ['Barangay', $this->configurationValue($configuration, 'barangay', (string) config('election.election_return_form.barangay'))],
+            ['Voting Center', $this->configurationValue($configuration, 'voting_center', (string) config('election.election_return_form.voting_center'))],
+            ['Precincts in a Cluster', (string) ($configuration['precinct_id'] ?? $return['precinct_id'] ?? 'unknown')],
+        ];
+        $rightRows = [
+            ['Machine ID', $this->machineId()],
+            ['Clustered Precinct ID', (string) ($configuration['precinct_id'] ?? $return['precinct_id'] ?? 'unknown')],
+            ['WAES Machine Status', $this->machineStatus()],
+        ];
+
+        $this->renderDetailRows($document, $page, $leftRows, 80, 675, 98, 7.2);
+        $this->renderDetailRows($document, $page, $rightRows, 315, 675, 98, 7.2);
+
+        $registered = (int) config('election.election_return_form.registered_voters', 0);
+        $accepted = (int) ($return['accepted_ballots'] ?? 0);
+        $rejected = (int) ($return['rejected_ballots'] ?? 0);
+        $voted = max($accepted + $rejected, $accepted);
+        $diverted = (int) config('election.election_return_form.ballots_diverted', $rejected);
+
+        $this->renderDetailRows($document, $page, [
+            ['No. of registered voters', (string) $registered],
+            ['No. of voters who voted', (string) $voted],
+            ['No. of valid ballots cast', (string) $accepted],
+            ['No. of ballots diverted', (string) $diverted],
+        ], 80, 626, 120, 7.2);
+
+        $document->text($page, 'Result hash:', 315, 626, 7.2, true);
+        foreach ($this->hashLines((string) ($return['return_hash'] ?? 'unknown')) as $index => $line) {
+            $document->text($page, $line, 384, 626 - ($index * 11), 6.9, false, monospace: true);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $return
+     */
+    private function renderOfficialCertification(ElectionPdfDocument $document, int $page, array $return, ElectionReturnScope $scope, float $y): void
+    {
+        $top = min($y, 212);
+        $document->line($page, 42, $top, 553, $top, 0.9, 0.08);
+        $document->wrappedText(
+            $page,
+            'WE HEREBY CERTIFY that we witnessed the voting at the precinct and that the votes obtained by each candidate appearing in this '.mb_strtoupper($scope->title()).' are true as generated by the WAES Machine with ID no. '.$this->machineId().' on '.$this->generatedAt().'.',
+            50,
+            $top - 12,
+            495,
+            6.9,
+            8.5,
+            true,
+        );
+        $document->text($page, 'THE ELECTORAL BOARD', 297.5, $top - 44, 9.5, true, 'center');
+
+        $members = [
+            [$this->boardMemberName('chairperson'), 'CHAIRPERSON', 118.0],
+            [$this->boardMemberName('poll_clerk'), 'POLL CLERK', 297.5],
+            [$this->boardMemberName('third_member'), 'THIRD MEMBER', 477.0],
+        ];
+
+        foreach ($members as [$name, $role, $centerX]) {
+            $this->renderThumbmarkSlot($document, $page, (string) $name, (string) $role, (float) $centerX, $top - 58);
+        }
+
+        $watcherTop = $top - 156;
+        $document->text($page, 'WATCHERS', 297.5, $watcherTop, 7.5, true, 'center');
+        $this->renderWatcherLine($document, $page, 92, $watcherTop - 18, 190);
+        $this->renderWatcherLine($document, $page, 314, $watcherTop - 18, 190);
+    }
+
+    private function renderThumbmarkSlot(ElectionPdfDocument $document, int $page, string $name, string $role, float $centerX, float $top): void
+    {
+        $boxWidth = 42.0;
+        $boxHeight = 34.0;
+        $document->rectangle($page, $centerX - ($boxWidth / 2), $top - $boxHeight, $boxWidth, $boxHeight, 0.94, false);
+        $document->text($page, 'Right Thumbmark', $centerX, $top - $boxHeight - 8, 5.7, true, 'center');
+        $document->line($page, $centerX - 58, $top - $boxHeight - 30, $centerX + 58, $top - $boxHeight - 30, 0.7, 0.08);
+        $document->text($page, mb_strtoupper($name), $centerX, $top - $boxHeight - 43, 7, true, 'center');
+        $document->text($page, mb_strtoupper($role), $centerX, $top - $boxHeight - 53, 6.5, true, 'center');
+    }
+
+    private function renderWatcherLine(ElectionPdfDocument $document, int $page, float $x, float $y, float $width): void
+    {
+        $document->line($page, $x, $y, $x + $width, $y, 0.7, 0.08);
+        $document->text($page, 'Signature over printed name', $x + ($width / 2), $y - 10, 5.8, false, 'center');
+    }
+
+    /**
+     * @param  array<int, array{0: string, 1: string}>  $rows
+     */
+    private function renderDetailRows(ElectionPdfDocument $document, int $page, array $rows, float $x, float $y, float $labelWidth, float $size): void
+    {
+        foreach ($rows as [$label, $value]) {
+            $document->text($page, $label.':', $x, $y, $size, true);
+            $document->text($page, $value, $x + $labelWidth, $y, $size, true);
+            $y -= 11;
+        }
+    }
+
+    private function registerComelecSeal(ElectionPdfDocument $document): void
+    {
+        if (! $this->hasComelecSeal()) {
+            return;
+        }
+
+        $document->registerPng('ComelecSeal', (string) config('election.branding.comelec_logo'), true);
+    }
+
+    private function hasComelecSeal(): bool
+    {
+        return is_file((string) config('election.branding.comelec_logo'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     */
+    private function configurationValue(array $configuration, string $key, string $fallback): string
+    {
+        $value = $configuration[$key] ?? null;
+
+        return is_scalar($value) && trim((string) $value) !== ''
+            ? (string) $value
+            : $fallback;
+    }
+
+    /** @param array<string, mixed> $return */
+    private function electionLabel(array $return): string
+    {
+        $configured = (string) config('election.election_return_form.election_label');
+
+        return $configured !== '' ? $configured : (string) ($return['election_id'] ?? 'ELECTION');
+    }
+
+    private function machineId(): string
+    {
+        return (string) config('election.election_return_form.machine_id', 'WAES-DEVICE');
+    }
+
+    private function machineStatus(): string
+    {
+        return mb_strtoupper((string) config('election.election_return_form.machine_status', 'CLOSED'));
+    }
+
+    private function generatedAt(): string
+    {
+        return (string) config('election.election_return_form.generated_at', 'May 9, 2022 at 19:18:50');
+    }
+
+    private function boardMemberName(string $role): string
+    {
+        return (string) config("election.election_return_form.electoral_board.{$role}", 'ELECTORAL BOARD MEMBER');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function hashLines(string $hash): array
+    {
+        $pairs = trim(implode(' ', str_split(mb_strtoupper($hash), 2)));
+
+        return str_split($pairs, 32);
     }
 
     /**
