@@ -47,6 +47,14 @@ const props = defineProps<{
         message: string;
     } | null;
     feedback?: string | null;
+    closeoutFeedback?: string | null;
+    closeoutPrinter: {
+        driver: 'file' | 'cups' | 'disabled';
+        default_profile: string;
+        printer_name?: string | null;
+        enabled: boolean;
+        submit_label: string;
+    };
     actions: {
         home: string;
         admit: string;
@@ -427,17 +435,45 @@ usePoll(
                     VVDAT records. The real demo room still handles formal
                     closeout.
                 </p>
+                <p
+                    v-if="closeoutFeedback"
+                    class="mt-4 border-l-4 border-blue-700 bg-blue-50 p-3 text-sm font-bold text-blue-950"
+                >
+                    {{ closeoutFeedback }}
+                </p>
+                <div
+                    class="mt-4 border border-blue-100 bg-blue-50 p-3 text-sm text-stone-700"
+                >
+                    <strong class="text-stone-950">Printer mode:</strong>
+                    <span class="font-mono">{{ closeoutPrinter.driver }}</span>
+                    <span v-if="closeoutPrinter.printer_name">
+                        / {{ closeoutPrinter.printer_name }}
+                    </span>
+                    <span v-if="closeoutPrinter.driver === 'file'">
+                        / demo file printer
+                    </span>
+                </div>
                 <div class="mt-4 grid gap-3 md:grid-cols-2">
                     <a :href="actions.tally" class="secondary-button" target="_blank">
                         View current tally sheet
                     </a>
-                    <a
-                        :href="actions.printTally"
-                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
-                        target="_blank"
+                    <Form
+                        :action="actions.printTally"
+                        method="post"
+                        #default="{ processing }"
                     >
-                        Print current tally sheet
-                    </a>
+                        <button
+                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
+                            type="submit"
+                            :disabled="processing || !closeoutPrinter.enabled"
+                        >
+                            {{
+                                processing
+                                    ? 'Submitting...'
+                                    : `${closeoutPrinter.submit_label}: tally`
+                            }}
+                        </button>
+                    </Form>
                     <a
                         :href="actions.returns.national"
                         class="secondary-button"
@@ -445,13 +481,23 @@ usePoll(
                     >
                         View National ER
                     </a>
-                    <a
-                        :href="actions.printReturns.national"
-                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
-                        target="_blank"
+                    <Form
+                        :action="actions.printReturns.national"
+                        method="post"
+                        #default="{ processing }"
                     >
-                        Print National ER
-                    </a>
+                        <button
+                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
+                            type="submit"
+                            :disabled="processing || !closeoutPrinter.enabled"
+                        >
+                            {{
+                                processing
+                                    ? 'Submitting...'
+                                    : `${closeoutPrinter.submit_label}: National ER`
+                            }}
+                        </button>
+                    </Form>
                     <a
                         :href="actions.returns.local"
                         class="secondary-button"
@@ -459,13 +505,23 @@ usePoll(
                     >
                         View Local ER
                     </a>
-                    <a
-                        :href="actions.printReturns.local"
-                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
-                        target="_blank"
+                    <Form
+                        :action="actions.printReturns.local"
+                        method="post"
+                        #default="{ processing }"
                     >
-                        Print Local ER
-                    </a>
+                        <button
+                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
+                            type="submit"
+                            :disabled="processing || !closeoutPrinter.enabled"
+                        >
+                            {{
+                                processing
+                                    ? 'Submitting...'
+                                    : `${closeoutPrinter.submit_label}: Local ER`
+                            }}
+                        </button>
+                    </Form>
                     <a
                         :href="`${actions.tally}/thermal-80`"
                         class="secondary-button"
@@ -473,13 +529,23 @@ usePoll(
                     >
                         View thermal tally
                     </a>
-                    <a
-                        :href="`${actions.printTally}/thermal-80`"
-                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
-                        target="_blank"
+                    <Form
+                        :action="`${actions.printTally}/thermal-80`"
+                        method="post"
+                        #default="{ processing }"
                     >
-                        Print thermal tally
-                    </a>
+                        <button
+                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
+                            type="submit"
+                            :disabled="processing || !closeoutPrinter.enabled"
+                        >
+                            {{
+                                processing
+                                    ? 'Submitting...'
+                                    : `${closeoutPrinter.submit_label}: thermal tally`
+                            }}
+                        </button>
+                    </Form>
                     <a
                         :href="`${actions.returns.national}/thermal-80`"
                         class="secondary-button"
@@ -487,13 +553,23 @@ usePoll(
                     >
                         View thermal National ER
                     </a>
-                    <a
-                        :href="`${actions.printReturns.national}/thermal-80`"
-                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
-                        target="_blank"
+                    <Form
+                        :action="`${actions.printReturns.national}/thermal-80`"
+                        method="post"
+                        #default="{ processing }"
                     >
-                        Print thermal National ER
-                    </a>
+                        <button
+                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
+                            type="submit"
+                            :disabled="processing || !closeoutPrinter.enabled"
+                        >
+                            {{
+                                processing
+                                    ? 'Submitting...'
+                                    : `${closeoutPrinter.submit_label}: thermal National ER`
+                            }}
+                        </button>
+                    </Form>
                     <a
                         :href="`${actions.returns.local}/thermal-80`"
                         class="secondary-button"
@@ -501,13 +577,23 @@ usePoll(
                     >
                         View thermal Local ER
                     </a>
-                    <a
-                        :href="`${actions.printReturns.local}/thermal-80`"
-                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
-                        target="_blank"
+                    <Form
+                        :action="`${actions.printReturns.local}/thermal-80`"
+                        method="post"
+                        #default="{ processing }"
                     >
-                        Print thermal Local ER
-                    </a>
+                        <button
+                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
+                            type="submit"
+                            :disabled="processing || !closeoutPrinter.enabled"
+                        >
+                            {{
+                                processing
+                                    ? 'Submitting...'
+                                    : `${closeoutPrinter.submit_label}: thermal Local ER`
+                            }}
+                        </button>
+                    </Form>
                 </div>
             </section>
 

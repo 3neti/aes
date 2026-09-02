@@ -8,6 +8,7 @@ use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateConfiguredPrecinct;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\CloseoutArtifactPrinter;
 use App\Election\Printing\PrintFormProfile;
 use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
@@ -77,6 +78,7 @@ final class RoleDemoController extends Controller
         ElectionStorage $storage,
         RoleDemoInterimCloseout $forms,
         RoleDemoBulkBallotSeeder $bulkBallots,
+        CloseoutArtifactPrinter $closeoutPrinter,
         Request $request,
     ): Response {
         $precinct = $this->precinct($simulations);
@@ -99,6 +101,8 @@ final class RoleDemoController extends Controller
             'controlNumber' => $request->session()->get('role_demo.control_number'),
             'printFeedback' => $request->session()->get('role_demo.print_feedback'),
             'feedback' => $request->session()->get('role_demo.feedback'),
+            'closeoutFeedback' => $request->session()->get('role_demo.closeout_feedback'),
+            'closeoutPrinter' => $closeoutPrinter->status(),
             'actions' => [
                 'home' => route('election.role-demo.index'),
                 'admit' => route('election.role-demo.admit'),
@@ -497,18 +501,9 @@ final class RoleDemoController extends Controller
         ]);
     }
 
-    public function printTallySheet(PrintFormProfileResolver $profiles, ?string $profile = null): Response
+    public function submitTallySheet(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, CloseoutArtifactPrinter $printer, ?string $profile = null): RedirectResponse
     {
-        $resolved = $profiles->from($profile ?? PrintFormProfile::A4->value);
-
-        return Inertia::render('Election/PdfPrint', [
-            'title' => 'Print current tally sheet',
-            'documentLabel' => 'Current Tally Sheet',
-            'pdfUrl' => route('election.role-demo.tally-sheet', [$resolved->value]),
-            'backUrl' => route('election.role-demo.officer'),
-            'autoPrint' => true,
-            'instructions' => 'The tally sheet is loaded below. Use the browser print dialog on the laptop connected to the printer.',
-        ]);
+        return $this->submitCloseoutArtifact($simulations, $storage, $profiles, $forms, $printer, 'tally-sheet', $profile);
     }
 
     public function electionReturn(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, ?string $profile = null): BinaryFileResponse
@@ -534,19 +529,24 @@ final class RoleDemoController extends Controller
         ]);
     }
 
-    public function printScopedElectionReturn(PrintFormProfileResolver $profiles, string $scope, ?string $profile = null): Response
+    public function submitScopedElectionReturn(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, CloseoutArtifactPrinter $printer, string $scope, ?string $profile = null): RedirectResponse
     {
-        $resolved = $profiles->from($profile ?? PrintFormProfile::A4->value);
         $returnScope = ElectionReturnScope::tryFrom($scope) ?? abort(404);
 
-        return Inertia::render('Election/PdfPrint', [
-            'title' => 'Print '.$returnScope->title(),
-            'documentLabel' => $returnScope->title(),
-            'pdfUrl' => route('election.role-demo.election-return.scoped', [$returnScope->value, $resolved->value]),
-            'backUrl' => route('election.role-demo.officer'),
-            'autoPrint' => true,
-            'instructions' => 'The Election Return is loaded below. Use the browser print dialog on the laptop connected to the printer.',
-        ]);
+        return $this->submitCloseoutArtifact($simulations, $storage, $profiles, $forms, $printer, 'election-return-'.$returnScope->value, $profile);
+    }
+
+    private function submitCloseoutArtifact(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, CloseoutArtifactPrinter $printer, string $artifact, ?string $profile = null): RedirectResponse
+    {
+        $precinct = $this->precinct($simulations);
+        $forms->generate($precinct, 'role-demo-closeout-print');
+        $configuration = $storage->readJson('runtime/active-precinct.json');
+        $precinctId = (string) ($configuration['precinct_id'] ?? '');
+        $resolved = $profiles->from($profile ?? PrintFormProfile::A4->value);
+        $result = $printer->print($artifact, $resolved, $precinct->code, $precinctId);
+
+        return to_route('election.role-demo.officer')
+            ->with('role_demo.closeout_feedback', (string) $result['message']);
     }
 
     private function roleDemoBallotReviewDownloadEnabled(): bool

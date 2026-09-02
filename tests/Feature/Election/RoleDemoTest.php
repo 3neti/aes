@@ -172,15 +172,9 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
 
-    $this->get(route('election.role-demo.print.tally-sheet'))
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Election/PdfPrint')
-            ->where('documentLabel', 'Current Tally Sheet')
-            ->where('pdfUrl', route('election.role-demo.tally-sheet', ['profile' => 'a4']))
-            ->where('backUrl', route('election.role-demo.officer'))
-            ->where('autoPrint', true)
-        );
+    $this->post(route('election.role-demo.print.tally-sheet'))
+        ->assertRedirectToRoute('election.role-demo.officer')
+        ->assertSessionHas('role_demo.closeout_feedback', 'Tally sheet A4 evidence copy PDF is ready for browser printing.');
 
     $this->get(route('election.role-demo.election-return', ['profile' => 'thermal-80']))
         ->assertSuccessful()
@@ -194,25 +188,13 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
 
-    $this->get(route('election.role-demo.print.election-return.scoped', ['scope' => 'national', 'profile' => 'thermal-80']))
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Election/PdfPrint')
-            ->where('documentLabel', 'Election Returns for National Positions')
-            ->where('pdfUrl', route('election.role-demo.election-return.scoped', ['scope' => 'national', 'profile' => 'thermal-80']))
-            ->where('backUrl', route('election.role-demo.officer'))
-            ->where('autoPrint', true)
-        );
+    $this->post(route('election.role-demo.print.election-return.scoped', ['scope' => 'national', 'profile' => 'thermal-80']))
+        ->assertRedirectToRoute('election.role-demo.officer')
+        ->assertSessionHas('role_demo.closeout_feedback', 'National Election Return 80 mm thermal roll PDF is ready for browser printing.');
 
-    $this->get(route('election.role-demo.print.election-return.scoped', ['scope' => 'local']))
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Election/PdfPrint')
-            ->where('documentLabel', 'Election Returns for Local Positions')
-            ->where('pdfUrl', route('election.role-demo.election-return.scoped', ['scope' => 'local', 'profile' => 'a4']))
-            ->where('backUrl', route('election.role-demo.officer'))
-            ->where('autoPrint', true)
-        );
+    $this->post(route('election.role-demo.print.election-return.scoped', ['scope' => 'local']))
+        ->assertRedirectToRoute('election.role-demo.officer')
+        ->assertSessionHas('role_demo.closeout_feedback', 'Local Election Return A4 evidence copy PDF is ready for browser printing.');
 
     expect($precinct->fresh()->status)->toBe('open')
         ->and(app(ElectionStorage::class)->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
