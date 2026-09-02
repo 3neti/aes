@@ -44,9 +44,13 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('currentTally.accepted_ballots', 0)
             ->where('actions.acceptPrint', route('election.role-demo.print.accept'))
             ->where('actions.bulkBallots', route('election.role-demo.bulk-ballots'))
+            ->where('actions.printTally', route('election.role-demo.print.tally-sheet'))
             ->where('actions.returns.national', route('election.role-demo.election-return.scoped', ['scope' => 'national']))
             ->where('actions.returns.local', route('election.role-demo.election-return.scoped', ['scope' => 'local']))
             ->where('actions.returns.combined', route('election.role-demo.election-return.scoped', ['scope' => 'combined']))
+            ->where('actions.printReturns.national', route('election.role-demo.print.election-return.scoped', ['scope' => 'national']))
+            ->where('actions.printReturns.local', route('election.role-demo.print.election-return.scoped', ['scope' => 'local']))
+            ->where('actions.printReturns.combined', route('election.role-demo.print.election-return.scoped', ['scope' => 'combined']))
             ->where('bulkBallots.enabled', true)
         );
 
@@ -168,6 +172,16 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
 
+    $this->get(route('election.role-demo.print.tally-sheet'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/PdfPrint')
+            ->where('documentLabel', 'Current Tally Sheet')
+            ->where('pdfUrl', route('election.role-demo.tally-sheet', ['profile' => 'a4']))
+            ->where('backUrl', route('election.role-demo.officer'))
+            ->where('autoPrint', true)
+        );
+
     $this->get(route('election.role-demo.election-return', ['profile' => 'thermal-80']))
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
@@ -179,6 +193,26 @@ test('role demo runs officer voter print and watcher points of view without clos
     $this->get(route('election.role-demo.election-return.scoped', ['scope' => 'local', 'profile' => 'thermal-80']))
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(route('election.role-demo.print.election-return.scoped', ['scope' => 'national', 'profile' => 'thermal-80']))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/PdfPrint')
+            ->where('documentLabel', 'Election Returns for National Positions')
+            ->where('pdfUrl', route('election.role-demo.election-return.scoped', ['scope' => 'national', 'profile' => 'thermal-80']))
+            ->where('backUrl', route('election.role-demo.officer'))
+            ->where('autoPrint', true)
+        );
+
+    $this->get(route('election.role-demo.print.election-return.scoped', ['scope' => 'local']))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/PdfPrint')
+            ->where('documentLabel', 'Election Returns for Local Positions')
+            ->where('pdfUrl', route('election.role-demo.election-return.scoped', ['scope' => 'local', 'profile' => 'a4']))
+            ->where('backUrl', route('election.role-demo.officer'))
+            ->where('autoPrint', true)
+        );
 
     expect($precinct->fresh()->status)->toBe('open')
         ->and(app(ElectionStorage::class)->path('runtime/tally-sheet.pdf'))->toBeReadableFile()

@@ -52,6 +52,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
             ->whereNumber('sequence')
             ->name('watcher.ballot');
         Route::get('/tally-sheet/{profile?}', [RoleDemoController::class, 'tallySheet'])->name('tally-sheet');
+        Route::get('/print/tally-sheet/{profile?}', [RoleDemoController::class, 'printTallySheet'])->name('print.tally-sheet');
+        Route::get('/print/election-returns/{scope}/{profile?}', [RoleDemoController::class, 'printScopedElectionReturn'])->name('print.election-return.scoped');
         Route::get('/election-returns/{scope}/{profile?}', [RoleDemoController::class, 'scopedElectionReturn'])->name('election-return.scoped');
         Route::get('/election-return/{profile?}', [RoleDemoController::class, 'electionReturn'])->name('election-return');
     });

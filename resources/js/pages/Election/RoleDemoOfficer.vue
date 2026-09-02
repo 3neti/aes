@@ -55,8 +55,14 @@ const props = defineProps<{
         bulkBallots: string;
         lastBallot: string;
         tally: string;
+        printTally: string;
         return: string;
         returns: {
+            national: string;
+            local: string;
+            combined: string;
+        };
+        printReturns: {
             national: string;
             local: string;
             combined: string;
@@ -421,44 +427,86 @@ usePoll(
                     VVDAT records. The real demo room still handles formal
                     closeout.
                 </p>
-                <div class="mt-4 flex flex-wrap gap-3">
+                <div class="mt-4 grid gap-3 md:grid-cols-2">
                     <a :href="actions.tally" class="secondary-button" target="_blank">
-                        Open current tally sheet
+                        View current tally sheet
+                    </a>
+                    <a
+                        :href="actions.printTally"
+                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
+                        target="_blank"
+                    >
+                        Print current tally sheet
                     </a>
                     <a
                         :href="actions.returns.national"
                         class="secondary-button"
                         target="_blank"
                     >
-                        Open National ER
+                        View National ER
+                    </a>
+                    <a
+                        :href="actions.printReturns.national"
+                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
+                        target="_blank"
+                    >
+                        Print National ER
                     </a>
                     <a
                         :href="actions.returns.local"
                         class="secondary-button"
                         target="_blank"
                     >
-                        Open Local ER
+                        View Local ER
+                    </a>
+                    <a
+                        :href="actions.printReturns.local"
+                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
+                        target="_blank"
+                    >
+                        Print Local ER
                     </a>
                     <a
                         :href="`${actions.tally}/thermal-80`"
                         class="secondary-button"
                         target="_blank"
                     >
-                        Thermal tally
+                        View thermal tally
+                    </a>
+                    <a
+                        :href="`${actions.printTally}/thermal-80`"
+                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
+                        target="_blank"
+                    >
+                        Print thermal tally
                     </a>
                     <a
                         :href="`${actions.returns.national}/thermal-80`"
                         class="secondary-button"
                         target="_blank"
                     >
-                        Thermal National ER
+                        View thermal National ER
+                    </a>
+                    <a
+                        :href="`${actions.printReturns.national}/thermal-80`"
+                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
+                        target="_blank"
+                    >
+                        Print thermal National ER
                     </a>
                     <a
                         :href="`${actions.returns.local}/thermal-80`"
                         class="secondary-button"
                         target="_blank"
                     >
-                        Thermal Local ER
+                        View thermal Local ER
+                    </a>
+                    <a
+                        :href="`${actions.printReturns.local}/thermal-80`"
+                        class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
+                        target="_blank"
+                    >
+                        Print thermal Local ER
                     </a>
                 </div>
             </section>

@@ -107,11 +107,17 @@ final class RoleDemoController extends Controller
                 'bulkBallots' => route('election.role-demo.bulk-ballots'),
                 'lastBallot' => route('election.role-demo.print.last-ballot'),
                 'tally' => route('election.role-demo.tally-sheet'),
+                'printTally' => route('election.role-demo.print.tally-sheet'),
                 'return' => route('election.role-demo.election-return'),
                 'returns' => [
                     'national' => route('election.role-demo.election-return.scoped', [ElectionReturnScope::National->value]),
                     'local' => route('election.role-demo.election-return.scoped', [ElectionReturnScope::Local->value]),
                     'combined' => route('election.role-demo.election-return.scoped', [ElectionReturnScope::Combined->value]),
+                ],
+                'printReturns' => [
+                    'national' => route('election.role-demo.print.election-return.scoped', [ElectionReturnScope::National->value]),
+                    'local' => route('election.role-demo.print.election-return.scoped', [ElectionReturnScope::Local->value]),
+                    'combined' => route('election.role-demo.print.election-return.scoped', [ElectionReturnScope::Combined->value]),
                 ],
                 'watcher' => route('election.role-demo.watcher'),
                 'reset' => route('election.role-demo.reset'),
@@ -491,6 +497,20 @@ final class RoleDemoController extends Controller
         ]);
     }
 
+    public function printTallySheet(PrintFormProfileResolver $profiles, ?string $profile = null): Response
+    {
+        $resolved = $profiles->from($profile ?? PrintFormProfile::A4->value);
+
+        return Inertia::render('Election/PdfPrint', [
+            'title' => 'Print current tally sheet',
+            'documentLabel' => 'Current Tally Sheet',
+            'pdfUrl' => route('election.role-demo.tally-sheet', [$resolved->value]),
+            'backUrl' => route('election.role-demo.officer'),
+            'autoPrint' => true,
+            'instructions' => 'The tally sheet is loaded below. Use the browser print dialog on the laptop connected to the printer.',
+        ]);
+    }
+
     public function electionReturn(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, ?string $profile = null): BinaryFileResponse
     {
         return $this->scopedElectionReturn($simulations, $storage, $profiles, $forms, ElectionReturnScope::Combined->value, $profile);
@@ -511,6 +531,21 @@ final class RoleDemoController extends Controller
 
         return response()->file($path, [
             'Content-Disposition' => 'inline; filename="'.$precinct->code.'-'.$resolved->value.'-interim-'.$returnScope->filenameSuffix().'.pdf"',
+        ]);
+    }
+
+    public function printScopedElectionReturn(PrintFormProfileResolver $profiles, string $scope, ?string $profile = null): Response
+    {
+        $resolved = $profiles->from($profile ?? PrintFormProfile::A4->value);
+        $returnScope = ElectionReturnScope::tryFrom($scope) ?? abort(404);
+
+        return Inertia::render('Election/PdfPrint', [
+            'title' => 'Print '.$returnScope->title(),
+            'documentLabel' => $returnScope->title(),
+            'pdfUrl' => route('election.role-demo.election-return.scoped', [$returnScope->value, $resolved->value]),
+            'backUrl' => route('election.role-demo.officer'),
+            'autoPrint' => true,
+            'instructions' => 'The Election Return is loaded below. Use the browser print dialog on the laptop connected to the printer.',
         ]);
     }
 
