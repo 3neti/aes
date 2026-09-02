@@ -44,6 +44,9 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('currentTally.accepted_ballots', 0)
             ->where('actions.acceptPrint', route('election.role-demo.print.accept'))
             ->where('actions.bulkBallots', route('election.role-demo.bulk-ballots'))
+            ->where('actions.returns.national', route('election.role-demo.election-return.scoped', ['scope' => 'national']))
+            ->where('actions.returns.local', route('election.role-demo.election-return.scoped', ['scope' => 'local']))
+            ->where('actions.returns.combined', route('election.role-demo.election-return.scoped', ['scope' => 'combined']))
             ->where('bulkBallots.enabled', true)
         );
 

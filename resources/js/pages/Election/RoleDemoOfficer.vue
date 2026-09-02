@@ -56,6 +56,11 @@ const props = defineProps<{
         lastBallot: string;
         tally: string;
         return: string;
+        returns: {
+            national: string;
+            local: string;
+            combined: string;
+        };
         watcher: string;
         reset: string;
     };
@@ -420,8 +425,19 @@ usePoll(
                     <a :href="actions.tally" class="secondary-button" target="_blank">
                         Open current tally sheet
                     </a>
-                    <a :href="actions.return" class="secondary-button" target="_blank">
-                        Open current Election Return
+                    <a
+                        :href="actions.returns.national"
+                        class="secondary-button"
+                        target="_blank"
+                    >
+                        Open National ER
+                    </a>
+                    <a
+                        :href="actions.returns.local"
+                        class="secondary-button"
+                        target="_blank"
+                    >
+                        Open Local ER
                     </a>
                     <a
                         :href="`${actions.tally}/thermal-80`"
@@ -431,11 +447,18 @@ usePoll(
                         Thermal tally
                     </a>
                     <a
-                        :href="`${actions.return}/thermal-80`"
+                        :href="`${actions.returns.national}/thermal-80`"
                         class="secondary-button"
                         target="_blank"
                     >
-                        Thermal ER
+                        Thermal National ER
+                    </a>
+                    <a
+                        :href="`${actions.returns.local}/thermal-80`"
+                        class="secondary-button"
+                        target="_blank"
+                    >
+                        Thermal Local ER
                     </a>
                 </div>
             </section>

@@ -108,6 +108,11 @@ final class RoleDemoController extends Controller
                 'lastBallot' => route('election.role-demo.print.last-ballot'),
                 'tally' => route('election.role-demo.tally-sheet'),
                 'return' => route('election.role-demo.election-return'),
+                'returns' => [
+                    'national' => route('election.role-demo.election-return.scoped', [ElectionReturnScope::National->value]),
+                    'local' => route('election.role-demo.election-return.scoped', [ElectionReturnScope::Local->value]),
+                    'combined' => route('election.role-demo.election-return.scoped', [ElectionReturnScope::Combined->value]),
+                ],
                 'watcher' => route('election.role-demo.watcher'),
                 'reset' => route('election.role-demo.reset'),
             ],
