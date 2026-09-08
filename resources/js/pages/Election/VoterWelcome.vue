@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Form, router, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
+import NumericPinPad from '@/components/election/NumericPinPad.vue';
 import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
-import type { ElectionReviewRoomContext } from '@/components/election/types';
 import { claim } from '@/routes/election/voter';
 
 const props = defineProps<{
@@ -25,14 +25,11 @@ const props = defineProps<{
 }>();
 
 const page = usePage();
-const reviewRoom = computed(
-    () => page.props.electionReviewRoom as ElectionReviewRoomContext,
-);
 const fallbackClaimForm = claim.form();
 const claimUrl = computed(() => props.claimAction ?? fallbackClaimForm.action);
 const errors = computed(() => page.props.errors as Record<string, string>);
 const controlNumber = ref(props.initialControlNumber ?? '');
-const controlInput = ref<HTMLInputElement | null>(null);
+const controlKeypad = ref<{ focus: () => void } | null>(null);
 const submitting = ref(false);
 const generating = ref(false);
 const generationError = ref<string | null>(null);
@@ -131,7 +128,7 @@ async function useGeneratedControlNumber(): Promise<void> {
     controlNumber.value = generatedControlNumber.value.code;
     showGeneratedControlNumber.value = false;
     await nextTick();
-    controlInput.value?.focus();
+    controlKeypad.value?.focus();
 }
 </script>
 
@@ -236,49 +233,33 @@ async function useGeneratedControlNumber(): Promise<void> {
             </section>
 
             <form class="mt-7 space-y-4" @submit.prevent="submitControlNumber">
-                <label class="block">
-                    <span class="text-sm font-bold text-stone-700"
-                        >Voter Control Number</span
-                    >
-                    <input
-                        ref="controlInput"
-                        v-model="controlNumber"
-                        class="mt-1 min-h-14 w-full border-2 border-stone-400 px-4 text-center font-mono text-3xl font-bold"
-                        name="code"
-                        type="text"
-                        autocomplete="off"
-                        autofocus
-                        inputmode="numeric"
-                        maxlength="4"
-                        pattern="[0-9]{4}"
-                        placeholder="0000"
-                    />
-                </label>
-                <p v-if="errors.code" class="font-bold text-red-700">
-                    {{ errors.code }}
-                </p>
+                <NumericPinPad
+                    ref="controlKeypad"
+                    v-model="controlNumber"
+                    label="Voter Control Number"
+                    :digits="4"
+                    :error="errors.code"
+                    :processing="submitting || generating"
+                    :processing-label="
+                        generating
+                            ? 'Generating voter control number...'
+                            : 'Checking control number...'
+                    "
+                    :allow-incomplete-submit="shouldGenerateDemoControlNumber"
+                    :submit-label="
+                        shouldGenerateDemoControlNumber
+                            ? 'Get control number'
+                            : 'Begin voting'
+                    "
+                    autofocus
+                    @submit="submitControlNumber"
+                />
                 <p
                     v-if="generationError"
                     class="border border-red-200 bg-red-50 p-3 font-bold text-red-700"
                 >
                     {{ generationError }}
                 </p>
-                <button
-                    class="min-h-14 w-full bg-blue-800 px-5 py-3 text-lg font-bold text-white disabled:opacity-50"
-                    :class="{
-                        'review-next-action-button': reviewRoom.enabled,
-                    }"
-                    type="submit"
-                    :disabled="submitting || generating"
-                >
-                    {{
-                        generating
-                            ? 'Generating voter control number...'
-                            : submitting
-                              ? 'Checking control number...'
-                              : 'Begin voting'
-                    }}
-                </button>
             </form>
 
             <p

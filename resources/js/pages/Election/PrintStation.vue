@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
+import NumericPinPad from '@/components/election/NumericPinPad.vue';
 import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
 import type { ElectionReviewRoomContext } from '@/components/election/types';
 import { deposit, print, redeem } from '@/routes/election/print-station';
@@ -55,7 +56,7 @@ const reviewRoom = computed(
     () => page.props.electionReviewRoom as ElectionReviewRoomContext,
 );
 const pinDigits = computed(() => props.printPinDigits ?? 4);
-const pinPlaceholder = computed(() => '0'.repeat(pinDigits.value));
+const printPin = ref('');
 const acceptedDismissed = ref(false);
 const previewOpen = ref(false);
 const decodedOpen = ref(false);
@@ -156,34 +157,20 @@ onMounted(syncPrintingOverlay);
                     "
                     #default="{ errors, processing }"
                     class="mt-7 space-y-4"
+                    @success="printPin = ''"
                 >
-                    <label class="block">
-                        <span class="text-sm font-bold">Print PIN</span>
-                        <input
-                            class="mt-1 min-h-14 w-full border-2 border-stone-400 px-4 text-center text-2xl font-bold"
-                            name="code"
-                            required
-                            autocomplete="off"
-                            autofocus
-                            inputmode="numeric"
-                            :maxlength="pinDigits"
-                            :pattern="`[0-9]{${pinDigits}}`"
-                            :placeholder="pinPlaceholder"
-                        />
-                    </label>
-                    <p v-if="errors.code" class="font-bold text-red-700">
-                        {{ errors.code }}
-                    </p>
-                    <button
-                        class="min-h-14 w-full bg-blue-800 px-5 py-3 text-lg font-bold text-white disabled:opacity-50"
+                    <NumericPinPad
+                        v-model="printPin"
+                        label="Print PIN"
+                        :digits="pinDigits"
+                        :error="errors.code"
+                        :processing="processing"
+                        submit-label="Claim paper ballot"
                         :class="{
                             'review-next-action-button': reviewRoom.enabled,
                         }"
-                        type="submit"
-                        :disabled="processing"
-                    >
-                        {{ processing ? 'Checking...' : 'Claim paper ballot' }}
-                    </button>
+                        autofocus
+                    />
                 </Form>
             </template>
 

@@ -419,7 +419,8 @@ test('lifecycle tally and return retain complete activated configuration order',
         ->and($returnPdf)->toContain('Ada Santos')
         ->and($returnPdf)->toContain('Grace Reyes')
         ->and($returnPdf)->toContain('Cora Ramos')
-        ->and($returnPdf)->toContain('Page 1 of 2');
+        ->and($returnPdf)->toContain('TRUTHTALLY ELECTION RETURN QR')
+        ->and($returnPdf)->toContain('Page 1 of 3');
 });
 
 function pdfPageCount(string $pdf): int

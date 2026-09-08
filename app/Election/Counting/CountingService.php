@@ -11,6 +11,7 @@ use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\DeviceTabulationLedger;
 use App\Election\Tabulation\TabulationProfileResolver;
 use App\Election\Voting\BallotPayloadService;
+use App\Election\Voting\BallotQrPayload;
 use App\Election\Voting\PaperBallotLedger;
 use RuntimeException;
 
@@ -28,6 +29,7 @@ final class CountingService
         private readonly TabulationProfileResolver $tabulation,
         private readonly DeviceTabulationLedger $deviceLedger,
         private readonly TallyPresentation $presentation,
+        private readonly BallotQrPayload $qrPayload,
     ) {}
 
     /**
@@ -236,16 +238,7 @@ final class CountingService
     private function payloadHash(array $payload): string
     {
         if (($payload['payload_hash_profile'] ?? null) === 'compact-selection-1') {
-            return $this->json->hash([
-                'schema_version' => 'ballot-payload-compact-1',
-                'election_id' => $payload['election_id'] ?? null,
-                'precinct_id' => $payload['precinct_id'] ?? null,
-                'ballot_style_id' => $payload['ballot_style_id'] ?? null,
-                'mapping_hash' => $payload['mapping_hash'] ?? null,
-                'tabulation_profile' => $payload['tabulation_profile'] ?? null,
-                'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
-                'candidate_codes' => $payload['candidate_codes'] ?? [],
-            ]);
+            return $this->qrPayload->compactHash($payload);
         }
 
         return $this->json->hash(array_diff_key($payload, [

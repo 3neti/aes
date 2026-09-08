@@ -27,6 +27,7 @@ final class ElectionReturnPdf
             $scope->title(),
             $scope === ElectionReturnScope::Combined ? 'evidence' : 'plain',
         );
+        $this->registerTruthTallyQrImages($document, $return);
         $page = $document->addPage('Return summary');
         $tableTop = 552.0;
 
@@ -117,7 +118,91 @@ final class ElectionReturnPdf
         $document->text($page, 'Posted copy number', 320, $y - 157, 7.5);
         $document->line($page, 410, $y - 156, 539, $y - 156, 0.6, 0.35);
 
+        $this->renderTruthTallyQrPage($document, $return);
+
         return $document->render();
+    }
+
+    /**
+     * @param  array<string, mixed>  $return
+     */
+    private function registerTruthTallyQrImages(ElectionPdfDocument $document, array $return): void
+    {
+        foreach ((array) ($return['truth_tally']['qr_artifacts'] ?? []) as $artifact) {
+            if (! is_array($artifact)) {
+                continue;
+            }
+
+            $path = (string) ($artifact['artifact_path'] ?? '');
+
+            if ($path !== '' && is_file($path)) {
+                $document->registerPng('TruthTallyQr'.(int) ($artifact['sequence'] ?? 1), $path);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $return
+     */
+    private function renderTruthTallyQrPage(ElectionPdfDocument $document, array $return): void
+    {
+        $artifacts = array_values(array_filter(
+            (array) ($return['truth_tally']['qr_artifacts'] ?? []),
+            fn (mixed $artifact): bool => is_array($artifact),
+        ));
+
+        if ($artifacts === []) {
+            return;
+        }
+
+        $page = null;
+
+        foreach ($artifacts as $index => $artifact) {
+            if ($index % 4 === 0) {
+                $page = $document->addPage('TruthTally QR copy');
+                $this->renderTruthTallyQrPageHeader($document, $page, $return);
+            }
+
+            $name = 'TruthTallyQr'.(int) ($artifact['sequence'] ?? ($index + 1));
+            $slot = $index % 4;
+            $column = $slot % 2;
+            $row = intdiv($slot, 2);
+            $x = 76 + ($column * 255);
+            $y = 344 - ($row * 238);
+
+            $document->rectangle($page, $x - 6, $y - 6, 196, 196, 0.97);
+            $document->image($page, $name, $x, $y, 184, 184);
+            $document->text(
+                $page,
+                'QR '.(int) ($artifact['sequence'] ?? ($index + 1)).' of '.(int) ($artifact['total'] ?? count($artifacts)),
+                $x + 92,
+                $y - 18,
+                8,
+                true,
+                'center',
+            );
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $return
+     */
+    private function renderTruthTallyQrPageHeader(ElectionPdfDocument $document, int $page, array $return): void
+    {
+        $document->text($page, 'TRUTHTALLY ELECTION RETURN QR', 42, 714, 13, true);
+        $document->wrappedText(
+            $page,
+            'Scan this QR payload set at the municipal or city canvassing station to reconstruct the precinct election return totals using the local canonical candidate mapping.',
+            42,
+            692,
+            511,
+            8.5,
+            11,
+        );
+        $document->text($page, 'Payload type', 42, 656, 8, true);
+        $document->text($page, (string) ($return['truth_tally']['payload_type'] ?? 'waes-election-return'), 138, 656, 8.5, false, monospace: true);
+        $document->text($page, 'Payload SHA-256', 42, 636, 8, true);
+        $document->wrappedText($page, (string) ($return['truth_tally']['payload_hash'] ?? 'unknown'), 138, 636, 360, 8, 9.5, false, true);
     }
 
     /**

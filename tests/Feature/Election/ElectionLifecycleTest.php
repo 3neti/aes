@@ -719,8 +719,9 @@ test('ballot finalization creates deterministic qr payload and print artifact', 
 
     expect($payload['payload_hash'])->toBeString()
         ->and($payload['qr_payload'])->toBeString()
-        ->and($payload['qr_payload'])->toStartWith('aes-ballot-compact-1:')
-        ->and($payload['qr_payload'])->toContain('CAND')
+        ->and($payload['qr_payload'])->toStartWith('truth://v1/waes-ballot/aes-ballot-compact-1?p=')
+        ->and($payload['canonical_qr_payload'])->toStartWith('aes-ballot-compact-1:')
+        ->and($payload['canonical_qr_payload'])->toContain('CAND')
         ->and($payload['payload_hash_profile'])->toBe('compact-selection-1')
         ->and($payload['qr_artifact_path'])->toBeString()
         ->and(file_exists($payload['qr_artifact_path']))->toBeTrue()

@@ -106,6 +106,64 @@ final class CandidateCodeMap
     }
 
     /**
+     * @param  array<string, array<string, int>>  $tally
+     * @return array<string, int>
+     */
+    public function codeTotalsForTally(array $tally): array
+    {
+        $manifest = $this->active();
+        $codesByCandidateId = collect($manifest['candidates'] ?? [])
+            ->mapWithKeys(fn (array $candidate, string $code): array => [(string) $candidate['candidate_id'] => $code]);
+        $totals = [];
+
+        foreach ($tally as $candidateTotals) {
+            foreach ($candidateTotals as $candidateId => $votes) {
+                $code = $codesByCandidateId->get((string) $candidateId);
+
+                if (! is_string($code)) {
+                    throw new RuntimeException("Candidate [{$candidateId}] has no compact QR code mapping.");
+                }
+
+                $voteTotal = (int) $votes;
+
+                if ($voteTotal > 0) {
+                    $totals[$code] = $voteTotal;
+                }
+            }
+        }
+
+        ksort($totals);
+
+        return $totals;
+    }
+
+    /**
+     * @param  array<string, int>  $codeTotals
+     * @return array<string, array<string, int>>
+     */
+    public function tallyForCodeTotals(array $codeTotals): array
+    {
+        $manifest = $this->active();
+        $candidates = $manifest['candidates'] ?? [];
+        $tally = [];
+
+        foreach ($codeTotals as $code => $votes) {
+            $candidate = $candidates[$code] ?? null;
+
+            if (! is_array($candidate)) {
+                throw new RuntimeException("Candidate code [{$code}] is not present in this precinct mapping.");
+            }
+
+            $contestId = (string) $candidate['contest_id'];
+            $candidateId = (string) $candidate['candidate_id'];
+            $tally[$contestId] ??= [];
+            $tally[$contestId][$candidateId] = (int) $votes;
+        }
+
+        return $tally;
+    }
+
+    /**
      * @param  array<string, mixed>  $configuration
      * @return array<string, mixed>
      */

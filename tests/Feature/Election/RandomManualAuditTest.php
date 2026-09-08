@@ -11,7 +11,6 @@ use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
-use App\Election\Voting\BallotQrPayload;
 use App\Election\Voting\SealedBallotBox;
 use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -36,11 +35,12 @@ beforeEach(function (): void {
 });
 
 test('compact ballot QR payload uses candidate codes and resolves without a stored ballot lookup', function (): void {
-    $decoded = app(BallotQrPayload::class)->decode($this->auditPayload['qr_payload']);
+    $decoded = app(BallotPayloadService::class)->decode($this->auditPayload['qr_payload']);
     $mapping = app(ElectionStorage::class)->readJson('mappings/candidate-code-map.json');
 
-    expect($this->auditPayload['qr_payload'])->toStartWith('aes-ballot-compact-1:')
-        ->and($this->auditPayload['qr_payload'])->toContain('CAND')
+    expect($this->auditPayload['qr_payload'])->toStartWith('truth://v1/waes-ballot/aes-ballot-compact-1?p=')
+        ->and($this->auditPayload['canonical_qr_payload'])->toStartWith('aes-ballot-compact-1:')
+        ->and($this->auditPayload['canonical_qr_payload'])->toContain('CAND')
         ->and($mapping['schema_version'])->toBe('candidate-code-map-1')
         ->and($mapping['candidates'])->toHaveKey('CAND00001')
         ->and($decoded['schema_version'])->toBe('ballot-payload-compact-1')

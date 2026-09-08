@@ -30,6 +30,8 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('actions.officer', route('election.role-demo.officer'))
             ->where('actions.voter', route('election.role-demo.voter'))
             ->where('actions.watcher', route('election.role-demo.watcher'))
+            ->where('actions.scannerTally', route('election.role-demo.scanner-tally'))
+            ->where('actions.truthTallyReturn', route('election.role-demo.truth-tally-return'))
         );
 
     $round = SimulationRound::query()->with('precincts')->sole();
@@ -199,6 +201,26 @@ test('role demo runs officer voter print and watcher points of view without clos
     expect($precinct->fresh()->status)->toBe('open')
         ->and(app(ElectionStorage::class)->path('runtime/tally-sheet.pdf'))->toBeReadableFile()
         ->and(app(ElectionStorage::class)->path("returns/{$configuration['precinct_id']}-return.pdf"))->toBeReadableFile();
+});
+
+test('role demo scanner tally simulates reading ballot QR payloads into tally marks', function (): void {
+    $this->get(route('election.role-demo.scanner-tally'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/RoleDemoScannerTally')
+            ->where('precinct.status', 'open')
+            ->where('simulation.source', 'generated-demo-ballot-payloads')
+            ->where('simulation.precinct.precinct_id', fn (string $precinctId): bool => $precinctId !== '')
+            ->has('simulation.ballot.contests', 8)
+            ->has('simulation.scanner.ballots', 8)
+            ->where('simulation.scanner.ballots.0.sequence', 1)
+            ->where('simulation.scanner.ballots.0.source', 'generated ballot payload')
+            ->where('simulation.scanner.ballots.0.payload', fn (string $payload): bool => str_starts_with($payload, 'truth://v1/waes-ballot/aes-ballot-compact-1?p='))
+            ->where('simulation.scanner.ballots.0.canonical_payload', fn (string $payload): bool => str_starts_with($payload, 'aes-ballot-compact-1:'))
+            ->where('simulation.scanner.ballots.0.selections', fn (mixed $selections): bool => collect($selections)->isNotEmpty())
+            ->where('simulation.scanner.ballots.0.this_ballot_tally', fn (mixed $tally): bool => collect($tally)->flatten()->contains(1))
+            ->where('simulation.scanner.initial_tally', fn (mixed $tally): bool => collect($tally)->flatten()->every(fn (int $votes): bool => $votes === 0))
+        );
 });
 
 test('role demo voter can generate a self service control number before claiming the ballot', function (): void {

@@ -4,6 +4,7 @@ namespace App\Election\PublicSimulation;
 
 use App\Election\Counting\TallyPresentation;
 use App\Election\Support\ElectionStorage;
+use App\Election\Voting\BallotPayloadEnvelope;
 use App\Election\Voting\BallotQrPayload;
 use Illuminate\Support\Facades\Crypt;
 
@@ -12,6 +13,7 @@ final class WatcherBallotReview
     public function __construct(
         private readonly ElectionStorage $storage,
         private readonly BallotQrPayload $qrPayload,
+        private readonly BallotPayloadEnvelope $envelope,
         private readonly TallyPresentation $presentation,
     ) {}
 
@@ -118,7 +120,9 @@ final class WatcherBallotReview
     private function decodeRecordPayload(array $record): array
     {
         try {
-            return $this->qrPayload->decode(Crypt::decryptString((string) ($record['encrypted_payload'] ?? '')));
+            return $this->qrPayload->decode(
+                $this->envelope->unwrap(Crypt::decryptString((string) ($record['encrypted_payload'] ?? ''))),
+            );
         } catch (\Throwable) {
             return [];
         }

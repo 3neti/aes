@@ -555,7 +555,8 @@ final class OfficialBallotPdf
             ['Clustered precinct', $precinctId],
             ['Ballot style', (string) ($payload['ballot_style_id'] ?? 'unknown')],
             ['Paper ballot serial', (string) ($payload['paper_ballot_serial'] ?? 'CERTIFICATION/UNNUMBERED')],
-            ['QR payload version', str_starts_with((string) ($payload['qr_payload'] ?? ''), 'aes-ballot-compact-1:') ? 'aes-ballot-compact-1' : 'aes-ballot-zlib-1'],
+            ['QR payload envelope', str_starts_with((string) ($payload['qr_payload'] ?? ''), 'truth://') ? 'truth://v1/waes-ballot' : 'none'],
+            ['QR payload version', isset($payload['canonical_qr_payload']) && str_starts_with((string) $payload['canonical_qr_payload'], 'aes-ballot-compact-1:') ? 'aes-ballot-compact-1' : 'legacy'],
             ['Mapping hash', substr((string) ($payload['mapping_hash'] ?? 'unknown'), 0, 16)],
         ];
         $y = 674.0;

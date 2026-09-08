@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { FormDataConvertible } from '@inertiajs/core';
 import { Form, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import {
@@ -269,8 +270,8 @@ function markFinalized(): void {
 }
 
 function transformSubmission(
-    data: Record<string, unknown>,
-): Record<string, unknown> {
+    data: Record<string, FormDataConvertible>,
+): Record<string, FormDataConvertible> {
     markFinalized();
 
     if (!analyticsEnabled.value) {
@@ -553,7 +554,7 @@ onUnmounted(() => {
                         {{
                             processing
                                 ? 'Finalizing privately...'
-                                : 'Finalize and get print PIN'
+                                : 'Submit and get Print PIN'
                         }}
                     </button>
                 </div>

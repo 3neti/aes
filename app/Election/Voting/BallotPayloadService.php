@@ -4,6 +4,7 @@ namespace App\Election\Voting;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
+use App\Election\Documents\DocumentProfileRegistry;
 use App\Election\Support\ElectionStorage;
 use RuntimeException;
 
@@ -15,8 +16,10 @@ final class BallotPayloadService
         private readonly ActivityJournal $journal,
         private readonly StandardQrCode $qrCode,
         private readonly BallotQrPayload $qrPayload,
+        private readonly BallotPayloadEnvelope $envelope,
         private readonly PaperBallotLedger $paperBallots,
         private readonly BallotSelectionValidator $selections,
+        private readonly DocumentProfileRegistry $documents,
     ) {}
 
     /**
@@ -37,6 +40,7 @@ final class BallotPayloadService
             'mapping_hash' => $configuration['mapping_hash'],
             'tabulation_profile' => $configuration['tabulation_profile'],
             'payload_hash_profile' => 'compact-selection-1',
+            'document_profile' => $this->documents->ballotReference(),
             'selections' => $selections,
         ];
 
@@ -49,7 +53,8 @@ final class BallotPayloadService
         }
 
         $payload['payload_hash'] = $this->qrPayload->compactHash($payload);
-        $payload['qr_payload'] = $this->qrPayload->encode($payload);
+        $payload['canonical_qr_payload'] = $this->qrPayload->encode($payload);
+        $payload['qr_payload'] = $this->envelope->wrap($payload['canonical_qr_payload']);
         $payload['qr_artifact_path'] = $this->storage->writeText(
             "ballots/{$payload['ballot_id']}-qr.png",
             $this->qrCode->renderPng($payload['qr_payload']),
@@ -80,7 +85,7 @@ final class BallotPayloadService
             $payload = $this->qrCode->decodePngBytes($payload);
         }
 
-        return $this->qrPayload->decode($payload);
+        return $this->qrPayload->decode($this->envelope->unwrap($payload));
     }
 
     /**

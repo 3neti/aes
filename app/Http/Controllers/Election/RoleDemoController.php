@@ -17,6 +17,8 @@ use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\PublicSimulation\RoleDemoBulkBallotSeeder;
 use App\Election\PublicSimulation\RoleDemoInterimCloseout;
+use App\Election\PublicSimulation\RoleDemoScannerTallySimulation;
+use App\Election\PublicSimulation\TruthTallyReturnSimulation;
 use App\Election\PublicSimulation\WatcherBallotReview;
 use App\Election\Returns\ElectionReturnScope;
 use App\Election\Support\ElectionStorage;
@@ -51,6 +53,8 @@ final class RoleDemoController extends Controller
                 'officer' => route('election.role-demo.officer'),
                 'voter' => route('election.role-demo.voter'),
                 'watcher' => route('election.role-demo.watcher'),
+                'scannerTally' => route('election.role-demo.scanner-tally'),
+                'truthTallyReturn' => route('election.role-demo.truth-tally-return'),
                 'reset' => route('election.role-demo.reset'),
             ],
         ]);
@@ -485,6 +489,27 @@ final class RoleDemoController extends Controller
 
         return response()->file($path, [
             'Content-Disposition' => 'inline; filename="'.$precinct->code.'-role-demo-ballot-'.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT).'.pdf"',
+        ]);
+    }
+
+    public function scannerTally(PublicSimulationService $simulations, RoleDemoScannerTallySimulation $simulation): Response
+    {
+        $precinct = $this->precinct($simulations);
+
+        return Inertia::render('Election/RoleDemoScannerTally', [
+            'precinct' => $this->precinctSummary($precinct),
+            'simulation' => $simulation->summary(),
+        ]);
+    }
+
+    public function truthTallyReturn(PublicSimulationService $simulations, RoleDemoInterimCloseout $forms, TruthTallyReturnSimulation $simulation): Response
+    {
+        $precinct = $this->precinct($simulations);
+        $forms->generate($precinct, 'truth-tally-return-simulation');
+
+        return Inertia::render('Election/TruthTallyReturn', [
+            'precinct' => $this->precinctSummary($precinct),
+            'simulation' => $simulation->summary(),
         ]);
     }
 

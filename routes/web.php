@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Election\AttestationController;
+use App\Http\Controllers\Election\CanvassingDemoController;
 use App\Http\Controllers\Election\CertificationController;
 use App\Http\Controllers\Election\CountingController;
 use App\Http\Controllers\Election\DemoRoomController;
@@ -30,6 +31,9 @@ Route::get('/', HomeController::class)
     ->name('home');
 
 Route::prefix('election')->name('election.')->group(function (): void {
+    Route::get('/canvassing-demo', [CanvassingDemoController::class, 'show'])->name('canvassing-demo.show');
+    Route::post('/canvassing-demo', [CanvassingDemoController::class, 'generate'])->middleware('throttle:10,1')->name('canvassing-demo.generate');
+
     Route::prefix('role-demo')->name('role-demo.')->group(function (): void {
         Route::get('/', [RoleDemoController::class, 'index'])->name('index');
         Route::post('/reset', [RoleDemoController::class, 'reset'])->name('reset');
@@ -48,6 +52,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/voter/complete/ballot-preview', [RoleDemoController::class, 'voterBallotPreview'])->name('voter.complete.ballot-preview');
         Route::post('/voter/reset', [RoleDemoController::class, 'resetVoter'])->name('voter.reset');
         Route::get('/watcher', [RoleDemoController::class, 'watcher'])->name('watcher');
+        Route::get('/scanner-tally', [RoleDemoController::class, 'scannerTally'])->name('scanner-tally');
+        Route::get('/truth-tally-return', [RoleDemoController::class, 'truthTallyReturn'])->name('truth-tally-return');
         Route::get('/watcher/ballots/{sequence}', [RoleDemoController::class, 'watcherBallot'])
             ->whereNumber('sequence')
             ->name('watcher.ballot');

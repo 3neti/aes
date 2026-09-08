@@ -151,7 +151,7 @@ test('the demo room runs a precinct through officer, voter, print station, watch
         ->assertInertia(fn (Assert $page) => $page
             ->where('release.status', 'printed')
             ->where('ballotPreview.ballot_id', fn (?string $ballotId): bool => $ballotId !== null && $ballotId !== '')
-            ->where('ballotPreview.qr_payload', fn (?string $payload): bool => $payload !== null && str_starts_with($payload, 'aes-ballot-compact-1:') && ! str_contains($payload, '||CAND'))
+            ->where('ballotPreview.qr_payload', fn (?string $payload): bool => $payload !== null && str_starts_with($payload, 'truth://v1/waes-ballot/aes-ballot-compact-1?p=') && ! str_contains($payload, '||CAND'))
             ->where('ballotPreview.decoded.paper_ballot_serial', fn (?string $serial): bool => $serial !== null && $serial !== '')
             ->where('ballotPreview.candidate_mapping.0.code', 'CAND00001')
             ->where('ballotPreviewUrl', fn (?string $url): bool => $url !== null && str_contains($url, '/print/ballot-preview'))

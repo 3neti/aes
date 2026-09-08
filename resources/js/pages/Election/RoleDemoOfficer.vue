@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePoll } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import NumericPinPad from '@/components/election/NumericPinPad.vue';
 
 const props = defineProps<{
     precinct: {
@@ -96,6 +97,7 @@ const props = defineProps<{
 }>();
 
 const customBulkCount = ref<number | null>(null);
+const printPin = ref('');
 const bulkLoading = ref(false);
 const bulkMessage = ref<string | null>(null);
 const bulkError = ref<string | null>(null);
@@ -393,34 +395,18 @@ usePoll(
                         #default="{ errors, processing }"
                         class="mt-5 space-y-3"
                         reset-on-success
+                        @success="printPin = ''"
                     >
-                        <label class="block">
-                            <span class="text-sm font-bold">Print PIN</span>
-                            <input
-                                class="mt-1 min-h-14 w-full border-2 border-stone-400 px-4 text-center font-mono text-3xl font-bold"
-                                name="code"
-                                required
-                                autocomplete="off"
-                                inputmode="numeric"
-                                :maxlength="printPinDigits"
-                                pattern="[0-9]{4,6}"
-                                placeholder="0000"
-                            />
-                        </label>
-                        <p v-if="errors.code" class="font-bold text-red-700">
-                            {{ errors.code }}
-                        </p>
-                        <button
-                            class="min-h-14 w-full bg-emerald-700 px-5 text-lg font-bold text-white disabled:opacity-50"
-                            type="submit"
-                            :disabled="processing"
-                        >
-                            {{
-                                processing
-                                    ? 'Printing and accepting...'
-                                    : 'Print ballot and update tally'
-                            }}
-                        </button>
+                        <NumericPinPad
+                            v-model="printPin"
+                            label="Print PIN"
+                            :digits="printPinDigits"
+                            :error="errors.code"
+                            :processing="processing"
+                            processing-label="Printing and accepting..."
+                            submit-label="Print ballot and update tally"
+                            autofocus
+                        />
                     </Form>
                 </section>
             </div>

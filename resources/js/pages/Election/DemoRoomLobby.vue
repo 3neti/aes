@@ -2,6 +2,12 @@
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
+type DemoRoomFlash = {
+    public_simulation?: {
+        officer_feedback?: string;
+    };
+};
+
 defineProps<{
     round: {
         code: string;
@@ -18,11 +24,11 @@ defineProps<{
 }>();
 
 const page = usePage();
-const feedback = computed(
-    () => page.props.flash?.public_simulation?.officer_feedback as
-        | string
-        | undefined,
-);
+const feedback = computed(() => {
+    const flash = page.props.flash as DemoRoomFlash | undefined;
+
+    return flash?.public_simulation?.officer_feedback;
+});
 
 function statusTone(status: string): string {
     return status === 'open'

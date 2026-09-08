@@ -14,6 +14,8 @@ defineProps<{
         officer: string;
         voter: string;
         watcher: string;
+        scannerTally: string;
+        truthTallyReturn: string;
         reset: string;
     };
 }>();
@@ -53,7 +55,8 @@ defineProps<{
                     </p>
                     <p class="border border-stone-200 bg-stone-50 p-3">
                         <strong class="block">Location</strong>
-                        {{ precinct.city_municipality }} · {{ precinct.province }}
+                        {{ precinct.city_municipality }} ·
+                        {{ precinct.province }}
                     </p>
                     <p class="border border-emerald-300 bg-emerald-50 p-3">
                         <strong class="block">Status</strong>
@@ -62,7 +65,7 @@ defineProps<{
                 </div>
             </div>
 
-            <div class="mt-5 grid gap-4 md:grid-cols-3">
+            <div class="mt-5 grid gap-4 md:grid-cols-5">
                 <Link
                     :href="actions.officer"
                     class="border-2 border-blue-800 bg-white p-6 shadow-sm transition hover:bg-blue-50"
@@ -88,8 +91,8 @@ defineProps<{
                         Cast a private tablet ballot
                     </h2>
                     <p class="mt-3 text-sm text-stone-700">
-                        Enter the officer-issued control number, mark the ballot,
-                        review choices, and receive a print PIN.
+                        Enter the officer-issued control number, mark the
+                        ballot, review choices, and receive a print PIN.
                     </p>
                 </Link>
 
@@ -104,6 +107,38 @@ defineProps<{
                     <p class="mt-3 text-sm text-stone-700">
                         View the current public tally, ballot count, and interim
                         printable forms as the demo progresses.
+                    </p>
+                </Link>
+
+                <Link
+                    :href="actions.scannerTally"
+                    class="border-2 border-amber-700 bg-white p-6 shadow-sm transition hover:bg-amber-50"
+                >
+                    <p class="text-sm font-bold text-amber-800">
+                        QR Scanner Tally
+                    </p>
+                    <h2 class="mt-2 text-2xl font-bold">
+                        Scan ballot payloads into sticks
+                    </h2>
+                    <p class="mt-3 text-sm text-stone-700">
+                        Simulate each printed ballot QR payload being scanned
+                        and added to the tally sheet in real time.
+                    </p>
+                </Link>
+
+                <Link
+                    :href="actions.truthTallyReturn"
+                    class="border-2 border-sky-800 bg-white p-6 shadow-sm transition hover:bg-sky-50"
+                >
+                    <p class="text-sm font-bold text-sky-800">
+                        TruthTally ER
+                    </p>
+                    <h2 class="mt-2 text-2xl font-bold">
+                        Scan returns into canvass
+                    </h2>
+                    <p class="mt-3 text-sm text-stone-700">
+                        Simulate a city canvassing station scanning the
+                        election return QR payload and adding precinct totals.
                     </p>
                 </Link>
             </div>

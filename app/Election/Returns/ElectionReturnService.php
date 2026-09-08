@@ -5,9 +5,11 @@ namespace App\Election\Returns;
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
+use App\Election\Documents\DocumentProfileRegistry;
 use App\Election\Printing\Documents\ElectionReturnPdf;
 use App\Election\Printing\PrintFormArtifactService;
 use App\Election\Support\ElectionStorage;
+use App\Election\Voting\StandardQrCode;
 
 final class ElectionReturnService
 {
@@ -19,6 +21,10 @@ final class ElectionReturnService
         private readonly PrintFormArtifactService $forms,
         private readonly BallotConfigurationLabels $labels,
         private readonly ElectionReturnLegalEvidenceService $legalEvidence,
+        private readonly ElectionReturnQrPayload $qrPayload,
+        private readonly ElectionReturnPayloadEnvelope $envelope,
+        private readonly StandardQrCode $qrCode,
+        private readonly DocumentProfileRegistry $documents,
     ) {}
 
     /**
@@ -39,8 +45,10 @@ final class ElectionReturnService
             'rejected_ballots' => $tally['rejected_ballots'],
             'tally' => $tally['tally'],
             'tally_hash' => $tally['tally_hash'],
+            'document_profile' => $this->documents->electionReturnReference(),
         ];
         $return['return_hash'] = $this->json->hash($return);
+        $return['truth_tally'] = $this->truthTallyArtifacts($return);
 
         $this->storage->writeJson("returns/{$return['precinct_id']}-return.json", $return);
         $this->storage->writeText("returns/{$return['precinct_id']}-return.txt", $this->renderText($return));
@@ -57,6 +65,46 @@ final class ElectionReturnService
         $this->legalEvidence->write($return);
 
         return $return;
+    }
+
+    /**
+     * @param  array<string, mixed>  $return
+     * @return array<string, mixed>
+     */
+    private function truthTallyArtifacts(array $return): array
+    {
+        $canonicalPayload = $this->qrPayload->encode($return, ElectionReturnScope::Combined);
+        $qrPayloads = $this->envelope->wrap($canonicalPayload);
+        $payloadHash = $this->qrPayload->compactHash($return, ElectionReturnScope::Combined);
+        $precinctId = (string) ($return['precinct_id'] ?? 'unknown');
+        $artifacts = [];
+
+        foreach ($qrPayloads as $index => $payload) {
+            $sequence = $index + 1;
+            $relativePath = count($qrPayloads) === 1
+                ? "returns/{$precinctId}-truth-tally-qr.png"
+                : "returns/{$precinctId}-truth-tally-qr-{$sequence}-of-".count($qrPayloads).'.png';
+            $artifacts[] = [
+                'sequence' => $sequence,
+                'total' => count($qrPayloads),
+                'payload' => $payload,
+                'path' => $relativePath,
+                'artifact_path' => $this->storage->path($relativePath),
+                'sha256' => hash('sha256', $payload),
+            ];
+            $this->storage->writeText($relativePath, $this->qrCode->renderPng($payload));
+        }
+
+        return [
+            'schema_version' => 'truth-tally-election-return-1',
+            'payload_version' => ElectionReturnQrPayload::PayloadVersion,
+            'payload_type' => ElectionReturnPayloadEnvelope::PayloadType,
+            'payload_hash' => $payloadHash,
+            'canonical_payload' => $canonicalPayload,
+            'qr_count' => count($qrPayloads),
+            'qr_payloads' => $qrPayloads,
+            'qr_artifacts' => $artifacts,
+        ];
     }
 
     /**
