@@ -31,6 +31,7 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('actions.voter', route('election.role-demo.voter'))
             ->where('actions.watcher', route('election.role-demo.watcher'))
             ->where('actions.scannerTally', route('election.role-demo.scanner-tally'))
+            ->where('actions.canvassingDemo', route('election.canvassing-demo.show'))
             ->where('actions.truthTallyReturn', route('election.role-demo.truth-tally-return'))
         );
 
@@ -137,6 +138,16 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertInertia(fn (Assert $page) => $page
             ->where('currentTally.accepted_ballots', 1)
             ->where('printFeedback.status', 'accepted')
+        );
+
+    $this->get(route('election.role-demo.scanner-tally'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/RoleDemoScannerTally')
+            ->where('simulation.source', 'sealed-role-demo-ballots')
+            ->where('simulation.scanner.ballots.0.source', 'sealed ballot box')
+            ->where('simulation.scanner.ballots.0.payload', fn (string $payload): bool => str_starts_with($payload, 'truth://v1/waes-ballot/aes-ballot-compact-1?p='))
+            ->where('simulation.scanner.ballots.0.canonical_payload', fn (string $payload): bool => str_starts_with($payload, 'aes-ballot-compact-1:'))
         );
 
     $this->get(route('election.role-demo.watcher'))

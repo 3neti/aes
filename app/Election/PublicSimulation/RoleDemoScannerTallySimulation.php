@@ -68,9 +68,11 @@ final class RoleDemoScannerTallySimulation
             ->values()
             ->map(function (array $record, int $index): array {
                 $rawPayload = Crypt::decryptString((string) ($record['encrypted_payload'] ?? ''));
-                $payload = $this->qrPayload->decode($this->envelope->unwrap($rawPayload));
+                $canonicalPayload = $this->envelope->unwrap($rawPayload);
+                $payload = $this->qrPayload->decode($canonicalPayload);
+                $scannerPayload = $this->envelope->wrap($canonicalPayload);
 
-                return $this->scannerBallot($payload, $rawPayload, $index + 1, 'sealed ballot box');
+                return $this->scannerBallot($payload, $scannerPayload, $index + 1, 'sealed ballot box');
             })
             ->all();
     }

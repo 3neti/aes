@@ -33,6 +33,11 @@ Route::get('/', HomeController::class)
 Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/canvassing-demo', [CanvassingDemoController::class, 'show'])->name('canvassing-demo.show');
     Route::post('/canvassing-demo', [CanvassingDemoController::class, 'generate'])->middleware('throttle:10,1')->name('canvassing-demo.generate');
+    Route::get('/canvassing-demo/public', [CanvassingDemoController::class, 'public'])->name('canvassing-demo.public');
+    Route::get('/canvassing-demo/scanner-events', [CanvassingDemoController::class, 'scannerEvents'])->name('canvassing-demo.scanner-events.index');
+    Route::post('/canvassing-demo/scanner-events', [CanvassingDemoController::class, 'storeScannerEvent'])->middleware('throttle:120,1')->name('canvassing-demo.scanner-events.store');
+    Route::post('/canvassing-demo/scanner-events/reset', [CanvassingDemoController::class, 'resetScannerEvents'])->name('canvassing-demo.scanner-events.reset');
+    Route::post('/canvassing-demo/simulator/tick', [CanvassingDemoController::class, 'simulatorTick'])->middleware('throttle:240,1')->name('canvassing-demo.simulator.tick');
 
     Route::prefix('role-demo')->name('role-demo.')->group(function (): void {
         Route::get('/', [RoleDemoController::class, 'index'])->name('index');

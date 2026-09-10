@@ -79,6 +79,26 @@ test('canvassing demo generates an election return from ballot qr payloads', fun
         );
 });
 
+test('public canvass board loads with view filters and scanner actions', function (): void {
+    $this->post(route('election.canvassing-demo.generate'), [
+        'ballot_count' => 25,
+        'return_count' => 3,
+    ])->assertRedirectToRoute('election.canvassing-demo.show');
+
+    $this->get(route('election.canvassing-demo.public', ['view' => 'national']))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Election/CanvassingPublicBoard')
+            ->where('view', 'national')
+            ->where('simulation.run.return_count', 3)
+            ->where('simulation.scanner.returns.0.accepted_ballots', 25)
+            ->where('actions.scannerState', route('election.canvassing-demo.scanner-events.index'))
+            ->where('actions.simulatorTick', route('election.canvassing-demo.simulator.tick'))
+            ->where('actions.operatorBoard', route('election.canvassing-demo.show'))
+            ->where('actions.publicBoard', route('election.canvassing-demo.public'))
+        );
+});
+
 test('canvassing demo enforces a one thousand ballot maximum per election return', function (): void {
     $this->post(route('election.canvassing-demo.generate'), [
         'ballot_count' => 1001,

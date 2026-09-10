@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    watch,
+} from 'vue';
 import ScanLedger from '@/components/election/ScanLedger.vue';
 import TallyBoard from '@/components/election/TallyBoard.vue';
 
@@ -95,7 +102,27 @@ type LedgerDocument = {
 type MultipartBuffer = {
     groupId: string;
     totalParts: number;
+    precinctId: string;
+    returnHash: string;
+    scannedReturn: ReturnScan;
     receivedParts: Record<number, string>;
+};
+
+type ScannerState = {
+    station_id: string;
+    revision: number;
+    accepted_return_hashes: string[];
+    latest_accepted_return_hash?: string | null;
+    scan_events: ScanLogEntry[];
+    current_multipart?: {
+        group_id: string;
+        total_parts: number;
+        received_parts: number[];
+        precinct_id: string | null;
+        return_hash: string | null;
+    } | null;
+    latest_message?: string | null;
+    latest_status?: string | null;
 };
 
 type ErEnvelopeMetadata =
@@ -149,9 +176,15 @@ const props = defineProps<{
     };
     actions: {
         generate: string;
+        publicBoard: string;
+        scannerState: string;
+        scannerIngest: string;
+        scannerReset: string;
+        simulatorTick: string;
     };
 }>();
 
+const stationId = 'canvassing-demo-city';
 const scannedReturns = ref<ReturnScan[]>([]);
 const scannedQrPayloadsInCurrentReturn = ref(0);
 const currentMultipartBuffer = ref<MultipartBuffer | null>(null);
@@ -163,6 +196,14 @@ const lastScanDelta = ref<TallyDelta>({});
 const lastScanFlashKey = ref(0);
 const scannerStatus = ref<'ready' | 'scanning'>('ready');
 const automaticScanner = ref<number | null>(null);
+const scannerCaptureEnabled = ref(true);
+const autoSubmitPastedScans = ref(true);
+const scannerStatePoller = ref<number | null>(null);
+const scannerStateRevision = ref(0);
+const keyboardScanBuffer = ref('');
+const manualScanPayload = ref('');
+const hardwareScanStatus = ref('Ready for scanner input.');
+const manualScanInput = ref<HTMLTextAreaElement | null>(null);
 
 const nextReturn = computed(
     () => props.simulation.scanner.returns[scannedReturns.value.length] ?? null,
@@ -207,6 +248,21 @@ const scannerPulsePercent = computed(() => {
 const nextPayloadMetadata = computed(() =>
     nextPayload.value ? parseErEnvelopeMetadata(nextPayload.value) : null,
 );
+const nextDemoPayloadLabel = computed(() => {
+    if (!nextReturn.value) {
+        return 'No pending demo QR';
+    }
+
+    if (nextPayloadMetadata.value?.kind === 'fragment') {
+        return `ER ${nextReturn.value.sequence} · Part ${nextPayloadMetadata.value.partNumber} of ${nextPayloadMetadata.value.totalParts}`;
+    }
+
+    if (nextPayloadMetadata.value?.kind === 'complete') {
+        return `ER ${nextReturn.value.sequence} · Single QR document`;
+    }
+
+    return `ER ${nextReturn.value.sequence} · Unsupported QR envelope`;
+});
 const scannedDocuments = computed<LedgerDocument[]>(() =>
     scannedReturns.value.map((scannedReturn) => ({
         id: scannedReturn.return_hash,
@@ -233,138 +289,19 @@ function scanNext(): void {
 
     scannerStatus.value = 'scanning';
     const scannedReturn = nextReturn.value;
+    const payload = nextPayload.value;
 
     window.setTimeout(() => {
-        const payload = nextPayload.value;
-
-        if (!payload) {
+        if (!payload || !scannedReturn) {
             scannerStatus.value = 'ready';
 
             return;
         }
 
-        const metadata = parseErEnvelopeMetadata(payload);
-
-        scannedQrPayloadsInCurrentReturn.value += 1;
-
-        if (metadata.kind === 'complete') {
-            const delta = deltaForTally(scannedReturn.tally);
-
-            scannedReturns.value.push(scannedReturn);
-            scannedQrPayloadsInCurrentReturn.value = 0;
-            currentMultipartBuffer.value = null;
-            addTally(scannedReturn.tally);
-            lastScanDelta.value = delta;
-            lastScanFlashKey.value += 1;
-            scanEvents.value.push({
-                id: `${scannedReturn.return_hash}-${scanEvents.value.length}`,
-                title: `ER ${scannedReturn.sequence} accepted`,
-                subtitle: scannedReturn.precinct_id,
-                meta: `Single QR document · ${scannedReturn.accepted_ballots} ballots`,
-                hash: scannedReturn.return_hash,
-                status: 'accepted',
-            });
+        advanceSampleCursor(scannedReturn);
+        void submitScanPayload(payload, 'demo_feed').finally(() => {
             scannerStatus.value = 'ready';
-
-            return;
-        }
-
-        if (metadata.kind === 'unknown') {
-            scanEvents.value.push({
-                id: `rejected-${scanEvents.value.length}`,
-                title: 'Rejected QR',
-                meta: 'Invalid or unsupported ER payload envelope',
-                status: 'rejected',
-            });
-            scannerStatus.value = 'ready';
-
-            return;
-        }
-
-        if (
-            currentMultipartBuffer.value &&
-            currentMultipartBuffer.value.groupId !== metadata.groupId
-        ) {
-            scanEvents.value.push({
-                id: `rejected-mixed-${metadata.groupId}-${scanEvents.value.length}`,
-                title: 'Rejected ER QR part',
-                subtitle: scannedReturn.precinct_id,
-                meta: 'Started a different multipart ER before completing the current set',
-                hash: metadata.groupId,
-                status: 'rejected',
-            });
-        }
-
-        if (
-            !currentMultipartBuffer.value ||
-            currentMultipartBuffer.value.groupId !== metadata.groupId
-        ) {
-            currentMultipartBuffer.value = {
-                groupId: metadata.groupId,
-                totalParts: metadata.totalParts,
-                receivedParts: {},
-            };
-        }
-
-        if (currentMultipartBuffer.value.receivedParts[metadata.partNumber]) {
-            scanEvents.value.push({
-                id: `duplicate-${metadata.groupId}-${metadata.partNumber}-${scanEvents.value.length}`,
-                title: 'Duplicate ER QR part',
-                subtitle: scannedReturn.precinct_id,
-                meta: `Part ${metadata.partNumber} of ${metadata.totalParts} already scanned`,
-                hash: metadata.groupId,
-                status: 'duplicate',
-            });
-            scannerStatus.value = 'ready';
-
-            return;
-        }
-
-        currentMultipartBuffer.value.receivedParts[metadata.partNumber] =
-            payload;
-        const receivedParts = Object.keys(
-            currentMultipartBuffer.value.receivedParts,
-        ).length;
-
-        if (receivedParts >= metadata.totalParts) {
-            const delta = deltaForTally(scannedReturn.tally);
-
-            scannedReturns.value.push(scannedReturn);
-            scannedQrPayloadsInCurrentReturn.value = 0;
-            currentMultipartBuffer.value = null;
-            addTally(scannedReturn.tally);
-            lastScanDelta.value = delta;
-            lastScanFlashKey.value += 1;
-            scanEvents.value.push({
-                id: `${metadata.groupId}-complete-${scanEvents.value.length}`,
-                title: `ER ${scannedReturn.sequence} accepted`,
-                subtitle: scannedReturn.precinct_id,
-                meta: `${metadata.totalParts} of ${metadata.totalParts} parts complete · ${scannedReturn.accepted_ballots} ballots`,
-                hash: scannedReturn.return_hash,
-                status: 'accepted',
-            });
-            scannerStatus.value = 'ready';
-
-            return;
-        }
-
-        scanEvents.value.push({
-            id: `${metadata.groupId}-${metadata.partNumber}-${scanEvents.value.length}`,
-            title: 'ER QR set',
-            subtitle: scannedReturn.precinct_id,
-            meta: `${receivedParts} of ${metadata.totalParts} parts received`,
-            hash: metadata.groupId,
-            status: 'partial',
         });
-
-        if (
-            scannedQrPayloadsInCurrentReturn.value >=
-            scannedReturn.payloads.length
-        ) {
-            scannedQrPayloadsInCurrentReturn.value = 0;
-        }
-
-        scannerStatus.value = 'ready';
     }, 260);
 }
 
@@ -397,6 +334,185 @@ function stopAutomaticScanner(): void {
 
 function resetScanner(): void {
     stopAutomaticScanner();
+    keyboardScanBuffer.value = '';
+    manualScanPayload.value = '';
+    scannerStatus.value = 'ready';
+    void resetScannerState();
+}
+
+function submitManualScannerInput(): void {
+    submitManualScan('browser_paste');
+}
+
+function submitManualScan(source = 'browser_paste'): void {
+    void submitScanPayload(manualScanPayload.value, source);
+    manualScanPayload.value = '';
+}
+
+function csrfToken(): string | null {
+    return (
+        document
+            .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+            ?.getAttribute('content') ?? null
+    );
+}
+
+async function submitScanPayload(
+    payload: string,
+    source: string,
+): Promise<void> {
+    const normalizedPayload = payload.trim();
+
+    if (!normalizedPayload) {
+        hardwareScanStatus.value = 'No scan payload received.';
+
+        return;
+    }
+
+    try {
+        const token = csrfToken();
+        const response = await fetch(props.actions.scannerIngest, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+            },
+            body: JSON.stringify({
+                station_id: stationId,
+                source,
+                payload: normalizedPayload,
+            }),
+        });
+        const result = await response.json();
+
+        if (!response.ok && !result?.state) {
+            throw new Error(
+                result?.message ??
+                    'The scan was not recorded. Please try again.',
+            );
+        }
+
+        applyScannerState(result.state);
+    } catch (error) {
+        hardwareScanStatus.value =
+            error instanceof Error
+                ? error.message
+                : 'The scan was not recorded. Please try again.';
+    }
+}
+
+async function fetchScannerState(): Promise<void> {
+    try {
+        const url = new URL(props.actions.scannerState, window.location.origin);
+        url.searchParams.set('station_id', stationId);
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+        const state = await response.json();
+
+        if (response.ok) {
+            applyScannerState(state);
+        }
+    } catch {
+        hardwareScanStatus.value = 'Scanner state is temporarily unavailable.';
+    }
+}
+
+async function resetScannerState(): Promise<void> {
+    try {
+        const token = csrfToken();
+        const response = await fetch(props.actions.scannerReset, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+            },
+            body: JSON.stringify({
+                station_id: stationId,
+            }),
+        });
+        const state = await response.json();
+
+        if (response.ok) {
+            scannedQrPayloadsInCurrentReturn.value = 0;
+            applyScannerState(state);
+        }
+    } catch {
+        hardwareScanStatus.value = 'Scanner reset did not finish.';
+    }
+}
+
+function applyScannerState(state: ScannerState): void {
+    const previousRevision = scannerStateRevision.value;
+
+    scannerStateRevision.value = state.revision;
+    scanEvents.value = state.scan_events;
+
+    const acceptedHashes = new Set(state.accepted_return_hashes);
+    const acceptedReturns = props.simulation.scanner.returns.filter(
+        (scannedReturn) => acceptedHashes.has(scannedReturn.return_hash),
+    );
+
+    runningTally.value = cloneTally(props.simulation.scanner.initial_tally);
+    scannedReturns.value = [];
+    lastScanDelta.value = {};
+
+    acceptedReturns.forEach((scannedReturn) => {
+        const delta = deltaForTally(scannedReturn.tally);
+        addTally(scannedReturn.tally);
+        scannedReturns.value.push(scannedReturn);
+
+        if (scannedReturn.return_hash === state.latest_accepted_return_hash) {
+            lastScanDelta.value = delta;
+        }
+    });
+
+    if (state.current_multipart) {
+        const scannedReturn =
+            props.simulation.scanner.returns.find(
+                (candidate) =>
+                    candidate.return_hash ===
+                    state.current_multipart?.return_hash,
+            ) ?? null;
+
+        currentMultipartBuffer.value = scannedReturn
+            ? {
+                  groupId: state.current_multipart.group_id,
+                  totalParts: state.current_multipart.total_parts,
+                  precinctId: state.current_multipart.precinct_id ?? '',
+                  returnHash: state.current_multipart.return_hash ?? '',
+                  scannedReturn,
+                  receivedParts: Object.fromEntries(
+                      state.current_multipart.received_parts.map(
+                          (partNumber) => [partNumber, 'received'],
+                      ),
+                  ),
+              }
+            : null;
+    } else {
+        currentMultipartBuffer.value = null;
+    }
+
+    if (
+        state.latest_accepted_return_hash &&
+        state.latest_status === 'accepted' &&
+        state.revision !== previousRevision
+    ) {
+        lastScanFlashKey.value += 1;
+    }
+
+    hardwareScanStatus.value =
+        state.latest_message ?? 'Ready for scanner input.';
+}
+
+function clearScannerPresentation(message = 'Ready for scanner input.'): void {
     scannedReturns.value = [];
     scannedQrPayloadsInCurrentReturn.value = 0;
     currentMultipartBuffer.value = null;
@@ -404,7 +520,189 @@ function resetScanner(): void {
     runningTally.value = cloneTally(props.simulation.scanner.initial_tally);
     lastScanDelta.value = {};
     lastScanFlashKey.value += 1;
-    scannerStatus.value = 'ready';
+    scannerStateRevision.value = 0;
+    hardwareScanStatus.value = message;
+}
+
+function advanceSampleCursor(scannedReturn: ReturnScan): void {
+    scannedQrPayloadsInCurrentReturn.value += 1;
+
+    if (
+        scannedQrPayloadsInCurrentReturn.value >= scannedReturn.payloads.length
+    ) {
+        scannedQrPayloadsInCurrentReturn.value = 0;
+    }
+}
+
+function handleGlobalScannerKeydown(event: KeyboardEvent): void {
+    if (!scannerCaptureEnabled.value || shouldIgnoreGlobalKeydown(event)) {
+        return;
+    }
+
+    if (event.key === 'Escape') {
+        keyboardScanBuffer.value = '';
+        hardwareScanStatus.value = 'Scan buffer cleared.';
+        event.preventDefault();
+
+        return;
+    }
+
+    if (event.key === 'Enter' || event.key === 'NumpadEnter') {
+        if (keyboardScanBuffer.value !== '') {
+            void submitScanPayload(keyboardScanBuffer.value, 'keyboard_wedge');
+            keyboardScanBuffer.value = '';
+            event.preventDefault();
+        }
+
+        return;
+    }
+
+    if (
+        event.key.length !== 1 ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey
+    ) {
+        return;
+    }
+
+    keyboardScanBuffer.value += event.key;
+
+    if (keyboardScanBuffer.value.length > 16384) {
+        keyboardScanBuffer.value = keyboardScanBuffer.value.slice(-16384);
+    }
+}
+
+function handleGlobalScannerPaste(event: ClipboardEvent): void {
+    if (!scannerCaptureEnabled.value || shouldIgnoreGlobalPaste(event)) {
+        return;
+    }
+
+    receivePastedScan(event);
+}
+
+function handleManualScannerPaste(event: ClipboardEvent): void {
+    receivePastedScan(event);
+}
+
+function receivePastedScan(event: ClipboardEvent): void {
+    const payload = pastedPayloadFrom(
+        event.clipboardData?.getData('text/plain') ?? '',
+    );
+
+    if (payload === '') {
+        return;
+    }
+
+    manualScanPayload.value = payload;
+    keyboardScanBuffer.value = '';
+    hardwareScanStatus.value = payload.startsWith('truth://')
+        ? autoSubmitPastedScans.value
+            ? 'Pasted scan payload. Auto-submitting.'
+            : 'Pasted scan payload. Press Submit scan or Enter.'
+        : 'Pasted text is not a truth:// URI.';
+    event.preventDefault();
+    event.stopPropagation();
+
+    void nextTick(() => {
+        manualScanInput.value?.focus();
+
+        if (payload.startsWith('truth://') && autoSubmitPastedScans.value) {
+            window.setTimeout(() => {
+                if (manualScanPayload.value === payload) {
+                    submitManualScan('browser_paste');
+                }
+            }, 180);
+        }
+    });
+}
+
+function shouldIgnoreGlobalKeydown(event: KeyboardEvent): boolean {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement)) {
+        return false;
+    }
+
+    if (target.closest('[data-scanner-manual-input]')) {
+        return true;
+    }
+
+    if (target.isContentEditable) {
+        return true;
+    }
+
+    if (target instanceof HTMLSelectElement) {
+        return true;
+    }
+
+    if (target instanceof HTMLTextAreaElement) {
+        return !target.readOnly;
+    }
+
+    if (target instanceof HTMLInputElement) {
+        return isTextEntryInput(target) && !target.readOnly;
+    }
+
+    return false;
+}
+
+function shouldIgnoreGlobalPaste(event: ClipboardEvent): boolean {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement)) {
+        return false;
+    }
+
+    if (target.closest('[data-scanner-manual-input]')) {
+        return true;
+    }
+
+    if (target.isContentEditable) {
+        return true;
+    }
+
+    if (target instanceof HTMLTextAreaElement) {
+        return true;
+    }
+
+    if (target instanceof HTMLInputElement) {
+        return isTextEntryInput(target) && !target.readOnly;
+    }
+
+    if (target instanceof HTMLSelectElement) {
+        return true;
+    }
+
+    return false;
+}
+
+function isTextEntryInput(target: HTMLInputElement): boolean {
+    return [
+        '',
+        'date',
+        'datetime-local',
+        'email',
+        'month',
+        'number',
+        'password',
+        'search',
+        'tel',
+        'text',
+        'time',
+        'url',
+        'week',
+    ].includes(target.type);
+}
+
+function pastedPayloadFrom(text: string): string {
+    const trimmedText = text.trim();
+    const truthPayload = trimmedText
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line.startsWith('truth://'));
+
+    return truthPayload ?? trimmedText;
 }
 
 function deltaForTally(tally: Tally): TallyDelta {
@@ -503,7 +801,36 @@ function parseErEnvelopeMetadata(payload: string): ErEnvelopeMetadata {
     }
 }
 
-onBeforeUnmount(stopAutomaticScanner);
+watch(
+    () => props.simulation.run?.generated_at ?? null,
+    (generatedAt, previousGeneratedAt) => {
+        if (generatedAt !== previousGeneratedAt) {
+            stopAutomaticScanner();
+            keyboardScanBuffer.value = '';
+            manualScanPayload.value = '';
+            clearScannerPresentation();
+            void fetchScannerState();
+        }
+    },
+);
+
+onMounted(() => {
+    void fetchScannerState();
+    scannerStatePoller.value = window.setInterval(() => {
+        void fetchScannerState();
+    }, 1000);
+    window.addEventListener('keydown', handleGlobalScannerKeydown);
+    window.addEventListener('paste', handleGlobalScannerPaste);
+});
+
+onBeforeUnmount(() => {
+    stopAutomaticScanner();
+    if (scannerStatePoller.value !== null) {
+        window.clearInterval(scannerStatePoller.value);
+    }
+    window.removeEventListener('keydown', handleGlobalScannerKeydown);
+    window.removeEventListener('paste', handleGlobalScannerPaste);
+});
 </script>
 
 <template>
@@ -628,6 +955,20 @@ onBeforeUnmount(stopAutomaticScanner);
                             }}
                         </button>
                     </Form>
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                        <a
+                            :href="`${actions.publicBoard}?view=all`"
+                            class="min-h-10 border border-stone-300 px-3 py-2 text-center text-sm font-bold text-blue-800"
+                        >
+                            Public board
+                        </a>
+                        <a
+                            :href="`${actions.publicBoard}?view=national`"
+                            class="min-h-10 border border-stone-300 px-3 py-2 text-center text-sm font-bold text-blue-800"
+                        >
+                            National view
+                        </a>
+                    </div>
                 </section>
 
                 <section class="border border-stone-300 bg-white p-3">
@@ -717,6 +1058,66 @@ onBeforeUnmount(stopAutomaticScanner);
                         />
                     </div>
 
+                    <div class="mt-3 border border-stone-700 bg-stone-900 p-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-bold">
+                                    Keyboard wedge
+                                </h3>
+                                <p class="text-xs text-stone-400">
+                                    {{ hardwareScanStatus }}
+                                </p>
+                            </div>
+                            <label
+                                class="flex items-center gap-2 text-xs font-black"
+                            >
+                                <input
+                                    v-model="scannerCaptureEnabled"
+                                    type="checkbox"
+                                    class="h-4 w-4 accent-yellow-300"
+                                />
+                                Capture
+                            </label>
+                        </div>
+                        <label
+                            class="mt-3 flex items-center justify-between gap-3 border border-stone-700 bg-black/40 p-2 text-xs font-black"
+                        >
+                            <span>Auto-submit paste</span>
+                            <input
+                                v-model="autoSubmitPastedScans"
+                                type="checkbox"
+                                class="h-4 w-4 accent-yellow-300"
+                            />
+                        </label>
+                        <div class="mt-2 grid gap-2">
+                            <textarea
+                                ref="manualScanInput"
+                                v-model="manualScanPayload"
+                                data-scanner-manual-input
+                                class="h-20 w-full resize-none border border-stone-700 bg-black p-2 font-mono text-[10px] text-yellow-200 outline-none"
+                                placeholder="truth://..."
+                                @paste="handleManualScannerPaste"
+                                @keydown.enter.prevent="submitManualScannerInput"
+                            />
+                            <div class="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    class="min-h-10 border border-stone-600 px-3 font-bold text-stone-50"
+                                    @click="submitManualScannerInput"
+                                >
+                                    Submit scan
+                                </button>
+                                <button
+                                    type="button"
+                                    class="min-h-10 border border-stone-600 px-3 font-bold text-stone-50"
+                                    @click="manualScanPayload = ''"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div
                         class="mt-3 overflow-hidden border border-stone-700 bg-stone-900"
                     >
@@ -724,83 +1125,122 @@ onBeforeUnmount(stopAutomaticScanner);
                             class="h-1 bg-emerald-400 transition-all duration-300"
                             :style="{ width: `${scannerPulsePercent}%` }"
                         />
-                        <div class="p-3">
-                            <p class="text-xs font-bold text-stone-400">
-                                NEXT ER PAYLOAD
-                            </p>
-                            <p
-                                v-if="
-                                    nextReturn &&
-                                    nextPayloadMetadata?.kind === 'fragment'
-                                "
-                                class="mt-1 text-xs font-bold text-sky-200"
+                        <div class="grid gap-3 p-3">
+                            <div>
+                                <p class="text-xs font-bold text-stone-400">
+                                    NEXT DEMO QR
+                                </p>
+                                <p class="mt-1 text-sm font-black text-sky-100">
+                                    {{ nextDemoPayloadLabel }}
+                                </p>
+                                <p
+                                    v-if="nextReturn"
+                                    class="mt-1 text-xs text-stone-400"
+                                >
+                                    Precinct {{ nextReturn.precinct_id }} ·
+                                    payload hidden
+                                </p>
+                                <p v-else class="mt-1 text-xs text-stone-400">
+                                    All generated ER payloads have been scanned.
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    class="min-h-10 bg-yellow-300 px-3 font-bold text-stone-950 disabled:cursor-not-allowed disabled:bg-stone-700 disabled:text-stone-400"
+                                    :disabled="
+                                        !nextPayload ||
+                                        scannerStatus === 'scanning'
+                                    "
+                                    @click="scanNext"
+                                >
+                                    Demo feed next QR
+                                </button>
+                                <button
+                                    type="button"
+                                    class="min-h-10 border border-stone-600 px-3 font-bold text-stone-50 disabled:cursor-not-allowed disabled:text-stone-500"
+                                    :disabled="
+                                        !nextPayload &&
+                                        automaticScanner === null
+                                    "
+                                    @click="toggleAutomaticScanner"
+                                >
+                                    {{
+                                        automaticScanner === null
+                                            ? 'Auto demo feed'
+                                            : 'Stop auto'
+                                    }}
+                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                class="min-h-10 w-full border border-stone-600 px-4 font-bold text-stone-50"
+                                @click="resetScanner"
                             >
-                                Part {{ nextPayloadMetadata.partNumber }} of
-                                {{ nextPayloadMetadata.totalParts }} · Precinct
-                                {{ nextReturn.precinct_id }}
-                            </p>
-                            <p
-                                v-else-if="
-                                    nextReturn &&
-                                    nextPayloadMetadata?.kind === 'complete'
-                                "
-                                class="mt-1 text-xs font-bold text-sky-200"
-                            >
-                                Single QR document · Precinct
-                                {{ nextReturn.precinct_id }}
-                            </p>
-                            <p
-                                v-else-if="nextReturn"
-                                class="mt-1 text-xs font-bold text-red-200"
-                            >
-                                Unsupported ER QR envelope · Precinct
-                                {{ nextReturn.precinct_id }}
-                            </p>
-                            <p
-                                class="mt-2 min-h-14 font-mono text-[10px] break-all text-yellow-200"
-                            >
-                                {{
-                                    nextPayload
-                                        ? nextPayload
-                                        : 'Sample source has no next ER QR payload.'
-                                }}
-                            </p>
+                                Reset canvass
+                            </button>
                         </div>
                     </div>
 
-                    <div class="mt-3 grid grid-cols-2 gap-2">
-                        <button
-                            type="button"
-                            class="min-h-10 bg-yellow-300 px-3 font-bold text-stone-950 disabled:cursor-not-allowed disabled:bg-stone-700 disabled:text-stone-400"
-                            :disabled="
-                                !nextPayload || scannerStatus === 'scanning'
-                            "
-                            @click="scanNext"
-                        >
-                            Feed next ER QR
-                        </button>
-                        <button
-                            type="button"
-                            class="min-h-10 border border-stone-600 px-3 font-bold text-stone-50 disabled:cursor-not-allowed disabled:text-stone-500"
-                            :disabled="
-                                !nextPayload && automaticScanner === null
-                            "
-                            @click="toggleAutomaticScanner"
-                        >
-                            {{
-                                automaticScanner === null
-                                    ? 'Auto feed samples'
-                                    : 'Stop auto'
-                            }}
-                        </button>
-                    </div>
-                    <button
-                        type="button"
-                        class="mt-2 min-h-10 w-full border border-stone-600 px-4 font-bold text-stone-50"
-                        @click="resetScanner"
+                    <div
+                        class="mt-3 border border-sky-700 bg-sky-950/50 p-3 text-xs text-sky-50"
                     >
-                        Reset canvass
-                    </button>
+                        <h3 class="text-sm font-bold">
+                            Scanner setup cheat sheet
+                        </h3>
+                        <div class="mt-2 grid gap-3">
+                            <section class="grid gap-1.5">
+                                <p class="font-black text-yellow-200">
+                                    Option A: scanner acts like a keyboard
+                                </p>
+                                <ol
+                                    class="grid list-decimal gap-1 pl-4 text-sky-100"
+                                >
+                                    <li>
+                                        Connect the scanner to the device that
+                                        has this page open.
+                                    </li>
+                                    <li>
+                                        Configure the scanner suffix as Enter
+                                        or carriage return.
+                                    </li>
+                                    <li>
+                                        Keep Capture on, then scan each ER QR
+                                        code.
+                                    </li>
+                                </ol>
+                            </section>
+
+                            <section class="grid gap-1.5">
+                                <p class="font-black text-yellow-200">
+                                    Option B: scanner is on the Linux box
+                                </p>
+                                <ol
+                                    class="grid list-decimal gap-1 pl-4 text-sky-100"
+                                >
+                                    <li>
+                                        Keep this page open on the tablet or
+                                        monitor.
+                                    </li>
+                                    <li>
+                                        Feed one truth:// payload per line to
+                                        the bridge command.
+                                    </li>
+                                    <li>
+                                        The page updates automatically through
+                                        the saved scanner log.
+                                    </li>
+                                </ol>
+                                <code
+                                    class="mt-1 block overflow-x-auto border border-sky-800 bg-black/60 p-2 font-mono text-[10px] text-yellow-100"
+                                >
+                                    scanner-reader-command | php artisan
+                                    election:canvassing-scanner-ingest
+                                </code>
+                            </section>
+                        </div>
+                    </div>
                 </section>
 
                 <ScanLedger

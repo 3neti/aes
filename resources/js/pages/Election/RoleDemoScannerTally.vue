@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import ScanLedger from '@/components/election/ScanLedger.vue';
 import TallyBoard from '@/components/election/TallyBoard.vue';
 import { index as roleDemoIndex } from '@/routes/election/role-demo';
@@ -109,6 +109,12 @@ const lastScanDelta = ref<TallyDelta>({});
 const lastScanFlashKey = ref(0);
 const scannerStatus = ref<'ready' | 'scanning'>('ready');
 const automaticScanner = ref<number | null>(null);
+const scannerCaptureEnabled = ref(true);
+const autoSubmitPastedScans = ref(true);
+const keyboardScanBuffer = ref('');
+const manualScanPayload = ref('');
+const hardwareScanStatus = ref('Ready for scanner input.');
+const manualScanInput = ref<HTMLTextAreaElement | null>(null);
 
 const nextBallot = computed(
     () => props.simulation.scanner.ballots[scannedBallots.value.length] ?? null,
@@ -141,23 +147,10 @@ function scanNext(): void {
     }
 
     scannerStatus.value = 'scanning';
-    const ballot = nextBallot.value;
+    const payload = nextBallot.value.payload;
 
     window.setTimeout(() => {
-        const delta = deltaForSelections(ballot.selections);
-
-        scannedBallots.value.push(ballot);
-        scanEvents.value.push({
-            id: `${ballot.payload_hash}-${scanEvents.value.length}`,
-            title: `Ballot ${ballot.sequence}`,
-            subtitle: String(ballot.paper_ballot_serial ?? ''),
-            meta: 'Single QR document · accepted',
-            hash: ballot.payload_hash,
-            status: 'accepted',
-        });
-        addSelections(ballot.selections);
-        lastScanDelta.value = delta;
-        lastScanFlashKey.value += 1;
+        processBallotPayload(payload, 'Sample feed');
         scannerStatus.value = 'ready';
     }, 220);
 }
@@ -193,10 +186,263 @@ function resetScanner(): void {
     stopAutomaticScanner();
     scannedBallots.value = [];
     scanEvents.value = [];
+    keyboardScanBuffer.value = '';
+    manualScanPayload.value = '';
+    hardwareScanStatus.value = 'Ready for scanner input.';
     runningTally.value = cloneTally(props.simulation.scanner.initial_tally);
     lastScanDelta.value = {};
     lastScanFlashKey.value += 1;
     scannerStatus.value = 'ready';
+}
+
+function submitManualScan(): void {
+    processBallotPayload(manualScanPayload.value, 'Hardware scan');
+    manualScanPayload.value = '';
+}
+
+function processBallotPayload(payload: string, source: string): void {
+    const normalizedPayload = payload.trim();
+
+    if (!normalizedPayload) {
+        hardwareScanStatus.value = 'No scan payload received.';
+
+        return;
+    }
+
+    if (!normalizedPayload.startsWith('truth://')) {
+        rejectScan('Rejected ballot QR', 'Payload is not a truth:// URI');
+
+        return;
+    }
+
+    const ballot = props.simulation.scanner.ballots.find(
+        (candidate) => candidate.payload === normalizedPayload,
+    );
+
+    if (!ballot) {
+        rejectScan(
+            'Rejected ballot QR',
+            'Payload is not in this scanner sample set',
+        );
+
+        return;
+    }
+
+    if (
+        scannedBallots.value.some(
+            (scannedBallot) =>
+                scannedBallot.payload_hash === ballot.payload_hash,
+        )
+    ) {
+        scanEvents.value.push({
+            id: `duplicate-${ballot.payload_hash}-${scanEvents.value.length}`,
+            title: `Duplicate ballot ${ballot.sequence}`,
+            subtitle: String(ballot.paper_ballot_serial ?? ''),
+            meta: `${source} · already accepted`,
+            hash: ballot.payload_hash,
+            status: 'duplicate',
+        });
+        hardwareScanStatus.value = `Duplicate ballot ${ballot.sequence}.`;
+
+        return;
+    }
+
+    const delta = deltaForSelections(ballot.selections);
+
+    scannedBallots.value.push(ballot);
+    scanEvents.value.push({
+        id: `${ballot.payload_hash}-${scanEvents.value.length}`,
+        title: `Ballot ${ballot.sequence}`,
+        subtitle: String(ballot.paper_ballot_serial ?? ''),
+        meta: `${source} · single QR document`,
+        hash: ballot.payload_hash,
+        status: 'accepted',
+    });
+    addSelections(ballot.selections);
+    lastScanDelta.value = delta;
+    lastScanFlashKey.value += 1;
+    hardwareScanStatus.value = `Accepted ballot ${ballot.sequence}.`;
+}
+
+function rejectScan(title: string, meta: string): void {
+    scanEvents.value.push({
+        id: `rejected-${scanEvents.value.length}`,
+        title,
+        meta,
+        status: 'rejected',
+    });
+    hardwareScanStatus.value = meta;
+}
+
+function handleGlobalScannerKeydown(event: KeyboardEvent): void {
+    if (!scannerCaptureEnabled.value || shouldIgnoreGlobalKeydown(event)) {
+        return;
+    }
+
+    if (event.key === 'Escape') {
+        keyboardScanBuffer.value = '';
+        hardwareScanStatus.value = 'Scan buffer cleared.';
+        event.preventDefault();
+
+        return;
+    }
+
+    if (event.key === 'Enter' || event.key === 'NumpadEnter') {
+        if (keyboardScanBuffer.value !== '') {
+            processBallotPayload(keyboardScanBuffer.value, 'Hardware scan');
+            keyboardScanBuffer.value = '';
+            event.preventDefault();
+        }
+
+        return;
+    }
+
+    if (
+        event.key.length !== 1 ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey
+    ) {
+        return;
+    }
+
+    keyboardScanBuffer.value += event.key;
+
+    if (keyboardScanBuffer.value.length > 4096) {
+        keyboardScanBuffer.value = keyboardScanBuffer.value.slice(-4096);
+    }
+}
+
+function handleGlobalScannerPaste(event: ClipboardEvent): void {
+    if (!scannerCaptureEnabled.value || shouldIgnoreGlobalPaste(event)) {
+        return;
+    }
+
+    receivePastedScan(event);
+}
+
+function handleManualScannerPaste(event: ClipboardEvent): void {
+    receivePastedScan(event);
+}
+
+function receivePastedScan(event: ClipboardEvent): void {
+    const payload = pastedPayloadFrom(
+        event.clipboardData?.getData('text/plain') ?? '',
+    );
+
+    if (payload === '') {
+        return;
+    }
+
+    manualScanPayload.value = payload;
+    keyboardScanBuffer.value = '';
+    hardwareScanStatus.value = payload.startsWith('truth://')
+        ? autoSubmitPastedScans.value
+            ? 'Pasted scan payload. Auto-submitting.'
+            : 'Pasted scan payload. Press Submit scan or Enter.'
+        : 'Pasted text is not a truth:// URI.';
+    event.preventDefault();
+    event.stopPropagation();
+
+    void nextTick(() => {
+        manualScanInput.value?.focus();
+
+        if (payload.startsWith('truth://') && autoSubmitPastedScans.value) {
+            window.setTimeout(() => {
+                if (manualScanPayload.value === payload) {
+                    submitManualScan();
+                }
+            }, 180);
+        }
+    });
+}
+
+function shouldIgnoreGlobalKeydown(event: KeyboardEvent): boolean {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement)) {
+        return false;
+    }
+
+    if (target.closest('[data-scanner-manual-input]')) {
+        return true;
+    }
+
+    if (target.isContentEditable) {
+        return true;
+    }
+
+    if (target instanceof HTMLSelectElement) {
+        return true;
+    }
+
+    if (target instanceof HTMLTextAreaElement) {
+        return !target.readOnly;
+    }
+
+    if (target instanceof HTMLInputElement) {
+        return isTextEntryInput(target) && !target.readOnly;
+    }
+
+    return false;
+}
+
+function shouldIgnoreGlobalPaste(event: ClipboardEvent): boolean {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement)) {
+        return false;
+    }
+
+    if (target.closest('[data-scanner-manual-input]')) {
+        return true;
+    }
+
+    if (target.isContentEditable) {
+        return true;
+    }
+
+    if (target instanceof HTMLTextAreaElement) {
+        return true;
+    }
+
+    if (target instanceof HTMLInputElement) {
+        return isTextEntryInput(target) && !target.readOnly;
+    }
+
+    if (target instanceof HTMLSelectElement) {
+        return true;
+    }
+
+    return false;
+}
+
+function isTextEntryInput(target: HTMLInputElement): boolean {
+    return [
+        '',
+        'date',
+        'datetime-local',
+        'email',
+        'month',
+        'number',
+        'password',
+        'search',
+        'tel',
+        'text',
+        'time',
+        'url',
+        'week',
+    ].includes(target.type);
+}
+
+function pastedPayloadFrom(text: string): string {
+    const trimmedText = text.trim();
+    const truthPayload = trimmedText
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line.startsWith('truth://'));
+
+    return truthPayload ?? trimmedText;
 }
 
 function deltaForSelections(selections: Record<string, string[]>): TallyDelta {
@@ -246,7 +492,16 @@ function sourceLabel(source: string): string {
         : 'Generated demo ballot payloads';
 }
 
-onBeforeUnmount(stopAutomaticScanner);
+onMounted(() => {
+    window.addEventListener('keydown', handleGlobalScannerKeydown);
+    window.addEventListener('paste', handleGlobalScannerPaste);
+});
+
+onBeforeUnmount(() => {
+    stopAutomaticScanner();
+    window.removeEventListener('keydown', handleGlobalScannerKeydown);
+    window.removeEventListener('paste', handleGlobalScannerPaste);
+});
 </script>
 
 <template>
@@ -364,6 +619,66 @@ onBeforeUnmount(stopAutomaticScanner);
                         >
                             Reset scanner
                         </button>
+                    </div>
+
+                    <div class="mt-3 border border-stone-700 bg-stone-900 p-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-bold">
+                                    Keyboard wedge
+                                </h3>
+                                <p class="text-xs text-stone-400">
+                                    {{ hardwareScanStatus }}
+                                </p>
+                            </div>
+                            <label
+                                class="flex items-center gap-2 text-xs font-black"
+                            >
+                                <input
+                                    v-model="scannerCaptureEnabled"
+                                    type="checkbox"
+                                    class="h-4 w-4 accent-yellow-300"
+                                />
+                                Capture
+                            </label>
+                        </div>
+                        <label
+                            class="mt-3 flex items-center justify-between gap-3 border border-stone-700 bg-black/40 p-2 text-xs font-black"
+                        >
+                            <span>Auto-submit paste</span>
+                            <input
+                                v-model="autoSubmitPastedScans"
+                                type="checkbox"
+                                class="h-4 w-4 accent-yellow-300"
+                            />
+                        </label>
+                        <div class="mt-2 grid gap-2">
+                            <textarea
+                                ref="manualScanInput"
+                                v-model="manualScanPayload"
+                                data-scanner-manual-input
+                                class="h-20 w-full resize-none border border-stone-700 bg-black p-2 font-mono text-[10px] text-yellow-200 outline-none"
+                                placeholder="truth://..."
+                                @paste="handleManualScannerPaste"
+                                @keydown.enter.prevent="submitManualScan"
+                            />
+                            <div class="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    class="secondary-button"
+                                    @click="submitManualScan"
+                                >
+                                    Submit scan
+                                </button>
+                                <button
+                                    type="button"
+                                    class="secondary-button"
+                                    @click="manualScanPayload = ''"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div

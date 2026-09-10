@@ -54,6 +54,7 @@ final class RoleDemoController extends Controller
                 'voter' => route('election.role-demo.voter'),
                 'watcher' => route('election.role-demo.watcher'),
                 'scannerTally' => route('election.role-demo.scanner-tally'),
+                'canvassingDemo' => route('election.canvassing-demo.show'),
                 'truthTallyReturn' => route('election.role-demo.truth-tally-return'),
                 'reset' => route('election.role-demo.reset'),
             ],
