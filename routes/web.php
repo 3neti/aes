@@ -26,9 +26,7 @@ use App\Http\Controllers\Election\VotingController;
 use App\Http\Controllers\Election\WatcherController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', HomeController::class)
-    ->middleware('review-room-role:officer')
-    ->name('home');
+Route::get('/', fn () => to_route('election.role-demo.index'))->name('home');
 
 Route::prefix('election')->name('election.')->group(function (): void {
     Route::get('/canvassing-demo', [CanvassingDemoController::class, 'show'])->name('canvassing-demo.show');

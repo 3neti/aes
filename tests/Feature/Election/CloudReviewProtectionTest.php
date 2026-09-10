@@ -14,7 +14,7 @@ beforeEach(function (): void {
 test('review access protection is disabled by default', function (): void {
     config()->set('election.review.access.enabled', false);
 
-    $this->get(route('home'))
+    $this->get(route('election.home'))
         ->assertSuccessful()
         ->assertHeaderMissing('X-Robots-Tag');
 });
@@ -23,7 +23,7 @@ test('enabled review protection rejects anonymous and invalid access', function 
     configureReviewAccess();
 
     $this->withHeaders(['Authorization' => $authorization])
-        ->get(route('home'))
+        ->get(route('election.home'))
         ->assertUnauthorized()
         ->assertHeader('WWW-Authenticate', 'Basic realm="AES COMELEC Review", charset="UTF-8"')
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
@@ -39,7 +39,7 @@ test('enabled review protection permits configured credentials and prohibits ind
 
     $this->withHeaders([
         'Authorization' => basicAuthorization('comelec-review', 'review-secret'),
-    ])->get(route('home'))
+    ])->get(route('election.home'))
         ->assertSuccessful()
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
         ->assertHeader('Cache-Control', 'no-store, private')
@@ -54,7 +54,7 @@ test('enabled review protection permits simple demo credentials when configured'
 
     $this->withHeaders([
         'Authorization' => basicAuthorization('user', 'user'),
-    ])->get(route('home'))
+    ])->get(route('election.home'))
         ->assertSuccessful()
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
         ->assertHeader('Cache-Control', 'no-store, private')
@@ -216,7 +216,7 @@ test('enabled review protection fails closed when credentials are missing', func
     config()->set('election.review.access.username', '');
     config()->set('election.review.access.password', '');
 
-    $this->get(route('home'))
+    $this->get(route('election.home'))
         ->assertServiceUnavailable()
         ->assertSee('Review access is not configured.')
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');

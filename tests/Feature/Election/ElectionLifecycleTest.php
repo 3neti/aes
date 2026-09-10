@@ -1830,10 +1830,10 @@ test('evidence folder demo scenario command is registered', function (): void {
         ->and($run['summary_report_path'])->not->toBeReadableFile();
 });
 
-test('home page renders the ceremony shell', function (): void {
+test('election home page renders the ceremony shell', function (): void {
     $this->withoutVite();
 
-    $this->get('/')
+    $this->get(route('election.home'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/Home')

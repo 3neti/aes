@@ -3,5 +3,5 @@
 test('example', function () {
     $response = $this->get('/');
 
-    $response->assertStatus(200);
+    $response->assertRedirect(route('election.role-demo.index'));
 });
