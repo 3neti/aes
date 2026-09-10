@@ -18,7 +18,6 @@ use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\PublicSimulation\RoleDemoBulkBallotSeeder;
 use App\Election\PublicSimulation\RoleDemoInterimCloseout;
 use App\Election\PublicSimulation\RoleDemoScannerTallySimulation;
-use App\Election\PublicSimulation\TruthTallyReturnSimulation;
 use App\Election\PublicSimulation\WatcherBallotReview;
 use App\Election\Returns\ElectionReturnScope;
 use App\Election\Support\ElectionStorage;
@@ -55,7 +54,9 @@ final class RoleDemoController extends Controller
                 'watcher' => route('election.role-demo.watcher'),
                 'scannerTally' => route('election.role-demo.scanner-tally'),
                 'canvassingDemo' => route('election.canvassing-demo.show'),
-                'truthTallyReturn' => route('election.role-demo.truth-tally-return'),
+                'publicCanvassBoard' => route('election.canvassing-demo.public', ['view' => 'all']),
+                'publicNationalCanvass' => route('election.canvassing-demo.public', ['view' => 'national']),
+                'publicLocalCanvass' => route('election.canvassing-demo.public', ['view' => 'local']),
                 'reset' => route('election.role-demo.reset'),
             ],
         ]);
@@ -498,17 +499,6 @@ final class RoleDemoController extends Controller
         $precinct = $this->precinct($simulations);
 
         return Inertia::render('Election/RoleDemoScannerTally', [
-            'precinct' => $this->precinctSummary($precinct),
-            'simulation' => $simulation->summary(),
-        ]);
-    }
-
-    public function truthTallyReturn(PublicSimulationService $simulations, RoleDemoInterimCloseout $forms, TruthTallyReturnSimulation $simulation): Response
-    {
-        $precinct = $this->precinct($simulations);
-        $forms->generate($precinct, 'truth-tally-return-simulation');
-
-        return Inertia::render('Election/TruthTallyReturn', [
             'precinct' => $this->precinctSummary($precinct),
             'simulation' => $simulation->summary(),
         ]);

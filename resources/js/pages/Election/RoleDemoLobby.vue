@@ -16,7 +16,9 @@ defineProps<{
         watcher: string;
         scannerTally: string;
         canvassingDemo: string;
-        truthTallyReturn: string;
+        publicCanvassBoard: string;
+        publicNationalCanvass: string;
+        publicLocalCanvass: string;
         reset: string;
     };
 }>();
@@ -45,7 +47,8 @@ defineProps<{
                     </h1>
                     <p class="mt-3 max-w-3xl text-sm text-stone-700">
                         One open precinct for the officer, voter, watcher,
-                        ballot QR tally, and ER canvassing demos.
+                        ballot QR tally, ER canvassing, and public canvass
+                        boards.
                     </p>
                 </div>
 
@@ -117,7 +120,7 @@ defineProps<{
 
                 <section class="border border-stone-300 bg-white p-4">
                     <p class="text-xs font-black uppercase text-stone-500">
-                        Truth QR tally tools
+                        QR tally and canvass
                     </p>
                     <div class="mt-3 grid gap-2">
                         <Link
@@ -150,12 +153,12 @@ defineProps<{
                                 class="flex items-center justify-between gap-3"
                             >
                                 <p class="font-bold text-sky-950">
-                                    ER Canvassing Demo
+                                    ER Canvassing Operator
                                 </p>
                                 <span
                                     class="border border-sky-300 bg-sky-100 px-2 py-1 text-[11px] font-black text-sky-950"
                                 >
-                                    Current
+                                    Scan ERs
                                 </span>
                             </div>
                             <p class="mt-1 text-sm text-stone-700">
@@ -165,26 +168,41 @@ defineProps<{
                         </Link>
 
                         <Link
-                            :href="actions.truthTallyReturn"
-                            class="border-l-4 border-stone-400 bg-stone-50 p-4 transition hover:bg-stone-100"
+                            :href="actions.publicCanvassBoard"
+                            class="border-l-4 border-blue-800 bg-stone-50 p-4 transition hover:bg-blue-50"
                         >
                             <div
                                 class="flex items-center justify-between gap-3"
                             >
-                                <p class="font-bold text-stone-800">
-                                    TruthTally ER
+                                <p class="font-bold text-blue-950">
+                                    Public Canvass Board
                                 </p>
                                 <span
-                                    class="border border-stone-300 bg-white px-2 py-1 text-[11px] font-black text-stone-600"
+                                    class="border border-blue-300 bg-blue-100 px-2 py-1 text-[11px] font-black text-blue-950"
                                 >
-                                    Legacy
+                                    Public
                                 </span>
                             </div>
                             <p class="mt-1 text-sm text-stone-700">
-                                Older role-demo ER scanner prototype kept for
-                                comparison while canvassing moves forward.
+                                Show live scanner-derived ER totals without the
+                                QR ingestion controls.
                             </p>
                         </Link>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <Link
+                                :href="actions.publicNationalCanvass"
+                                class="border border-stone-300 bg-white px-3 py-2 text-center text-sm font-bold text-blue-800 transition hover:bg-blue-50"
+                            >
+                                National board
+                            </Link>
+                            <Link
+                                :href="actions.publicLocalCanvass"
+                                class="border border-stone-300 bg-white px-3 py-2 text-center text-sm font-bold text-blue-800 transition hover:bg-blue-50"
+                            >
+                                Local board
+                            </Link>
+                        </div>
                     </div>
                 </section>
 

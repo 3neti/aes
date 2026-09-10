@@ -32,7 +32,9 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('actions.watcher', route('election.role-demo.watcher'))
             ->where('actions.scannerTally', route('election.role-demo.scanner-tally'))
             ->where('actions.canvassingDemo', route('election.canvassing-demo.show'))
-            ->where('actions.truthTallyReturn', route('election.role-demo.truth-tally-return'))
+            ->where('actions.publicCanvassBoard', route('election.canvassing-demo.public', ['view' => 'all']))
+            ->where('actions.publicNationalCanvass', route('election.canvassing-demo.public', ['view' => 'national']))
+            ->where('actions.publicLocalCanvass', route('election.canvassing-demo.public', ['view' => 'local']))
         );
 
     $round = SimulationRound::query()->with('precincts')->sole();

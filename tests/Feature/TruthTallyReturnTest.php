@@ -9,7 +9,6 @@ use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
-use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
     config()->set('election.review.access.enabled', false);
@@ -67,19 +66,7 @@ test('election return truth tally payload can be split and reassembled from qr f
     expect($reassembled)->toBe($canonicalPayload);
 });
 
-test('role demo exposes a truth tally election return canvassing scanner', function (): void {
+test('deprecated role demo truth tally election return page redirects to the role demo hub', function (): void {
     $this->get(route('election.role-demo.truth-tally-return'))
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Election/TruthTallyReturn')
-            ->where('precinct.status', 'open')
-            ->where('simulation.source', 'election-return-truth-qr')
-            ->where('simulation.canvass.election_id', fn (?string $electionId): bool => $electionId !== null && $electionId !== '')
-            ->has('simulation.return.contests', 8)
-            ->has('simulation.scanner.returns', 1)
-            ->where('simulation.scanner.returns.0.source', 'official election return QR')
-            ->where('simulation.scanner.returns.0.payloads.0', fn (string $payload): bool => str_starts_with($payload, 'truth://v1/waes-election-return/waes-er-compact-1?p='))
-            ->where('simulation.scanner.returns.0.canonical_payload', fn (string $payload): bool => str_starts_with($payload, 'waes-er-compact-1:'))
-            ->where('simulation.scanner.initial_tally', fn (mixed $tally): bool => collect($tally)->flatten()->every(fn (int $votes): bool => $votes === 0))
-        );
+        ->assertRedirect(route('election.role-demo.index'));
 });

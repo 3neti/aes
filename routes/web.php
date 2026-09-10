@@ -58,7 +58,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/voter/reset', [RoleDemoController::class, 'resetVoter'])->name('voter.reset');
         Route::get('/watcher', [RoleDemoController::class, 'watcher'])->name('watcher');
         Route::get('/scanner-tally', [RoleDemoController::class, 'scannerTally'])->name('scanner-tally');
-        Route::get('/truth-tally-return', [RoleDemoController::class, 'truthTallyReturn'])->name('truth-tally-return');
+        Route::get('/truth-tally-return', fn () => to_route('election.role-demo.index'))->name('truth-tally-return');
         Route::get('/watcher/ballots/{sequence}', [RoleDemoController::class, 'watcherBallot'])
             ->whereNumber('sequence')
             ->name('watcher.ballot');
