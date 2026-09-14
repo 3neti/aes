@@ -65,9 +65,20 @@ final class IngestCanvassingScannerPayloads extends Command
     }
 
     /**
-     * Reads newline-delimited payloads from the given stream, ingesting each
-     * one as soon as it arrives. Used both for piped STDIN batches and for
-     * a live, interactive keyboard-wedge scanner session.
+     * Byte value some keyboard-wedge scanners send as a scan terminator
+     * instead of Enter (CR/LF). On an interactive TTY with signal
+     * generation enabled, this byte is normally intercepted by the
+     * terminal driver as SIGINT before it ever reaches PHP, so callers
+     * running this command live must first disable it (e.g. `stty -isig`).
+     */
+    private const EtxTerminator = "\x03";
+
+    /**
+     * Reads payloads from the given stream, ingesting each one as soon as
+     * a terminator is seen. Used both for piped STDIN batches and for a
+     * live, interactive keyboard-wedge scanner session. Payloads may be
+     * terminated by CR, LF, or a raw ETX (0x03) byte, since some scanners
+     * are configured to send a control character instead of Enter.
      *
      * @param  resource  $stream
      */
@@ -75,12 +86,14 @@ final class IngestCanvassingScannerPayloads extends Command
     {
         $hasRejectedPayload = false;
         $receivedAny = false;
+        $buffer = '';
 
-        while (($line = fgets($stream)) !== false) {
-            $payload = trim($line);
+        $flush = function () use (&$buffer, $stationId, $source, $ingestion, &$hasRejectedPayload, &$receivedAny): void {
+            $payload = trim($buffer);
+            $buffer = '';
 
             if ($payload === '') {
-                continue;
+                return;
             }
 
             $receivedAny = true;
@@ -88,7 +101,19 @@ final class IngestCanvassingScannerPayloads extends Command
             if (! $this->ingestOne($payload, $stationId, $source, $ingestion)) {
                 $hasRejectedPayload = true;
             }
+        };
+
+        while (($byte = fread($stream, 1)) !== false && $byte !== '') {
+            if ($byte === "\n" || $byte === "\r" || $byte === self::EtxTerminator) {
+                $flush();
+
+                continue;
+            }
+
+            $buffer .= $byte;
         }
+
+        $flush();
 
         if ($requirePayloads && ! $receivedAny) {
             $this->error('No QR payloads were provided.');
