@@ -6,6 +6,7 @@ use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\Documents\ElectionReturnPdf;
 use App\Election\Printing\Documents\OfficialBallotPdf;
 use App\Election\Printing\Documents\TallySheetPdf;
+use App\Election\Printing\Documents\ThermalElectionReturnPdf;
 use App\Election\Printing\PrintFormProfile;
 use App\Election\Returns\ElectionReturnScope;
 use App\Election\Returns\ElectionReturnService;
@@ -33,10 +34,12 @@ test('printed ballot embeds its qr image and only the voter selected candidates'
     $job = app(BallotPrinter::class)->print($payload);
     $pdf = file_get_contents($job['pdf_artifact_path']);
     $qr = new Imagick($payload['qr_artifact_path']);
+    $qrSvg = file_get_contents($payload['qr_svg_artifact_path']);
 
     expect($pdf)
         ->toContain('/Subtype /Image')
         ->toContain('/BallotQr')
+        ->toContain('q 216.00 0 0 216.00')
         ->toContain('/RepublicSeal')
         ->toContain('/BagongPilipinasLogo')
         ->toContain('/ComelecLogo')
@@ -54,14 +57,17 @@ test('printed ballot embeds its qr image and only the voter selected candidates'
         ->toContain('SCAN THIS LARGE QR FOR AUDIT VERIFICATION')
         ->not->toContain('QR Artifact:')
         ->and(pdfPageCount($pdf))->toBe(2)
-        ->and($qr->getImageWidth())->toBeGreaterThanOrEqual(740)
-        ->and($qr->getImageHeight())->toBeGreaterThanOrEqual(740);
+        ->and($qr->getImageWidth())->toBeGreaterThanOrEqual(1080)
+        ->and($qr->getImageHeight())->toBeGreaterThanOrEqual(1080)
+        ->and($qrSvg)->toStartWith('<?xml version="1.0" encoding="UTF-8"?>')
+        ->and($qrSvg)->toContain('<svg')
+        ->and($qrSvg)->toContain('viewBox="0 0 1080 1080"');
 
     $qr->clear();
     $qr->destroy();
 });
 
-test('compact selected candidates ballot keeps paired offices grids and a single qr page', function (): void {
+test('compact selected candidates ballot fits paired offices grids and scan qr on one a4 page', function (): void {
     config()->set('election.voter.ballot_artifact_profile', 'selected_candidates_compact_official');
 
     $payload = [
@@ -109,10 +115,9 @@ test('compact selected candidates ballot keeps paired offices grids and a single
         ->toContain('Senator Choice 12')
         ->toContain('Councilor Choice 06')
         ->toContain('Ballot QR Verification')
+        ->toContain('q 216.00 0 0 216.00')
         ->not->toContain('Unselected President')
         ->not->toContain('Senator Choice 13')
-        ->not->toContain('BALLOT QR VERIFICATION COPY')
-        ->not->toContain('SCAN THIS LARGE QR FOR AUDIT VERIFICATION')
         ->and(pdfPageCount($pdf))->toBe(1)
         ->and($sectionOffsets)->each->not->toBeFalse()
         ->and($sectionOffsets['president'])->toBeLessThan($sectionOffsets['senator'])
@@ -186,7 +191,41 @@ test('print-form profiles render A4 and thermal evidence from the same sealed re
         ->and($storage->readText('print-forms/tally-sheet/thermal-58.pdf'))->toContain('/MediaBox [0 0 164.41 792]')
         ->and($storage->readText('print-forms/election-return/0421-A/thermal-80.pdf'))->toContain('Roll segment 1 of')
         ->and($storage->readText('print-forms/election-return/0421-A/national/a4.pdf'))->toContain('ELECTION RETURNS FOR NATIONAL POSITIONS')
-        ->and($storage->readText('print-forms/election-return/0421-A/local/a4.pdf'))->toContain('ELECTION RETURNS FOR LOCAL POSITIONS');
+        ->and($storage->readText('print-forms/election-return/0421-A/local/a4.pdf'))->toContain('ELECTION RETURNS FOR LOCAL POSITIONS')
+        ->and($storage->readText('print-forms/election-return/0421-A/national/thermal-80.pdf'))
+        ->toContain('TRUTHTALLY National Election Return QR')
+        ->toContain('/TruthTallyQr1')
+        ->and($storage->readText('print-forms/election-return/0421-A/local/thermal-80.pdf'))
+        ->toContain('TRUTHTALLY Local Election Return QR')
+        ->toContain('/TruthTallyQr1');
+});
+
+test('thermal election return fits two truth tally qr codes on one qr segment', function (): void {
+    app(ActivateSamplePackage::class)->handle();
+    $payload = app(BallotPayloadService::class)->finalize([
+        'president' => ['pres-ada'],
+        'mayor' => ['mayor-lina'],
+    ], 'thermal-two-part-er-qr-ballot');
+    app(CountingService::class)->accept($payload['qr_payload']);
+
+    $storage = app(ElectionStorage::class);
+    $configuration = $storage->readJson('runtime/active-precinct.json');
+    $return = app(ElectionReturnService::class)->generate(app(CountingService::class)->tally());
+    $onePartPdf = app(ThermalElectionReturnPdf::class)->render($configuration, $return, PrintFormProfile::Thermal80, ElectionReturnScope::National);
+    $artifact = $return['truth_tally']['scopes']['national']['qr_artifacts'][0];
+    $return['truth_tally']['scopes']['national']['qr_artifacts'] = [
+        [...$artifact, 'sequence' => 1, 'total' => 2],
+        [...$artifact, 'sequence' => 2, 'total' => 2],
+    ];
+
+    $twoPartPdf = app(ThermalElectionReturnPdf::class)->render($configuration, $return, PrintFormProfile::Thermal80, ElectionReturnScope::National);
+
+    expect($twoPartPdf)
+        ->toContain('QR 1 of 2')
+        ->toContain('QR 2 of 2')
+        ->toContain('/TruthTallyQr1')
+        ->toContain('/TruthTallyQr2')
+        ->and(pdfPageCount($twoPartPdf))->toBe(pdfPageCount($onePartPdf));
 });
 
 test('printed ballot reserves space beside long contest titles for selection limits', function (): void {
@@ -419,7 +458,8 @@ test('lifecycle tally and return retain complete activated configuration order',
         ->and($returnPdf)->toContain('Ada Santos')
         ->and($returnPdf)->toContain('Grace Reyes')
         ->and($returnPdf)->toContain('Cora Ramos')
-        ->and($returnPdf)->toContain('TRUTHTALLY ELECTION RETURN QR')
+        ->and($returnPdf)->toContain('TRUTHTALLY Combined Election Return QR')
+        ->and($returnPdf)->toContain('q 216.00 0 0 216.00')
         ->and($returnPdf)->toContain('Page 1 of 3');
 });
 

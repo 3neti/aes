@@ -48,8 +48,22 @@ final class RoleDemoScannerTallySimulation
             'scanner' => [
                 'ballots' => $ballots,
                 'initial_tally' => $this->emptyTally($configuration),
+                'candidate_code_map' => $this->candidateCodeMap(),
             ],
             'document_rendering' => $this->documents->renderingKit(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function candidateCodeMap(): array
+    {
+        $mapping = $this->storage->readJson('mappings/candidate-code-map.json');
+
+        return [
+            'mapping_hash' => $mapping['mapping_hash'] ?? null,
+            'candidates' => $mapping['candidates'] ?? [],
         ];
     }
 

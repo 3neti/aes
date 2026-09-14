@@ -6,6 +6,7 @@ use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\Support\ElectionStorage;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
+use Illuminate\Filesystem\Filesystem;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
@@ -31,6 +32,8 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('actions.voter', route('election.role-demo.voter'))
             ->where('actions.watcher', route('election.role-demo.watcher'))
             ->where('actions.scannerTally', route('election.role-demo.scanner-tally'))
+            ->where('actions.precinctTally', route('election.role-demo.precinct-tally'))
+            ->where('actions.publicPrecinctTally', route('election.role-demo.precinct-tally.public', ['view' => 'all']))
             ->where('actions.canvassingDemo', route('election.canvassing-demo.show'))
             ->where('actions.publicCanvassBoard', route('election.canvassing-demo.public', ['view' => 'all']))
             ->where('actions.publicNationalCanvass', route('election.canvassing-demo.public', ['view' => 'national']))
@@ -49,6 +52,10 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('currentTally.accepted_ballots', 0)
             ->where('actions.acceptPrint', route('election.role-demo.print.accept'))
             ->where('actions.bulkBallots', route('election.role-demo.bulk-ballots'))
+            ->where('actions.precinctTally', route('election.role-demo.precinct-tally'))
+            ->where('actions.publicPrecinctTally', route('election.role-demo.precinct-tally.public', ['view' => 'all']))
+            ->where('navigationQrs.precinctTally', fn (string $qr): bool => str_starts_with($qr, 'data:image/png;base64,'))
+            ->where('navigationQrs.publicPrecinctTally', fn (string $qr): bool => str_starts_with($qr, 'data:image/png;base64,'))
             ->where('actions.printTally', route('election.role-demo.print.tally-sheet'))
             ->where('actions.returns.national', route('election.role-demo.election-return.scoped', ['scope' => 'national']))
             ->where('actions.returns.local', route('election.role-demo.election-return.scoped', ['scope' => 'local']))
@@ -57,6 +64,7 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('actions.printReturns.local', route('election.role-demo.print.election-return.scoped', ['scope' => 'local']))
             ->where('actions.printReturns.combined', route('election.role-demo.print.election-return.scoped', ['scope' => 'combined']))
             ->where('bulkBallots.enabled', true)
+            ->where('bulkBallots.chunk_size', 5)
         );
 
     $this->post(route('election.role-demo.admit'))
@@ -147,6 +155,11 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/RoleDemoScannerTally')
             ->where('simulation.source', 'sealed-role-demo-ballots')
+            ->where('scannerState.accepted_count', 0)
+            ->where('actions.scannerIngest', route('election.role-demo.precinct-tally.scanner-events.store'))
+            ->where('actions.publicBoard', route('election.role-demo.precinct-tally.public'))
+            ->where('simulation.scanner.candidate_code_map.mapping_hash', $configuration['mapping_hash'])
+            ->has('simulation.scanner.candidate_code_map.candidates')
             ->where('simulation.scanner.ballots.0.source', 'sealed ballot box')
             ->where('simulation.scanner.ballots.0.payload', fn (string $payload): bool => str_starts_with($payload, 'truth://v1/waes-ballot/aes-ballot-compact-1?p='))
             ->where('simulation.scanner.ballots.0.canonical_payload', fn (string $payload): bool => str_starts_with($payload, 'aes-ballot-compact-1:'))
@@ -183,9 +196,46 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertSuccessful()
         ->assertHeader('content-disposition', 'inline; filename="role-demo-last-printed-ballot.pdf"');
 
+    $printedRelease = app(ElectionStorage::class)->readJson("print-releases/{$release['release_id']}.json");
+    $printJob = app(ElectionStorage::class)->readJson("print-jobs/{$printedRelease['ballot_id']}.json");
+    $printedRecord = file_get_contents($printJob['artifact_path']);
+    $printedPdf = file_get_contents($printJob['pdf_artifact_path']);
+    preg_match('/QR Artifact: (?<path>.+\.png)/', $printedRecord, $qrArtifact);
+    $qrImage = getimagesize($qrArtifact['path']);
+    preg_match_all('/\/Type \/Page\b/', $printedPdf, $printedPdfPages);
+
+    expect($printedPdf)
+        ->toContain('q 216.00 0 0 216.00')
+        ->toContain('SELECTED CANDIDATES ONLY')
+        ->toContain('Ballot QR Verification')
+        ->not->toContain('BALLOT QR VERIFICATION COPY')
+        ->and(count($printedPdfPages[0]))->toBe(1)
+        ->and($qrImage[0])->toBeGreaterThanOrEqual(1080)
+        ->and($qrImage[1])->toBeGreaterThanOrEqual(1080);
+
     $this->get(route('election.role-demo.tally-sheet'))
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf');
+
+    $nationalElectionReturn = $this->get(route('election.role-demo.election-return.scoped', ['scope' => 'national']))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $localElectionReturn = $this->get(route('election.role-demo.election-return.scoped', ['scope' => 'local']))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $nationalElectionReturnContent = file_get_contents(
+        app(ElectionStorage::class)->path("print-forms/election-return/{$configuration['precinct_id']}/national/a4.pdf"),
+    );
+    $localElectionReturnContent = file_get_contents(
+        app(ElectionStorage::class)->path("print-forms/election-return/{$configuration['precinct_id']}/local/a4.pdf"),
+    );
+
+    $this->assertStringContainsString('TRUTHTALLY National Election Return QR', $nationalElectionReturnContent);
+    $this->assertStringContainsString('q 216.00 0 0 216.00', $nationalElectionReturnContent);
+    $this->assertStringContainsString('TRUTHTALLY Local Election Return QR', $localElectionReturnContent);
+    $this->assertStringContainsString('q 216.00 0 0 216.00', $localElectionReturnContent);
 
     $this->post(route('election.role-demo.print.tally-sheet'))
         ->assertRedirectToRoute('election.role-demo.officer')
@@ -226,6 +276,7 @@ test('role demo scanner tally simulates reading ballot QR payloads into tally ma
             ->where('simulation.precinct.precinct_id', fn (string $precinctId): bool => $precinctId !== '')
             ->has('simulation.ballot.contests', 8)
             ->has('simulation.scanner.ballots', 8)
+            ->has('simulation.scanner.candidate_code_map.candidates')
             ->where('simulation.scanner.ballots.0.sequence', 1)
             ->where('simulation.scanner.ballots.0.source', 'generated ballot payload')
             ->where('simulation.scanner.ballots.0.payload', fn (string $payload): bool => str_starts_with($payload, 'truth://v1/waes-ballot/aes-ballot-compact-1?p='))
@@ -375,6 +426,9 @@ test('role demo self service control number recycles the oldest unused issued nu
 test('role demo reset replaces the live precinct with a freshly opened one', function (): void {
     $this->get(route('election.role-demo.index'))->assertSuccessful();
     $firstRound = SimulationRound::query()->sole();
+    $storage = app(ElectionStorage::class);
+
+    app(Filesystem::class)->deleteDirectory($storage->activeRunPath());
 
     $this->post(route('election.role-demo.reset'))
         ->assertRedirectToRoute('election.role-demo.index');
@@ -458,7 +512,8 @@ test('role demo officer can bulk generate deposited ballots for watcher review',
     expect(app(ElectionStorage::class)->files('counting/sealed'))->toHaveCount(12)
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
         ->toContain('role_demo.bulk_ballots_chunk_generated')
-        ->toContain('role_demo.bulk_ballot_print_simulated');
+        ->toContain('role_demo.bulk_ballot_print_simulated')
+        ->not->toContain('role_demo.interim_forms_generated');
 });
 
 test('role demo bulk ballot generation respects the configured maximum', function (): void {

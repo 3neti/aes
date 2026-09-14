@@ -2,8 +2,12 @@
 
 namespace App\Election\Printing\Documents;
 
+use App\Election\Truth\TruthQrPrintGeometry;
+
 final class OfficialBallotPdf
 {
+    private const BallotFaceQrSize = TruthQrPrintGeometry::DefaultQrSizePoints;
+
     /**
      * @param  array<string, mixed>  $payload
      * @param  array<string, mixed>  $configuration
@@ -52,10 +56,11 @@ final class OfficialBallotPdf
             ->values();
         $contestsByOffice = $contests->keyBy(fn (array $contest): string => $this->officeKey($contest));
         $rendered = [];
-        $y = 612.0;
+        $y = 640.0;
         $left = 42.0;
-        $gutter = 10.0;
+        $gutter = 8.0;
         $pairWidth = (511.0 - $gutter) / 2;
+        $contentBottom = 306.0;
 
         foreach ([
             ['type' => 'pair', 'offices' => ['president', 'vice president']],
@@ -77,7 +82,7 @@ final class OfficialBallotPdf
                 $height = max(
                     is_array($leftContest) ? $this->compactSingleContestHeight($document, $leftContest, $payload, $pairWidth) : 0,
                     is_array($rightContest) ? $this->compactSingleContestHeight($document, $rightContest, $payload, $pairWidth) : 0,
-                    54,
+                    28,
                 );
 
                 if (is_array($leftContest)) {
@@ -90,7 +95,7 @@ final class OfficialBallotPdf
                     $rendered[] = $rightOffice;
                 }
 
-                $y -= $height + 8;
+                $y -= $height + 5;
 
                 continue;
             }
@@ -104,13 +109,13 @@ final class OfficialBallotPdf
 
             $height = $this->compactGridContestHeight($document, $contest, $payload);
 
-            if ($y - $height < 168) {
-                $height = max(52, $y - 168);
+            if ($y - $height < $contentBottom) {
+                $height = max(34, $y - $contentBottom);
             }
 
             $this->drawCompactGridContest($document, $page, $contest, $payload, 42, $y, 511, $height);
             $rendered[] = $office;
-            $y -= $height + 8;
+            $y -= $height + 5;
         }
 
         foreach ($contests as $contest) {
@@ -122,15 +127,15 @@ final class OfficialBallotPdf
 
             $height = min(
                 $this->compactSingleContestHeight($document, $contest, $payload, 511),
-                max(44, $y - 168),
+                max(28, $y - $contentBottom),
             );
 
-            if ($y - $height < 168) {
-                break;
+            if ($y - $height < $contentBottom) {
+                $height = max(28, $y - $contentBottom);
             }
 
             $this->drawCompactSingleContest($document, $page, $contest, $payload, 42, $y, 511, $height);
-            $y -= $height + 8;
+            $y -= $height + 5;
         }
 
         $this->drawCompactResultFooter($document, $page, $payload);
@@ -164,7 +169,7 @@ final class OfficialBallotPdf
             (string) ($configuration['jurisdiction_label'] ?? 'BARANGAY 147, TONDO, NATIONAL CAPITAL REGION - MANILA'),
             42,
             716,
-            210,
+            246,
             6.5,
             8,
             true,
@@ -175,21 +180,26 @@ final class OfficialBallotPdf
             'Verify every printed selection before depositing this paper ballot in the ballot box. Do not sign, mark, or remove this ballot from the precinct.',
             42,
             679,
-            230,
+            246,
             5.9,
             7.2,
         );
 
-        $document->image($page, 'BallotQr', 269, 676, 86, 86);
-        $document->text($page, 'SCAN FOR AUDIT VERIFICATION', 312, 666, 6.8, true, 'center');
-        $this->drawBrandingLogos($document, $page, 428, 714, 28);
-        $document->text($page, 'Clustered Precinct ID: '.$precinctId, 535, 702, 7, true, 'right');
-        $document->text($page, 'Precincts in Cluster: '.(string) ($configuration['precincts_in_cluster'] ?? '0538A, 0538B, 0538C'), 535, 689, 6.5, false, 'right');
-        $document->wrappedText($page, 'Paper serial: '.(string) ($payload['paper_ballot_serial'] ?? 'UNNUMBERED'), 370, 676, 165, 6, 7, false);
-        $document->wrappedText($page, 'Mapping hash: '.substr((string) ($payload['mapping_hash'] ?? 'unknown'), 0, 16), 370, 657, 165, 5.8, 7, false, true);
+        $this->drawBrandingLogos($document, $page, 462, 724, 18);
+        $document->text($page, 'Clustered Precinct ID: '.$precinctId, 42, 648, 7, true);
+        $document->text($page, 'Precincts in Cluster: '.(string) ($configuration['precincts_in_cluster'] ?? '0538A, 0538B, 0538C'), 42, 635, 6.4);
+        $document->wrappedText($page, 'Paper serial: '.(string) ($payload['paper_ballot_serial'] ?? 'UNNUMBERED'), 42, 622, 246, 6, 7);
+        $document->wrappedText($page, 'Mapping hash: '.substr((string) ($payload['mapping_hash'] ?? 'unknown'), 0, 16), 42, 603, 246, 5.8, 7, monospace: true);
 
-        $document->line($page, 42, 646, 553, 646, 0.7, 0.15);
-        $y = 628.0;
+        $qrX = 319.0;
+        $qrY = 506.0;
+        $document->rectangle($page, $qrX - 8, $qrY - 8, self::BallotFaceQrSize + 16, self::BallotFaceQrSize + 16, 1);
+        $document->rectangle($page, $qrX - 8, $qrY - 8, self::BallotFaceQrSize + 16, self::BallotFaceQrSize + 16, 0.08, false);
+        $document->image($page, 'BallotQr', $qrX, $qrY, self::BallotFaceQrSize, self::BallotFaceQrSize);
+        $document->text($page, 'SCAN FOR AUDIT VERIFICATION', $qrX + (self::BallotFaceQrSize / 2), $qrY - 18, 7.2, true, 'center');
+
+        $document->line($page, 42, 482, 553, 482, 0.7, 0.15);
+        $y = 464.0;
 
         foreach (($configuration['contests'] ?? []) as $index => $contest) {
             if (! is_array($contest)) {
@@ -205,7 +215,7 @@ final class OfficialBallotPdf
             }
 
             $this->drawSelectedContest($document, $page, $contest, $payload, $y, $index);
-            $y -= $blockHeight + 7;
+            $y -= $blockHeight + 4;
         }
 
         if ($y < 144) {
@@ -237,37 +247,37 @@ final class OfficialBallotPdf
      */
     private function drawCompactResultHeader(ElectionPdfDocument $document, int $page, array $payload, array $configuration, string $precinctId): void
     {
-        $this->drawBrandingLogos($document, $page, 452, 786, 24);
-        $document->text($page, 'Election', 42, 724, 7, true);
-        $document->wrappedText($page, (string) ($payload['election_id'] ?? 'unknown'), 92, 724, 180, 7, 8);
-        $document->text($page, 'Precinct', 302, 724, 7, true);
-        $document->wrappedText($page, $precinctId, 354, 724, 64, 7, 8);
-        $document->text($page, 'Serial', 426, 724, 7, true);
-        $document->wrappedText($page, (string) ($payload['paper_ballot_serial'] ?? 'UNNUMBERED'), 462, 724, 88, 6, 7);
+        $document->rectangle($page, 42, 690, 511, 39, 0.96);
+        $document->text($page, 'Election', 52, 715, 6.4, true);
+        $document->wrappedText($page, (string) ($payload['election_id'] ?? 'unknown'), 91, 715, 168, 6.2, 7);
+        $document->text($page, 'Precinct', 276, 715, 6.4, true);
+        $document->wrappedText($page, $precinctId, 316, 715, 66, 6.2, 7);
+        $document->text($page, 'Serial', 394, 715, 6.4, true);
+        $document->wrappedText($page, (string) ($payload['paper_ballot_serial'] ?? 'UNNUMBERED'), 427, 715, 116, 5.6, 6.4);
 
-        $document->text($page, 'Locality', 42, 704, 7, true);
+        $document->text($page, 'Locality', 52, 698, 6.4, true);
         $document->wrappedText(
             $page,
             (string) ($configuration['jurisdiction_label'] ?? 'CITY OF MANILA, NATIONAL CAPITAL REGION'),
-            92,
-            704,
-            250,
+            91,
+            698,
+            218,
+            6.2,
             7,
-            8,
         );
-        $document->text($page, 'Ballot', 360, 704, 7, true);
-        $document->wrappedText($page, (string) ($payload['ballot_id'] ?? 'unknown'), 398, 704, 152, 6, 7, monospace: true);
+        $document->text($page, 'Ballot', 326, 698, 6.4, true);
+        $document->wrappedText($page, (string) ($payload['ballot_id'] ?? 'unknown'), 359, 698, 184, 5.6, 6.4, monospace: true);
 
-        $document->rectangleRgb($page, 42, 637, 511, 26, [0.72, 0.86, 0.98]);
-        $document->text($page, 'SELECTED CANDIDATES ONLY', 54, 653, 8, true);
+        $document->rectangleRgb($page, 42, 655, 511, 23, [0.72, 0.86, 0.98]);
+        $document->text($page, 'SELECTED CANDIDATES ONLY', 54, 670, 7.2, true);
         $document->wrappedText(
             $page,
-            'The voter verifies this paper before deposit. The QR below carries the audit verification payload for this ballot.',
-            54,
-            642,
-            460,
-            6.6,
-            7.6,
+            'Verify the selected names and the QR before depositing this ballot.',
+            178,
+            670,
+            360,
+            6.2,
+            7,
         );
     }
 
@@ -281,11 +291,11 @@ final class OfficialBallotPdf
         $lineCount = max(
             1,
             collect($rows)
-                ->map(fn (array $candidate): int => max(1, count($document->wrap($this->selectedCandidateLabel($candidate), $width - 42, 7.2))))
+                ->map(fn (array $candidate): int => max(1, count($document->wrap($this->selectedCandidateLabel($candidate), $width - 34, 5.9))))
                 ->sum(),
         );
 
-        return 25 + ($lineCount * 9.4);
+        return 15 + ($lineCount * 7.3);
     }
 
     /**
@@ -295,23 +305,23 @@ final class OfficialBallotPdf
     private function drawCompactSingleContest(ElectionPdfDocument $document, int $page, array $contest, array $payload, float $left, float $top, float $width, float $height): void
     {
         $document->rectangle($page, $left, $top - $height, $width, $height, 1, false);
-        $this->contestHeaderRectangle($document, $page, $left, $top - 15, $width, 15, [0.72, 0.91, 0.78]);
-        $document->text($page, $this->compactOfficeTitle($contest), $left + 8, $top - 10.2, 7, true);
+        $this->contestHeaderRectangle($document, $page, $left, $top - 10.5, $width, 10.5, [0.72, 0.91, 0.78]);
+        $document->text($page, $this->compactOfficeTitle($contest), $left + 6, $top - 7.6, 5.8, true);
 
         $rows = $this->selectedCandidateRows($contest, $payload);
 
         if ($rows === []) {
-            $document->text($page, 'No selection recorded.', $left + 11, $top - 30, 6.8);
+            $document->text($page, 'No selection recorded.', $left + 8, $top - 22, 5.8);
 
             return;
         }
 
-        $y = $top - 27;
+        $y = $top - 20;
 
         foreach ($rows as $candidate) {
-            $document->circle($page, $left + 12, $y + 2.4, 3.3, fill: true);
-            $document->text($page, (string) ($candidate['ballot_number'] ?? $candidate['ordinal'] ?? ''), $left + 22, $y, 6.3, true);
-            $y = $document->wrappedText($page, $this->selectedCandidateLabel($candidate), $left + 40, $y + 2.2, $width - 46, 7.2, 8.4, true);
+            $document->circle($page, $left + 9, $y + 1.8, 2.4, fill: true);
+            $document->text($page, (string) ($candidate['ballot_number'] ?? $candidate['ordinal'] ?? ''), $left + 17, $y, 5.2, true);
+            $y = $document->wrappedText($page, $this->selectedCandidateLabel($candidate), $left + 31, $y + 1.7, $width - 36, 5.9, 6.8, true);
         }
     }
 
@@ -324,10 +334,10 @@ final class OfficialBallotPdf
         $rows = $this->selectedCandidateRows($contest, $payload);
         $rowCount = max(1, (int) ceil(count($rows) / 3));
         $lineCount = collect($rows)
-            ->map(fn (array $candidate): int => count($document->wrap($this->selectedCandidateLabel($candidate), 126, 6.4)))
+            ->map(fn (array $candidate): int => count($document->wrap($this->selectedCandidateLabel($candidate), 125, 5.6)))
             ->max() ?: 1;
 
-        return 21 + ($rowCount * max(22, 9 + ($lineCount * 7.2)));
+        return 13 + ($rowCount * max(13, 5 + ($lineCount * 6.2)));
     }
 
     /**
@@ -337,34 +347,34 @@ final class OfficialBallotPdf
     private function drawCompactGridContest(ElectionPdfDocument $document, int $page, array $contest, array $payload, float $left, float $top, float $width, float $height): void
     {
         $document->rectangle($page, $left, $top - $height, $width, $height, 1, false);
-        $this->contestHeaderRectangle($document, $page, $left, $top - 15, $width, 15, [0.72, 0.86, 0.98]);
-        $document->text($page, sprintf('%s / %d selected', $this->compactOfficeTitle($contest), count($this->selectedCandidateRows($contest, $payload))), $left + 8, $top - 10.2, 7, true);
+        $this->contestHeaderRectangle($document, $page, $left, $top - 10.5, $width, 10.5, [0.72, 0.86, 0.98]);
+        $document->text($page, sprintf('%s / %d selected', $this->compactOfficeTitle($contest), count($this->selectedCandidateRows($contest, $payload))), $left + 6, $top - 7.6, 5.8, true);
 
         $rows = $this->selectedCandidateRows($contest, $payload);
 
         if ($rows === []) {
-            $document->text($page, 'No selection recorded.', $left + 11, $top - 31, 6.8);
+            $document->text($page, 'No selection recorded.', $left + 8, $top - 23, 5.8);
 
             return;
         }
 
         $columnWidth = $width / 3;
-        $cellHeight = max(20, ($height - 15) / max(1, ceil(count($rows) / 3)));
+        $cellHeight = max(13, ($height - 10.5) / max(1, ceil(count($rows) / 3)));
 
         foreach (range(1, 2) as $columnLine) {
             $x = $left + ($columnLine * $columnWidth);
-            $document->line($page, $x, $top - 15, $x, $top - $height, 0.25, 0.65);
+            $document->line($page, $x, $top - 10.5, $x, $top - $height, 0.25, 0.65);
         }
 
         foreach ($rows as $index => $candidate) {
             $column = $index % 3;
             $row = intdiv($index, 3);
             $x = $left + ($column * $columnWidth);
-            $y = $top - 29 - ($row * $cellHeight);
+            $y = $top - 20.5 - ($row * $cellHeight);
 
-            $document->circle($page, $x + 10, $y + 2.2, 3, fill: true);
-            $document->text($page, (string) ($candidate['ballot_number'] ?? $candidate['ordinal'] ?? ''), $x + 19, $y, 5.8, true);
-            $document->wrappedText($page, $this->selectedCandidateLabel($candidate), $x + 34, $y + 2, $columnWidth - 38, 6.4, 7.2, true);
+            $document->circle($page, $x + 8, $y + 1.8, 2.2, fill: true);
+            $document->text($page, (string) ($candidate['ballot_number'] ?? $candidate['ordinal'] ?? ''), $x + 15, $y, 4.9, true);
+            $document->wrappedText($page, $this->selectedCandidateLabel($candidate), $x + 28, $y + 1.6, $columnWidth - 31, 5.6, 6.2, true);
         }
     }
 
@@ -373,31 +383,48 @@ final class OfficialBallotPdf
      */
     private function drawCompactResultFooter(ElectionPdfDocument $document, int $page, array $payload): void
     {
-        $document->line($page, 42, 176, 553, 176, 0.7, 0.2);
-        $document->text($page, 'VOTER VERIFICATION BEFORE DEPOSIT', 42, 157, 8.5, true);
+        $qrX = 337.0;
+        $qrY = 68.0;
+
+        $document->line($page, 42, 306, 553, 306, 0.7, 0.2);
+        $document->text($page, 'VOTER VERIFICATION BEFORE DEPOSIT', 42, 284, 7.6, true);
         $document->wrappedText(
             $page,
-            'If any selected name is wrong, incomplete, or unreadable, return this paper to the Electoral Board for spoilage and replacement before deposit.',
+            'If any selected name is wrong, incomplete, or unreadable, return this paper for spoilage and replacement before deposit.',
             42,
-            143,
-            330,
-            6.8,
-            8,
+            269,
+            250,
+            6.1,
+            7.1,
         );
 
-        $document->rectangle($page, 422, 72, 98, 98, 0.97);
-        $document->image($page, 'BallotQr', 428, 78, 86, 86);
-        $document->text($page, 'Ballot QR Verification', 471, 60, 7.4, true, 'center');
+        $document->rectangle($page, $qrX - 8, $qrY - 8, self::BallotFaceQrSize + 16, self::BallotFaceQrSize + 16, 1);
+        $document->rectangle($page, $qrX - 8, $qrY - 8, self::BallotFaceQrSize + 16, self::BallotFaceQrSize + 16, 0.08, false);
+        $document->image($page, 'BallotQr', $qrX, $qrY, self::BallotFaceQrSize, self::BallotFaceQrSize);
+        $document->text($page, 'Ballot QR Verification', $qrX + (self::BallotFaceQrSize / 2), 292, 7.2, true, 'center');
         $document->wrappedText(
             $page,
             substr((string) ($payload['payload_hash'] ?? 'unknown'), 0, 32),
             42,
-            100,
-            330,
+            226,
+            250,
             6.2,
             7.2,
             monospace: true,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function drawCompactContinuationHeader(ElectionPdfDocument $document, int $page, array $payload, string $precinctId): void
+    {
+        $this->drawBrandingLogos($document, $page, 452, 786, 24);
+        $document->text($page, "Voter's Result Ballot", 42, 804, 18, true);
+        $document->text($page, 'Selected candidates continued', 42, 786, 8);
+        $document->text($page, 'Precinct '.$precinctId, 42, 766, 7, true);
+        $document->wrappedText($page, 'Ballot '.(string) ($payload['ballot_id'] ?? 'unknown'), 132, 766, 260, 7, 8, monospace: true);
+        $document->line($page, 42, 748, 553, 748, 0.7, 0.2);
     }
 
     /**
@@ -456,7 +483,7 @@ final class OfficialBallotPdf
             ->map(fn (array $candidate): int => max(1, count($document->wrap($this->selectedCandidateLabel($candidate), 420, 7.3))))
             ->sum();
 
-        return 21 + max($rowCount, $candidateLineCount) * 17;
+        return 17 + max($rowCount, $candidateLineCount) * 13;
     }
 
     /**
@@ -470,9 +497,9 @@ final class OfficialBallotPdf
         $height = $this->selectedContestHeight($document, $contest, $payload);
         $selectedCandidates = $this->selectedCandidateRows($contest, $payload);
 
-        $this->contestHeaderRectangle($document, $page, $left, $top - 16, $width, 16, $this->contestHeaderColor($index));
-        $document->text($page, sprintf('%s / Vote for %d', mb_strtoupper((string) ($contest['office'] ?? $contest['title'] ?? 'CONTEST')), (int) ($contest['max_selections'] ?? 1)), $left + ($width / 2), $top - 11, 7.2, true, 'center');
-        $document->rectangle($page, $left, $top - $height, $width, $height - 16, 1, false);
+        $this->contestHeaderRectangle($document, $page, $left, $top - 13, $width, 13, $this->contestHeaderColor($index));
+        $document->text($page, sprintf('%s / Vote for %d', mb_strtoupper((string) ($contest['office'] ?? $contest['title'] ?? 'CONTEST')), (int) ($contest['max_selections'] ?? 1)), $left + ($width / 2), $top - 9.5, 6.8, true, 'center');
+        $document->rectangle($page, $left, $top - $height, $width, $height - 13, 1, false);
 
         if ($selectedCandidates === []) {
             $document->text($page, 'No selection recorded for this contest.', $left + 16, $top - 37, 7.5, false);
@@ -480,15 +507,15 @@ final class OfficialBallotPdf
             return;
         }
 
-        $rowTop = $top - 16;
+        $rowTop = $top - 13;
 
         foreach ($selectedCandidates as $candidate) {
-            $rowHeight = max(17, count($document->wrap($this->selectedCandidateLabel($candidate), 420, 7.3)) * 9 + 8);
+            $rowHeight = max(13, count($document->wrap($this->selectedCandidateLabel($candidate), 420, 6.9)) * 7.5 + 5);
             $rowBottom = $rowTop - $rowHeight;
             $document->line($page, $left, $rowBottom, $left + $width, $rowBottom, 0.25, 0.5);
-            $document->circle($page, $left + 16, $rowTop - 9.5, 3.8, fill: true);
-            $document->text($page, (string) ($candidate['ballot_number'] ?? $candidate['ordinal'] ?? ''), $left + 30, $rowTop - 12, 6.8, true);
-            $document->wrappedText($page, $this->selectedCandidateLabel($candidate), $left + 58, $rowTop - 9, 420, 7.3, 8.5, true);
+            $document->circle($page, $left + 15, $rowTop - 7.4, 3.3, fill: true);
+            $document->text($page, (string) ($candidate['ballot_number'] ?? $candidate['ordinal'] ?? ''), $left + 29, $rowTop - 9.4, 6.3, true);
+            $document->wrappedText($page, $this->selectedCandidateLabel($candidate), $left + 55, $rowTop - 6.6, 420, 6.9, 7.5, true);
             $rowTop = $rowBottom;
         }
     }

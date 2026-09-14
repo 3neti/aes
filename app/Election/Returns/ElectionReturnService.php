@@ -73,17 +73,36 @@ final class ElectionReturnService
      */
     private function truthTallyArtifacts(array $return): array
     {
-        $canonicalPayload = $this->qrPayload->encode($return, ElectionReturnScope::Combined);
+        $scopedArtifacts = collect(ElectionReturnScope::splitScopes())
+            ->mapWithKeys(fn (ElectionReturnScope $scope): array => [
+                $scope->value => $this->truthTallyArtifactsForScope($return, $scope),
+            ])
+            ->all();
+
+        return [
+            ...$scopedArtifacts[ElectionReturnScope::Combined->value],
+            'scopes' => $scopedArtifacts,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $return
+     * @return array<string, mixed>
+     */
+    private function truthTallyArtifactsForScope(array $return, ElectionReturnScope $scope): array
+    {
+        $canonicalPayload = $this->qrPayload->encode($return, $scope);
         $qrPayloads = $this->envelope->wrap($canonicalPayload);
-        $payloadHash = $this->qrPayload->compactHash($return, ElectionReturnScope::Combined);
+        $payloadHash = $this->qrPayload->compactHash($return, $scope);
         $precinctId = (string) ($return['precinct_id'] ?? 'unknown');
+        $scopeSuffix = $scope === ElectionReturnScope::Combined ? '' : "-{$scope->value}";
         $artifacts = [];
 
         foreach ($qrPayloads as $index => $payload) {
             $sequence = $index + 1;
             $relativePath = count($qrPayloads) === 1
-                ? "returns/{$precinctId}-truth-tally-qr.png"
-                : "returns/{$precinctId}-truth-tally-qr-{$sequence}-of-".count($qrPayloads).'.png';
+                ? "returns/{$precinctId}-truth-tally{$scopeSuffix}-qr.png"
+                : "returns/{$precinctId}-truth-tally{$scopeSuffix}-qr-{$sequence}-of-".count($qrPayloads).'.png';
             $artifacts[] = [
                 'sequence' => $sequence,
                 'total' => count($qrPayloads),
@@ -99,6 +118,7 @@ final class ElectionReturnService
             'schema_version' => 'truth-tally-election-return-1',
             'payload_version' => ElectionReturnQrPayload::PayloadVersion,
             'payload_type' => ElectionReturnPayloadEnvelope::PayloadType,
+            'return_scope' => $scope->value,
             'payload_hash' => $payloadHash,
             'canonical_payload' => $canonicalPayload,
             'qr_count' => count($qrPayloads),

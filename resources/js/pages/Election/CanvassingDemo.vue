@@ -10,6 +10,10 @@ import {
 } from 'vue';
 import ScanLedger from '@/components/election/ScanLedger.vue';
 import TallyBoard from '@/components/election/TallyBoard.vue';
+import {
+    parseElectionReturnEnvelopeMetadata,
+    type ErEnvelopeMetadata,
+} from '@/components/election/truthQr';
 
 type Tally = Record<string, Record<string, number>>;
 
@@ -125,21 +129,6 @@ type ScannerState = {
     latest_status?: string | null;
 };
 
-type ErEnvelopeMetadata =
-    | {
-          kind: 'complete';
-          totalParts: 1;
-      }
-    | {
-          kind: 'fragment';
-          groupId: string;
-          partNumber: number;
-          totalParts: number;
-      }
-    | {
-          kind: 'unknown';
-      };
-
 const props = defineProps<{
     simulation: {
         maximum_ballots: number;
@@ -246,7 +235,9 @@ const scannerPulsePercent = computed(() => {
     );
 });
 const nextPayloadMetadata = computed(() =>
-    nextPayload.value ? parseErEnvelopeMetadata(nextPayload.value) : null,
+    nextPayload.value
+        ? parseElectionReturnEnvelopeMetadata(nextPayload.value)
+        : null,
 );
 const nextDemoPayloadLabel = computed(() => {
     if (!nextReturn.value) {
@@ -751,56 +742,6 @@ function cloneTally(tally: Tally): Tally {
     );
 }
 
-function parseErEnvelopeMetadata(payload: string): ErEnvelopeMetadata {
-    try {
-        const url = new URL(payload);
-        const segments = url.pathname.split('/').filter(Boolean);
-
-        if (
-            url.protocol !== 'truth:' ||
-            url.hostname !== 'v1' ||
-            segments[0] !== 'waes-election-return'
-        ) {
-            return { kind: 'unknown' };
-        }
-
-        if (segments[1] === 'waes-er-compact-1') {
-            return {
-                kind: 'complete',
-                totalParts: 1,
-            };
-        }
-
-        if (segments[1] !== 'waes-er-fragment-1') {
-            return { kind: 'unknown' };
-        }
-
-        const partNumber = Number.parseInt(segments[2] ?? '', 10);
-        const totalParts = Number.parseInt(segments[3] ?? '', 10);
-        const groupId = url.searchParams.get('h') ?? '';
-
-        if (
-            !Number.isInteger(partNumber) ||
-            !Number.isInteger(totalParts) ||
-            partNumber < 1 ||
-            totalParts < 2 ||
-            partNumber > totalParts ||
-            groupId === ''
-        ) {
-            return { kind: 'unknown' };
-        }
-
-        return {
-            kind: 'fragment',
-            groupId,
-            partNumber,
-            totalParts,
-        };
-    } catch {
-        return { kind: 'unknown' };
-    }
-}
-
 watch(
     () => props.simulation.run?.generated_at ?? null,
     (generatedAt, previousGeneratedAt) => {
@@ -895,7 +836,7 @@ onBeforeUnmount(() => {
                 </section>
 
                 <section class="border border-stone-300 bg-white p-3">
-                    <h2 class="font-bold">Generate precinct returns</h2>
+                    <h2 class="font-bold">Load demo Election Returns</h2>
                     <Form
                         :action="actions.generate"
                         method="post"
@@ -948,11 +889,7 @@ onBeforeUnmount(() => {
                             class="min-h-10 bg-blue-800 px-4 font-bold text-white disabled:cursor-not-allowed disabled:bg-stone-400"
                             :disabled="processing"
                         >
-                            {{
-                                processing
-                                    ? 'Generating...'
-                                    : 'Generate ER payload'
-                            }}
+                            {{ processing ? 'Loading...' : 'Load demo ERs' }}
                         </button>
                     </Form>
                     <div class="mt-3 grid grid-cols-2 gap-2">
@@ -972,7 +909,7 @@ onBeforeUnmount(() => {
                 </section>
 
                 <section class="border border-stone-300 bg-white p-3">
-                    <h2 class="font-bold">Generated ERs</h2>
+                    <h2 class="font-bold">Loaded ERs</h2>
                     <dl v-if="simulation.run" class="mt-2 grid gap-1.5 text-xs">
                         <div class="flex justify-between gap-4">
                             <dt class="font-bold text-stone-600">ERs</dt>
@@ -1034,7 +971,7 @@ onBeforeUnmount(() => {
                         </div>
                     </dl>
                     <p v-else class="mt-3 text-sm text-stone-600">
-                        No election returns have been generated yet.
+                        No election returns have been loaded yet.
                     </p>
                 </section>
 

@@ -4,6 +4,7 @@ namespace App\Election\Returns;
 
 use App\Election\Core\CanonicalJson;
 use App\Election\Documents\DocumentProfileRegistry;
+use App\Election\Support\ElectionStorage;
 use App\Election\Voting\CandidateCodeMap;
 use RuntimeException;
 
@@ -17,6 +18,8 @@ final class ElectionReturnQrPayload
         private readonly CanonicalJson $json,
         private readonly CandidateCodeMap $candidateCodes,
         private readonly DocumentProfileRegistry $documents,
+        private readonly ElectionReturnContestScopes $scopes,
+        private readonly ElectionStorage $storage,
     ) {}
 
     /**
@@ -118,8 +121,34 @@ final class ElectionReturnQrPayload
             'tally_hash' => $return['tally_hash'] ?? null,
             'return_hash' => $return['return_hash'] ?? null,
             'document_profile' => $return['document_profile'] ?? $this->documents->electionReturnReference(),
-            'candidate_code_totals' => $this->candidateCodes->codeTotalsForTally((array) ($return['tally'] ?? [])),
+            'candidate_code_totals' => $this->candidateCodes->codeTotalsForTally(
+                $this->scopedTally((array) ($return['tally'] ?? []), $scope),
+            ),
         ];
+    }
+
+    /**
+     * @param  array<string, array<string, int>>  $tally
+     * @return array<string, array<string, int>>
+     */
+    private function scopedTally(array $tally, ElectionReturnScope $scope): array
+    {
+        if ($scope === ElectionReturnScope::Combined) {
+            return $tally;
+        }
+
+        $configuration = $this->scopes->configurationFor(
+            $this->storage->readJson('runtime/active-precinct.json'),
+            $scope,
+        );
+        $contestIds = collect($configuration['contests'] ?? [])
+            ->map(fn (array $contest): string => (string) ($contest['id'] ?? ''))
+            ->filter()
+            ->flip();
+
+        return collect($tally)
+            ->filter(fn (array $candidateTotals, string $contestId): bool => $contestIds->has($contestId))
+            ->all();
     }
 
     /** @param array<string, int> $totals */

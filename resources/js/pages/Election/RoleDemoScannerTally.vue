@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import ScanLedger from '@/components/election/ScanLedger.vue';
 import TallyBoard from '@/components/election/TallyBoard.vue';
+import { type CandidateCodeMapEntry } from '@/components/election/truthQr';
 import { index as roleDemoIndex } from '@/routes/election/role-demo';
 
 type Tally = Record<string, Record<string, number>>;
@@ -65,6 +66,19 @@ type LedgerDocument = {
     };
 };
 
+type ScannerState = {
+    station_id: string;
+    revision: number;
+    accepted_ballot_hashes: string[];
+    latest_accepted_ballot_hash?: string | null;
+    accepted_count: number;
+    tally: Tally;
+    scan_events: ScanLogEntry[];
+    accepted_ballots: ScannerBallot[];
+    latest_message?: string | null;
+    latest_status?: string | null;
+};
+
 const props = defineProps<{
     precinct: {
         code: string;
@@ -88,6 +102,10 @@ const props = defineProps<{
         scanner: {
             ballots: ScannerBallot[];
             initial_tally: Tally;
+            candidate_code_map: {
+                mapping_hash: string | null;
+                candidates: Record<string, CandidateCodeMapEntry>;
+            };
         };
         document_rendering: {
             profiles: Record<string, Record<string, unknown>>;
@@ -98,15 +116,28 @@ const props = defineProps<{
             };
         };
     };
+    scannerState: ScannerState;
+    actions: {
+        scannerState: string;
+        scannerIngest: string;
+        scannerReset: string;
+        simulatorTick: string;
+        publicBoard: string;
+        roleDemo: string;
+    };
 }>();
 
-const scannedBallots = ref<ScannerBallot[]>([]);
-const scanEvents = ref<ScanLogEntry[]>([]);
-const runningTally = ref<Tally>(
-    cloneTally(props.simulation.scanner.initial_tally),
+const stationId = 'role-demo-precinct';
+const liveScannerState = ref<ScannerState>({ ...props.scannerState });
+const scannedBallots = computed(() => liveScannerState.value.accepted_ballots);
+const scanEvents = computed(() => liveScannerState.value.scan_events);
+const runningTally = computed(() => liveScannerState.value.tally);
+const lastScanDelta = computed(() =>
+    latestAcceptedBallot.value
+        ? deltaForTally(latestAcceptedBallot.value.this_ballot_tally)
+        : {},
 );
-const lastScanDelta = ref<TallyDelta>({});
-const lastScanFlashKey = ref(0);
+const lastScanFlashKey = computed(() => liveScannerState.value.revision);
 const scannerStatus = ref<'ready' | 'scanning'>('ready');
 const automaticScanner = ref<number | null>(null);
 const scannerCaptureEnabled = ref(true);
@@ -117,12 +148,26 @@ const hardwareScanStatus = ref('Ready for scanner input.');
 const manualScanInput = ref<HTMLTextAreaElement | null>(null);
 
 const nextBallot = computed(
-    () => props.simulation.scanner.ballots[scannedBallots.value.length] ?? null,
+    () =>
+        props.simulation.scanner.ballots.find(
+            (ballot) =>
+                !liveScannerState.value.accepted_ballot_hashes.includes(
+                    ballot.payload_hash,
+                ),
+        ) ?? null,
 );
 const lastBallot = computed(
     () => scannedBallots.value[scannedBallots.value.length - 1] ?? null,
 );
-const scannedCount = computed(() => scannedBallots.value.length);
+const latestAcceptedBallot = computed(
+    () =>
+        scannedBallots.value.find(
+            (ballot) =>
+                ballot.payload_hash ===
+                liveScannerState.value.latest_accepted_ballot_hash,
+        ) ?? lastBallot.value,
+);
+const scannedCount = computed(() => liveScannerState.value.accepted_count);
 const scannerPulsePercent = computed(() =>
     scannerStatus.value === 'scanning' ? 72 : scannedCount.value > 0 ? 100 : 0,
 );
@@ -150,8 +195,7 @@ function scanNext(): void {
     const payload = nextBallot.value.payload;
 
     window.setTimeout(() => {
-        processBallotPayload(payload, 'Sample feed');
-        scannerStatus.value = 'ready';
+        void processBallotPayload(payload, 'demo_feed');
     }, 220);
 }
 
@@ -182,25 +226,35 @@ function stopAutomaticScanner(): void {
     automaticScanner.value = null;
 }
 
-function resetScanner(): void {
+async function resetScanner(): Promise<void> {
     stopAutomaticScanner();
-    scannedBallots.value = [];
-    scanEvents.value = [];
     keyboardScanBuffer.value = '';
     manualScanPayload.value = '';
-    hardwareScanStatus.value = 'Ready for scanner input.';
-    runningTally.value = cloneTally(props.simulation.scanner.initial_tally);
-    lastScanDelta.value = {};
-    lastScanFlashKey.value += 1;
     scannerStatus.value = 'ready';
+
+    try {
+        const response = await fetch(props.actions.scannerReset, {
+            method: 'POST',
+            headers: jsonHeaders(),
+            body: JSON.stringify({ station_id: stationId }),
+        });
+        const state = await response.json();
+
+        if (response.ok) {
+            liveScannerState.value = state;
+            hardwareScanStatus.value = state.latest_message;
+        }
+    } catch {
+        hardwareScanStatus.value = 'Scanner reset failed.';
+    }
 }
 
 function submitManualScan(): void {
-    processBallotPayload(manualScanPayload.value, 'Hardware scan');
+    void processBallotPayload(manualScanPayload.value, 'keyboard_wedge');
     manualScanPayload.value = '';
 }
 
-function processBallotPayload(payload: string, source: string): void {
+async function processBallotPayload(payload: string, source: string): Promise<void> {
     const normalizedPayload = payload.trim();
 
     if (!normalizedPayload) {
@@ -209,69 +263,33 @@ function processBallotPayload(payload: string, source: string): void {
         return;
     }
 
-    if (!normalizedPayload.startsWith('truth://')) {
-        rejectScan('Rejected ballot QR', 'Payload is not a truth:// URI');
+    scannerStatus.value = 'scanning';
 
-        return;
-    }
-
-    const ballot = props.simulation.scanner.ballots.find(
-        (candidate) => candidate.payload === normalizedPayload,
-    );
-
-    if (!ballot) {
-        rejectScan(
-            'Rejected ballot QR',
-            'Payload is not in this scanner sample set',
-        );
-
-        return;
-    }
-
-    if (
-        scannedBallots.value.some(
-            (scannedBallot) =>
-                scannedBallot.payload_hash === ballot.payload_hash,
-        )
-    ) {
-        scanEvents.value.push({
-            id: `duplicate-${ballot.payload_hash}-${scanEvents.value.length}`,
-            title: `Duplicate ballot ${ballot.sequence}`,
-            subtitle: String(ballot.paper_ballot_serial ?? ''),
-            meta: `${source} · already accepted`,
-            hash: ballot.payload_hash,
-            status: 'duplicate',
+    try {
+        const response = await fetch(props.actions.scannerIngest, {
+            method: 'POST',
+            headers: jsonHeaders(),
+            body: JSON.stringify({
+                station_id: stationId,
+                source,
+                payload: normalizedPayload,
+            }),
         });
-        hardwareScanStatus.value = `Duplicate ballot ${ballot.sequence}.`;
+        const result = await response.json();
 
-        return;
+        if (result.state) {
+            liveScannerState.value = result.state;
+        }
+
+        hardwareScanStatus.value =
+            result.state?.latest_message ??
+            result.event?.meta ??
+            'Scan recorded.';
+    } catch {
+        hardwareScanStatus.value = 'Scanner endpoint is temporarily unavailable.';
+    } finally {
+        scannerStatus.value = 'ready';
     }
-
-    const delta = deltaForSelections(ballot.selections);
-
-    scannedBallots.value.push(ballot);
-    scanEvents.value.push({
-        id: `${ballot.payload_hash}-${scanEvents.value.length}`,
-        title: `Ballot ${ballot.sequence}`,
-        subtitle: String(ballot.paper_ballot_serial ?? ''),
-        meta: `${source} · single QR document`,
-        hash: ballot.payload_hash,
-        status: 'accepted',
-    });
-    addSelections(ballot.selections);
-    lastScanDelta.value = delta;
-    lastScanFlashKey.value += 1;
-    hardwareScanStatus.value = `Accepted ballot ${ballot.sequence}.`;
-}
-
-function rejectScan(title: string, meta: string): void {
-    scanEvents.value.push({
-        id: `rejected-${scanEvents.value.length}`,
-        title,
-        meta,
-        status: 'rejected',
-    });
-    hardwareScanStatus.value = meta;
 }
 
 function handleGlobalScannerKeydown(event: KeyboardEvent): void {
@@ -289,7 +307,7 @@ function handleGlobalScannerKeydown(event: KeyboardEvent): void {
 
     if (event.key === 'Enter' || event.key === 'NumpadEnter') {
         if (keyboardScanBuffer.value !== '') {
-            processBallotPayload(keyboardScanBuffer.value, 'Hardware scan');
+            void processBallotPayload(keyboardScanBuffer.value, 'keyboard_wedge');
             keyboardScanBuffer.value = '';
             event.preventDefault();
         }
@@ -445,20 +463,23 @@ function pastedPayloadFrom(text: string): string {
     return truthPayload ?? trimmedText;
 }
 
-function deltaForSelections(selections: Record<string, string[]>): TallyDelta {
+function deltaForTally(tally: Tally): TallyDelta {
     const delta: TallyDelta = {};
 
-    Object.entries(selections).forEach(([contestId, candidateIds]) => {
-        candidateIds.forEach((candidateId) => {
+    Object.entries(tally).forEach(([contestId, candidateVotes]) => {
+        Object.entries(candidateVotes).forEach(([candidateId, addedVotes]) => {
+            if (addedVotes < 1) {
+                return;
+            }
+
             const previousTotal =
                 runningTally.value[contestId]?.[candidateId] ?? 0;
-            const currentDelta = delta[contestId]?.[candidateId];
 
             delta[contestId] ??= {};
             delta[contestId][candidateId] = {
-                previousTotal,
-                addedVotes: (currentDelta?.addedVotes ?? 0) + 1,
-                finalTotal: previousTotal + (currentDelta?.addedVotes ?? 0) + 1,
+                previousTotal: Math.max(0, previousTotal - addedVotes),
+                addedVotes,
+                finalTotal: previousTotal,
             };
         });
     });
@@ -466,24 +487,23 @@ function deltaForSelections(selections: Record<string, string[]>): TallyDelta {
     return delta;
 }
 
-function addSelections(selections: Record<string, string[]>): void {
-    Object.entries(selections).forEach(([contestId, candidateIds]) => {
-        runningTally.value[contestId] ??= {};
-
-        candidateIds.forEach((candidateId) => {
-            runningTally.value[contestId][candidateId] =
-                (runningTally.value[contestId][candidateId] ?? 0) + 1;
-        });
-    });
+function csrfToken(): string | null {
+    return (
+        document
+            .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+            ?.getAttribute('content') ?? null
+    );
 }
 
-function cloneTally(tally: Tally): Tally {
-    return Object.fromEntries(
-        Object.entries(tally).map(([contestId, candidates]) => [
-            contestId,
-            { ...candidates },
-        ]),
-    );
+function jsonHeaders(): Record<string, string> {
+    const token = csrfToken();
+
+    return {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+    };
 }
 
 function sourceLabel(source: string): string {

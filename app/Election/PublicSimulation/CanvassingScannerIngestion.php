@@ -2,9 +2,11 @@
 
 namespace App\Election\PublicSimulation;
 
+use App\Election\Truth\TruthQrEnvelope;
 use App\Events\ScannerScanEventRecorded;
 use App\Models\ScannerScanEvent;
 use Illuminate\Support\Collection;
+use RuntimeException;
 
 final class CanvassingScannerIngestion
 {
@@ -12,6 +14,7 @@ final class CanvassingScannerIngestion
 
     public function __construct(
         private readonly CanvassingDemoSimulation $simulation,
+        private readonly TruthQrEnvelope $envelope,
     ) {}
 
     /**
@@ -155,54 +158,32 @@ final class CanvassingScannerIngestion
      */
     private function parseEnvelopeMetadata(string $payload): array
     {
-        $parts = parse_url($payload);
-
-        if (
-            ! is_array($parts)
-            || ($parts['scheme'] ?? null) !== 'truth'
-            || ($parts['host'] ?? null) !== 'v1'
-        ) {
+        try {
+            $metadata = $this->envelope->inspect($payload);
+        } catch (RuntimeException) {
             return ['kind' => 'unknown'];
         }
 
-        $segments = array_values(array_filter(explode('/', (string) ($parts['path'] ?? ''))));
-
-        if (($segments[0] ?? null) !== 'waes-election-return') {
+        if (($metadata['document_type'] ?? null) !== TruthQrEnvelope::ElectionReturnType) {
             return ['kind' => 'unknown'];
         }
 
-        if (($segments[1] ?? null) === 'waes-er-compact-1') {
+        if (($metadata['part_kind'] ?? null) === 'complete') {
             return [
                 'kind' => 'complete',
                 'total_parts' => 1,
             ];
         }
 
-        if (($segments[1] ?? null) !== 'waes-er-fragment-1') {
-            return ['kind' => 'unknown'];
-        }
-
-        $partNumber = filter_var($segments[2] ?? null, FILTER_VALIDATE_INT);
-        $totalParts = filter_var($segments[3] ?? null, FILTER_VALIDATE_INT);
-        parse_str((string) ($parts['query'] ?? ''), $query);
-        $groupId = is_string($query['h'] ?? null) ? $query['h'] : '';
-
-        if (
-            ! is_int($partNumber)
-            || ! is_int($totalParts)
-            || $partNumber < 1
-            || $totalParts < 2
-            || $partNumber > $totalParts
-            || $groupId === ''
-        ) {
+        if (($metadata['part_kind'] ?? null) !== 'fragment') {
             return ['kind' => 'unknown'];
         }
 
         return [
             'kind' => 'fragment',
-            'group_id' => $groupId,
-            'part_number' => $partNumber,
-            'total_parts' => $totalParts,
+            'group_id' => $metadata['group_id'],
+            'part_number' => $metadata['part_number'],
+            'total_parts' => $metadata['total_parts'],
         ];
     }
 

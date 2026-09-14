@@ -6,6 +6,7 @@ type Candidate = {
     id: string;
     name: string;
 };
+type CandidateSortMode = 'ballot' | 'votes';
 
 type Contest = {
     id: string;
@@ -28,6 +29,7 @@ const props = defineProps<{
     candidateTotals: Record<string, number>;
     candidateDeltas?: TallyDelta;
     flashKey?: string | number | null;
+    candidateSortMode?: CandidateSortMode;
 }>();
 
 const contestTotal = computed(() =>
@@ -41,6 +43,26 @@ const isLongContest = computed(
         props.contest.title.toLowerCase().includes('senator') ||
         props.contest.candidates.length > 18,
 );
+const sortedCandidates = computed(() => {
+    if (props.candidateSortMode === 'ballot') {
+        return props.contest.candidates;
+    }
+
+    return props.contest.candidates
+        .map((candidate, ballotIndex) => ({ ballotIndex, candidate }))
+        .sort((left, right) => {
+            const voteDifference =
+                (props.candidateTotals[right.candidate.id] ?? 0) -
+                (props.candidateTotals[left.candidate.id] ?? 0);
+
+            if (voteDifference !== 0) {
+                return voteDifference;
+            }
+
+            return left.ballotIndex - right.ballotIndex;
+        })
+        .map((candidatePosition) => candidatePosition.candidate);
+});
 </script>
 
 <template>
@@ -69,7 +91,7 @@ const isLongContest = computed(
             :class="{ 'sm:grid-cols-2': isLongContest }"
         >
             <TallyCandidateRow
-                v-for="candidate in contest.candidates"
+                v-for="candidate in sortedCandidates"
                 :key="candidate.id"
                 :candidate="candidate"
                 :votes="candidateTotals[candidate.id] ?? 0"

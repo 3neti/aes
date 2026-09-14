@@ -35,6 +35,7 @@ final class ActivityJournal
 
         $entry['event_hash'] = $this->json->hash($entry);
         $path = $this->storage->path('journals/activity.jsonl');
+        $this->files->ensureDirectoryExists(dirname($path));
         $this->files->append($path, json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL);
 
         return $entry;

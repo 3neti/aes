@@ -187,11 +187,7 @@ final class PrivateBallotRelease
             throw new RuntimeException('This paper ballot has already been printed.');
         }
 
-        $payload = $this->decryptPayload($record);
-        $payload['qr_artifact_path'] = $this->storage->writeText(
-            "ballots/{$payload['ballot_id']}-qr.png",
-            $this->qrCode->renderPng($payload['qr_payload']),
-        );
+        $payload = $this->withPrintQrArtifacts($this->decryptPayload($record), 'ballots');
         $job = $printer->print($payload);
         $record['status'] = 'printed';
         $record['printed_at'] = $this->clock->now()->toIso8601String();
@@ -218,11 +214,7 @@ final class PrivateBallotRelease
             throw new RuntimeException('This paper ballot has already been printed.');
         }
 
-        $payload = $this->decryptPayload($record);
-        $payload['qr_artifact_path'] = $this->storage->writeText(
-            "ballots/{$payload['ballot_id']}-qr.png",
-            $this->qrCode->renderPng($payload['qr_payload']),
-        );
+        $payload = $this->withPrintQrArtifacts($this->decryptPayload($record), 'ballots');
         $artifactPath = $this->storage->writeText(
             "ballots/{$payload['ballot_id']}-bulk-demo.txt",
             implode("\n", [
@@ -392,11 +384,7 @@ final class PrivateBallotRelease
             return null;
         }
 
-        $payload = $this->decryptPayload($record);
-        $payload['qr_artifact_path'] = $this->storage->writeText(
-            "ballots/previews/{$payload['ballot_id']}-qr.png",
-            $this->qrCode->renderPng($payload['qr_payload']),
-        );
+        $payload = $this->withPrintQrArtifacts($this->decryptPayload($record), 'ballots/previews');
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
         $selectedProfile = $profile ?? $this->profiles->default();
         $forms = $this->forms->writeBallot($payload, $configuration, $selectedProfile);
@@ -457,6 +445,27 @@ final class PrivateBallotRelease
             true,
             flags: JSON_THROW_ON_ERROR,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function withPrintQrArtifacts(array $payload, string $directory): array
+    {
+        $ballotId = (string) $payload['ballot_id'];
+        $qrPayload = (string) $payload['qr_payload'];
+
+        $payload['qr_artifact_path'] = $this->storage->writeText(
+            "{$directory}/{$ballotId}-qr.png",
+            $this->qrCode->renderPrintPng($qrPayload),
+        );
+        $payload['qr_svg_artifact_path'] = $this->storage->writeText(
+            "{$directory}/{$ballotId}-qr.svg",
+            $this->qrCode->renderSvg($qrPayload),
+        );
+
+        return $payload;
     }
 
     private function hash(string $code): string

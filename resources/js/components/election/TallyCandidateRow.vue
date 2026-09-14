@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import TallyMarks from '@/components/election/TallyMarks.vue';
+import { computed } from 'vue';
 
-defineProps<{
+const props = defineProps<{
     candidate: {
         id: string;
         name: string;
@@ -14,19 +15,27 @@ defineProps<{
     } | null;
     flashKey?: string | number | null;
 }>();
+
+const displayName = computed(() => {
+    const normalizedName = props.candidate.name
+        .replace(/^\s*\d{1,3}\s*(?:[.)\-:]\s*|\s+)/, '')
+        .trim();
+
+    return normalizedName.length > 0 ? normalizedName : props.candidate.name;
+});
 </script>
 
 <template>
     <div
-        class="grid min-h-8 grid-cols-[minmax(0,1fr)_3rem] items-center gap-x-2 gap-y-0.5 bg-white px-2 py-1"
+        class="grid min-h-8 grid-cols-[minmax(0,1fr)_3.5rem] items-center gap-x-2 gap-y-0.5 bg-white px-2 py-1"
     >
         <p
-            class="truncate text-xs leading-tight font-semibold"
-            :title="candidate.name"
+            class="truncate text-xs leading-tight font-semibold text-stone-950"
+            :title="displayName"
         >
-            {{ candidate.name }}
+            {{ displayName }}
         </p>
-        <p class="text-right font-mono text-sm font-black tabular-nums">
+        <p class="text-right font-mono text-base leading-none font-black tabular-nums text-blue-900">
             {{ votes }}
         </p>
         <div class="compact-tally col-span-2">

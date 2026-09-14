@@ -425,6 +425,7 @@ onBeforeUnmount(() => {
                 :contests="filteredContests"
                 :tally="runningTally"
                 :flash-key="scannerState.revision"
+                enable-candidate-sort
             >
                 <template #stats>
                     <p class="mt-2 font-bold">

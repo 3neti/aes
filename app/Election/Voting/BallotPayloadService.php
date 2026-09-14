@@ -57,7 +57,11 @@ final class BallotPayloadService
         $payload['qr_payload'] = $this->envelope->wrap($payload['canonical_qr_payload']);
         $payload['qr_artifact_path'] = $this->storage->writeText(
             "ballots/{$payload['ballot_id']}-qr.png",
-            $this->qrCode->renderPng($payload['qr_payload']),
+            $this->qrCode->renderPrintPng($payload['qr_payload']),
+        );
+        $payload['qr_svg_artifact_path'] = $this->storage->writeText(
+            "ballots/{$payload['ballot_id']}-qr.svg",
+            $this->qrCode->renderSvg($payload['qr_payload']),
         );
         $this->storage->writeJson("ballots/{$payload['ballot_id']}.json", $payload);
 

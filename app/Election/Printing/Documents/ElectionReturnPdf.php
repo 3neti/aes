@@ -4,6 +4,7 @@ namespace App\Election\Printing\Documents;
 
 use App\Election\Returns\ElectionReturnContestScopes;
 use App\Election\Returns\ElectionReturnScope;
+use App\Election\Truth\TruthQrPrintGeometry;
 
 final class ElectionReturnPdf
 {
@@ -27,7 +28,7 @@ final class ElectionReturnPdf
             $scope->title(),
             $scope === ElectionReturnScope::Combined ? 'evidence' : 'plain',
         );
-        $this->registerTruthTallyQrImages($document, $return);
+        $this->registerTruthTallyQrImages($document, $return, $scope);
         $page = $document->addPage('Return summary');
         $tableTop = 552.0;
 
@@ -87,6 +88,7 @@ final class ElectionReturnPdf
 
         if ($scope !== ElectionReturnScope::Combined) {
             $this->renderOfficialCertification($document, $page, $return, $scope, $y);
+            $this->renderTruthTallyQrPage($document, $return, $scope);
 
             return $document->render();
         }
@@ -118,7 +120,7 @@ final class ElectionReturnPdf
         $document->text($page, 'Posted copy number', 320, $y - 157, 7.5);
         $document->line($page, 410, $y - 156, 539, $y - 156, 0.6, 0.35);
 
-        $this->renderTruthTallyQrPage($document, $return);
+        $this->renderTruthTallyQrPage($document, $return, $scope);
 
         return $document->render();
     }
@@ -126,9 +128,9 @@ final class ElectionReturnPdf
     /**
      * @param  array<string, mixed>  $return
      */
-    private function registerTruthTallyQrImages(ElectionPdfDocument $document, array $return): void
+    private function registerTruthTallyQrImages(ElectionPdfDocument $document, array $return, ElectionReturnScope $scope): void
     {
-        foreach ((array) ($return['truth_tally']['qr_artifacts'] ?? []) as $artifact) {
+        foreach ((array) ($this->truthTallyForScope($return, $scope)['qr_artifacts'] ?? []) as $artifact) {
             if (! is_array($artifact)) {
                 continue;
             }
@@ -144,10 +146,11 @@ final class ElectionReturnPdf
     /**
      * @param  array<string, mixed>  $return
      */
-    private function renderTruthTallyQrPage(ElectionPdfDocument $document, array $return): void
+    private function renderTruthTallyQrPage(ElectionPdfDocument $document, array $return, ElectionReturnScope $scope): void
     {
+        $truthTally = $this->truthTallyForScope($return, $scope);
         $artifacts = array_values(array_filter(
-            (array) ($return['truth_tally']['qr_artifacts'] ?? []),
+            (array) ($truthTally['qr_artifacts'] ?? []),
             fn (mixed $artifact): bool => is_array($artifact),
         ));
 
@@ -160,22 +163,24 @@ final class ElectionReturnPdf
         foreach ($artifacts as $index => $artifact) {
             if ($index % 4 === 0) {
                 $page = $document->addPage('TruthTally QR copy');
-                $this->renderTruthTallyQrPageHeader($document, $page, $return);
+                $this->renderTruthTallyQrPageHeader($document, $page, $truthTally, $scope);
             }
 
             $name = 'TruthTallyQr'.(int) ($artifact['sequence'] ?? ($index + 1));
+            $size = TruthQrPrintGeometry::DefaultQrSizePoints;
+            $quietZone = TruthQrPrintGeometry::DefaultQuietZonePoints;
             $slot = $index % 4;
             $column = $slot % 2;
             $row = intdiv($slot, 2);
-            $x = 76 + ($column * 255);
-            $y = 344 - ($row * 238);
+            $x = 68 + ($column * 259);
+            $y = 338 - ($row * 246);
 
-            $document->rectangle($page, $x - 6, $y - 6, 196, 196, 0.97);
-            $document->image($page, $name, $x, $y, 184, 184);
+            $document->rectangle($page, $x - $quietZone, $y - $quietZone, $size + ($quietZone * 2), $size + ($quietZone * 2), 0.97);
+            $document->image($page, $name, $x, $y, $size, $size);
             $document->text(
                 $page,
                 'QR '.(int) ($artifact['sequence'] ?? ($index + 1)).' of '.(int) ($artifact['total'] ?? count($artifacts)),
-                $x + 92,
+                $x + ($size / 2),
                 $y - 18,
                 8,
                 true,
@@ -187,9 +192,9 @@ final class ElectionReturnPdf
     /**
      * @param  array<string, mixed>  $return
      */
-    private function renderTruthTallyQrPageHeader(ElectionPdfDocument $document, int $page, array $return): void
+    private function renderTruthTallyQrPageHeader(ElectionPdfDocument $document, int $page, array $truthTally, ElectionReturnScope $scope): void
     {
-        $document->text($page, 'TRUTHTALLY ELECTION RETURN QR', 42, 714, 13, true);
+        $document->text($page, 'TRUTHTALLY '.$scope->label().' QR', 42, 714, 13, true);
         $document->wrappedText(
             $page,
             'Scan this QR payload set at the municipal or city canvassing station to reconstruct the precinct election return totals using the local canonical candidate mapping.',
@@ -200,9 +205,22 @@ final class ElectionReturnPdf
             11,
         );
         $document->text($page, 'Payload type', 42, 656, 8, true);
-        $document->text($page, (string) ($return['truth_tally']['payload_type'] ?? 'waes-election-return'), 138, 656, 8.5, false, monospace: true);
+        $document->text($page, (string) ($truthTally['payload_type'] ?? 'waes-election-return'), 138, 656, 8.5, false, monospace: true);
+        $document->text($page, 'Return scope', 330, 656, 8, true);
+        $document->text($page, (string) ($truthTally['return_scope'] ?? $scope->value), 430, 656, 8.5, false, monospace: true);
         $document->text($page, 'Payload SHA-256', 42, 636, 8, true);
-        $document->wrappedText($page, (string) ($return['truth_tally']['payload_hash'] ?? 'unknown'), 138, 636, 360, 8, 9.5, false, true);
+        $document->wrappedText($page, (string) ($truthTally['payload_hash'] ?? 'unknown'), 138, 636, 360, 8, 9.5, false, true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $return
+     * @return array<string, mixed>
+     */
+    private function truthTallyForScope(array $return, ElectionReturnScope $scope): array
+    {
+        $scoped = $return['truth_tally']['scopes'][$scope->value] ?? null;
+
+        return is_array($scoped) ? $scoped : (array) ($return['truth_tally'] ?? []);
     }
 
     /**

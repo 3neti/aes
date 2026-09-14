@@ -19,7 +19,6 @@ final class RoleDemoBulkBallotSeeder
         private readonly PrivateBallotRelease $releases,
         private readonly BallotPrinter $printer,
         private readonly SealedBallotBox $ballotBox,
-        private readonly RoleDemoInterimCloseout $forms,
         private readonly ActivityJournal $journal,
     ) {}
 
@@ -45,7 +44,7 @@ final class RoleDemoBulkBallotSeeder
     }
 
     /**
-     * @return array{requested: int, target: int, generated: int, generated_this_chunk: int, rendered_pdfs: int, remaining: int, status: string, accepted_ballots: int, tally_hash: string|null, return_hash: string|null}
+     * @return array{requested: int, target: int, generated: int, generated_this_chunk: int, rendered_pdfs: int, remaining: int, status: string, accepted_ballots: int, tally_hash: null, return_hash: null}
      */
     public function generate(SimulationPrecinct $precinct, int $count): array
     {
@@ -91,12 +90,6 @@ final class RoleDemoBulkBallotSeeder
         $status = $remaining === 0 ? 'complete' : 'running';
         $this->writeState($target, $acceptedBallots, $status);
 
-        $closeout = null;
-
-        if ($status === 'complete') {
-            $closeout = $this->forms->generate($precinct, 'role-demo-bulk-ballots');
-        }
-
         $this->journal->record('role_demo.bulk_ballots_chunk_generated', [
             'precinct_code' => $precinct->code,
             'target' => $target,
@@ -106,8 +99,8 @@ final class RoleDemoBulkBallotSeeder
             'remaining' => $remaining,
             'status' => $status,
             'rendered_pdfs' => $renderedPdfs,
-            'tally_hash' => $closeout['tally']['tally_hash'] ?? null,
-            'return_hash' => $closeout['return']['return_hash'] ?? null,
+            'tally_hash' => null,
+            'return_hash' => null,
         ]);
 
         return [
@@ -119,8 +112,8 @@ final class RoleDemoBulkBallotSeeder
             'remaining' => $remaining,
             'status' => $status,
             'accepted_ballots' => $acceptedBallots,
-            'tally_hash' => isset($closeout['tally']['tally_hash']) ? (string) $closeout['tally']['tally_hash'] : null,
-            'return_hash' => isset($closeout['return']['return_hash']) ? (string) $closeout['return']['return_hash'] : null,
+            'tally_hash' => null,
+            'return_hash' => null,
         ];
     }
 

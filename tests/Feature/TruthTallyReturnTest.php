@@ -33,17 +33,33 @@ test('election return truth tally payload uses compact candidate codes and decod
         ->and($return['truth_tally']['canonical_payload'])->toContain('CAND')
         ->and($return['truth_tally']['canonical_payload'])->not->toContain('pres-ada')
         ->and($return['truth_tally']['qr_payloads'][0])->toStartWith('truth://v1/waes-election-return/waes-er-compact-1?p=')
-        ->and(app(ElectionStorage::class)->path('returns/0421-A-truth-tally-qr.png'))->toBeReadableFile();
+        ->and($return['truth_tally']['scopes']['national']['qr_payloads'][0])->toStartWith('truth://v1/waes-election-return/waes-er-compact-1?p=')
+        ->and($return['truth_tally']['scopes']['local']['qr_payloads'][0])->toStartWith('truth://v1/waes-election-return/waes-er-compact-1?p=')
+        ->and(app(ElectionStorage::class)->path('returns/0421-A-truth-tally-qr.png'))->toBeReadableFile()
+        ->and(app(ElectionStorage::class)->path('returns/0421-A-truth-tally-national-qr.png'))->toBeReadableFile()
+        ->and(app(ElectionStorage::class)->path('returns/0421-A-truth-tally-local-qr.png'))->toBeReadableFile();
 
     $decoded = app(ElectionReturnQrPayload::class)->decode(
         app(ElectionReturnPayloadEnvelope::class)->reassemble($return['truth_tally']['qr_payloads']),
+    );
+    $decodedNational = app(ElectionReturnQrPayload::class)->decode(
+        app(ElectionReturnPayloadEnvelope::class)->reassemble($return['truth_tally']['scopes']['national']['qr_payloads']),
+    );
+    $decodedLocal = app(ElectionReturnQrPayload::class)->decode(
+        app(ElectionReturnPayloadEnvelope::class)->reassemble($return['truth_tally']['scopes']['local']['qr_payloads']),
     );
 
     expect($decoded['precinct_id'])->toBe('0421-A')
         ->and($decoded['return_scope'])->toBe(ElectionReturnScope::Combined->value)
         ->and($decoded['accepted_ballots'])->toBe(1)
         ->and($decoded['tally']['president']['pres-ada'])->toBe(1)
-        ->and($decoded['tally']['mayor']['mayor-lina'])->toBe(1);
+        ->and($decoded['tally']['mayor']['mayor-lina'])->toBe(1)
+        ->and($decodedNational['return_scope'])->toBe(ElectionReturnScope::National->value)
+        ->and($decodedNational['tally'])->toHaveKey('president')
+        ->and($decodedNational['tally'])->not->toHaveKey('mayor')
+        ->and($decodedLocal['return_scope'])->toBe(ElectionReturnScope::Local->value)
+        ->and($decodedLocal['tally'])->toHaveKey('mayor')
+        ->and($decodedLocal['tally'])->not->toHaveKey('president');
 });
 
 test('election return truth tally payload can be split and reassembled from qr fragments', function (): void {

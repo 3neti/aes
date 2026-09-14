@@ -17,6 +17,7 @@ use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationVotingGate;
 use App\Election\PublicSimulation\RoleDemoBulkBallotSeeder;
 use App\Election\PublicSimulation\RoleDemoInterimCloseout;
+use App\Election\PublicSimulation\RoleDemoPrecinctTallyIngestion;
 use App\Election\PublicSimulation\RoleDemoScannerTallySimulation;
 use App\Election\PublicSimulation\WatcherBallotReview;
 use App\Election\Returns\ElectionReturnScope;
@@ -25,6 +26,7 @@ use App\Election\Support\PartyLabelNormalizer;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
 use App\Election\Voting\SealedBallotBox;
+use App\Election\Voting\StandardQrCode;
 use App\Election\Voting\VoterBallotAnalytics;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClaimVoterAuthorizationRequest;
@@ -53,6 +55,8 @@ final class RoleDemoController extends Controller
                 'voter' => route('election.role-demo.voter'),
                 'watcher' => route('election.role-demo.watcher'),
                 'scannerTally' => route('election.role-demo.scanner-tally'),
+                'precinctTally' => route('election.role-demo.precinct-tally'),
+                'publicPrecinctTally' => route('election.role-demo.precinct-tally.public', ['view' => 'all']),
                 'canvassingDemo' => route('election.canvassing-demo.show'),
                 'publicCanvassBoard' => route('election.canvassing-demo.public', ['view' => 'all']),
                 'publicNationalCanvass' => route('election.canvassing-demo.public', ['view' => 'national']),
@@ -85,11 +89,14 @@ final class RoleDemoController extends Controller
         RoleDemoInterimCloseout $forms,
         RoleDemoBulkBallotSeeder $bulkBallots,
         CloseoutArtifactPrinter $closeoutPrinter,
+        StandardQrCode $qrCode,
         Request $request,
     ): Response {
         $precinct = $this->precinct($simulations);
         $tally = $forms->tally();
         $configuration = $storage->readJson('runtime/active-precinct.json');
+        $precinctTallyUrl = route('election.role-demo.precinct-tally');
+        $publicPrecinctTallyUrl = route('election.role-demo.precinct-tally.public', ['view' => 'all']);
 
         return Inertia::render('Election/RoleDemoOfficer', [
             'precinct' => [
@@ -115,6 +122,8 @@ final class RoleDemoController extends Controller
                 'dismissControlNumber' => route('election.role-demo.dismiss-control-number'),
                 'acceptPrint' => route('election.role-demo.print.accept'),
                 'bulkBallots' => route('election.role-demo.bulk-ballots'),
+                'precinctTally' => $precinctTallyUrl,
+                'publicPrecinctTally' => $publicPrecinctTallyUrl,
                 'lastBallot' => route('election.role-demo.print.last-ballot'),
                 'tally' => route('election.role-demo.tally-sheet'),
                 'printTally' => route('election.role-demo.print.tally-sheet'),
@@ -131,6 +140,10 @@ final class RoleDemoController extends Controller
                 ],
                 'watcher' => route('election.role-demo.watcher'),
                 'reset' => route('election.role-demo.reset'),
+            ],
+            'navigationQrs' => [
+                'precinctTally' => 'data:image/png;base64,'.base64_encode($qrCode->renderPng($precinctTallyUrl)),
+                'publicPrecinctTally' => 'data:image/png;base64,'.base64_encode($qrCode->renderPng($publicPrecinctTallyUrl)),
             ],
             'printPinDigits' => min(6, max(4, (int) config('election.voter.print_pin_digits', 4))),
             'bulkBallots' => [
@@ -206,7 +219,7 @@ final class RoleDemoController extends Controller
     private function bulkBallotFeedback(array $summary): string
     {
         if (($summary['status'] ?? null) === 'complete') {
-            return "{$summary['generated']} demo ballots are now loaded. {$summary['rendered_pdfs']} rendered ballot PDFs were produced in the last chunk; all loaded ballots are included in the watcher tally.";
+            return "{$summary['generated']} demo ballots are now loaded. {$summary['rendered_pdfs']} rendered ballot PDFs were produced in the last chunk; all loaded ballots are included in the watcher tally. Tally sheets and Election Returns will be rendered when viewed or printed.";
         }
 
         return "{$summary['generated']} of {$summary['target']} demo ballots loaded. {$summary['remaining']} remaining; continue loading to finish the watcher demo set.";
@@ -494,14 +507,84 @@ final class RoleDemoController extends Controller
         ]);
     }
 
-    public function scannerTally(PublicSimulationService $simulations, RoleDemoScannerTallySimulation $simulation): Response
+    public function scannerTally(PublicSimulationService $simulations, RoleDemoScannerTallySimulation $simulation, RoleDemoPrecinctTallyIngestion $ingestion): Response
     {
         $precinct = $this->precinct($simulations);
 
         return Inertia::render('Election/RoleDemoScannerTally', [
             'precinct' => $this->precinctSummary($precinct),
             'simulation' => $simulation->summary(),
+            'scannerState' => $ingestion->state(),
+            'actions' => [
+                'scannerState' => route('election.role-demo.precinct-tally.scanner-events.index'),
+                'scannerIngest' => route('election.role-demo.precinct-tally.scanner-events.store'),
+                'scannerReset' => route('election.role-demo.precinct-tally.scanner-events.reset'),
+                'simulatorTick' => route('election.role-demo.precinct-tally.simulator.tick'),
+                'publicBoard' => route('election.role-demo.precinct-tally.public'),
+                'roleDemo' => route('election.role-demo.index'),
+            ],
         ]);
+    }
+
+    public function precinctTallyPublic(Request $request, PublicSimulationService $simulations, RoleDemoScannerTallySimulation $simulation, RoleDemoPrecinctTallyIngestion $ingestion): Response
+    {
+        $precinct = $this->precinct($simulations);
+
+        return Inertia::render('Election/RoleDemoPrecinctTallyPublic', [
+            'precinct' => $this->precinctSummary($precinct),
+            'simulation' => $simulation->summary(),
+            'scannerState' => $ingestion->state(),
+            'view' => (string) $request->query('view', 'all'),
+            'actions' => [
+                'scannerState' => route('election.role-demo.precinct-tally.scanner-events.index'),
+                'simulatorTick' => route('election.role-demo.precinct-tally.simulator.tick'),
+                'operatorBoard' => route('election.role-demo.precinct-tally'),
+                'publicBoard' => route('election.role-demo.precinct-tally.public'),
+            ],
+        ]);
+    }
+
+    public function precinctTallyScannerEvents(Request $request, RoleDemoPrecinctTallyIngestion $ingestion): JsonResponse
+    {
+        $stationId = (string) $request->string('station_id', 'role-demo-precinct');
+
+        return response()->json($ingestion->state($stationId));
+    }
+
+    public function storePrecinctTallyScannerEvent(Request $request, RoleDemoPrecinctTallyIngestion $ingestion): JsonResponse
+    {
+        $validated = $request->validate([
+            'payload' => ['required', 'string', 'max:25000'],
+            'station_id' => ['nullable', 'string', 'max:80'],
+            'source' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        $result = $ingestion->ingest(
+            (string) $validated['payload'],
+            (string) ($validated['station_id'] ?? 'role-demo-precinct'),
+            (string) ($validated['source'] ?? 'keyboard_wedge'),
+        );
+
+        return response()->json($result, $result['event']['status'] === 'rejected' ? 422 : 200);
+    }
+
+    public function resetPrecinctTallyScannerEvents(Request $request, RoleDemoPrecinctTallyIngestion $ingestion): JsonResponse
+    {
+        $stationId = (string) $request->string('station_id', 'role-demo-precinct');
+        $ingestion->reset($stationId);
+
+        return response()->json($ingestion->state($stationId));
+    }
+
+    public function precinctTallySimulatorTick(Request $request, RoleDemoPrecinctTallyIngestion $ingestion): JsonResponse
+    {
+        $validated = $request->validate([
+            'station_id' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        return response()->json(
+            $ingestion->simulateNext((string) ($validated['station_id'] ?? 'role-demo-precinct')),
+        );
     }
 
     public function tallySheet(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, ?string $profile = null): BinaryFileResponse

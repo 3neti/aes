@@ -56,6 +56,12 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/voter/reset', [RoleDemoController::class, 'resetVoter'])->name('voter.reset');
         Route::get('/watcher', [RoleDemoController::class, 'watcher'])->name('watcher');
         Route::get('/scanner-tally', [RoleDemoController::class, 'scannerTally'])->name('scanner-tally');
+        Route::get('/precinct-tally', [RoleDemoController::class, 'scannerTally'])->name('precinct-tally');
+        Route::get('/precinct-tally/public', [RoleDemoController::class, 'precinctTallyPublic'])->name('precinct-tally.public');
+        Route::get('/precinct-tally/scanner-events', [RoleDemoController::class, 'precinctTallyScannerEvents'])->name('precinct-tally.scanner-events.index');
+        Route::post('/precinct-tally/scanner-events', [RoleDemoController::class, 'storePrecinctTallyScannerEvent'])->middleware('throttle:120,1')->name('precinct-tally.scanner-events.store');
+        Route::post('/precinct-tally/scanner-events/reset', [RoleDemoController::class, 'resetPrecinctTallyScannerEvents'])->name('precinct-tally.scanner-events.reset');
+        Route::post('/precinct-tally/simulator/tick', [RoleDemoController::class, 'precinctTallySimulatorTick'])->middleware('throttle:240,1')->name('precinct-tally.simulator.tick');
         Route::get('/truth-tally-return', fn () => to_route('election.role-demo.index'))->name('truth-tally-return');
         Route::get('/watcher/ballots/{sequence}', [RoleDemoController::class, 'watcherBallot'])
             ->whereNumber('sequence')

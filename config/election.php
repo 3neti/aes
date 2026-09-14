@@ -80,7 +80,7 @@ return [
         'role_demo_bulk_ballots' => [
             'enabled' => (bool) env('ELECTION_ROLE_DEMO_BULK_BALLOTS_ENABLED', true),
             'max_count' => (int) env('ELECTION_ROLE_DEMO_BULK_BALLOTS_MAX', 700),
-            'chunk_size' => (int) env('ELECTION_ROLE_DEMO_BULK_BALLOT_CHUNK_SIZE', 25),
+            'chunk_size' => (int) env('ELECTION_ROLE_DEMO_BULK_BALLOT_CHUNK_SIZE', 5),
             'rendered_pdf_limit' => (int) env('ELECTION_ROLE_DEMO_BULK_BALLOT_PDF_LIMIT', 3),
             'presets' => [10, 100, 700],
         ],

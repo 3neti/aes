@@ -62,6 +62,8 @@ const props = defineProps<{
         dismissControlNumber: string;
         acceptPrint: string;
         bulkBallots: string;
+        precinctTally: string;
+        publicPrecinctTally: string;
         lastBallot: string;
         tally: string;
         printTally: string;
@@ -94,6 +96,10 @@ const props = defineProps<{
             updated_at: string | null;
         };
     };
+    navigationQrs: {
+        precinctTally: string;
+        publicPrecinctTally: string;
+    };
 }>();
 
 const customBulkCount = ref<number | null>(null);
@@ -102,6 +108,15 @@ const bulkLoading = ref(false);
 const bulkMessage = ref<string | null>(null);
 const bulkError = ref<string | null>(null);
 const liveBulkRun = ref({ ...props.bulkBallots.run });
+
+type CloseoutActionRow = {
+    id: string;
+    viewLabel: string;
+    viewUrl: string;
+    printAction: string;
+    printLabel: string;
+    primary?: boolean;
+};
 
 watch(
     () => props.bulkBallots.run,
@@ -135,6 +150,86 @@ const bulkProgressPercent = computed<number>(() => {
 
     return Math.min(100, Math.round((displayedBulkRun.value.generated / target) * 100));
 });
+
+const pdfCacheKey = computed<string>(() =>
+    [
+        props.currentTally.accepted_ballots,
+        props.currentTally.rejected_ballots,
+        props.currentTally.tally_hash,
+    ]
+        .filter((value) => value !== null && value !== undefined && value !== '')
+        .join('-'),
+);
+
+function freshPdfUrl(url: string): string {
+    const separator = url.includes('?') ? '&' : '?';
+
+    return `${url}${separator}v=${encodeURIComponent(pdfCacheKey.value || 'empty')}`;
+}
+
+const closeoutActionRows = computed<CloseoutActionRow[]>(() => [
+    {
+        id: 'tally',
+        viewLabel: 'View current tally sheet',
+        viewUrl: props.actions.tally,
+        printAction: props.actions.printTally,
+        printLabel: 'tally',
+    },
+    {
+        id: 'national-er',
+        viewLabel: 'View National ER with QR Codes',
+        viewUrl: props.actions.returns.national,
+        printAction: props.actions.printReturns.national,
+        printLabel: 'National ER with QR Codes',
+        primary: true,
+    },
+    {
+        id: 'local-er',
+        viewLabel: 'View Local ER with QR Codes',
+        viewUrl: props.actions.returns.local,
+        printAction: props.actions.printReturns.local,
+        printLabel: 'Local ER with QR Codes',
+        primary: true,
+    },
+    {
+        id: 'combined-er',
+        viewLabel: 'View internal Combined ER',
+        viewUrl: props.actions.returns.combined,
+        printAction: props.actions.printReturns.combined,
+        printLabel: 'internal Combined ER',
+    },
+    {
+        id: 'thermal-tally',
+        viewLabel: 'View thermal tally',
+        viewUrl: `${props.actions.tally}/thermal-80`,
+        printAction: `${props.actions.printTally}/thermal-80`,
+        printLabel: 'thermal tally',
+    },
+    {
+        id: 'thermal-national-er',
+        viewLabel: 'View thermal National ER with QR Codes',
+        viewUrl: `${props.actions.returns.national}/thermal-80`,
+        printAction: `${props.actions.printReturns.national}/thermal-80`,
+        printLabel: 'thermal National ER with QR Codes',
+        primary: true,
+    },
+    {
+        id: 'thermal-local-er',
+        viewLabel: 'View thermal Local ER with QR Codes',
+        viewUrl: `${props.actions.returns.local}/thermal-80`,
+        printAction: `${props.actions.printReturns.local}/thermal-80`,
+        printLabel: 'thermal Local ER with QR Codes',
+        primary: true,
+    },
+]);
+
+function viewLinkClass(): string {
+    return 'min-h-12 border-2 border-stone-700 bg-white px-4 py-3 text-center text-sm font-bold text-stone-950 shadow-sm transition hover:border-blue-800 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-700';
+}
+
+function printButtonClass(): string {
+    return 'min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-700 disabled:opacity-40';
+}
 
 function csrfToken(): string | null {
     return (
@@ -313,7 +408,7 @@ usePoll(
                     class="mt-3 inline-flex min-h-11 items-center border border-blue-800 bg-white px-4 font-bold text-blue-800"
                     target="_blank"
                 >
-                    Open last ballot PDF
+                    Open printable ballot PDF
                 </a>
             </div>
 
@@ -439,161 +534,51 @@ usePoll(
                         / demo file printer
                     </span>
                 </div>
-                <div class="mt-4 grid gap-3 md:grid-cols-2">
-                    <a :href="actions.tally" class="secondary-button" target="_blank">
-                        View current tally sheet
-                    </a>
-                    <Form
-                        :action="actions.printTally"
-                        method="post"
-                        #default="{ processing }"
+                <div class="mt-4 space-y-3">
+                    <div
+                        v-for="row in closeoutActionRows"
+                        :key="row.id"
+                        class="grid gap-3 md:grid-cols-2"
                     >
-                        <button
-                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
-                            type="submit"
-                            :disabled="processing || !closeoutPrinter.enabled"
+                        <a
+                            :href="freshPdfUrl(row.viewUrl)"
+                            :class="viewLinkClass()"
+                            target="_blank"
                         >
-                            {{
-                                processing
-                                    ? 'Submitting...'
-                                    : `${closeoutPrinter.submit_label}: tally`
-                            }}
-                        </button>
-                    </Form>
-                    <a
-                        :href="actions.returns.national"
-                        class="secondary-button"
-                        target="_blank"
-                    >
-                        View National ER
-                    </a>
-                    <Form
-                        :action="actions.printReturns.national"
-                        method="post"
-                        #default="{ processing }"
-                    >
-                        <button
-                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
-                            type="submit"
-                            :disabled="processing || !closeoutPrinter.enabled"
+                            {{ row.viewLabel }}
+                        </a>
+                        <Form
+                            :action="row.printAction"
+                            method="post"
+                            #default="{ processing }"
                         >
-                            {{
-                                processing
-                                    ? 'Submitting...'
-                                    : `${closeoutPrinter.submit_label}: National ER`
-                            }}
-                        </button>
-                    </Form>
-                    <a
-                        :href="actions.returns.local"
-                        class="secondary-button"
-                        target="_blank"
-                    >
-                        View Local ER
-                    </a>
-                    <Form
-                        :action="actions.printReturns.local"
-                        method="post"
-                        #default="{ processing }"
-                    >
-                        <button
-                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
-                            type="submit"
-                            :disabled="processing || !closeoutPrinter.enabled"
-                        >
-                            {{
-                                processing
-                                    ? 'Submitting...'
-                                    : `${closeoutPrinter.submit_label}: Local ER`
-                            }}
-                        </button>
-                    </Form>
-                    <a
-                        :href="`${actions.tally}/thermal-80`"
-                        class="secondary-button"
-                        target="_blank"
-                    >
-                        View thermal tally
-                    </a>
-                    <Form
-                        :action="`${actions.printTally}/thermal-80`"
-                        method="post"
-                        #default="{ processing }"
-                    >
-                        <button
-                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
-                            type="submit"
-                            :disabled="processing || !closeoutPrinter.enabled"
-                        >
-                            {{
-                                processing
-                                    ? 'Submitting...'
-                                    : `${closeoutPrinter.submit_label}: thermal tally`
-                            }}
-                        </button>
-                    </Form>
-                    <a
-                        :href="`${actions.returns.national}/thermal-80`"
-                        class="secondary-button"
-                        target="_blank"
-                    >
-                        View thermal National ER
-                    </a>
-                    <Form
-                        :action="`${actions.printReturns.national}/thermal-80`"
-                        method="post"
-                        #default="{ processing }"
-                    >
-                        <button
-                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
-                            type="submit"
-                            :disabled="processing || !closeoutPrinter.enabled"
-                        >
-                            {{
-                                processing
-                                    ? 'Submitting...'
-                                    : `${closeoutPrinter.submit_label}: thermal National ER`
-                            }}
-                        </button>
-                    </Form>
-                    <a
-                        :href="`${actions.returns.local}/thermal-80`"
-                        class="secondary-button"
-                        target="_blank"
-                    >
-                        View thermal Local ER
-                    </a>
-                    <Form
-                        :action="`${actions.printReturns.local}/thermal-80`"
-                        method="post"
-                        #default="{ processing }"
-                    >
-                        <button
-                            class="min-h-12 w-full border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white disabled:opacity-40"
-                            type="submit"
-                            :disabled="processing || !closeoutPrinter.enabled"
-                        >
-                            {{
-                                processing
-                                    ? 'Submitting...'
-                                    : `${closeoutPrinter.submit_label}: thermal Local ER`
-                            }}
-                        </button>
-                    </Form>
+                            <button
+                                :class="printButtonClass()"
+                                type="submit"
+                                :disabled="processing || !closeoutPrinter.enabled"
+                            >
+                                {{
+                                    processing
+                                        ? 'Submitting...'
+                                        : `${closeoutPrinter.submit_label}: ${row.printLabel}`
+                                }}
+                            </button>
+                        </Form>
+                    </div>
                 </div>
             </section>
 
             <section class="mt-5 border border-blue-300 bg-white p-5">
                 <p class="text-sm font-bold text-blue-800">Demo load tools</p>
                 <h2 class="mt-1 text-xl font-bold">
-                    Generate deposited demo ballots
+                    Load demo ballots
                 </h2>
                 <p class="mt-2 text-sm text-stone-700">
-                    Use this to populate the watcher POV quickly. Every generated
-                    ballot is sealed into the VVDAT record set and included in
-                    the running tally. Rendered ballot PDFs are generated for the
-                    first {{ bulkBallots.rendered_pdf_limit }} ballots so the
-                    media viewer stays responsive.
+                    Creates deposited demo ballots for printing and public QR
+                    tally verification. Rendered ballot PDFs are generated for
+                    the first {{ bulkBallots.rendered_pdf_limit }} ballots so the
+                    media viewer stays responsive. Tally sheets and Election
+                    Returns are rendered only when viewed or sent to the printer.
                 </p>
                 <div
                     v-if="!bulkBallots.enabled"
@@ -710,6 +695,112 @@ usePoll(
                         the page stays responsive. Use Reset role demo precinct
                         before loading a fresh batch.
                     </p>
+
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div class="border border-amber-200 bg-amber-50 p-4">
+                            <div class="flex items-center gap-4">
+                                <img
+                                    :src="navigationQrs.precinctTally"
+                                    alt="Precinct tally scanner QR code"
+                                    class="h-28 w-28 border border-stone-300 bg-white p-2"
+                                />
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-black text-amber-950">
+                                        Precinct Tally Scanner
+                                    </p>
+                                    <p class="mt-1 text-xs font-semibold text-stone-700">
+                                        Scan to open the scanner screen.
+                                    </p>
+                                </div>
+                            </div>
+                            <a
+                                :href="actions.precinctTally"
+                                class="mt-4 block min-h-12 border-2 border-amber-800 bg-amber-800 px-4 py-3 text-center font-bold text-white"
+                            >
+                                Open Precinct Tally Scanner
+                            </a>
+                        </div>
+
+                        <div class="border border-amber-200 bg-amber-50 p-4">
+                            <div class="flex items-center gap-4">
+                                <img
+                                    :src="navigationQrs.publicPrecinctTally"
+                                    alt="Public precinct tally QR code"
+                                    class="h-28 w-28 border border-stone-300 bg-white p-2"
+                                />
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-black text-amber-950">
+                                        Public Precinct Tally
+                                    </p>
+                                    <p class="mt-1 text-xs font-semibold text-stone-700">
+                                        Scan to open the public tally board.
+                                    </p>
+                                </div>
+                            </div>
+                            <a
+                                :href="actions.publicPrecinctTally"
+                                class="mt-4 block min-h-12 border-2 border-amber-800 bg-white px-4 py-3 text-center font-bold text-amber-900"
+                                target="_blank"
+                            >
+                                Open Public Precinct Tally
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 border border-blue-200 bg-blue-50 p-4">
+                        <p
+                            class="text-sm font-black uppercase tracking-wide text-blue-950"
+                        >
+                            Temporary scanner setup notes
+                        </p>
+                        <div class="mt-3 grid gap-3 lg:grid-cols-2">
+                            <div class="border border-blue-200 bg-white p-3">
+                                <p class="font-bold text-blue-950">
+                                    Scanner plugged into the tablet or browser
+                                </p>
+                                <ul
+                                    class="mt-2 list-disc space-y-1 pl-5 text-sm text-stone-700"
+                                >
+                                    <li>
+                                        Open Precinct Tally Scanner and keep
+                                        that browser tab active.
+                                    </li>
+                                    <li>
+                                        Leave Capture checked. The scanner can
+                                        type anywhere on the page.
+                                    </li>
+                                    <li>
+                                        The scanner should send the
+                                        <span class="font-mono">truth://</span>
+                                        payload followed by Enter.
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="border border-blue-200 bg-white p-3">
+                                <p class="font-bold text-blue-950">
+                                    Scanner plugged into the server Linux box
+                                </p>
+                                <ul
+                                    class="mt-2 list-disc space-y-1 pl-5 text-sm text-stone-700"
+                                >
+                                    <li>
+                                        Run the scanner ingestion service on the
+                                        server before scanning.
+                                    </li>
+                                    <li>
+                                        The scanner will feed the tally through
+                                        the server, not by typing into the
+                                        tablet browser.
+                                    </li>
+                                    <li>
+                                        If that service is not running, use the
+                                        tablet or browser setup above.
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </template>
             </section>
 

@@ -15,6 +15,8 @@ defineProps<{
         voter: string;
         watcher: string;
         scannerTally: string;
+        precinctTally: string;
+        publicPrecinctTally: string;
         canvassingDemo: string;
         publicCanvassBoard: string;
         publicNationalCanvass: string;
@@ -124,7 +126,7 @@ defineProps<{
                     </p>
                     <div class="mt-3 grid gap-2">
                         <Link
-                            :href="actions.scannerTally"
+                            :href="actions.precinctTally"
                             class="border-l-4 border-amber-700 bg-stone-50 p-4 transition hover:bg-amber-50"
                         >
                             <div
@@ -142,6 +144,28 @@ defineProps<{
                             <p class="mt-1 text-sm text-stone-700">
                                 Scan ballot payloads into live tally sticks,
                                 scan log, and document previews.
+                            </p>
+                        </Link>
+
+                        <Link
+                            :href="actions.publicPrecinctTally"
+                            class="border-l-4 border-yellow-500 bg-stone-50 p-4 transition hover:bg-yellow-50"
+                        >
+                            <div
+                                class="flex items-center justify-between gap-3"
+                            >
+                                <p class="font-bold text-yellow-950">
+                                    Public Precinct Tally
+                                </p>
+                                <span
+                                    class="border border-yellow-300 bg-yellow-100 px-2 py-1 text-[11px] font-black text-yellow-950"
+                                >
+                                    Public
+                                </span>
+                            </div>
+                            <p class="mt-1 text-sm text-stone-700">
+                                Show ballot QR-derived precinct totals without
+                                scanner controls.
                             </p>
                         </Link>
 
