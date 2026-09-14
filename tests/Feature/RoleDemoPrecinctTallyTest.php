@@ -1,6 +1,7 @@
 <?php
 
 use App\Election\Support\ElectionStorage;
+use App\Election\Voting\BallotPayloadService;
 use Illuminate\Support\Facades\Crypt;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -110,4 +111,63 @@ test('precinct ballot scanner artisan command records ballot payloads through th
         ->assertOk()
         ->assertJsonPath('accepted_count', 1)
         ->assertJsonPath('latest_status', 'duplicate');
+});
+
+test('precinct tally rejects ballots from another precinct session', function (): void {
+    $this->get(route('election.role-demo.officer'))->assertSuccessful();
+
+    $this->postJson(route('election.role-demo.bulk-ballots'), [
+        'count' => 1,
+    ])
+        ->assertOk()
+        ->assertJsonPath('summary.status', 'complete')
+        ->assertJsonPath('summary.generated', 1);
+
+    $storage = app(ElectionStorage::class);
+    $sealedPath = $storage->files('counting/sealed')[0];
+    $sealed = json_decode((string) file_get_contents($sealedPath), true, flags: JSON_THROW_ON_ERROR);
+    $payload = Crypt::decryptString((string) $sealed['encrypted_payload']);
+    $configuration = $storage->readJson('runtime/active-precinct.json');
+
+    $storage->writeJson('runtime/active-precinct.json', [
+        ...$configuration,
+        'precinct_id' => 'OTHER-PRECINCT',
+    ]);
+
+    $this->postJson(route('election.role-demo.precinct-tally.scanner-events.store'), [
+        'payload' => $payload,
+        'source' => 'keyboard_wedge',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonPath('event.status', 'rejected')
+        ->assertJsonPath('event.meta', 'Hardware scan · single QR document · Ballot belongs to another precinct.')
+        ->assertJsonPath('state.accepted_count', 0)
+        ->assertJsonPath('state.latest_status', 'rejected');
+});
+
+test('precinct tally rejects valid ballots that are not in the loaded ballot set', function (): void {
+    $this->get(route('election.role-demo.officer'))->assertSuccessful();
+
+    $this->postJson(route('election.role-demo.bulk-ballots'), [
+        'count' => 1,
+    ])
+        ->assertOk()
+        ->assertJsonPath('summary.status', 'complete')
+        ->assertJsonPath('summary.generated', 1);
+
+    $sealedPath = app(ElectionStorage::class)->files('counting/sealed')[0];
+    $sealed = json_decode((string) file_get_contents($sealedPath), true, flags: JSON_THROW_ON_ERROR);
+    $sealedPayload = Crypt::decryptString((string) $sealed['encrypted_payload']);
+    $sealedSelections = app(BallotPayloadService::class)->decode($sealedPayload)['selections'] ?? [];
+    $undepositedPayload = app(BallotPayloadService::class)->finalize((array) $sealedSelections, 'undeposited-demo-ballot', journal: false);
+
+    $this->postJson(route('election.role-demo.precinct-tally.scanner-events.store'), [
+        'payload' => $undepositedPayload['qr_payload'],
+        'source' => 'keyboard_wedge',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonPath('event.status', 'rejected')
+        ->assertJsonPath('event.meta', 'Hardware scan · single QR document · Ballot is not part of this precinct tally session.')
+        ->assertJsonPath('state.accepted_count', 0)
+        ->assertJsonPath('state.latest_status', 'rejected');
 });

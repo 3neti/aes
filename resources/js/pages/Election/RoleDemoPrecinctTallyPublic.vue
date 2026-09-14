@@ -137,8 +137,12 @@ async function fetchScannerState(): Promise<void> {
 onMounted(() => {
     void fetchScannerState();
     statePoller.value = window.setInterval(() => {
+        if (document.visibilityState === 'hidden') {
+            return;
+        }
+
         void fetchScannerState();
-    }, 1500);
+    }, 2000);
 });
 
 onBeforeUnmount(() => {

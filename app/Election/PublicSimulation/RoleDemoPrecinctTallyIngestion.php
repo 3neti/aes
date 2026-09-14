@@ -11,6 +11,7 @@ use App\Events\ScannerScanEventRecorded;
 use App\Models\ScannerScanEvent;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
+use JsonException;
 use RuntimeException;
 
 final class RoleDemoPrecinctTallyIngestion
@@ -42,6 +43,7 @@ final class RoleDemoPrecinctTallyIngestion
             $decoded = $this->decode($payload);
             $this->guardPrecinct($decoded);
             $documentHash = (string) ($decoded['payload_hash'] ?? hash('sha256', $payload));
+            $this->guardLoadedBallot($documentHash);
 
             if ($this->hasAcceptedBallot($stationId, $documentHash)) {
                 $status = 'duplicate';
@@ -50,7 +52,7 @@ final class RoleDemoPrecinctTallyIngestion
                 $status = 'accepted';
                 $message = 'Accepted ballot.';
             }
-        } catch (RuntimeException $exception) {
+        } catch (JsonException|RuntimeException $exception) {
             $message = $exception->getMessage();
         }
 
@@ -240,7 +242,7 @@ final class RoleDemoPrecinctTallyIngestion
 
         foreach (['election_id', 'precinct_id', 'ballot_style_id', 'mapping_hash'] as $key) {
             if (($decoded[$key] ?? null) !== ($configuration[$key] ?? null)) {
-                throw new RuntimeException(str($key)->replace('_', ' ')->ucfirst()->append(' mismatch.')->toString());
+                throw new RuntimeException($this->contextMismatchMessage($key));
             }
         }
 
@@ -250,6 +252,34 @@ final class RoleDemoPrecinctTallyIngestion
         if (is_array($profile) && $profile !== $expectedProfile) {
             throw new RuntimeException('Ballot document profile mismatch.');
         }
+    }
+
+    private function guardLoadedBallot(string $documentHash): void
+    {
+        $loadedHashes = collect($this->loadedBallots())
+            ->pluck('payload_hash')
+            ->filter()
+            ->map(fn (mixed $hash): string => (string) $hash)
+            ->all();
+
+        if ($loadedHashes === []) {
+            return;
+        }
+
+        if (! in_array($documentHash, $loadedHashes, true)) {
+            throw new RuntimeException('Ballot is not part of this precinct tally session.');
+        }
+    }
+
+    private function contextMismatchMessage(string $key): string
+    {
+        return match ($key) {
+            'election_id' => 'Ballot belongs to another election or test session.',
+            'precinct_id' => 'Ballot belongs to another precinct.',
+            'ballot_style_id' => 'Ballot uses another ballot style.',
+            'mapping_hash' => 'Ballot uses another candidate mapping.',
+            default => str($key)->replace('_', ' ')->ucfirst()->append(' mismatch.')->toString(),
+        };
     }
 
     private function hasAcceptedBallot(string $stationId, string $documentHash): bool

@@ -146,6 +146,8 @@ const keyboardScanBuffer = ref('');
 const manualScanPayload = ref('');
 const hardwareScanStatus = ref('Ready for scanner input.');
 const manualScanInput = ref<HTMLTextAreaElement | null>(null);
+const statePoller = ref<number | null>(null);
+const lastUpdatedAt = ref<string | null>(null);
 
 const nextBallot = computed(
     () =>
@@ -290,6 +292,50 @@ async function processBallotPayload(payload: string, source: string): Promise<vo
     } finally {
         scannerStatus.value = 'ready';
     }
+}
+
+async function fetchScannerState(): Promise<void> {
+    try {
+        const url = new URL(props.actions.scannerState, window.location.origin);
+        url.searchParams.set('station_id', stationId);
+
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+        const state = await response.json();
+
+        if (response.ok && state.revision !== liveScannerState.value.revision) {
+            liveScannerState.value = state;
+            hardwareScanStatus.value =
+                state.latest_message ?? 'Scanner state refreshed.';
+            lastUpdatedAt.value = new Date().toLocaleTimeString();
+        }
+    } catch {
+        // Keep the last visible tally if a timer refresh misses a beat.
+    }
+}
+
+function startStatePolling(): void {
+    stopStatePolling();
+
+    statePoller.value = window.setInterval(() => {
+        if (document.visibilityState === 'hidden') {
+            return;
+        }
+
+        void fetchScannerState();
+    }, 1000);
+}
+
+function stopStatePolling(): void {
+    if (statePoller.value !== null) {
+        window.clearInterval(statePoller.value);
+    }
+
+    statePoller.value = null;
 }
 
 function handleGlobalScannerKeydown(event: KeyboardEvent): void {
@@ -515,10 +561,13 @@ function sourceLabel(source: string): string {
 onMounted(() => {
     window.addEventListener('keydown', handleGlobalScannerKeydown);
     window.addEventListener('paste', handleGlobalScannerPaste);
+    void fetchScannerState();
+    startStatePolling();
 });
 
 onBeforeUnmount(() => {
     stopAutomaticScanner();
+    stopStatePolling();
     window.removeEventListener('keydown', handleGlobalScannerKeydown);
     window.removeEventListener('paste', handleGlobalScannerPaste);
 });
@@ -740,7 +789,16 @@ onBeforeUnmount(() => {
                     :tally="runningTally"
                     :last-scan-delta="lastScanDelta"
                     :flash-key="lastScanFlashKey"
-                />
+                >
+                    <template #stats>
+                        <p class="mt-2 text-xs text-stone-500">
+                            Revision {{ liveScannerState.revision }}
+                            <span v-if="lastUpdatedAt"
+                                >· {{ lastUpdatedAt }}</span
+                            >
+                        </p>
+                    </template>
+                </TallyBoard>
             </section>
         </section>
     </main>
