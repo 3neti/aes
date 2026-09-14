@@ -79,3 +79,35 @@ test('role demo precinct tally scans loaded demo ballots into a polling public b
             ->where('actions.operatorBoard', route('election.role-demo.precinct-tally'))
         );
 });
+
+test('precinct ballot scanner artisan command records ballot payloads through the same ingestion path', function (): void {
+    $this->get(route('election.role-demo.officer'))->assertSuccessful();
+
+    $this->postJson(route('election.role-demo.bulk-ballots'), [
+        'count' => 1,
+    ])
+        ->assertOk()
+        ->assertJsonPath('summary.status', 'complete')
+        ->assertJsonPath('summary.generated', 1);
+
+    $sealedPath = app(ElectionStorage::class)->files('counting/sealed')[0];
+    $sealed = json_decode((string) file_get_contents($sealedPath), true, flags: JSON_THROW_ON_ERROR);
+    $payload = Crypt::decryptString((string) $sealed['encrypted_payload']);
+
+    $this->artisan('election:precinct-ballot-scanner-ingest', [
+        '--payload' => $payload,
+    ])
+        ->expectsOutputToContain('ACCEPTED: Accepted ballot.')
+        ->assertSuccessful();
+
+    $this->artisan('election:precinct-ballot-scanner-ingest', [
+        '--payload' => $payload,
+    ])
+        ->expectsOutputToContain('DUPLICATE: Ballot already accepted.')
+        ->assertSuccessful();
+
+    $this->get(route('election.role-demo.precinct-tally.scanner-events.index'))
+        ->assertOk()
+        ->assertJsonPath('accepted_count', 1)
+        ->assertJsonPath('latest_status', 'duplicate');
+});
