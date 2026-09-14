@@ -2,6 +2,9 @@
 
 namespace App\Election\PublicSimulation;
 
+use App\Election\Documents\DocumentProfileRegistry;
+use App\Election\Returns\ElectionReturnQrPayload;
+use App\Election\Support\ElectionStorage;
 use App\Election\Truth\TruthQrEnvelope;
 use App\Events\ScannerScanEventRecorded;
 use App\Models\ScannerScanEvent;
@@ -15,6 +18,9 @@ final class CanvassingScannerIngestion
     public function __construct(
         private readonly CanvassingDemoSimulation $simulation,
         private readonly TruthQrEnvelope $envelope,
+        private readonly ElectionReturnQrPayload $qrPayload,
+        private readonly ElectionStorage $storage,
+        private readonly DocumentProfileRegistry $documents,
     ) {}
 
     /**
@@ -24,9 +30,10 @@ final class CanvassingScannerIngestion
     {
         $payload = trim($payload);
         $metadata = $this->parseEnvelopeMetadata($payload);
-        $matchingReturn = $this->matchingReturn($payload);
+        $matchingReturn = $this->matchingReturn($payload) ?? $this->decodedCompleteReturn($payload);
         $status = 'rejected';
         $message = 'Payload is not a supported WAES election return QR.';
+        $documentHash = $matchingReturn['document_hash'] ?? $matchingReturn['payload_hash'] ?? $matchingReturn['return_hash'] ?? null;
 
         if ($payload === '') {
             $message = 'No scan payload received.';
@@ -34,16 +41,20 @@ final class CanvassingScannerIngestion
             $message = 'Payload is not a truth:// URI.';
         } elseif (($metadata['kind'] ?? 'unknown') === 'unknown') {
             $message = 'Invalid or unsupported ER payload envelope.';
-        } elseif ($matchingReturn === null) {
+        } elseif ($matchingReturn === null && ($metadata['kind'] ?? null) !== 'fragment') {
             $message = 'Payload is not in this canvassing sample set.';
-        } elseif ($this->hasAcceptedReturn($stationId, (string) $matchingReturn['return_hash'])) {
+        } elseif ($matchingReturn !== null && $this->hasAcceptedDocument($stationId, (string) $documentHash)) {
             $status = 'duplicate';
-            $message = "ER {$matchingReturn['sequence']} already accepted.";
+            $message = $this->acceptedMessage($matchingReturn, true);
         } elseif (($metadata['kind'] ?? null) === 'complete') {
             $status = 'accepted';
-            $message = "Accepted ER {$matchingReturn['sequence']}.";
+            $message = $this->acceptedMessage($matchingReturn);
         } else {
-            [$status, $message] = $this->multipartStatus($stationId, $metadata, $matchingReturn);
+            [$status, $message] = $this->multipartStatus($stationId, $metadata, $matchingReturn, $payload);
+            $matchingReturn = $status === 'accepted'
+                ? $this->completedMultipartReturn($stationId, $metadata, $payload)
+                : $matchingReturn;
+            $documentHash = $matchingReturn['document_hash'] ?? $matchingReturn['payload_hash'] ?? $matchingReturn['return_hash'] ?? $metadata['group_id'] ?? null;
         }
 
         $event = ScannerScanEvent::create([
@@ -57,12 +68,16 @@ final class CanvassingScannerIngestion
             'part_number' => $metadata['part_number'] ?? null,
             'total_parts' => $metadata['total_parts'] ?? null,
             'precinct_id' => $matchingReturn['precinct_id'] ?? null,
-            'document_hash' => $matchingReturn['return_hash'] ?? null,
+            'document_hash' => $documentHash,
             'message' => $message,
             'metadata' => [
                 'envelope' => $metadata,
                 'return_sequence' => $matchingReturn['sequence'] ?? null,
+                'return_scope' => $matchingReturn['return_scope'] ?? null,
+                'return_hash' => $matchingReturn['return_hash'] ?? null,
+                'payload_hash' => $matchingReturn['payload_hash'] ?? null,
                 'accepted_ballots' => $matchingReturn['accepted_ballots'] ?? null,
+                'return' => $matchingReturn,
             ],
             'received_at' => now(),
             'processed_at' => now(),
@@ -90,25 +105,31 @@ final class CanvassingScannerIngestion
             ->orderBy('id')
             ->get();
 
-        $acceptedReturnHashes = $events
-            ->where('status', 'accepted')
-            ->pluck('document_hash')
+        $acceptedEvents = $events->where('status', 'accepted');
+        $acceptedReturnHashes = $acceptedEvents
+            ->map(fn (ScannerScanEvent $event): ?string => $this->officialReturnHash($event))
             ->filter()
             ->unique()
             ->values()
             ->all();
 
-        $latestAcceptedHash = $events
-            ->where('status', 'accepted')
-            ->pluck('document_hash')
+        $latestAcceptedHash = $acceptedEvents
+            ->map(fn (ScannerScanEvent $event): ?string => $this->officialReturnHash($event))
             ->filter()
             ->last();
+
+        $acceptedReturns = $acceptedEvents
+            ->map(fn (ScannerScanEvent $event): array => (array) ($event->metadata['return'] ?? []))
+            ->filter(fn (array $return): bool => $return !== [])
+            ->values()
+            ->all();
 
         return [
             'station_id' => $stationId,
             'revision' => $events->last()?->id ?? 0,
             'accepted_return_hashes' => $acceptedReturnHashes,
             'latest_accepted_return_hash' => $latestAcceptedHash,
+            'accepted_returns' => $acceptedReturns,
             'scan_events' => $events
                 ->map(fn (ScannerScanEvent $event): array => $this->eventSummary($event))
                 ->values()
@@ -153,6 +174,15 @@ final class CanvassingScannerIngestion
         ];
     }
 
+    private function officialReturnHash(ScannerScanEvent $event): ?string
+    {
+        $returnHash = $event->metadata['return_hash'] ?? null;
+
+        return is_string($returnHash) && $returnHash !== ''
+            ? $returnHash
+            : $event->document_hash;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -171,7 +201,10 @@ final class CanvassingScannerIngestion
         if (($metadata['part_kind'] ?? null) === 'complete') {
             return [
                 'kind' => 'complete',
+                'group_id' => $metadata['group_id'] ?? null,
+                'part_number' => 1,
                 'total_parts' => 1,
+                'canonical_payload' => $metadata['canonical_payload'] ?? null,
             ];
         }
 
@@ -192,8 +225,77 @@ final class CanvassingScannerIngestion
      */
     private function matchingReturn(string $payload): ?array
     {
-        return collect($this->simulation->summary()['scanner']['returns'] ?? [])
+        $matchingReturn = collect($this->simulation->summary()['scanner']['returns'] ?? [])
             ->first(fn (mixed $scan): bool => is_array($scan) && in_array($payload, (array) ($scan['payloads'] ?? []), true));
+
+        return is_array($matchingReturn) ? $this->normalizeReturn($matchingReturn) : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function decodedCompleteReturn(string $payload): ?array
+    {
+        try {
+            $canonicalPayload = $this->envelope->canonicalPayload($payload);
+            $decoded = $this->qrPayload->decode($canonicalPayload);
+            $this->guardReturn($decoded);
+
+            return $this->normalizeReturn([
+                'sequence' => null,
+                'source' => 'printed election return QR',
+                'precinct_id' => (string) ($decoded['precinct_id'] ?? ''),
+                'return_scope' => (string) ($decoded['return_scope'] ?? 'combined'),
+                'payloads' => [$payload],
+                'canonical_payload' => $canonicalPayload,
+                'payload_hash' => (string) ($decoded['payload_hash'] ?? hash('sha256', $canonicalPayload)),
+                'return_hash' => (string) ($decoded['return_hash'] ?? ''),
+                'document_profile' => $decoded['document_profile'] ?? null,
+                'accepted_ballots' => (int) ($decoded['accepted_ballots'] ?? 0),
+                'rejected_ballots' => (int) ($decoded['rejected_ballots'] ?? 0),
+                'tally' => $decoded['tally'] ?? [],
+            ]);
+        } catch (RuntimeException) {
+            return null;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $decoded
+     */
+    private function guardReturn(array $decoded): void
+    {
+        $configuration = $this->storage->readJson('runtime/active-precinct.json');
+
+        foreach (['election_id', 'mapping_hash'] as $key) {
+            if (($decoded[$key] ?? null) !== ($configuration[$key] ?? null)) {
+                throw new RuntimeException(str($key)->replace('_', ' ')->ucfirst()->append(' mismatch.')->toString());
+            }
+        }
+
+        $expectedProfile = $this->documents->electionReturnReference();
+        $profile = $decoded['document_profile'] ?? null;
+
+        if (is_array($profile) && $profile !== $expectedProfile) {
+            throw new RuntimeException('Election return document profile mismatch.');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $return
+     * @return array<string, mixed>
+     */
+    private function normalizeReturn(array $return): array
+    {
+        $payloadHash = (string) ($return['payload_hash'] ?? $return['return_hash'] ?? '');
+
+        return [
+            ...$return,
+            'sequence' => $return['sequence'] ?? null,
+            'return_scope' => (string) ($return['return_scope'] ?? 'combined'),
+            'payload_hash' => $payloadHash,
+            'document_hash' => $payloadHash !== '' ? $payloadHash : (string) ($return['return_hash'] ?? ''),
+        ];
     }
 
     /**
@@ -250,28 +352,36 @@ final class CanvassingScannerIngestion
         return is_string($payload) ? ['payload' => $payload] : null;
     }
 
-    private function hasAcceptedReturn(string $stationId, string $returnHash): bool
+    private function hasAcceptedDocument(string $stationId, string $documentHash): bool
     {
+        if ($documentHash === '') {
+            return false;
+        }
+
         return ScannerScanEvent::query()
             ->where('station_id', $stationId)
             ->where('scan_type', self::ScanType)
             ->where('status', 'accepted')
-            ->where('document_hash', $returnHash)
+            ->where('document_hash', $documentHash)
             ->exists();
     }
 
     /**
-     * @param  array<string, mixed>  $metadata
-     * @param  array<string, mixed>  $matchingReturn
+     * @param  array<string, mixed>|null  $matchingReturn
      * @return array{0: string, 1: string}
      */
-    private function multipartStatus(string $stationId, array $metadata, array $matchingReturn): array
+    private function multipartStatus(string $stationId, array $metadata, ?array $matchingReturn, string $currentPayload): array
     {
+        $groupId = (string) ($metadata['group_id'] ?? '');
+
+        if ($groupId === '') {
+            return ['rejected', 'Election return QR fragment metadata is malformed.'];
+        }
+
         $existingParts = ScannerScanEvent::query()
             ->where('station_id', $stationId)
             ->where('scan_type', self::ScanType)
-            ->where('group_id', $metadata['group_id'])
-            ->where('document_hash', $matchingReturn['return_hash'])
+            ->where('group_id', $groupId)
             ->whereIn('status', ['partial', 'accepted'])
             ->pluck('part_number')
             ->filter()
@@ -288,17 +398,81 @@ final class CanvassingScannerIngestion
 
         $receivedParts = $existingParts->push((int) $metadata['part_number'])->unique()->count();
 
-        if ($receivedParts >= (int) $metadata['total_parts']) {
+        if ($receivedParts < (int) $metadata['total_parts']) {
             return [
-                'accepted',
-                "Accepted ER {$matchingReturn['sequence']}.",
+                'partial',
+                "ER QR set: {$receivedParts} of {$metadata['total_parts']} parts.",
             ];
         }
 
-        return [
-            'partial',
-            "ER {$matchingReturn['sequence']}: {$receivedParts} of {$metadata['total_parts']} parts.",
-        ];
+        $completedReturn = $matchingReturn ?? $this->completedMultipartReturn($stationId, $metadata, $currentPayload);
+
+        if ($completedReturn === null) {
+            return ['rejected', 'Completed ER QR set is not part of this canvassing session.'];
+        }
+
+        if ($this->hasAcceptedDocument($stationId, (string) ($completedReturn['document_hash'] ?? ''))) {
+            return ['duplicate', $this->acceptedMessage($completedReturn, true)];
+        }
+
+        return ['accepted', $this->acceptedMessage($completedReturn)];
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array<string, mixed>|null
+     */
+    private function completedMultipartReturn(string $stationId, array $metadata, ?string $currentPayload = null): ?array
+    {
+        $payloads = ScannerScanEvent::query()
+            ->where('station_id', $stationId)
+            ->where('scan_type', self::ScanType)
+            ->where('group_id', $metadata['group_id'] ?? null)
+            ->whereIn('status', ['partial', 'accepted'])
+            ->orderBy('id')
+            ->pluck('payload')
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($currentPayload !== null) {
+            $payloads[] = $currentPayload;
+        }
+
+        try {
+            $canonicalPayload = $this->envelope->reassemble(array_map('strval', $payloads));
+            $decoded = $this->qrPayload->decode($canonicalPayload);
+            $this->guardReturn($decoded);
+
+            return $this->normalizeReturn([
+                'sequence' => null,
+                'source' => 'printed election return QR',
+                'precinct_id' => (string) ($decoded['precinct_id'] ?? ''),
+                'return_scope' => (string) ($decoded['return_scope'] ?? 'combined'),
+                'payloads' => $payloads,
+                'canonical_payload' => $canonicalPayload,
+                'payload_hash' => (string) ($decoded['payload_hash'] ?? hash('sha256', $canonicalPayload)),
+                'return_hash' => (string) ($decoded['return_hash'] ?? ''),
+                'document_profile' => $decoded['document_profile'] ?? null,
+                'accepted_ballots' => (int) ($decoded['accepted_ballots'] ?? 0),
+                'rejected_ballots' => (int) ($decoded['rejected_ballots'] ?? 0),
+                'tally' => $decoded['tally'] ?? [],
+            ]);
+        } catch (RuntimeException) {
+            return null;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $matchingReturn
+     */
+    private function acceptedMessage(array $matchingReturn, bool $duplicate = false): string
+    {
+        $scope = str((string) ($matchingReturn['return_scope'] ?? 'combined'))->replace('_', ' ')->title()->toString();
+        $sequence = $matchingReturn['sequence'] ?? null;
+        $label = $sequence === null ? "{$scope} ER" : "ER {$sequence}";
+
+        return $duplicate ? "{$label} already accepted." : "Accepted {$label}.";
     }
 
     /**
@@ -319,7 +493,6 @@ final class CanvassingScannerIngestion
         if (
             $events
                 ->where('group_id', $latestPartial->group_id)
-                ->where('document_hash', $latestPartial->document_hash)
                 ->where('status', 'accepted')
                 ->isNotEmpty()
         ) {
@@ -328,7 +501,6 @@ final class CanvassingScannerIngestion
 
         $receivedParts = $events
             ->where('group_id', $latestPartial->group_id)
-            ->where('document_hash', $latestPartial->document_hash)
             ->whereIn('status', ['partial', 'accepted'])
             ->pluck('part_number')
             ->filter()
@@ -343,7 +515,7 @@ final class CanvassingScannerIngestion
             'total_parts' => $latestPartial->total_parts,
             'received_parts' => $receivedParts,
             'precinct_id' => $latestPartial->precinct_id,
-            'return_hash' => $latestPartial->document_hash,
+            'return_hash' => $latestPartial->metadata['return_hash'] ?? $latestPartial->document_hash,
         ];
     }
 
@@ -370,8 +542,8 @@ final class CanvassingScannerIngestion
 
     private function eventTitle(ScannerScanEvent $event, mixed $sequence): string
     {
-        if ($event->status === 'accepted' && $sequence !== null) {
-            return "ER {$sequence} accepted";
+        if ($event->status === 'accepted') {
+            return $sequence !== null ? "ER {$sequence} accepted" : 'ER accepted';
         }
 
         if ($event->status === 'partial') {

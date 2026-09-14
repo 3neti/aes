@@ -27,21 +27,25 @@ type Contest = {
     }>;
 };
 
-const props = withDefaults(defineProps<{
-    eyebrow: string;
-    title: string;
-    acceptedCount: number;
-    acceptedLabel: string;
-    contests: Contest[];
-    tally: Tally;
-    lastScanDelta?: TallyDelta;
-    flashKey?: string | number | null;
-    enableCandidateSort?: boolean;
-}>(), {
-    enableCandidateSort: false,
-});
+const props = withDefaults(
+    defineProps<{
+        eyebrow: string;
+        title: string;
+        acceptedCount: number;
+        acceptedLabel: string;
+        contests: Contest[];
+        tally: Tally;
+        lastScanDelta?: TallyDelta;
+        flashKey?: string | number | null;
+        enableCandidateSort?: boolean;
+    }>(),
+    {
+        enableCandidateSort: false,
+    },
+);
 
-const sortByVotes = ref(false);
+const sortByVotes = ref(true);
+const hideZeroVoteCandidates = ref(false);
 const candidateSortMode = computed<CandidateSortMode>(() => {
     if (!props.enableCandidateSort) {
         return 'ballot';
@@ -91,6 +95,34 @@ const candidateSortMode = computed<CandidateSortMode>(() => {
                         {{ sortByVotes ? 'Highest first' : 'Ballot order' }}
                     </span>
                 </label>
+                <label
+                    v-if="enableCandidateSort"
+                    class="flex cursor-pointer items-center gap-3 border border-stone-200 bg-stone-50 px-3 py-2 text-left"
+                >
+                    <span class="text-xs font-bold text-stone-700">
+                        Hide no-vote candidates
+                    </span>
+                    <span class="relative inline-flex items-center">
+                        <input
+                            v-model="hideZeroVoteCandidates"
+                            type="checkbox"
+                            class="peer sr-only"
+                        />
+                        <span
+                            class="h-6 w-11 border border-stone-300 bg-white transition-colors peer-checked:border-blue-800 peer-checked:bg-blue-800"
+                        />
+                        <span
+                            class="absolute left-1 h-4 w-4 bg-stone-400 transition-transform peer-checked:translate-x-5 peer-checked:bg-white"
+                        />
+                    </span>
+                    <span class="text-xs font-semibold text-stone-500">
+                        {{
+                            hideZeroVoteCandidates
+                                ? 'Only with votes'
+                                : 'Show all'
+                        }}
+                    </span>
+                </label>
                 <p class="border border-stone-200 bg-stone-50 px-3 py-2">
                     <strong class="text-2xl">{{ acceptedCount }}</strong>
                     {{ acceptedLabel }}
@@ -110,6 +142,7 @@ const candidateSortMode = computed<CandidateSortMode>(() => {
                 :candidate-deltas="lastScanDelta?.[contest.id] ?? {}"
                 :flash-key="flashKey"
                 :candidate-sort-mode="candidateSortMode"
+                :hide-zero-vote-candidates="hideZeroVoteCandidates"
             />
         </div>
     </section>

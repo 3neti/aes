@@ -27,6 +27,7 @@ type ReturnScan = {
 type ScannerState = {
     revision: number;
     accepted_return_hashes: string[];
+    accepted_returns?: ReturnScan[];
     latest_accepted_return_hash?: string | null;
     latest_message?: string | null;
     latest_status?: string | null;
@@ -85,7 +86,11 @@ const activeViewLabel = computed(() =>
     activeViewTokens.value.includes('all')
         ? 'All contests'
         : activeViewTokens.value
-              .map((token) => viewOptions.find((option) => option.value === token)?.label ?? token)
+              .map(
+                  (token) =>
+                      viewOptions.find((option) => option.value === token)
+                          ?.label ?? token,
+              )
               .join(' + '),
 );
 const filteredContests = computed(() => {
@@ -97,10 +102,16 @@ const filteredContests = computed(() => {
     }
 
     return props.simulation.ballot.contests.filter((contest) =>
-        activeViewTokens.value.some((token) => contestMatchesView(contest, token)),
+        activeViewTokens.value.some((token) =>
+            contestMatchesView(contest, token),
+        ),
     );
 });
 const acceptedReturns = computed(() => {
+    if ((scannerState.value.accepted_returns ?? []).length > 0) {
+        return scannerState.value.accepted_returns ?? [];
+    }
+
     const acceptedHashes = new Set(scannerState.value.accepted_return_hashes);
 
     return props.simulation.scanner.returns.filter((scannedReturn) =>
@@ -124,14 +135,18 @@ const acceptedBallots = computed(() =>
 );
 const latestReturn = computed(
     () =>
+        [...acceptedReturns.value].reverse()[0] ??
         props.simulation.scanner.returns.find(
             (scannedReturn) =>
                 scannedReturn.return_hash ===
                 scannerState.value.latest_accepted_return_hash,
-        ) ?? null,
+        ) ??
+        null,
 );
 const hasGeneratedReturns = computed(
-    () => props.simulation.run !== null && props.simulation.scanner.returns.length > 0,
+    () =>
+        props.simulation.run !== null &&
+        props.simulation.scanner.returns.length > 0,
 );
 const simulatorButtonLabel = computed(() =>
     simulatorRunning.value ? 'Stop simulator' : 'Start simulator',
@@ -194,7 +209,8 @@ async function fetchScannerState(): Promise<void> {
             lastUpdatedAt.value = new Date().toLocaleTimeString();
         }
     } catch {
-        simulatorMessage.value = 'Live scanner state is temporarily unavailable.';
+        simulatorMessage.value =
+            'Live scanner state is temporarily unavailable.';
     }
 }
 
@@ -330,8 +346,8 @@ onBeforeUnmount(() => {
                             }}
                         </h1>
                         <p class="mt-1 text-sm text-stone-600">
-                            View: {{ activeViewLabel }} · Source:
-                            accepted WAES ER QR payloads
+                            View: {{ activeViewLabel }} · Source: accepted WAES
+                            ER QR payloads
                         </p>
                     </div>
 
@@ -375,9 +391,7 @@ onBeforeUnmount(() => {
                     <p class="mt-1 text-3xl font-black">
                         {{ acceptedBallots }}
                     </p>
-                    <p class="text-xs text-stone-500">
-                        scanner-derived totals
-                    </p>
+                    <p class="text-xs text-stone-500">scanner-derived totals</p>
                 </div>
                 <div class="border border-stone-300 bg-white p-3">
                     <p class="text-xs font-bold text-stone-600">Latest ER</p>
@@ -389,9 +403,7 @@ onBeforeUnmount(() => {
                     </p>
                 </div>
                 <div class="border border-stone-300 bg-white p-3">
-                    <p class="text-xs font-bold text-stone-600">
-                        Last Updated
-                    </p>
+                    <p class="text-xs font-bold text-stone-600">Last Updated</p>
                     <p class="mt-1 text-2xl font-black">
                         {{ lastUpdatedAt ?? 'Waiting' }}
                     </p>
@@ -399,7 +411,9 @@ onBeforeUnmount(() => {
                         {{ scannerState.latest_message ?? 'Ready' }}
                     </p>
                 </div>
-                <div class="border border-stone-300 bg-stone-950 p-3 text-white">
+                <div
+                    class="border border-stone-300 bg-stone-950 p-3 text-white"
+                >
                     <p class="text-xs font-bold text-stone-300">
                         Demo Simulator
                     </p>

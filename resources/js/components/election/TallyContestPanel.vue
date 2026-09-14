@@ -30,6 +30,7 @@ const props = defineProps<{
     candidateDeltas?: TallyDelta;
     flashKey?: string | number | null;
     candidateSortMode?: CandidateSortMode;
+    hideZeroVoteCandidates?: boolean;
 }>();
 
 const contestTotal = computed(() =>
@@ -44,23 +45,35 @@ const isLongContest = computed(
         props.contest.candidates.length > 18,
 );
 const sortedCandidates = computed(() => {
-    if (props.candidateSortMode === 'ballot') {
-        return props.contest.candidates;
-    }
+    const candidates = props.contest.candidates.map(
+        (candidate, ballotIndex) => ({
+            ballotIndex,
+            candidate,
+        }),
+    );
 
-    return props.contest.candidates
-        .map((candidate, ballotIndex) => ({ ballotIndex, candidate }))
-        .sort((left, right) => {
-            const voteDifference =
-                (props.candidateTotals[right.candidate.id] ?? 0) -
-                (props.candidateTotals[left.candidate.id] ?? 0);
+    const sorted =
+        props.candidateSortMode === 'ballot'
+            ? candidates
+            : candidates.sort((left, right) => {
+                  const voteDifference =
+                      (props.candidateTotals[right.candidate.id] ?? 0) -
+                      (props.candidateTotals[left.candidate.id] ?? 0);
 
-            if (voteDifference !== 0) {
-                return voteDifference;
-            }
+                  if (voteDifference !== 0) {
+                      return voteDifference;
+                  }
 
-            return left.ballotIndex - right.ballotIndex;
-        })
+                  return left.ballotIndex - right.ballotIndex;
+              });
+
+    return sorted
+        .filter(
+            (candidatePosition) =>
+                !props.hideZeroVoteCandidates ||
+                (props.candidateTotals[candidatePosition.candidate.id] ?? 0) >
+                    0,
+        )
         .map((candidatePosition) => candidatePosition.candidate);
 });
 </script>

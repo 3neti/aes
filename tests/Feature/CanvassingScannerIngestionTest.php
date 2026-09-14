@@ -7,6 +7,11 @@ use Illuminate\Support\Facades\Event;
 
 beforeEach(function (): void {
     config()->set('election.review.access.enabled', false);
+    config()->set('election.public_simulation.enabled', true);
+    config()->set('election.public_simulation.participation_required', false);
+    config()->set('election.public_simulation.role_demo_bulk_ballots.max_count', 5);
+    config()->set('election.public_simulation.role_demo_bulk_ballots.chunk_size', 5);
+    config()->set('election.public_simulation.role_demo_bulk_ballots.rendered_pdf_limit', 0);
     app(ElectionStorage::class)->reset();
     $this->withoutVite();
 });
@@ -87,6 +92,50 @@ test('canvassing scanner records duplicate accepted election returns', function 
 
     expect(ScannerScanEvent::query()->where('status', 'accepted')->count())->toBe(1)
         ->and(ScannerScanEvent::query()->where('status', 'duplicate')->count())->toBe(1);
+});
+
+test('canvassing scanner accepts printed role demo national and local election return qr payloads', function (): void {
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+
+    $this->postJson(route('election.role-demo.bulk-ballots'), [
+        'count' => 5,
+    ])->assertSuccessful();
+
+    $storage = app(ElectionStorage::class);
+    $configuration = $storage->readJson('runtime/active-precinct.json');
+
+    $this->get(route('election.role-demo.election-return.scoped', ['scope' => 'national']))
+        ->assertSuccessful();
+    $this->get(route('election.role-demo.election-return.scoped', ['scope' => 'local']))
+        ->assertSuccessful();
+
+    $return = $storage->readJson("returns/{$configuration['precinct_id']}-return.json");
+    $nationalPayloads = $return['truth_tally']['scopes']['national']['qr_payloads'];
+    $localPayloads = $return['truth_tally']['scopes']['local']['qr_payloads'];
+
+    foreach ($nationalPayloads as $index => $payload) {
+        $this->postJson(route('election.canvassing-demo.scanner-events.store'), [
+            'payload' => $payload,
+        ])
+            ->assertOk()
+            ->assertJsonPath('event.status', $index === array_key_last($nationalPayloads) ? 'accepted' : 'partial');
+    }
+
+    foreach ($localPayloads as $index => $payload) {
+        $this->postJson(route('election.canvassing-demo.scanner-events.store'), [
+            'payload' => $payload,
+        ])
+            ->assertOk()
+            ->assertJsonPath('event.status', $index === array_key_last($localPayloads) ? 'accepted' : 'partial');
+    }
+
+    $this->getJson(route('election.canvassing-demo.scanner-events.index'))
+        ->assertOk()
+        ->assertJsonPath('accepted_return_hashes.0', $return['return_hash'])
+        ->assertJsonPath('accepted_returns.0.return_scope', 'national')
+        ->assertJsonPath('accepted_returns.1.return_scope', 'local');
+
+    expect(ScannerScanEvent::query()->where('status', 'accepted')->count())->toBe(2);
 });
 
 test('canvassing scanner rejects unsupported payload text', function (): void {

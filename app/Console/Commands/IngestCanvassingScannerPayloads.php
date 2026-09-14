@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 #[Signature('election:canvassing-scanner-ingest
     {--station-id=canvassing-demo-city : Scanner station identifier}
     {--source=scanner_bridge : Source stored with each scan event}
-    {--payload=* : QR payload text. Use multiple times, or pipe newline-delimited payloads through STDIN.}')]
+    {--payload=* : QR payload text. Use multiple times, or pipe/type newline-delimited payloads through STDIN.}')]
 #[Description('Record WAES election return QR payloads from a scanner bridge.')]
 final class IngestCanvassingScannerPayloads extends Command
 {
@@ -21,25 +21,42 @@ final class IngestCanvassingScannerPayloads extends Command
     {
         $stationId = (string) $this->option('station-id');
         $source = (string) $this->option('source');
-        $payloads = $this->payloads();
+        $payloadOptions = $this->payloadOptions();
 
-        if ($payloads === []) {
-            $this->error('No QR payloads were provided.');
-
-            return self::FAILURE;
+        if ($payloadOptions !== []) {
+            return $this->ingestBatch($payloadOptions, $stationId, $source, $ingestion);
         }
 
+        if (! stream_isatty(STDIN)) {
+            return $this->ingestFromStream(STDIN, $stationId, $source, $ingestion, requirePayloads: true);
+        }
+
+        $this->line('Canvassing scanner listener ready. Scan ER QR codes now. Press Ctrl+C to stop.');
+
+        return $this->ingestFromStream(STDIN, $stationId, $source, $ingestion, requirePayloads: false);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function payloadOptions(): array
+    {
+        return collect((array) $this->option('payload'))
+            ->map(fn (mixed $payload): string => trim((string) $payload))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  list<string>  $payloads
+     */
+    private function ingestBatch(array $payloads, string $stationId, string $source, CanvassingScannerIngestion $ingestion): int
+    {
         $hasRejectedPayload = false;
 
         foreach ($payloads as $payload) {
-            $result = $ingestion->ingest($payload, $stationId, $source);
-            $event = $result['event'];
-            $status = (string) ($event['status'] ?? 'unknown');
-            $message = (string) ($result['state']['latest_message'] ?? $event['meta'] ?? 'Recorded scan.');
-
-            $this->line(strtoupper($status).': '.$message);
-
-            if ($status === 'rejected') {
+            if (! $this->ingestOne($payload, $stationId, $source, $ingestion)) {
                 $hasRejectedPayload = true;
             }
         }
@@ -48,24 +65,49 @@ final class IngestCanvassingScannerPayloads extends Command
     }
 
     /**
-     * @return list<string>
+     * Reads newline-delimited payloads from the given stream, ingesting each
+     * one as soon as it arrives. Used both for piped STDIN batches and for
+     * a live, interactive keyboard-wedge scanner session.
+     *
+     * @param  resource  $stream
      */
-    private function payloads(): array
+    private function ingestFromStream($stream, string $stationId, string $source, CanvassingScannerIngestion $ingestion, bool $requirePayloads): int
     {
-        $payloads = collect((array) $this->option('payload'))
-            ->map(fn (mixed $payload): string => trim((string) $payload))
-            ->filter()
-            ->values()
-            ->all();
+        $hasRejectedPayload = false;
+        $receivedAny = false;
 
-        if ($payloads !== [] || stream_isatty(STDIN)) {
-            return $payloads;
+        while (($line = fgets($stream)) !== false) {
+            $payload = trim($line);
+
+            if ($payload === '') {
+                continue;
+            }
+
+            $receivedAny = true;
+
+            if (! $this->ingestOne($payload, $stationId, $source, $ingestion)) {
+                $hasRejectedPayload = true;
+            }
         }
 
-        return collect(explode(PHP_EOL, (string) stream_get_contents(STDIN)))
-            ->map(fn (string $payload): string => trim($payload))
-            ->filter()
-            ->values()
-            ->all();
+        if ($requirePayloads && ! $receivedAny) {
+            $this->error('No QR payloads were provided.');
+
+            return self::FAILURE;
+        }
+
+        return $hasRejectedPayload ? self::FAILURE : self::SUCCESS;
+    }
+
+    private function ingestOne(string $payload, string $stationId, string $source, CanvassingScannerIngestion $ingestion): bool
+    {
+        $result = $ingestion->ingest($payload, $stationId, $source);
+        $event = $result['event'];
+        $status = (string) ($event['status'] ?? 'unknown');
+        $message = (string) ($result['state']['latest_message'] ?? $event['meta'] ?? 'Recorded scan.');
+
+        $this->line(strtoupper($status).': '.$message);
+
+        return $status !== 'rejected';
     }
 }
