@@ -36,7 +36,7 @@ final class PrintStationController extends Controller
                 ? route('election.print-station.ballot-preview')
                 : null,
             'depositFeedback' => $request->session()->get('deposit_feedback'),
-            'printPinDigits' => min(6, max(4, (int) config('election.voter.print_pin_digits', 4))),
+            'printPinDigits' => 4,
         ]);
     }
 

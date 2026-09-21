@@ -87,6 +87,10 @@ test('role demo runs officer voter print and watcher points of view without clos
         'code' => $authorization['code'],
     ])->assertRedirectToRoute('election.role-demo.voter.ballot');
 
+    $this->post(route('election.role-demo.print.accept'), [
+        'code' => $authorization['code'],
+    ])->assertSessionHasErrors('code');
+
     $this->get(route('election.role-demo.voter.ballot'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
@@ -117,7 +121,7 @@ test('role demo runs officer voter print and watcher points of view without clos
 
     $release = session('role_demo.release');
     expect($release)->toBeArray()
-        ->and($release['release_code'])->toMatch('/^[0-9]{4,6}$/');
+        ->and($release['release_code'])->toBe($authorization['code']);
 
     $this->get(route('election.role-demo.voter.complete'))
         ->assertSuccessful()
@@ -140,7 +144,7 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->toContain('role_demo.voter_ballot_preview_generated');
 
     $this->post(route('election.role-demo.print.accept'), [
-        'code' => $release['release_code'],
+        'code' => $authorization['code'],
     ])->assertRedirectToRoute('election.role-demo.officer');
 
     $this->get(route('election.role-demo.officer'))
@@ -149,6 +153,10 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('currentTally.accepted_ballots', 1)
             ->where('printFeedback.status', 'accepted')
         );
+
+    $this->post(route('election.role-demo.print.accept'), [
+        'code' => $authorization['code'],
+    ])->assertSessionHasErrors('code');
 
     $this->get(route('election.role-demo.scanner-tally'))
         ->assertSuccessful()

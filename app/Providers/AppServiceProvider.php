@@ -13,8 +13,12 @@ use App\Election\Devices\HandheldScannerHealthCheck;
 use App\Election\Devices\SimulatedPrinterHealthCheck;
 use App\Election\Devices\SimulatedScannerHealthCheck;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\ControlNumberPrinter;
 use App\Election\Printing\CupsBallotPrinter;
+use App\Election\Printing\CupsControlNumberPrinter;
 use App\Election\Printing\FileBallotPrinter;
+use App\Election\Printing\FileControlNumberReceiptPrinter;
+use App\Election\Printing\NullControlNumberPrinter;
 use App\Election\Printing\PrintFormArtifactService;
 use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\Scanning\BallotScanner;
@@ -66,6 +70,23 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return $app->make(FileBallotPrinter::class);
+        });
+        $this->app->bind(ControlNumberPrinter::class, function (Application $app): ControlNumberPrinter {
+            if (config('election.control_number_printer.driver') === 'disabled') {
+                return $app->make(NullControlNumberPrinter::class);
+            }
+
+            if (config('election.control_number_printer.driver') === 'cups') {
+                return new CupsControlNumberPrinter(
+                    $app->make(FileControlNumberReceiptPrinter::class),
+                    $app->make(ElectionStorage::class),
+                    $app->make(ActivityJournal::class),
+                    (string) config('election.control_number_printer.cups.name', ''),
+                    (int) config('election.control_number_printer.cups.timeout', 10),
+                );
+            }
+
+            return $app->make(FileControlNumberReceiptPrinter::class);
         });
         $this->app->bind(DeviceCertificationService::class, function (Application $app): DeviceCertificationService {
             return new DeviceCertificationService(

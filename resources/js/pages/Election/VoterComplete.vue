@@ -96,23 +96,23 @@ function formatDuration(totalSeconds: number): string {
                     Ballot finalized privately
                 </p>
                 <h1 class="mt-2 text-3xl font-bold">
-                    Write down your print PIN
+                    Your ballot is ready to print
                 </h1>
                 <p class="mt-4 text-stone-700">
-                    Leave this tablet in the voting booth. Write this PIN on the
-                    provided slip, then go to the central print station to print
-                    your paper ballot. The print station will not display your
+                    Leave this tablet in the voting booth. Bring your voter
+                    control number to the central print station to print your
+                    paper ballot. The print station will not display your
                     choices.
                 </p>
                 <img
                     :src="release.release_qr_data_uri"
-                    alt="Private one-time print PIN QR code"
+                    alt="Private voter control number QR code"
                     class="mx-auto mt-5 h-64 w-64 border border-stone-300 bg-white p-2"
                 />
                 <p class="mt-4 text-sm font-bold text-stone-600">
                     {{
                         release.pin_digits ?? release.release_code.length
-                    }}-digit print PIN
+                    }}-digit voter control number
                 </p>
                 <button
                     v-if="demoBallotPreviewEnabled && ballotPreviewAction"
@@ -130,7 +130,8 @@ function formatDuration(totalSeconds: number): string {
                     v-if="demoBallotPreviewEnabled && ballotPreviewAction"
                     class="mt-2 text-sm font-semibold text-blue-800"
                 >
-                    Demo shortcut: tap the PIN to preview the printable ballot.
+                    Demo shortcut: tap the number to preview the printable
+                    ballot.
                 </p>
                 <p class="mt-2 text-sm text-stone-600">
                     Paper stock serial {{ release.paper_ballot_serial }}
@@ -220,8 +221,8 @@ function formatDuration(totalSeconds: number): string {
                         </h2>
                         <p class="mt-1 max-w-3xl text-sm text-stone-700">
                             In a real precinct, the voter tablet does not show
-                            this preview. The print PIN remains valid for the
-                            central print station.
+                            this preview. The voter control number remains valid
+                            for the central print station.
                         </p>
                     </div>
                     <button

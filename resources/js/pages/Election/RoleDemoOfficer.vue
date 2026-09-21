@@ -103,7 +103,7 @@ const props = defineProps<{
 }>();
 
 const customBulkCount = ref<number | null>(null);
-const printPin = ref('');
+const controlNumberForPrint = ref('');
 const bulkLoading = ref(false);
 const bulkMessage = ref<string | null>(null);
 const bulkError = ref<string | null>(null);
@@ -375,7 +375,7 @@ usePoll(
                     <strong class="block text-2xl">{{
                         operationsBoard.print_station.pending_pins
                     }}</strong>
-                    <span class="text-sm text-stone-600">pending print PINs</span>
+                    <span class="text-sm text-stone-600">submitted ballots</span>
                 </p>
                 <p class="border border-stone-300 bg-white p-4">
                     <strong class="block font-mono text-sm">{{
@@ -477,12 +477,13 @@ usePoll(
                 <section class="border border-stone-300 bg-white p-5">
                     <p class="text-sm font-bold text-blue-800">Step 2</p>
                     <h2 class="mt-1 text-xl font-bold">
-                        Accept voter print PIN
+                        Print submitted ballot
                     </h2>
                     <p class="mt-2 text-sm text-stone-700">
-                        Enter the voter’s private print PIN. This prints the
-                        paper ballot PDF and deposits the sealed VVDAT record for
-                        the live watcher tally.
+                        Enter the voter control number only after the voter has
+                        submitted the ballot. This prints the paper ballot PDF
+                        and deposits the sealed VVDAT record for the live
+                        watcher tally.
                     </p>
                     <Form
                         :action="actions.acceptPrint"
@@ -490,11 +491,11 @@ usePoll(
                         #default="{ errors, processing }"
                         class="mt-5 space-y-3"
                         reset-on-success
-                        @success="printPin = ''"
+                        @success="controlNumberForPrint = ''"
                     >
                         <NumericPinPad
-                            v-model="printPin"
-                            label="Print PIN"
+                            v-model="controlNumberForPrint"
+                            label="Voter Control Number"
                             :digits="printPinDigits"
                             :error="errors.code"
                             :processing="processing"

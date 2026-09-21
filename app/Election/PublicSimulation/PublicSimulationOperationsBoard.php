@@ -48,7 +48,7 @@ final class PublicSimulationOperationsBoard
                 'next_required_action' => $this->nextRequiredAction($activeBooths, $pendingPins, $redeemedPins, $printedAwaitingDeposit),
             ],
             'timeline' => $this->timeline(),
-            'privacy_notice' => 'Shows aggregate booth, print PIN, paper ballot, and journal states only. It excludes voter identity, control numbers, raw PINs, ballot selections, paper serials, and QR payloads.',
+            'privacy_notice' => 'Shows aggregate booth, submitted ballot, paper ballot, and journal states only. It excludes voter identity, control numbers, ballot selections, paper serials, and QR payloads.',
         ];
     }
 
@@ -82,9 +82,9 @@ final class PublicSimulationOperationsBoard
         $labels = [
             'voter.authorization_issued' => 'Officer issued a voter control number',
             'voter.authorization_claimed' => 'Voter entered a control number at a booth tablet',
-            'ballot.finalized_privately' => 'Voter confirmed selections and generated a print PIN',
-            'voting.print_pin.generated' => 'Print PIN became available at the booth',
-            'voting.print_pin.consumed' => 'Central print station claimed a print PIN',
+            'ballot.finalized_privately' => 'Voter confirmed selections and submitted the ballot for printing',
+            'voting.print_pin.generated' => 'Voter control number became available for ballot printing',
+            'voting.print_pin.consumed' => 'Central print station claimed a voter control number',
             'printing.ballot.generated_from_pin' => 'Central print station generated the paper ballot',
             'paper_ballot.deposited' => 'Verified paper ballot entered the sealed ballot box',
             'public_simulation.close_blocked_pending_voters' => 'Closeout was blocked by unfinished voter work',
@@ -113,7 +113,7 @@ final class PublicSimulationOperationsBoard
         }
 
         if ($pendingPins > 0) {
-            return 'Send voters with print PINs to the central print station.';
+            return 'Send voters with submitted control numbers to the central print station.';
         }
 
         if ($redeemedPins > 0) {

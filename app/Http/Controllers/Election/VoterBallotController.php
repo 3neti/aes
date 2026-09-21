@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Election;
 use App\Election\Core\ActivityJournal;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
+use App\Election\Printing\ControlNumberPrinter;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
@@ -50,6 +51,7 @@ final class VoterBallotController extends Controller
         FinalizePrivateBallotRequest $request,
         AnonymousVoterAuthorization $authorizations,
         PrivateBallotRelease $releases,
+        ControlNumberPrinter $controlNumberPrinter,
         VoterBallotAnalytics $analytics,
         LifecycleState $lifecycle,
     ): RedirectResponse {
@@ -60,8 +62,13 @@ final class VoterBallotController extends Controller
         }
 
         $authorizationId = $request->session()->get('election.voter_authorization_id');
+        $controlNumber = $request->session()->get('election.voter_authorization_code');
 
         if (! is_string($authorizationId) || ! $authorizations->isClaimed($authorizationId)) {
+            abort(403);
+        }
+
+        if (! is_string($controlNumber)) {
             abort(403);
         }
 
@@ -71,13 +78,22 @@ final class VoterBallotController extends Controller
             ->all();
 
         try {
-            $release = $releases->create($authorizationId, $selections);
+            $release = $releases->create($authorizationId, $selections, $controlNumber);
             $authorizations->complete($authorizationId);
         } catch (\RuntimeException $exception) {
             throw ValidationException::withMessages(['selections' => $exception->getMessage()]);
         }
 
-        $request->session()->forget('election.voter_authorization_id');
+        try {
+            $controlNumberPrinter->print($release);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        $request->session()->forget([
+            'election.voter_authorization_id',
+            'election.voter_authorization_code',
+        ]);
         $analyticsSummary = $analytics->record($validated['analytics'] ?? [], [
             'release_id' => $release['release_id'],
             'precinct_id' => $release['precinct_id'] ?? null,
@@ -118,6 +134,7 @@ final class VoterBallotController extends Controller
 
         $request->session()->forget([
             'election.voter_authorization_id',
+            'election.voter_authorization_code',
             'election.voter_print_release',
         ]);
 

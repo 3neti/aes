@@ -176,6 +176,13 @@ return [
             'timeout' => (int) env('ELECTION_CLOSEOUT_CUPS_TIMEOUT', 10),
         ],
     ],
+    'control_number_printer' => [
+        'driver' => env('ELECTION_CONTROL_NUMBER_PRINTER_DRIVER', 'file'),
+        'cups' => [
+            'name' => env('ELECTION_CONTROL_NUMBER_CUPS_PRINTER', ''),
+            'timeout' => (int) env('ELECTION_CONTROL_NUMBER_CUPS_TIMEOUT', 10),
+        ],
+    ],
     'clc' => [
         'source_path' => env('ELECTION_CLC_SOURCE_PATH', resource_path('election/ballots/Manila_Districts_1and2.xlsx')),
         'profile' => env('ELECTION_CLC_PROFILE', 'manila-districts-ballot-workbook'),

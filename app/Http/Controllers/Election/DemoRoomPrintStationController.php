@@ -110,7 +110,7 @@ final class DemoRoomPrintStationController extends Controller
         ]);
 
         return to_route('election.demo-room.print.station', [$round, $precinct])
-            ->with('public_simulation.officer_feedback', 'Central print station enabled. It can now redeem voter print PINs.');
+            ->with('public_simulation.officer_feedback', 'Central print station enabled. It can now accept submitted voter control numbers.');
     }
 
     public function redeem(RedeemPrintReleaseRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, PrivateBallotRelease $releases, PublicSimulationVotingGate $voting): RedirectResponse

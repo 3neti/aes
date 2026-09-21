@@ -554,7 +554,7 @@ onUnmounted(() => {
                         {{
                             processing
                                 ? 'Finalizing privately...'
-                                : 'Submit and get Print PIN'
+                                : 'Submit ballot'
                         }}
                     </button>
                 </div>

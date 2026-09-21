@@ -125,7 +125,7 @@ function selectBallot(index: number): void {
             <p class="mt-3 max-w-3xl text-stone-700">
                 This is the live demo tally from printed and deposited VVDAT
                 records. It refreshes while the Election Officer accepts voter
-                print PINs.
+                control numbers for submitted ballots.
             </p>
 
             <div class="mt-5 grid gap-3 sm:grid-cols-4">

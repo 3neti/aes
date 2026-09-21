@@ -62,7 +62,7 @@ final class VoterBallotAnalytics
             'overvote_attempts_blocked' => $this->nonNegativeInt($input['overvote_attempts_blocked'] ?? null),
             'final_selection_count' => $this->nonNegativeInt($input['final_selection_count'] ?? null),
             'recorded_at' => now()->toIso8601String(),
-            'privacy_notice' => 'Analytics excludes voter identity, control numbers, print PINs, candidate selections, QR payloads, and device identifiers.',
+            'privacy_notice' => 'Analytics excludes voter identity, control numbers, candidate selections, QR payloads, and device identifiers.',
         ];
 
         $record['analytics_hash'] = hash('sha256', json_encode($record, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));

@@ -77,6 +77,7 @@ final class VoterAuthorizationController extends Controller
         }
 
         $request->session()->put('election.voter_authorization_id', $authorization['authorization_id']);
+        $request->session()->put('election.voter_authorization_code', $request->validated('code'));
 
         return redirect()->route('election.voter.ballot');
     }

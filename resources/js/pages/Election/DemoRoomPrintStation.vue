@@ -159,8 +159,8 @@ const selectedPrintProfile = computed(() => {
                 </h1>
                 <p class="mt-3 text-stone-700">
                     An Election Officer enables this laptop once. After that,
-                    the station waits for voter print PINs and prints without
-                    displaying vote choices on screen.
+                    the station waits for submitted voter control numbers and
+                    prints without displaying vote choices on screen.
                 </p>
                 <Form
                     :action="actions.enable"

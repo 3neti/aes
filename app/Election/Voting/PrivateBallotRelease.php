@@ -36,7 +36,7 @@ final class PrivateBallotRelease
      * @param  array<string, array<int, string>>  $selections
      * @return array<string, mixed>
      */
-    public function create(string $authorizationId, array $selections): array
+    public function create(string $authorizationId, array $selections, ?string $releaseCode = null): array
     {
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
 
@@ -47,8 +47,8 @@ final class PrivateBallotRelease
         $this->selections->validate($configuration, $selections);
 
         $releaseId = (string) Str::uuid();
-        $releaseCode = $this->code();
-        $digits = $this->digits();
+        $releaseCode = $this->releaseCode($releaseCode);
+        $digits = strlen($releaseCode);
         $ballotId = 'ballot-'.Str::lower(Str::random(12));
         $paperBallotSerial = $this->paperBallots->nextRequiredSerial((string) ($configuration['precinct_id'] ?? 'PRECINCT'));
         $payload = [
@@ -486,7 +486,26 @@ final class PrivateBallotRelease
             }
         }
 
-        throw new RuntimeException('A unique print PIN could not be generated. Try again.');
+        throw new RuntimeException('A unique ballot print code could not be generated. Try again.');
+    }
+
+    private function releaseCode(?string $releaseCode): string
+    {
+        $normalized = Str::upper(str_replace(' ', '', trim((string) $releaseCode)));
+
+        if ($normalized === '') {
+            return $this->code();
+        }
+
+        if (! preg_match('/^[0-9]{4,6}$/', $normalized)) {
+            throw new RuntimeException('The voter control number must be four to six digits.');
+        }
+
+        if ($this->activeHashExists($this->hash($normalized))) {
+            throw new RuntimeException('This voter control number already has an active submitted ballot.');
+        }
+
+        return $normalized;
     }
 
     private function digits(): int

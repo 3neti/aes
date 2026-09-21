@@ -66,7 +66,7 @@ final class DemoRoomController extends Controller
             'roles' => [
                 $this->role('Election Officer', 'Open, admit, close, publish, and hand off.', route('election.demo-room.officer', [$round, $precinct]), $qrCode),
                 $this->role('Voter', 'Enter the officer-issued control number and cast the ballot in a booth.', route('election.public-simulation.voter.show', [$round, $precinct]), $qrCode),
-                $this->role('Printing Station', 'Enable the printer once, redeem voter print PINs, then print closeout forms.', route('election.demo-room.print.station', [$round, $precinct]), $qrCode),
+                $this->role('Printing Station', 'Enable the printer once, enter submitted voter control numbers, then print closeout forms.', route('election.demo-room.print.station', [$round, $precinct]), $qrCode),
                 $this->role('Poll Watcher', 'Inspect public tally, Election Return, VVDAT export, and logs after publication.', route('election.public-simulation.watcher.show', [$round, $precinct]), $qrCode),
                 $this->role('Auditor', 'Run the random manual audit and record discrepancies.', route('election.public-simulation.audit.show', [$round, $precinct]), $qrCode),
             ],

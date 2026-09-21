@@ -9,6 +9,7 @@ use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateConfiguredPrecinct;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\CloseoutArtifactPrinter;
+use App\Election\Printing\ControlNumberPrinter;
 use App\Election\Printing\PrintFormProfile;
 use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
@@ -145,7 +146,7 @@ final class RoleDemoController extends Controller
                 'precinctTally' => 'data:image/png;base64,'.base64_encode($qrCode->renderPng($precinctTallyUrl)),
                 'publicPrecinctTally' => 'data:image/png;base64,'.base64_encode($qrCode->renderPng($publicPrecinctTallyUrl)),
             ],
-            'printPinDigits' => min(6, max(4, (int) config('election.voter.print_pin_digits', 4))),
+            'printPinDigits' => 4,
             'bulkBallots' => [
                 'enabled' => (bool) config('election.public_simulation.role_demo_bulk_ballots.enabled', true),
                 'max_count' => max(1, (int) config('election.public_simulation.role_demo_bulk_ballots.max_count', 700)),
@@ -327,6 +328,7 @@ final class RoleDemoController extends Controller
         }
 
         $request->session()->put('role_demo.authorization', $authorization['authorization_id']);
+        $request->session()->put('role_demo.authorization_control_number', $request->validated('code'));
 
         return to_route('election.role-demo.voter.ballot');
     }
@@ -358,18 +360,20 @@ final class RoleDemoController extends Controller
         ]);
     }
 
-    public function finalize(FinalizePrivateBallotRequest $request, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PrivateBallotRelease $releases, PublicSimulationVotingGate $voting, VoterBallotAnalytics $analytics): RedirectResponse
+    public function finalize(FinalizePrivateBallotRequest $request, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PrivateBallotRelease $releases, ControlNumberPrinter $controlNumberPrinter, PublicSimulationVotingGate $voting, VoterBallotAnalytics $analytics): RedirectResponse
     {
         $precinct = $this->precinct($simulations);
         $authorizationId = $request->session()->get('role_demo.authorization');
+        $controlNumber = $request->session()->get('role_demo.authorization_control_number');
         abort_unless(is_string($authorizationId) && $authorizations->isClaimed($authorizationId), 403);
+        abort_unless(is_string($controlNumber), 403);
         $selections = collect($request->validated('selections', []))
             ->map(fn (array $candidateIds): array => array_values($candidateIds))
             ->all();
 
         try {
-            $release = $voting->execute(function () use ($authorizationId, $authorizations, $releases, $selections): array {
-                $release = $releases->create($authorizationId, $selections);
+            $release = $voting->execute(function () use ($authorizationId, $authorizations, $releases, $selections, $controlNumber): array {
+                $release = $releases->create($authorizationId, $selections, $controlNumber);
                 $authorizations->complete($authorizationId);
 
                 return $release;
@@ -378,7 +382,14 @@ final class RoleDemoController extends Controller
             throw ValidationException::withMessages(['selections' => $exception->getMessage()]);
         }
 
+        try {
+            $controlNumberPrinter->print($release);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
         $request->session()->forget('role_demo.authorization');
+        $request->session()->forget('role_demo.authorization_control_number');
         $analyticsSummary = $analytics->record($request->validated('analytics', []), [
             'release_id' => $release['release_id'],
             'precinct_id' => $release['precinct_id'] ?? null,
@@ -443,6 +454,7 @@ final class RoleDemoController extends Controller
 
         $request->session()->forget([
             'role_demo.authorization',
+            'role_demo.authorization_control_number',
             'role_demo.release',
         ]);
 

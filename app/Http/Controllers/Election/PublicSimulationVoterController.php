@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Printing\BallotPrinter;
+use App\Election\Printing\ControlNumberPrinter;
 use App\Election\PublicSimulation\PublicSimulationAdmissionQueue;
 use App\Election\PublicSimulation\PublicSimulationParticipation;
 use App\Election\PublicSimulation\PublicSimulationService;
@@ -106,6 +107,7 @@ final class PublicSimulationVoterController extends Controller
         }
 
         $request->session()->put($this->authorizationSessionKey($precinct), $authorization['authorization_id']);
+        $request->session()->put($this->authorizationCodeSessionKey($precinct), $request->validated('code'));
 
         return to_route('election.public-simulation.voter.ballot', [$round, $precinct]);
     }
@@ -135,18 +137,20 @@ final class PublicSimulationVoterController extends Controller
         ]);
     }
 
-    public function finalize(FinalizePrivateBallotRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PrivateBallotRelease $releases, LifecycleState $lifecycle, PublicSimulationVotingGate $voting, VoterBallotAnalytics $analytics): RedirectResponse
+    public function finalize(FinalizePrivateBallotRequest $request, SimulationRound $round, SimulationPrecinct $precinct, PublicSimulationService $simulations, AnonymousVoterAuthorization $authorizations, PrivateBallotRelease $releases, ControlNumberPrinter $controlNumberPrinter, LifecycleState $lifecycle, PublicSimulationVotingGate $voting, VoterBallotAnalytics $analytics): RedirectResponse
     {
         $this->scope($round, $precinct, $simulations);
         $authorizationId = $request->session()->get($this->authorizationSessionKey($precinct));
+        $controlNumber = $request->session()->get($this->authorizationCodeSessionKey($precinct));
         abort_unless(is_string($authorizationId) && $authorizations->isClaimed($authorizationId), 403);
+        abort_unless(is_string($controlNumber), 403);
         $selections = collect($request->validated('selections', []))
             ->map(fn (array $candidateIds): array => array_values($candidateIds))
             ->all();
 
         try {
-            $release = $voting->execute(function () use ($authorizationId, $authorizations, $releases, $selections): array {
-                $release = $releases->create($authorizationId, $selections);
+            $release = $voting->execute(function () use ($authorizationId, $authorizations, $releases, $selections, $controlNumber): array {
+                $release = $releases->create($authorizationId, $selections, $controlNumber);
                 $authorizations->complete($authorizationId);
 
                 return $release;
@@ -155,7 +159,14 @@ final class PublicSimulationVoterController extends Controller
             throw ValidationException::withMessages(['selections' => $exception->getMessage()]);
         }
 
+        try {
+            $controlNumberPrinter->print($release);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
         $request->session()->forget($this->authorizationSessionKey($precinct));
+        $request->session()->forget($this->authorizationCodeSessionKey($precinct));
         $analyticsSummary = $analytics->record($request->validated('analytics', []), [
             'release_id' => $release['release_id'],
             'precinct_id' => $release['precinct_id'] ?? null,
@@ -222,6 +233,7 @@ final class PublicSimulationVoterController extends Controller
 
         $request->session()->forget([
             $this->authorizationSessionKey($precinct),
+            $this->authorizationCodeSessionKey($precinct),
             $this->releaseSessionKey($precinct),
         ]);
 
@@ -244,7 +256,7 @@ final class PublicSimulationVoterController extends Controller
                 'print' => route('election.public-simulation.print.print', [$round, $precinct]),
                 'deposit' => route('election.public-simulation.print.deposit', [$round, $precinct]),
             ],
-            'printPinDigits' => min(6, max(4, (int) config('election.voter.print_pin_digits', 4))),
+            'printPinDigits' => 4,
             'publicSimulation' => true,
         ]);
     }
@@ -326,6 +338,11 @@ final class PublicSimulationVoterController extends Controller
     private function authorizationSessionKey(SimulationPrecinct $precinct): string
     {
         return "public_simulation.{$precinct->id}.authorization";
+    }
+
+    private function authorizationCodeSessionKey(SimulationPrecinct $precinct): string
+    {
+        return "public_simulation.{$precinct->id}.authorization_code";
     }
 
     private function releaseSessionKey(SimulationPrecinct $precinct): string

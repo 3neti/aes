@@ -164,6 +164,9 @@ test('the private voter journey seals choices until polls close', function (): v
             ->missing('journal')
         );
 
+    $this->post(route('election.print-station.redeem'), ['code' => $authorization['code']])
+        ->assertSessionHasErrors('code');
+
     $finalize = $this->post(route('election.voter.finalize'), [
         'selections' => [
             'president' => ['pres-ada'],
@@ -175,7 +178,7 @@ test('the private voter journey seals choices until polls close', function (): v
 
     $finalize->assertRedirect(route('election.voter.complete'));
     expect($release['release_qr_data_uri'])->toStartWith('data:image/png;base64,')
-        ->and($release['release_code'])->toMatch('/^[0-9]{4}$/')
+        ->and($release['release_code'])->toBe($authorization['code'])
         ->and($release['pin_digits'])->toBe(4)
         ->and($release)->not->toHaveKey('analytics')
         ->and(app(ElectionStorage::class)->files('analytics/voter-sessions'))->toBeEmpty();
@@ -197,9 +200,9 @@ test('the private voter journey seals choices until polls close', function (): v
             ->missing('snapshot')
         );
 
-    $this->post(route('election.print-station.redeem'), ['code' => $release['release_code']])
+    $this->post(route('election.print-station.redeem'), ['code' => $authorization['code']])
         ->assertRedirect(route('election.print-station'));
-    $this->post(route('election.print-station.redeem'), ['code' => $release['release_code']])
+    $this->post(route('election.print-station.redeem'), ['code' => $authorization['code']])
         ->assertSessionHasErrors('code');
 
     $this->get(route('election.print-station'))
@@ -384,7 +387,7 @@ test('the private voter ballot records optional review analytics without selecti
         ->toContain('voting.analytics_recorded');
 });
 
-test('print PIN length is configurable between four and six digits', function (int $configured, int $expected): void {
+test('fallback ballot print code length is configurable between four and six digits', function (int $configured, int $expected): void {
     config()->set('election.voter.print_pin_digits', $configured);
 
     $release = app(PrivateBallotRelease::class)->create('test-authorization-'.$configured, [

@@ -89,8 +89,8 @@ defineProps<{
                                 Election Officer
                             </p>
                             <p class="mt-1 text-sm text-stone-700">
-                                Admit voters, accept print PINs, and produce
-                                precinct forms.
+                                Admit voters, print submitted ballots, and
+                                produce precinct forms.
                             </p>
                         </Link>
 
@@ -100,8 +100,8 @@ defineProps<{
                         >
                             <p class="font-bold text-emerald-900">Voter</p>
                             <p class="mt-1 text-sm text-stone-700">
-                                Claim a ballot, make selections, review, and get
-                                the print PIN.
+                                Claim a ballot, make selections, review, and
+                                submit for printing.
                             </p>
                         </Link>
 

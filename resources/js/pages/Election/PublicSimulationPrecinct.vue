@@ -218,7 +218,7 @@ usePoll(
                         </div>
                         <div class="border border-stone-200 bg-stone-50 p-3">
                             <dt class="text-xs font-bold text-stone-600">
-                                Pending print PINs
+                                Submitted ballots
                             </dt>
                             <dd class="mt-1 text-3xl font-bold">
                                 {{ operationsBoard.print_station.pending_pins }}

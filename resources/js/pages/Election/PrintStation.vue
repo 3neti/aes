@@ -56,7 +56,7 @@ const reviewRoom = computed(
     () => page.props.electionReviewRoom as ElectionReviewRoomContext,
 );
 const pinDigits = computed(() => props.printPinDigits ?? 4);
-const printPin = ref('');
+const controlNumber = ref('');
 const acceptedDismissed = ref(false);
 const previewOpen = ref(false);
 const decodedOpen = ref(false);
@@ -135,19 +135,19 @@ onMounted(syncPrintingOverlay);
                         type="button"
                         @click="acceptedDismissed = true"
                     >
-                        Dismiss and accept next print PIN
+                        Dismiss and accept next voter control number
                     </button>
                 </div>
             </template>
 
             <template v-else-if="!release.release_id">
                 <h1 class="mt-2 text-3xl font-bold">
-                    Enter the voter's print PIN
+                    Enter the voter's control number
                 </h1>
                 <p class="mt-3 text-stone-700">
-                    The voter writes the PIN in the covered voting booth. This
-                    station prints the ballot without showing candidate
-                    selections on screen.
+                    The same number used to open the ballot prints only after
+                    the voter submits the ballot. This station prints the ballot
+                    without showing candidate selections on screen.
                 </p>
                 <Form
                     v-bind="
@@ -157,11 +157,11 @@ onMounted(syncPrintingOverlay);
                     "
                     #default="{ errors, processing }"
                     class="mt-7 space-y-4"
-                    @success="printPin = ''"
+                    @success="controlNumber = ''"
                 >
                     <NumericPinPad
-                        v-model="printPin"
-                        label="Print PIN"
+                        v-model="controlNumber"
+                        label="Voter Control Number"
                         :digits="pinDigits"
                         :error="errors.code"
                         :processing="processing"
