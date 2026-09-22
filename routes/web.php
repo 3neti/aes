@@ -68,6 +68,8 @@ Route::prefix('election')->name('election.')->group(function (): void {
             ->name('watcher.ballot');
         Route::get('/tally-sheet/{profile?}', [RoleDemoController::class, 'tallySheet'])->name('tally-sheet');
         Route::post('/print/tally-sheet/{profile?}', [RoleDemoController::class, 'submitTallySheet'])->name('print.tally-sheet');
+        Route::get('/control-number/latest', [RoleDemoController::class, 'latestControlNumberReceipt'])->name('control-number.latest');
+        Route::post('/print/control-number/latest', [RoleDemoController::class, 'submitLatestControlNumberReceipt'])->name('print.control-number.latest');
         Route::post('/print/election-returns/{scope}/{profile?}', [RoleDemoController::class, 'submitScopedElectionReturn'])->name('print.election-return.scoped');
         Route::get('/election-returns/{scope}/{profile?}', [RoleDemoController::class, 'scopedElectionReturn'])->name('election-return.scoped');
         Route::get('/election-return/{profile?}', [RoleDemoController::class, 'electionReturn'])->name('election-return');

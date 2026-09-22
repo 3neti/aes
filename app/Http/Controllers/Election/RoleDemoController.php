@@ -117,6 +117,9 @@ final class RoleDemoController extends Controller
             'feedback' => $request->session()->get('role_demo.feedback'),
             'closeoutFeedback' => $request->session()->get('role_demo.closeout_feedback'),
             'closeoutPrinter' => $closeoutPrinter->status(),
+            'latestControlNumberReceipt' => [
+                'available' => $this->latestControlNumberReceiptJob($storage) !== null,
+            ],
             'actions' => [
                 'home' => route('election.role-demo.index'),
                 'admit' => route('election.role-demo.admit'),
@@ -126,7 +129,9 @@ final class RoleDemoController extends Controller
                 'precinctTally' => $precinctTallyUrl,
                 'publicPrecinctTally' => $publicPrecinctTallyUrl,
                 'lastBallot' => route('election.role-demo.print.last-ballot'),
+                'latestControlNumberReceipt' => route('election.role-demo.control-number.latest'),
                 'tally' => route('election.role-demo.tally-sheet'),
+                'printControlNumberReceipt' => route('election.role-demo.print.control-number.latest'),
                 'printTally' => route('election.role-demo.print.tally-sheet'),
                 'return' => route('election.role-demo.election-return'),
                 'returns' => [
@@ -617,6 +622,52 @@ final class RoleDemoController extends Controller
         return $this->submitCloseoutArtifact($simulations, $storage, $profiles, $forms, $printer, 'tally-sheet', $profile);
     }
 
+    public function latestControlNumberReceipt(PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse
+    {
+        $precinct = $this->precinct($simulations);
+        $job = $this->latestControlNumberReceiptJob($storage);
+        abort_unless(is_array($job), 404);
+
+        $path = $job['pdf_artifact_path'] ?? null;
+        abort_unless(is_string($path) && is_file($path), 404);
+
+        return response()->file($path, [
+            'Content-Disposition' => 'inline; filename="'.$precinct->code.'-latest-voter-control-number.pdf"',
+        ]);
+    }
+
+    public function submitLatestControlNumberReceipt(PublicSimulationService $simulations, ElectionStorage $storage, ControlNumberPrinter $printer): RedirectResponse
+    {
+        $this->precinct($simulations);
+        $job = $this->latestControlNumberReceiptJob($storage);
+
+        if (! is_array($job)) {
+            return to_route('election.role-demo.officer')
+                ->with('role_demo.closeout_feedback', 'No voter control number receipt is available yet.');
+        }
+
+        $release = $this->releaseFromControlNumberJob($job);
+
+        if ($release === null) {
+            return to_route('election.role-demo.officer')
+                ->with('role_demo.closeout_feedback', 'The latest voter control number receipt cannot be reprinted.');
+        }
+
+        $result = $printer->print($release);
+        $status = (string) ($result['status'] ?? 'unknown');
+        $printerName = (string) ($result['printer_name'] ?? $result['requested_cups_printer'] ?? $result['printer'] ?? 'printer');
+        $message = $status === 'submitted'
+            ? "Voter Control Number submitted to {$printerName}."
+            : "Voter Control Number prepared with status [{$status}].";
+
+        if ($status === 'failed' && isset($result['cups_output'])) {
+            $message .= ' '.(string) $result['cups_output'];
+        }
+
+        return to_route('election.role-demo.officer')
+            ->with('role_demo.closeout_feedback', $message);
+    }
+
     public function electionReturn(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, ?string $profile = null): BinaryFileResponse
     {
         return $this->scopedElectionReturn($simulations, $storage, $profiles, $forms, ElectionReturnScope::Combined->value, $profile);
@@ -658,6 +709,52 @@ final class RoleDemoController extends Controller
 
         return to_route('election.role-demo.officer')
             ->with('role_demo.closeout_feedback', (string) $result['message']);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function latestControlNumberReceiptJob(ElectionStorage $storage): ?array
+    {
+        return collect($storage->files('print-jobs/control-number'))
+            ->sortByDesc(fn (string $path): int|false => filemtime($path))
+            ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
+            ->first(function (array $job): bool {
+                $path = $job['pdf_artifact_path'] ?? null;
+
+                return ($job['schema_version'] ?? null) === 'control-number-print-job-1'
+                    && is_string($path)
+                    && is_file($path);
+            });
+    }
+
+    /**
+     * @param  array<string, mixed>  $job
+     * @return array<string, mixed>|null
+     */
+    private function releaseFromControlNumberJob(array $job): ?array
+    {
+        $releaseId = $job['release_id'] ?? null;
+        $qrPayload = $job['qr_payload'] ?? null;
+
+        if (! is_string($releaseId) || ! is_string($qrPayload)) {
+            return null;
+        }
+
+        $controlNumber = str_starts_with($qrPayload, 'aes-print-release:')
+            ? substr($qrPayload, strlen('aes-print-release:'))
+            : '';
+
+        if (! preg_match('/^[0-9]{4,6}$/', $controlNumber)) {
+            return null;
+        }
+
+        return [
+            'release_id' => $releaseId,
+            'release_code' => $controlNumber,
+            'paper_ballot_serial' => $job['paper_ballot_serial'] ?? null,
+            'expires_at' => $job['expires_at'] ?? null,
+        ];
     }
 
     private function roleDemoBallotReviewDownloadEnabled(): bool

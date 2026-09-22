@@ -56,6 +56,9 @@ const props = defineProps<{
         enabled: boolean;
         submit_label: string;
     };
+    latestControlNumberReceipt: {
+        available: boolean;
+    };
     actions: {
         home: string;
         admit: string;
@@ -65,7 +68,9 @@ const props = defineProps<{
         precinctTally: string;
         publicPrecinctTally: string;
         lastBallot: string;
+        latestControlNumberReceipt: string;
         tally: string;
+        printControlNumberReceipt: string;
         printTally: string;
         return: string;
         returns: {
@@ -115,7 +120,9 @@ type CloseoutActionRow = {
     viewUrl: string;
     printAction: string;
     printLabel: string;
+    printSubmitLabel?: string;
     primary?: boolean;
+    available?: boolean;
 };
 
 watch(
@@ -168,6 +175,16 @@ function freshPdfUrl(url: string): string {
 }
 
 const closeoutActionRows = computed<CloseoutActionRow[]>(() => [
+    {
+        id: 'latest-control-number',
+        viewLabel: 'View Latest Voter Control Number',
+        viewUrl: props.actions.latestControlNumberReceipt,
+        printAction: props.actions.printControlNumberReceipt,
+        printLabel: 'Voter Control Number',
+        printSubmitLabel: 'Send to printer',
+        available: props.latestControlNumberReceipt.available,
+        primary: true,
+    },
     {
         id: 'tally',
         viewLabel: 'View current tally sheet',
@@ -316,6 +333,7 @@ usePoll(
             'feedback',
             'printFeedback',
             'bulkBallots',
+            'latestControlNumberReceipt',
         ],
     },
     { keepAlive: true },
@@ -542,12 +560,20 @@ usePoll(
                         class="grid gap-3 md:grid-cols-2"
                     >
                         <a
+                            v-if="row.available !== false"
                             :href="freshPdfUrl(row.viewUrl)"
                             :class="viewLinkClass()"
                             target="_blank"
                         >
                             {{ row.viewLabel }}
                         </a>
+                        <span
+                            v-else
+                            :class="`${viewLinkClass()} cursor-not-allowed opacity-45`"
+                            aria-disabled="true"
+                        >
+                            {{ row.viewLabel }}
+                        </span>
                         <Form
                             :action="row.printAction"
                             method="post"
@@ -556,12 +582,17 @@ usePoll(
                             <button
                                 :class="printButtonClass()"
                                 type="submit"
-                                :disabled="processing || !closeoutPrinter.enabled"
+                                :disabled="
+                                    processing ||
+                                    row.available === false ||
+                                    (row.id !== 'latest-control-number' &&
+                                        !closeoutPrinter.enabled)
+                                "
                             >
                                 {{
                                     processing
                                         ? 'Submitting...'
-                                        : `${closeoutPrinter.submit_label}: ${row.printLabel}`
+                                        : `${row.printSubmitLabel ?? closeoutPrinter.submit_label}: ${row.printLabel}`
                                 }}
                             </button>
                         </Form>

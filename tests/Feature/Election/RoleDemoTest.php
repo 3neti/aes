@@ -56,6 +56,9 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('actions.publicPrecinctTally', route('election.role-demo.precinct-tally.public', ['view' => 'all']))
             ->where('navigationQrs.precinctTally', fn (string $qr): bool => str_starts_with($qr, 'data:image/png;base64,'))
             ->where('navigationQrs.publicPrecinctTally', fn (string $qr): bool => str_starts_with($qr, 'data:image/png;base64,'))
+            ->where('actions.latestControlNumberReceipt', route('election.role-demo.control-number.latest'))
+            ->where('actions.printControlNumberReceipt', route('election.role-demo.print.control-number.latest'))
+            ->where('latestControlNumberReceipt.available', false)
             ->where('actions.printTally', route('election.role-demo.print.tally-sheet'))
             ->where('actions.returns.national', route('election.role-demo.election-return.scoped', ['scope' => 'national']))
             ->where('actions.returns.local', route('election.role-demo.election-return.scoped', ['scope' => 'local']))
@@ -122,6 +125,21 @@ test('role demo runs officer voter print and watcher points of view without clos
     $release = session('role_demo.release');
     expect($release)->toBeArray()
         ->and($release['release_code'])->toBe($authorization['code']);
+
+    $this->get(route('election.role-demo.control-number.latest'))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'application/pdf')
+        ->assertHeader('content-disposition', 'inline; filename="TONDO-01-latest-voter-control-number.pdf"');
+
+    $this->post(route('election.role-demo.print.control-number.latest'))
+        ->assertRedirectToRoute('election.role-demo.officer')
+        ->assertSessionHas('role_demo.closeout_feedback', 'Voter Control Number prepared with status [printed].');
+
+    $this->get(route('election.role-demo.officer'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('latestControlNumberReceipt.available', true)
+        );
 
     $this->get(route('election.role-demo.voter.complete'))
         ->assertSuccessful()

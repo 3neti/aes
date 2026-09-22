@@ -9,6 +9,7 @@ use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Process;
 
 beforeEach(function (): void {
@@ -85,11 +86,21 @@ test('control number receipt does not contain ballot selections or payload hash'
     $release = controlNumberReceiptRelease('1357');
     $job = app(ControlNumberPrinter::class)->print($release);
     $pdf = file_get_contents($job['pdf_artifact_path']);
+    $printedAt = CarbonImmutable::parse($job['printed_at'])
+        ->setTimezone(date_default_timezone_get())
+        ->format('d Hi\H M Y');
 
     expect($job)->not->toHaveKey('payload_hash')
-        ->and($pdf)->toContain('VOTER CONTROL NUMBER')
+        ->and($job)->not->toHaveKey('qr_artifact_path')
+        ->and($job['printed_at'])->toBeString()
         ->and($pdf)->toContain('1357')
-        ->and($pdf)->toContain('aes-print-release:1357')
+        ->and($pdf)->toContain('Precinct 0421-A | CITY OF MANILA')
+        ->and($pdf)->toContain($printedAt)
+        ->and($pdf)->not->toContain('VOTER CONTROL NUMBER')
+        ->and($pdf)->not->toContain('CONTROL NUMBER')
+        ->and($pdf)->not->toContain('BRING THIS TO THE PRINT STATION')
+        ->and($pdf)->not->toContain('aes-print-release:1357')
+        ->and($pdf)->not->toContain('/Subtype /Image')
         ->and($pdf)->not->toContain('Ada Santos')
         ->and($pdf)->not->toContain('pres-ada')
         ->and($pdf)->not->toContain('payload_hash')

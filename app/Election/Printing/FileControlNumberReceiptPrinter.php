@@ -4,15 +4,15 @@ namespace App\Election\Printing;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Printing\Documents\ControlNumberReceiptPdf;
+use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
-use App\Election\Voting\StandardQrCode;
 
 final class FileControlNumberReceiptPrinter implements ControlNumberPrinter
 {
     public function __construct(
         private readonly ElectionStorage $storage,
         private readonly ActivityJournal $journal,
-        private readonly StandardQrCode $qrCode,
+        private readonly ElectionClock $clock,
         private readonly ControlNumberReceiptPdf $receipt,
     ) {}
 
@@ -25,12 +25,11 @@ final class FileControlNumberReceiptPrinter implements ControlNumberPrinter
         $releaseId = (string) ($release['release_id'] ?? '');
         $controlNumber = (string) ($release['release_code'] ?? '');
         $configuration = $this->storage->readJson('runtime/active-precinct.json');
+        $configuration['city_municipality'] ??= config('election.election_return_form.city_municipality', 'unknown');
         $qrPayload = 'aes-print-release:'.$controlNumber;
-        $qrArtifactPath = $this->storage->writeText(
-            "print-forms/control-number/{$releaseId}-qr.png",
-            $this->qrCode->renderPrintPng($qrPayload),
-        );
-        $pdfContents = $this->receipt->render($release, $configuration, $qrArtifactPath);
+        $printedAt = $this->clock->now()->toIso8601String();
+        $receiptRelease = [...$release, 'printed_at' => $printedAt];
+        $pdfContents = $this->receipt->render($receiptRelease, $configuration);
         $pdfPath = $this->storage->writeText("print-forms/control-number/{$releaseId}.pdf", $pdfContents);
         $job = [
             'schema_version' => 'control-number-print-job-1',
@@ -40,10 +39,10 @@ final class FileControlNumberReceiptPrinter implements ControlNumberPrinter
             'status' => 'printed',
             'control_number_digits' => strlen($controlNumber),
             'qr_payload' => $qrPayload,
-            'qr_artifact_path' => $qrArtifactPath,
             'pdf_artifact_path' => $pdfPath,
             'print_form_profile' => PrintFormProfile::Thermal80->value,
             'print_form_label' => PrintFormProfile::Thermal80->label(),
+            'printed_at' => $printedAt,
             'expires_at' => $release['expires_at'] ?? null,
         ];
 
