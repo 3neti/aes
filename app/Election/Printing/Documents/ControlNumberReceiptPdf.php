@@ -28,6 +28,19 @@ final class ControlNumberReceiptPdf
     private const PageHeight = 180;
 
     /**
+     * The physical print head on the 80 mm thermal printer does not use
+     * the full nominal 80 mm page width; the driver's own declared media
+     * sizes (e.g. X70MMY65MM) indicate a narrower ~70 mm printable area,
+     * consistent with the margin pattern on the 58 mm printer previously
+     * used (48 mm printable within a 58 mm roll). Centering content
+     * across the full PageWidth clips the right edge and looks off-center
+     * on this printer; center within PrintableWidth instead.
+     */
+    private const PrintableWidth = 198.43;
+
+    private const LeftMargin = (self::PageWidth - self::PrintableWidth) / 2;
+
+    /**
      * @param  array<string, mixed>  $release
      * @param  array<string, mixed>  $configuration
      */
@@ -35,12 +48,12 @@ final class ControlNumberReceiptPdf
     {
         $controlNumber = (string) ($release['release_code'] ?? '');
         $fontSize = $this->fontSize($controlNumber);
-        $x = (self::PageWidth - $this->textWidth($controlNumber, $fontSize)) / 2;
+        $x = self::LeftMargin + (self::PrintableWidth - $this->textWidth($controlNumber, $fontSize)) / 2;
         $y = ((self::PageHeight - $fontSize) / 2) + 11;
         [$precinctLine, $timeLine] = $this->finePrint($release, $configuration);
         $finePrintSize = 5.8;
-        $precinctLineX = (self::PageWidth - $this->textWidth($precinctLine, $finePrintSize, false)) / 2;
-        $timeLineX = (self::PageWidth - $this->textWidth($timeLine, $finePrintSize, false)) / 2;
+        $precinctLineX = self::LeftMargin + (self::PrintableWidth - $this->textWidth($precinctLine, $finePrintSize, false)) / 2;
+        $timeLineX = self::LeftMargin + (self::PrintableWidth - $this->textWidth($timeLine, $finePrintSize, false)) / 2;
 
         $postscript = sprintf(
             "%%!PS\n<< /PageSize [%.2F %.2F] >> setpagedevice\n".
@@ -50,13 +63,13 @@ final class ControlNumberReceiptPdf
             self::PageWidth,
             self::PageHeight,
             $fontSize,
-            max(0, $x),
+            max(self::LeftMargin, $x),
             $y,
             $this->encode($controlNumber),
             $finePrintSize,
-            max(6, $precinctLineX),
+            max(self::LeftMargin, $precinctLineX),
             $this->encode($precinctLine),
-            max(6, $timeLineX),
+            max(self::LeftMargin, $timeLineX),
             $this->encode($timeLine),
         );
 
@@ -123,7 +136,7 @@ final class ControlNumberReceiptPdf
     {
         $digits = max(1, strlen($controlNumber));
 
-        return min(84, (self::PageWidth - 24) / ($digits * 0.60));
+        return min(84, (self::PrintableWidth - 12) / ($digits * 0.60));
     }
 
     private function textWidth(string $text, float $size, bool $monospace = true): float
