@@ -7,6 +7,7 @@ use App\Election\Preparation\PrecinctSetupService;
 use App\Election\Printing\ControlNumberPrinter;
 use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
+use App\Election\Support\PdfTextExtractor;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
 use Carbon\CarbonImmutable;
@@ -85,7 +86,10 @@ test('control number receipt does not contain ballot selections or payload hash'
 
     $release = controlNumberReceiptRelease('1357');
     $job = app(ControlNumberPrinter::class)->print($release);
-    $pdf = file_get_contents($job['pdf_artifact_path']);
+    $pdfBytes = file_get_contents($job['pdf_artifact_path']);
+    $pdfText = collect(app(PdfTextExtractor::class)->extract($job['pdf_artifact_path']))
+        ->map(fn ($page): string => $page->text)
+        ->implode("\n");
     $printedAt = CarbonImmutable::parse($job['printed_at'])
         ->setTimezone(date_default_timezone_get())
         ->format('d Hi\H M Y');
@@ -93,18 +97,18 @@ test('control number receipt does not contain ballot selections or payload hash'
     expect($job)->not->toHaveKey('payload_hash')
         ->and($job)->not->toHaveKey('qr_artifact_path')
         ->and($job['printed_at'])->toBeString()
-        ->and($pdf)->toContain('1357')
-        ->and($pdf)->toContain('Precinct 0421-A | CITY OF MANILA')
-        ->and($pdf)->toContain($printedAt)
-        ->and($pdf)->not->toContain('VOTER CONTROL NUMBER')
-        ->and($pdf)->not->toContain('CONTROL NUMBER')
-        ->and($pdf)->not->toContain('BRING THIS TO THE PRINT STATION')
-        ->and($pdf)->not->toContain('aes-print-release:1357')
-        ->and($pdf)->not->toContain('/Subtype /Image')
-        ->and($pdf)->not->toContain('Ada Santos')
-        ->and($pdf)->not->toContain('pres-ada')
-        ->and($pdf)->not->toContain('payload_hash')
-        ->and($pdf)->not->toContain('Payload Hash');
+        ->and($pdfText)->toContain('1357')
+        ->and($pdfText)->toContain('Precinct 0421-A | CITY OF MANILA')
+        ->and($pdfText)->toContain($printedAt)
+        ->and($pdfText)->not->toContain('VOTER CONTROL NUMBER')
+        ->and($pdfText)->not->toContain('CONTROL NUMBER')
+        ->and($pdfText)->not->toContain('BRING THIS TO THE PRINT STATION')
+        ->and($pdfText)->not->toContain('aes-print-release:1357')
+        ->and($pdfBytes)->not->toContain('/Subtype /Image')
+        ->and($pdfText)->not->toContain('Ada Santos')
+        ->and($pdfText)->not->toContain('pres-ada')
+        ->and($pdfText)->not->toContain('payload_hash')
+        ->and($pdfText)->not->toContain('Payload Hash');
 });
 
 test('voter finalization still completes when control number printing throws', function (): void {
