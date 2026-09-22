@@ -51,7 +51,7 @@ final class ControlNumberReceiptPdf
         $controlNumber = (string) ($release['release_code'] ?? '');
         $fontSize = $this->fontSize($controlNumber);
         $x = (self::PageWidth - $this->textWidth($controlNumber, $fontSize)) / 2;
-        $y = ((self::PageHeight - $fontSize) / 2) + 11;
+        $y = self::PageHeight - $fontSize - 8;
         [$precinctLine, $timeLine] = $this->finePrint($release, $configuration);
         $finePrintSize = 5.8;
         $precinctLineX = (self::PageWidth - $this->textWidth($precinctLine, $finePrintSize, false)) / 2;
@@ -68,7 +68,7 @@ final class ControlNumberReceiptPdf
         $postscript = sprintf(
             "%%!PS\n<< /PageSize [%.2F %.2F] >> setpagedevice\n".
             "0.05 0.05 0.05 setrgbcolor\n/Courier-Bold findfont %.2F scalefont setfont\n%.2F %.2F moveto\n(%s) show\n".
-            "0.42 0.42 0.42 setrgbcolor\n/Helvetica findfont %.2F scalefont setfont\n%.2F 22.00 moveto\n(%s) show\n%.2F 13.00 moveto\n(%s) show\n".
+            "0 0 0 setrgbcolor\n/Helvetica-Bold findfont %.2F scalefont setfont\n%.2F 22.00 moveto\n(%s) show\n%.2F 13.00 moveto\n(%s) show\n".
             "showpage\n",
             self::PageWidth,
             self::PageHeight,
