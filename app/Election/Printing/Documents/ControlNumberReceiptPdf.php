@@ -65,13 +65,13 @@ final class ControlNumberReceiptPdf
         // drawing code above can keep working in the original logical
         // PageWidth x PageHeight (narrow x tall) canvas.
         $postscript = sprintf(
-            "%%!PS\n<< /PageSize [%.2F %.2F] >> setpagedevice\n90 rotate\n0 %.2F translate\n".
+            "%%!PS\n<< /PageSize [%.2F %.2F] >> setpagedevice\n-90 rotate\n%.2F 0 translate\n".
             "0.05 0.05 0.05 setrgbcolor\n/Courier-Bold findfont %.2F scalefont setfont\n%.2F %.2F moveto\n(%s) show\n".
             "0.42 0.42 0.42 setrgbcolor\n/Helvetica findfont %.2F scalefont setfont\n%.2F 22.00 moveto\n(%s) show\n%.2F 13.00 moveto\n(%s) show\n".
             "showpage\n",
             self::PageHeight,
             self::PageWidth,
-            -self::PageHeight,
+            -self::PageWidth,
             $fontSize,
             max(0, $x),
             $y,
