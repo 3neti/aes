@@ -27,18 +27,17 @@ final class ControlNumberReceiptPdf
      * The production printer's actual paper stock is a 2.25 inch
      * (~57 mm) roll, not the 80 mm roll the "Thermal80" CUPS queue name
      * and zj80 driver assume. Content wider than the physical paper is
-     * simply cut off by the printer (there is no paper to print on past
-     * its edge) - this was confirmed directly on the device: cropping
-     * persisted at both 80 mm and ~70 mm page widths and only stopped
-     * once the page width was reduced to fit the actual paper.
-     *
-     * Use the same 48 mm printable width proven reliable on the
-     * previous 58 mm-class thermal printer this device used
-     * (2.25 in / ~57 mm roll is effectively the same paper class as a
-     * nominal 58 mm roll), leaving a small margin on each side of the
-     * physical roll.
+     * simply cut off by a hard left-aligned cutoff at a fixed width -
+     * confirmed directly on the device across several page shapes, and
+     * the cutoff position appears to shift depending on which
+     * orientation (portrait/landscape) the driver decides to use for a
+     * given page aspect ratio, which this code does not control.
+     * Rather than keep chasing an exact safe width per orientation, use
+     * a conservative width well inside every cutoff observed so far,
+     * and left-align content (see $x below) instead of centering, since
+     * centering previously pushed content further into a cutoff zone.
      */
-    private const PageWidth = 136.06;
+    private const PageWidth = 100;
 
     /**
      * Reduced from an earlier 180pt: fine print positioned near the
@@ -59,12 +58,12 @@ final class ControlNumberReceiptPdf
     {
         $controlNumber = (string) ($release['release_code'] ?? '');
         $fontSize = $this->fontSize($controlNumber);
-        $x = (self::PageWidth - $this->textWidth($controlNumber, $fontSize)) / 2;
+        $x = 4;
         $y = self::PageHeight - $fontSize - 5;
         [$precinctLine, $timeLine] = $this->finePrint($release, $configuration);
-        $finePrintSize = 5.8;
-        $precinctLineX = (self::PageWidth - $this->textWidth($precinctLine, $finePrintSize, false)) / 2;
-        $timeLineX = (self::PageWidth - $this->textWidth($timeLine, $finePrintSize, false)) / 2;
+        $finePrintSize = 4.2;
+        $precinctLineX = 4;
+        $timeLineX = 4;
         $precinctLineY = $y - 14;
         $timeLineY = $precinctLineY - 9;
 
@@ -84,14 +83,14 @@ final class ControlNumberReceiptPdf
             self::PageWidth,
             self::PageHeight,
             $fontSize,
-            max(0, $x),
+            $x,
             $y,
             $this->encode($controlNumber),
             $finePrintSize,
-            max(6, $precinctLineX),
+            $precinctLineX,
             $precinctLineY,
             $this->encode($precinctLine),
-            max(6, $timeLineX),
+            $timeLineX,
             $timeLineY,
             $this->encode($timeLine),
         );
@@ -160,11 +159,6 @@ final class ControlNumberReceiptPdf
         $digits = max(1, strlen($controlNumber));
 
         return min(84, (self::PageWidth - 24) / ($digits * 0.60));
-    }
-
-    private function textWidth(string $text, float $size, bool $monospace = true): float
-    {
-        return strlen($text) * $size * ($monospace ? 0.60 : 0.49);
     }
 
     /**
