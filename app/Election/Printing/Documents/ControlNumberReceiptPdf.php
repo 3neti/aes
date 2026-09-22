@@ -57,13 +57,21 @@ final class ControlNumberReceiptPdf
         $precinctLineX = (self::PageWidth - $this->textWidth($precinctLine, $finePrintSize, false)) / 2;
         $timeLineX = (self::PageWidth - $this->textWidth($timeLine, $finePrintSize, false)) / 2;
 
+        // This printer's CUPS filter chain auto-rotates content by 90deg
+        // when the declared page shape does not match what it expects
+        // (confirmed on the physical device: a taller-than-wide page
+        // printed sideways/landscape). Declare the page swapped (wide x
+        // tall) and rotate the coordinate system back, so all of the
+        // drawing code above can keep working in the original logical
+        // PageWidth x PageHeight (narrow x tall) canvas.
         $postscript = sprintf(
-            "%%!PS\n<< /PageSize [%.2F %.2F] >> setpagedevice\n".
+            "%%!PS\n<< /PageSize [%.2F %.2F] >> setpagedevice\n90 rotate\n0 %.2F translate\n".
             "0.05 0.05 0.05 setrgbcolor\n/Courier-Bold findfont %.2F scalefont setfont\n%.2F %.2F moveto\n(%s) show\n".
             "0.42 0.42 0.42 setrgbcolor\n/Helvetica findfont %.2F scalefont setfont\n%.2F 22.00 moveto\n(%s) show\n%.2F 13.00 moveto\n(%s) show\n".
             "showpage\n",
-            self::PageWidth,
             self::PageHeight,
+            self::PageWidth,
+            -self::PageHeight,
             $fontSize,
             max(0, $x),
             $y,
