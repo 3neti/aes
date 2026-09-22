@@ -11,6 +11,25 @@ final class ControlNumberReceiptPdf
     private const PageHeight = 180;
 
     /**
+     * Standard AFM widths (1000 units/em) for Helvetica, WinAnsiEncoding
+     * printable ASCII range (space through tilde, codes 32-126). CUPS's
+     * PDF-to-PostScript filter chain has been observed to garble text drawn
+     * with a Type1 font reference that omits /Widths and /FontDescriptor,
+     * even though such fonts are technically optional per the PDF spec for
+     * the 14 standard fonts. Declaring them explicitly avoids that.
+     *
+     * @var list<int>
+     */
+    private const HelveticaWidths = [
+        278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278,
+        556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556,
+        1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778,
+        667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556,
+        333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556,
+        556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584,
+    ];
+
+    /**
      * @param  array<string, mixed>  $release
      * @param  array<string, mixed>  $configuration
      */
@@ -37,13 +56,17 @@ final class ControlNumberReceiptPdf
             max(6, $timeLineX),
             $this->encode($timeLine),
         );
+        $courierBoldWidths = '['.implode(' ', array_fill(0, 10, 600)).']';
+        $helveticaWidths = '['.implode(' ', self::HelveticaWidths).']';
         $objects = [
             1 => '<< /Type /Catalog /Pages 2 0 R >>',
             2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
             3 => sprintf('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2F %d] /Resources << /Font << /F1 4 0 R /F2 6 0 R >> >> /Contents 5 0 R >>', self::PageWidth, self::PageHeight),
-            4 => '<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold /Encoding /WinAnsiEncoding >>',
+            4 => "<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold /Encoding /WinAnsiEncoding /FirstChar 48 /LastChar 57 /Widths {$courierBoldWidths} /FontDescriptor 7 0 R >>",
             5 => '<< /Length '.strlen($content)." >>\nstream\n{$content}\nendstream",
-            6 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+            6 => "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding /FirstChar 32 /LastChar 126 /Widths {$helveticaWidths} /FontDescriptor 8 0 R >>",
+            7 => '<< /Type /FontDescriptor /FontName /Courier-Bold /Flags 33 /FontBBox [-113 -250 749 801] /ItalicAngle 0 /Ascent 629 /Descent -157 /CapHeight 562 /StemV 106 /MissingWidth 600 >>',
+            8 => '<< /Type /FontDescriptor /FontName /Helvetica /Flags 32 /FontBBox [-166 -225 1000 931] /ItalicAngle 0 /Ascent 718 /Descent -207 /CapHeight 718 /StemV 88 /MissingWidth 278 >>',
         ];
 
         return $this->serialize($objects);
