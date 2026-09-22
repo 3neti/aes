@@ -67,26 +67,38 @@ final class ControlNumberReceiptPdf
     {
         $configuredBinary = (string) config('election.pdf.ghostscript_binary', 'gs');
         $binary = $this->resolveBinary($configuredBinary);
-        $process = new Process([
-            $binary,
-            '-q',
-            '-dNOPAUSE',
-            '-dBATCH',
-            '-dSAFER',
-            '-sDEVICE=pdfwrite',
-            '-o',
-            '-',
-            '-',
-        ]);
-        $process->setInput($postscript);
-        $process->setTimeout(30);
-        $process->run();
+        $base = sys_get_temp_dir().'/aes-control-number-'.bin2hex(random_bytes(8));
+        $inputPath = $base.'.ps';
+        $outputPath = $base.'.pdf';
 
-        if (! $process->isSuccessful() || $process->getOutput() === '') {
-            throw new RuntimeException("Unable to render control number receipt with Ghostscript [{$configuredBinary}]: ".$process->getErrorOutput());
+        try {
+            file_put_contents($inputPath, $postscript);
+
+            $process = new Process([
+                $binary,
+                '-q',
+                '-dNOPAUSE',
+                '-dBATCH',
+                '-dSAFER',
+                '-sDEVICE=pdfwrite',
+                '-o',
+                $outputPath,
+                $inputPath,
+            ]);
+            $process->setTimeout(30);
+            $process->run();
+
+            $pdf = is_file($outputPath) ? (file_get_contents($outputPath) ?: '') : '';
+
+            if (! $process->isSuccessful() || $pdf === '') {
+                throw new RuntimeException("Unable to render control number receipt with Ghostscript [{$configuredBinary}]: ".$process->getErrorOutput());
+            }
+
+            return $pdf;
+        } finally {
+            @unlink($inputPath);
+            @unlink($outputPath);
         }
-
-        return $process->getOutput();
     }
 
     private function resolveBinary(string $configuredBinary): string
