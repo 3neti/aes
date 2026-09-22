@@ -24,17 +24,21 @@ use Symfony\Component\Process\Process;
 final class ControlNumberReceiptPdf
 {
     /**
-     * The CUPS/vendor raster filter for this 80 mm thermal printer
-     * reproducibly crops output with a hard left-aligned cutoff at a
-     * fixed width, rather than scaling or centering the page onto the
-     * physical printable area. Confirmed on the physical device: adding
-     * a left margin to inset-center within a nominal 80 mm (226.77 pt)
-     * page made cropping *worse* (an entire extra digit was cut, not
-     * less). The fix is to declare the PDF's page width as the actual
-     * printable width up front (matching the driver's own declared media
-     * sizes, e.g. X70MMY65MM ~ 70 mm), so nothing needs to be cropped.
+     * The production printer's actual paper stock is a 2.25 inch
+     * (~57 mm) roll, not the 80 mm roll the "Thermal80" CUPS queue name
+     * and zj80 driver assume. Content wider than the physical paper is
+     * simply cut off by the printer (there is no paper to print on past
+     * its edge) - this was confirmed directly on the device: cropping
+     * persisted at both 80 mm and ~70 mm page widths and only stopped
+     * once the page width was reduced to fit the actual paper.
+     *
+     * Use the same 48 mm printable width proven reliable on the
+     * previous 58 mm-class thermal printer this device used
+     * (2.25 in / ~57 mm roll is effectively the same paper class as a
+     * nominal 58 mm roll), leaving a small margin on each side of the
+     * physical roll.
      */
-    private const PageWidth = 198.43;
+    private const PageWidth = 136.06;
 
     private const PageHeight = 180;
 
