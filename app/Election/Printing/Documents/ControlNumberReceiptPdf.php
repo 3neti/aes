@@ -40,7 +40,16 @@ final class ControlNumberReceiptPdf
      */
     private const PageWidth = 136.06;
 
-    private const PageHeight = 180;
+    /**
+     * Reduced from an earlier 180pt: fine print positioned near the
+     * bottom of a 180pt-tall page was reproducibly missing from the
+     * physical printout even in solid black, while content near the
+     * top printed fine. This points to the printer's actual usable
+     * print/feed length being shorter than 180pt. Shrink the page and
+     * keep all content (including fine print) clustered near the top,
+     * directly below the number, instead of spanning the full height.
+     */
+    private const PageHeight = 120;
 
     /**
      * @param  array<string, mixed>  $release
@@ -51,11 +60,13 @@ final class ControlNumberReceiptPdf
         $controlNumber = (string) ($release['release_code'] ?? '');
         $fontSize = $this->fontSize($controlNumber);
         $x = (self::PageWidth - $this->textWidth($controlNumber, $fontSize)) / 2;
-        $y = self::PageHeight - $fontSize - 8;
+        $y = self::PageHeight - $fontSize - 5;
         [$precinctLine, $timeLine] = $this->finePrint($release, $configuration);
         $finePrintSize = 5.8;
         $precinctLineX = (self::PageWidth - $this->textWidth($precinctLine, $finePrintSize, false)) / 2;
         $timeLineX = (self::PageWidth - $this->textWidth($timeLine, $finePrintSize, false)) / 2;
+        $precinctLineY = $y - 14;
+        $timeLineY = $precinctLineY - 9;
 
         // Two rotation directions were tried (90 and -90 with matching
         // translate) attempting to compensate for what looked like
@@ -68,7 +79,7 @@ final class ControlNumberReceiptPdf
         $postscript = sprintf(
             "%%!PS\n<< /PageSize [%.2F %.2F] >> setpagedevice\n".
             "0.05 0.05 0.05 setrgbcolor\n/Courier-Bold findfont %.2F scalefont setfont\n%.2F %.2F moveto\n(%s) show\n".
-            "0 0 0 setrgbcolor\n/Helvetica-Bold findfont %.2F scalefont setfont\n%.2F 22.00 moveto\n(%s) show\n%.2F 13.00 moveto\n(%s) show\n".
+            "0 0 0 setrgbcolor\n/Helvetica-Bold findfont %.2F scalefont setfont\n%.2F %.2F moveto\n(%s) show\n%.2F %.2F moveto\n(%s) show\n".
             "showpage\n",
             self::PageWidth,
             self::PageHeight,
@@ -78,8 +89,10 @@ final class ControlNumberReceiptPdf
             $this->encode($controlNumber),
             $finePrintSize,
             max(6, $precinctLineX),
+            $precinctLineY,
             $this->encode($precinctLine),
             max(6, $timeLineX),
+            $timeLineY,
             $this->encode($timeLine),
         );
 
