@@ -96,6 +96,16 @@ const hasBallotPreview = computed(
         typeof props.document.ballot.pdf_url === 'string' &&
         props.document.ballot.pdf_url !== '',
 );
+const isBallotPreviewSelected = computed(
+    () =>
+        props.document?.kind === 'official-ballot' &&
+        selectedBallotView.value === 'preview',
+);
+const ballotPreviewKey = computed(() =>
+    [props.document?.id, props.document?.hash, props.document?.ballot?.pdf_url]
+        .filter(Boolean)
+        .join(':'),
+);
 </script>
 
 <template>
@@ -174,7 +184,10 @@ const hasBallotPreview = computed(
             </div>
         </div>
 
-        <div class="max-h-[44rem] overflow-auto p-3">
+        <div
+            class="overflow-auto p-3"
+            :class="isBallotPreviewSelected ? 'max-h-[92rem]' : 'max-h-[44rem]'"
+        >
             <div
                 v-if="pendingMessage"
                 class="border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950"
@@ -212,9 +225,10 @@ const hasBallotPreview = computed(
             >
                 <iframe
                     v-if="hasBallotPreview"
+                    :key="ballotPreviewKey"
                     :src="document.ballot?.pdf_url ?? undefined"
                     title="Rendered ballot PDF preview"
-                    class="h-[42rem] w-full bg-white"
+                    class="h-[86rem] min-h-[86rem] w-full bg-white"
                 />
                 <div v-else class="bg-stone-50 p-5">
                     <p class="text-sm font-semibold text-stone-600">

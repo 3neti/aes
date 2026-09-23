@@ -612,6 +612,7 @@ onBeforeUnmount(() => {
         <section class="mx-auto max-w-[1800px] space-y-3 px-3 py-4">
             <section class="grid gap-3 xl:grid-cols-2">
                 <LiveDocumentView
+                    :key="latestScannedDocument?.id ?? 'empty-ballot-preview'"
                     title="Live Ballot View"
                     eyebrow="Latest accepted ballot"
                     :document="latestScannedDocument"
