@@ -32,6 +32,8 @@ type BallotDocument = {
     paper_ballot_serial: string | number | null;
     precinct_id?: string | null;
     payload_hash: string;
+    pdf_available?: boolean;
+    pdf_url?: string | null;
     document_profile?: Record<string, string> | null;
     selections: Record<string, string[]>;
 };
@@ -83,9 +85,16 @@ const canRenderDocument = computed(
         props.contests.length > 0 &&
         props.renderingKit !== null,
 );
-const selectedBallotView = ref<'result' | 'official'>('result');
+const selectedBallotView = ref<'result' | 'official' | 'preview'>('result');
 const canShowBallotViewSwitch = computed(
     () => canRenderDocument.value && props.document?.kind === 'official-ballot',
+);
+const hasBallotPreview = computed(
+    () =>
+        props.document?.kind === 'official-ballot' &&
+        props.document.ballot?.pdf_available === true &&
+        typeof props.document.ballot.pdf_url === 'string' &&
+        props.document.ballot.pdf_url !== '',
 );
 </script>
 
@@ -124,7 +133,7 @@ const canShowBallotViewSwitch = computed(
             class="border-b border-stone-200 bg-stone-50 px-4 py-3"
         >
             <div
-                class="inline-grid grid-cols-2 border border-stone-300 bg-white text-xs font-black"
+                class="inline-grid grid-cols-3 border border-stone-300 bg-white text-xs font-black"
             >
                 <button
                     type="button"
@@ -149,6 +158,18 @@ const canShowBallotViewSwitch = computed(
                     @click="selectedBallotView = 'official'"
                 >
                     Official Ballot
+                </button>
+                <button
+                    type="button"
+                    class="border-l border-stone-300 px-4 py-2"
+                    :class="
+                        selectedBallotView === 'preview'
+                            ? 'bg-stone-950 text-white'
+                            : 'bg-white text-stone-700'
+                    "
+                    @click="selectedBallotView = 'preview'"
+                >
+                    Ballot Preview
                 </button>
             </div>
         </div>
@@ -182,6 +203,25 @@ const canShowBallotViewSwitch = computed(
                 :rendering-kit="renderingKit!"
                 :ballot="document.ballot"
             />
+            <div
+                v-else-if="
+                    document?.kind === 'official-ballot' &&
+                    selectedBallotView === 'preview'
+                "
+                class="border border-stone-300 bg-stone-100"
+            >
+                <iframe
+                    v-if="hasBallotPreview"
+                    :src="document.ballot?.pdf_url ?? undefined"
+                    title="Rendered ballot PDF preview"
+                    class="h-[42rem] w-full bg-white"
+                />
+                <div v-else class="bg-stone-50 p-5">
+                    <p class="text-sm font-semibold text-stone-600">
+                        No rendered ballot PDF is available for this scan.
+                    </p>
+                </div>
+            </div>
             <ReconstructedDocumentPanel
                 v-else-if="
                     canRenderDocument && document?.kind === 'election-return'

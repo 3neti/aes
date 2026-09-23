@@ -56,6 +56,8 @@ test('role demo precinct tally scans loaded demo ballots into a polling public b
         ->assertJsonStructure(['event' => ['scanned_at']])
         ->assertJsonPath('state.accepted_count', 1)
         ->assertJsonCount(1, 'state.accepted_ballots')
+        ->assertJsonPath('state.accepted_ballots.0.pdf_available', true)
+        ->assertJsonPath('state.accepted_ballots.0.pdf_url', route('election.role-demo.watcher.ballot', ['sequence' => 1]))
         ->assertJsonPath('state.scan_events.0.status', 'accepted')
         ->assertJsonStructure(['state' => ['scan_events' => [['scanned_at']]]]);
 

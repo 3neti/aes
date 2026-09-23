@@ -181,13 +181,14 @@ final class RoleDemoPrecinctTallyIngestion
     public function loadedBallots(): array
     {
         return collect($this->storage->files('counting/sealed'))
-            ->map(function (string $path, int $index): array {
+            ->map(function (string $path): array {
                 $record = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
                 $payload = Crypt::decryptString((string) ($record['encrypted_payload'] ?? ''));
                 $decoded = $this->decode($payload);
 
                 return [
-                    'sequence' => $index + 1,
+                    'ballot_id' => $record['ballot_id'] ?? ($decoded['ballot_id'] ?? null),
+                    'deposited_at' => $record['deposited_at'] ?? null,
                     'payload' => $payload,
                     'canonical_payload' => $this->envelope->canonicalPayload($payload),
                     'payload_hash' => $decoded['payload_hash'] ?? hash('sha256', $payload),
@@ -198,7 +199,17 @@ final class RoleDemoPrecinctTallyIngestion
                     'this_ballot_tally' => $this->deltaTally((array) ($decoded['selections'] ?? [])),
                 ];
             })
+            ->sortBy([
+                ['deposited_at', 'asc'],
+                ['paper_ballot_serial', 'asc'],
+                ['payload_hash', 'asc'],
+            ])
             ->values()
+            ->map(function (array $record, int $index): array {
+                $record['sequence'] = $index + 1;
+
+                return $record;
+            })
             ->all();
     }
 
@@ -351,6 +362,7 @@ final class RoleDemoPrecinctTallyIngestion
     private function ballotDocument(ScannerScanEvent $event, int $sequence): array
     {
         $ballot = (array) ($event->metadata['ballot'] ?? []);
+        $pdfPreview = $this->ballotPdfPreview($event);
 
         return [
             'type' => 'official-ballot',
@@ -362,9 +374,35 @@ final class RoleDemoPrecinctTallyIngestion
             'payload' => $event->payload,
             'canonical_payload' => $event->metadata['envelope']['canonical_payload'] ?? null,
             'payload_hash' => $event->document_hash ?? $event->payload_hash,
+            'pdf_available' => $pdfPreview['available'],
+            'pdf_url' => $pdfPreview['url'],
             'document_profile' => $ballot['document_profile'] ?? null,
             'selections' => $ballot['selections'] ?? [],
             'this_ballot_tally' => $event->metadata['tally'] ?? [],
+        ];
+    }
+
+    /**
+     * @return array{available: bool, url: string|null}
+     */
+    private function ballotPdfPreview(ScannerScanEvent $event): array
+    {
+        $record = collect($this->loadedBallots())->firstWhere('payload_hash', $event->document_hash ?? $event->payload_hash);
+
+        if (! is_array($record)) {
+            return ['available' => false, 'url' => null];
+        }
+
+        $job = $this->storage->readJson('print-jobs/'.($record['ballot_id'] ?? '').'.json');
+        $path = $job['pdf_artifact_path'] ?? $job['selected_pdf_artifact_path'] ?? null;
+
+        if (! is_string($path) || ! is_file($path)) {
+            return ['available' => false, 'url' => null];
+        }
+
+        return [
+            'available' => true,
+            'url' => route('election.role-demo.watcher.ballot', ['sequence' => $record['sequence']]),
         ];
     }
 

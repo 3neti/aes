@@ -41,6 +41,8 @@ type ScannerBallot = {
     payload: string;
     canonical_payload: string;
     payload_hash: string;
+    pdf_available?: boolean;
+    pdf_url?: string | null;
     document_profile?: Record<string, string> | null;
     selections: Record<string, string[]>;
     this_ballot_tally: Tally;
