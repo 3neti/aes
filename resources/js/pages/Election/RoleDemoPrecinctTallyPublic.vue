@@ -3,20 +3,12 @@ import { Head, Link } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import LiveDocumentView from '@/components/election/LiveDocumentView.vue';
 import PrecinctTallyBoard from '@/components/election/PrecinctTallyBoard.vue';
-
-type Tally = Record<string, Record<string, number>>;
-
-type TallyDelta = Record<
-    string,
-    Record<
-        string,
-        {
-            previousTotal: number;
-            addedVotes: number;
-            finalTotal: number;
-        }
-    >
->;
+import {
+    cumulativeTallyThroughBallot,
+    deltaForReplayBallot,
+    type Tally,
+    type TallyDelta,
+} from '@/components/election/tallyReplay';
 
 type Contest = {
     id: string;
@@ -111,17 +103,6 @@ const selectedBallotHash = ref<string | null>(
 const statePoller = ref<number | null>(null);
 const lastUpdatedAt = ref<string | null>(null);
 const scannedBallots = computed(() => scannerState.value.accepted_ballots);
-const lastBallot = computed(
-    () => scannedBallots.value[scannedBallots.value.length - 1] ?? null,
-);
-const latestAcceptedBallot = computed(
-    () =>
-        scannedBallots.value.find(
-            (ballot) =>
-                ballot.payload_hash ===
-                scannerState.value.latest_accepted_ballot_hash,
-        ) ?? lastBallot.value,
-);
 const selectedBallotIndex = computed(() => {
     if (scannedBallots.value.length === 0) {
         return -1;
@@ -151,10 +132,22 @@ const canMoveToNextBallot = computed(
 const selectedScannedDocument = computed<LedgerDocument | null>(() =>
     selectedBallot.value ? ballotLedgerDocument(selectedBallot.value) : null,
 );
-const lastScanDelta = computed<TallyDelta>(() =>
-    latestAcceptedBallot.value
-        ? deltaForTally(latestAcceptedBallot.value.this_ballot_tally)
-        : {},
+const replayTally = computed(() =>
+    cumulativeTallyThroughBallot(
+        scannedBallots.value,
+        selectedBallotIndex.value,
+    ),
+);
+const replayDelta = computed<TallyDelta>(() =>
+    deltaForReplayBallot(scannedBallots.value, selectedBallotIndex.value),
+);
+const replayFlashKey = computed(
+    () => selectedBallot.value?.payload_hash ?? scannerState.value.revision,
+);
+const replayStatusMessage = computed(() =>
+    selectedBallotPosition.value > 0
+        ? `As of ballot ${selectedBallotPosition.value} of ${scannedBallots.value.length}`
+        : 'No ballots selected.',
 );
 
 function ballotLedgerDocument(ballot: ScannerBallot): LedgerDocument {
@@ -181,30 +174,6 @@ function selectedHashFromState(state: ScannerState): string | null {
         state.accepted_ballots[state.accepted_ballots.length - 1]
             ?.payload_hash ?? null
     );
-}
-
-function deltaForTally(tally: Tally): TallyDelta {
-    const delta: TallyDelta = {};
-
-    Object.entries(tally).forEach(([contestId, candidateVotes]) => {
-        Object.entries(candidateVotes).forEach(([candidateId, addedVotes]) => {
-            if (addedVotes < 1) {
-                return;
-            }
-
-            const currentTotal =
-                scannerState.value.tally[contestId]?.[candidateId] ?? 0;
-
-            delta[contestId] ??= {};
-            delta[contestId][candidateId] = {
-                previousTotal: Math.max(0, currentTotal - addedVotes),
-                addedVotes,
-                finalTotal: currentTotal,
-            };
-        });
-    });
-
-    return delta;
 }
 
 async function fetchScannerState(): Promise<void> {
@@ -392,18 +361,16 @@ onBeforeUnmount(() => {
                 <PrecinctTallyBoard
                     eyebrow="Timer-updated public board"
                     title="Precinct ballot QR tally"
-                    :accepted-count="scannerState.accepted_count"
-                    accepted-label="accepted ballot scans"
+                    :accepted-count="selectedBallotPosition"
+                    accepted-label="ballots included"
                     :contests="simulation.ballot.contests"
-                    :tally="scannerState.tally"
+                    :tally="replayTally"
                     :view="view"
-                    :last-scan-delta="lastScanDelta"
-                    :flash-key="scannerState.revision"
+                    :last-scan-delta="replayDelta"
+                    :flash-key="replayFlashKey"
                     :revision="scannerState.revision"
                     :last-updated-at="lastUpdatedAt"
-                    :status-message="
-                        scannerState.latest_message ?? 'Waiting for scans.'
-                    "
+                    :status-message="replayStatusMessage"
                     :public-board-url="actions.publicBoard"
                 />
             </section>

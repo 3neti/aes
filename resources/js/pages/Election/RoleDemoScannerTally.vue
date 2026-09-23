@@ -4,22 +4,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import LiveDocumentView from '@/components/election/LiveDocumentView.vue';
 import PrecinctTallyBoard from '@/components/election/PrecinctTallyBoard.vue';
 import ScanLedger from '@/components/election/ScanLedger.vue';
+import {
+    cumulativeTallyThroughBallot,
+    deltaForReplayBallot,
+    type Tally,
+    type TallyDelta,
+} from '@/components/election/tallyReplay';
 import { type CandidateCodeMapEntry } from '@/components/election/truthQr';
 import { index as roleDemoIndex } from '@/routes/election/role-demo';
-
-type Tally = Record<string, Record<string, number>>;
-
-type TallyDelta = Record<
-    string,
-    Record<
-        string,
-        {
-            previousTotal: number;
-            addedVotes: number;
-            finalTotal: number;
-        }
-    >
->;
 
 type Contest = {
     id: string;
@@ -138,13 +130,18 @@ const selectedBallotHash = ref<string | null>(
 );
 const scannedBallots = computed(() => liveScannerState.value.accepted_ballots);
 const scanEvents = computed(() => liveScannerState.value.scan_events);
-const runningTally = computed(() => liveScannerState.value.tally);
-const lastScanDelta = computed(() =>
-    latestAcceptedBallot.value
-        ? deltaForTally(latestAcceptedBallot.value.this_ballot_tally)
-        : {},
+const replayTally = computed(() =>
+    cumulativeTallyThroughBallot(
+        scannedBallots.value,
+        selectedBallotIndex.value,
+    ),
 );
-const lastScanFlashKey = computed(() => liveScannerState.value.revision);
+const replayDelta = computed<TallyDelta>(() =>
+    deltaForReplayBallot(scannedBallots.value, selectedBallotIndex.value),
+);
+const replayFlashKey = computed(
+    () => selectedBallot.value?.payload_hash ?? liveScannerState.value.revision,
+);
 const scannerStatus = ref<'ready' | 'scanning'>('ready');
 const automaticScanner = ref<number | null>(null);
 const scannerCaptureEnabled = ref(true);
@@ -168,14 +165,6 @@ const nextBallot = computed(
 const lastBallot = computed(
     () => scannedBallots.value[scannedBallots.value.length - 1] ?? null,
 );
-const latestAcceptedBallot = computed(
-    () =>
-        scannedBallots.value.find(
-            (ballot) =>
-                ballot.payload_hash ===
-                liveScannerState.value.latest_accepted_ballot_hash,
-        ) ?? lastBallot.value,
-);
 const selectedBallotIndex = computed(() => {
     if (scannedBallots.value.length === 0) {
         return -1;
@@ -194,6 +183,11 @@ const selectedBallot = computed(() =>
 );
 const selectedBallotPosition = computed(() =>
     selectedBallotIndex.value >= 0 ? selectedBallotIndex.value + 1 : 0,
+);
+const replayStatusMessage = computed(() =>
+    selectedBallotPosition.value > 0
+        ? `As of ballot ${selectedBallotPosition.value} of ${scannedBallots.value.length}`
+        : 'No ballots selected.',
 );
 const canNavigateBallots = computed(() => scannedBallots.value.length > 1);
 const canMoveToPreviousBallot = computed(() => selectedBallotIndex.value > 0);
@@ -574,30 +568,6 @@ function pastedPayloadFrom(text: string): string {
     return truthPayload ?? trimmedText;
 }
 
-function deltaForTally(tally: Tally): TallyDelta {
-    const delta: TallyDelta = {};
-
-    Object.entries(tally).forEach(([contestId, candidateVotes]) => {
-        Object.entries(candidateVotes).forEach(([candidateId, addedVotes]) => {
-            if (addedVotes < 1) {
-                return;
-            }
-
-            const previousTotal =
-                runningTally.value[contestId]?.[candidateId] ?? 0;
-
-            delta[contestId] ??= {};
-            delta[contestId][candidateId] = {
-                previousTotal: Math.max(0, previousTotal - addedVotes),
-                addedVotes,
-                finalTotal: previousTotal,
-            };
-        });
-    });
-
-    return delta;
-}
-
 function csrfToken(): string | null {
     return (
         document
@@ -762,16 +732,16 @@ onBeforeUnmount(() => {
                 <PrecinctTallyBoard
                     eyebrow="Live tally sheet"
                     title="Ballot payload count"
-                    :accepted-count="scannedCount"
-                    accepted-label="accepted scans"
+                    :accepted-count="selectedBallotPosition"
+                    accepted-label="ballots included"
                     :contests="simulation.ballot.contests"
-                    :tally="runningTally"
+                    :tally="replayTally"
                     view="all"
-                    :last-scan-delta="lastScanDelta"
-                    :flash-key="lastScanFlashKey"
+                    :last-scan-delta="replayDelta"
+                    :flash-key="replayFlashKey"
                     :revision="liveScannerState.revision"
                     :last-updated-at="lastUpdatedAt"
-                    :status-message="liveScannerState.latest_message"
+                    :status-message="replayStatusMessage"
                 />
             </section>
 
