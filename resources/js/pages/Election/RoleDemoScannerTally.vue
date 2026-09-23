@@ -609,10 +609,37 @@ onBeforeUnmount(() => {
             />
         </div>
 
-        <section
-            class="mx-auto grid max-w-[1800px] gap-3 px-3 py-4 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]"
-        >
-            <aside class="space-y-3">
+        <section class="mx-auto max-w-[1800px] space-y-3 px-3 py-4">
+            <section class="grid gap-3 xl:grid-cols-2">
+                <LiveDocumentView
+                    title="Live Ballot View"
+                    eyebrow="Latest accepted ballot"
+                    :document="latestScannedDocument"
+                    :contests="simulation.ballot.contests"
+                    :rendering-kit="simulation.document_rendering"
+                    :pending-message="liveDocumentPendingMessage"
+                    empty-message="No completed ballot scan yet."
+                />
+
+                <PrecinctTallyBoard
+                    eyebrow="Live tally sheet"
+                    title="Ballot payload count"
+                    :accepted-count="scannedCount"
+                    accepted-label="accepted scans"
+                    :contests="simulation.ballot.contests"
+                    :tally="runningTally"
+                    view="all"
+                    :last-scan-delta="lastScanDelta"
+                    :flash-key="lastScanFlashKey"
+                    :revision="liveScannerState.revision"
+                    :last-updated-at="lastUpdatedAt"
+                    :status-message="liveScannerState.latest_message"
+                />
+            </section>
+
+            <section
+                class="grid gap-3 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,0.95fr)_minmax(360px,0.8fr)]"
+            >
                 <section class="border border-stone-300 bg-white p-3">
                     <Link
                         :href="roleDemoIndex.url()"
@@ -796,39 +823,13 @@ onBeforeUnmount(() => {
                 </section>
 
                 <ScanLedger
+                    class="lg:col-span-2 xl:col-span-1"
                     :entries="scanEvents"
                     :documents="scannedDocuments"
                     :contests="simulation.ballot.contests"
                     :rendering-kit="simulation.document_rendering"
                     empty-message="No ballot scans yet."
                     empty-documents-message="No completed ballots yet."
-                />
-            </aside>
-
-            <section class="space-y-4">
-                <LiveDocumentView
-                    title="Live Ballot View"
-                    eyebrow="Latest accepted ballot"
-                    :document="latestScannedDocument"
-                    :contests="simulation.ballot.contests"
-                    :rendering-kit="simulation.document_rendering"
-                    :pending-message="liveDocumentPendingMessage"
-                    empty-message="No completed ballot scan yet."
-                />
-
-                <PrecinctTallyBoard
-                    eyebrow="Live tally sheet"
-                    title="Ballot payload count"
-                    :accepted-count="scannedCount"
-                    accepted-label="accepted scans"
-                    :contests="simulation.ballot.contests"
-                    :tally="runningTally"
-                    view="all"
-                    :last-scan-delta="lastScanDelta"
-                    :flash-key="lastScanFlashKey"
-                    :revision="liveScannerState.revision"
-                    :last-updated-at="lastUpdatedAt"
-                    :status-message="liveScannerState.latest_message"
                 />
             </section>
         </section>

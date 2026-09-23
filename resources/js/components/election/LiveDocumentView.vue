@@ -85,7 +85,7 @@ const canRenderDocument = computed(
         props.contests.length > 0 &&
         props.renderingKit !== null,
 );
-const selectedBallotView = ref<'result' | 'official' | 'preview'>('result');
+const selectedBallotView = ref<'result' | 'official' | 'preview'>('preview');
 const canShowBallotViewSwitch = computed(
     () => canRenderDocument.value && props.document?.kind === 'official-ballot',
 );
@@ -139,13 +139,13 @@ const hasBallotPreview = computed(
                     type="button"
                     class="px-4 py-2"
                     :class="
-                        selectedBallotView === 'result'
+                        selectedBallotView === 'preview'
                             ? 'bg-stone-950 text-white'
                             : 'bg-white text-stone-700'
                     "
-                    @click="selectedBallotView = 'result'"
+                    @click="selectedBallotView = 'preview'"
                 >
-                    Ballot Result
+                    Ballot Preview
                 </button>
                 <button
                     type="button"
@@ -163,13 +163,13 @@ const hasBallotPreview = computed(
                     type="button"
                     class="border-l border-stone-300 px-4 py-2"
                     :class="
-                        selectedBallotView === 'preview'
+                        selectedBallotView === 'result'
                             ? 'bg-stone-950 text-white'
                             : 'bg-white text-stone-700'
                     "
-                    @click="selectedBallotView = 'preview'"
+                    @click="selectedBallotView = 'result'"
                 >
-                    Ballot Preview
+                    Ballot Result
                 </button>
             </div>
         </div>
