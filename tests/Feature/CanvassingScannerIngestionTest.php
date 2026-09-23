@@ -36,6 +36,8 @@ test('canvassing scanner ingests election return qr parts in any order', functio
     ])
         ->assertOk()
         ->assertJsonPath('event.status', 'partial')
+        ->assertJsonStructure(['event' => ['scanned_at']])
+        ->assertJsonStructure(['state' => ['scan_events' => [['scanned_at']]]])
         ->assertJsonPath('state.current_multipart.received_parts', [2]);
 
     $this->postJson(route('election.canvassing-demo.scanner-events.store'), [

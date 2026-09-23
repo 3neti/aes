@@ -53,9 +53,11 @@ test('role demo precinct tally scans loaded demo ballots into a polling public b
     ])
         ->assertOk()
         ->assertJsonPath('event.status', 'accepted')
+        ->assertJsonStructure(['event' => ['scanned_at']])
         ->assertJsonPath('state.accepted_count', 1)
         ->assertJsonCount(1, 'state.accepted_ballots')
-        ->assertJsonPath('state.scan_events.0.status', 'accepted');
+        ->assertJsonPath('state.scan_events.0.status', 'accepted')
+        ->assertJsonStructure(['state' => ['scan_events' => [['scanned_at']]]]);
 
     $this->postJson(route('election.role-demo.precinct-tally.scanner-events.store'), [
         'payload' => $payload,

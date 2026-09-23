@@ -29,6 +29,7 @@ use App\Election\Voting\PrivateBallotRelease;
 use App\Election\Voting\SealedBallotBox;
 use App\Election\Voting\StandardQrCode;
 use App\Election\Voting\VoterBallotAnalytics;
+use App\Events\RoleDemoControlNumberIssued;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClaimVoterAuthorizationRequest;
 use App\Http\Requests\FinalizePrivateBallotRequest;
@@ -178,6 +179,7 @@ final class RoleDemoController extends Controller
         }
 
         $request->session()->put('role_demo.control_number', $authorization);
+        event(RoleDemoControlNumberIssued::fromAuthorization($authorization));
 
         return to_route('election.role-demo.officer')
             ->with('role_demo.feedback', 'Give this four-digit control number to the next voter.');

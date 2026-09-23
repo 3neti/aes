@@ -86,6 +86,7 @@ type ScanLogEntry = {
     id: string;
     title: string;
     subtitle?: string | null;
+    scanned_at?: string | null;
     meta?: string | null;
     hash?: string | null;
     status?: 'accepted' | 'partial' | 'duplicate' | 'rejected';

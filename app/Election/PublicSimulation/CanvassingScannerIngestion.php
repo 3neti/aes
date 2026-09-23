@@ -533,6 +533,7 @@ final class CanvassingScannerIngestion
             'id' => (string) $event->id,
             'title' => $this->eventTitle($event, $sequence),
             'subtitle' => $event->precinct_id,
+            'scanned_at' => $event->received_at?->toJSON(),
             'meta' => "{$this->sourceLabel($event->source)} · {$partLabel} · {$event->message}",
             'hash' => $event->document_hash ?? $event->group_id ?? $event->payload_hash,
             'status' => $event->status,

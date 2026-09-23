@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import LiveDocumentView from '@/components/election/LiveDocumentView.vue';
+import PrecinctTallyBoard from '@/components/election/PrecinctTallyBoard.vue';
 import ScanLedger from '@/components/election/ScanLedger.vue';
-import TallyBoard from '@/components/election/TallyBoard.vue';
 import { type CandidateCodeMapEntry } from '@/components/election/truthQr';
 import { index as roleDemoIndex } from '@/routes/election/role-demo';
 
@@ -49,6 +50,7 @@ type ScanLogEntry = {
     id: string;
     title: string;
     subtitle?: string | null;
+    scanned_at?: string | null;
     meta?: string | null;
     hash?: string | null;
     status?: 'accepted' | 'partial' | 'duplicate' | 'rejected';
@@ -173,8 +175,8 @@ const scannedCount = computed(() => liveScannerState.value.accepted_count);
 const scannerPulsePercent = computed(() =>
     scannerStatus.value === 'scanning' ? 72 : scannedCount.value > 0 ? 100 : 0,
 );
-const scannedDocuments = computed<LedgerDocument[]>(() =>
-    scannedBallots.value.map((ballot) => ({
+function ballotLedgerDocument(ballot: ScannerBallot): LedgerDocument {
+    return {
         id: ballot.payload_hash,
         title: `Ballot ${ballot.sequence}`,
         subtitle: String(ballot.paper_ballot_serial ?? ''),
@@ -185,7 +187,22 @@ const scannedDocuments = computed<LedgerDocument[]>(() =>
             ...ballot,
             type: 'official-ballot',
         },
-    })),
+    };
+}
+
+const scannedDocuments = computed<LedgerDocument[]>(() =>
+    scannedBallots.value.map((ballot) => ballotLedgerDocument(ballot)),
+);
+const latestScannedDocument = computed<LedgerDocument | null>(() =>
+    latestAcceptedBallot.value
+        ? ballotLedgerDocument(latestAcceptedBallot.value)
+        : null,
+);
+const liveDocumentPendingMessage = computed(() =>
+    liveScannerState.value.latest_status === 'partial'
+        ? liveScannerState.value.latest_message ||
+          'Waiting for remaining QR payload parts.'
+        : null,
 );
 
 function scanNext(): void {
@@ -256,7 +273,10 @@ function submitManualScan(): void {
     manualScanPayload.value = '';
 }
 
-async function processBallotPayload(payload: string, source: string): Promise<void> {
+async function processBallotPayload(
+    payload: string,
+    source: string,
+): Promise<void> {
     const normalizedPayload = payload.trim();
 
     if (!normalizedPayload) {
@@ -288,7 +308,8 @@ async function processBallotPayload(payload: string, source: string): Promise<vo
             result.event?.meta ??
             'Scan recorded.';
     } catch {
-        hardwareScanStatus.value = 'Scanner endpoint is temporarily unavailable.';
+        hardwareScanStatus.value =
+            'Scanner endpoint is temporarily unavailable.';
     } finally {
         scannerStatus.value = 'ready';
     }
@@ -353,7 +374,10 @@ function handleGlobalScannerKeydown(event: KeyboardEvent): void {
 
     if (event.key === 'Enter' || event.key === 'NumpadEnter') {
         if (keyboardScanBuffer.value !== '') {
-            void processBallotPayload(keyboardScanBuffer.value, 'keyboard_wedge');
+            void processBallotPayload(
+                keyboardScanBuffer.value,
+                'keyboard_wedge',
+            );
             keyboardScanBuffer.value = '';
             event.preventDefault();
         }
@@ -780,25 +804,30 @@ onBeforeUnmount(() => {
             </aside>
 
             <section class="space-y-4">
-                <TallyBoard
+                <LiveDocumentView
+                    title="Live Ballot View"
+                    eyebrow="Latest accepted ballot"
+                    :document="latestScannedDocument"
+                    :contests="simulation.ballot.contests"
+                    :rendering-kit="simulation.document_rendering"
+                    :pending-message="liveDocumentPendingMessage"
+                    empty-message="No completed ballot scan yet."
+                />
+
+                <PrecinctTallyBoard
                     eyebrow="Live tally sheet"
                     title="Ballot payload count"
                     :accepted-count="scannedCount"
                     accepted-label="accepted scans"
                     :contests="simulation.ballot.contests"
                     :tally="runningTally"
+                    view="all"
                     :last-scan-delta="lastScanDelta"
                     :flash-key="lastScanFlashKey"
-                >
-                    <template #stats>
-                        <p class="mt-2 text-xs text-stone-500">
-                            Revision {{ liveScannerState.revision }}
-                            <span v-if="lastUpdatedAt"
-                                >· {{ lastUpdatedAt }}</span
-                            >
-                        </p>
-                    </template>
-                </TallyBoard>
+                    :revision="liveScannerState.revision"
+                    :last-updated-at="lastUpdatedAt"
+                    :status-message="liveScannerState.latest_message"
+                />
             </section>
         </section>
     </main>

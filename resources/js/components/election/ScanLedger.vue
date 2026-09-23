@@ -51,6 +51,7 @@ type ScanLogEntry = {
     id: string;
     title: string;
     subtitle?: string | null;
+    scanned_at?: string | null;
     meta?: string | null;
     hash?: string | null;
     status?: 'accepted' | 'partial' | 'duplicate' | 'rejected';
@@ -160,6 +161,28 @@ function statusClass(status?: ScanLogEntry['status']): string {
     return 'border-stone-200 bg-stone-50 text-stone-700';
 }
 
+function scanDateTimeLabel(entry: ScanLogEntry): string | null {
+    if (!entry.scanned_at) {
+        return null;
+    }
+
+    const date = new Date(entry.scanned_at);
+
+    if (Number.isNaN(date.getTime())) {
+        return entry.scanned_at;
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    }).format(date);
+}
+
 function openDocument(document: LedgerDocument): void {
     selectedDocument.value = document;
 }
@@ -230,7 +253,20 @@ function closeDocument(): void {
                             "
                         >
                             <div class="flex justify-between gap-3">
-                                <strong>{{ entry.title }}</strong>
+                                <div class="min-w-0">
+                                    <strong class="block">
+                                        {{ entry.title }}
+                                    </strong>
+                                    <time
+                                        v-if="scanDateTimeLabel(entry)"
+                                        class="mt-0.5 block font-mono text-[10px] text-stone-500"
+                                        :datetime="
+                                            entry.scanned_at ?? undefined
+                                        "
+                                    >
+                                        Scanned {{ scanDateTimeLabel(entry) }}
+                                    </time>
+                                </div>
                                 <div class="flex min-w-0 items-center gap-2">
                                     <span
                                         v-if="entry.subtitle"

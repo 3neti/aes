@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import TallyBoard from '@/components/election/TallyBoard.vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import PrecinctTallyBoard from '@/components/election/PrecinctTallyBoard.vue';
 
 type Tally = Record<string, Record<string, number>>;
 
@@ -51,67 +51,6 @@ const stationId = 'role-demo-precinct';
 const scannerState = ref<ScannerState>({ ...props.scannerState });
 const statePoller = ref<number | null>(null);
 const lastUpdatedAt = ref<string | null>(null);
-
-const viewOptions = [
-    { value: 'all', label: 'All' },
-    { value: 'national', label: 'National' },
-    { value: 'local', label: 'Local' },
-    { value: 'president', label: 'President' },
-    { value: 'vice-president', label: 'Vice President' },
-    { value: 'senator', label: 'Senator' },
-    { value: 'mayor', label: 'Mayor' },
-    { value: 'councilor', label: 'Councilor' },
-    { value: 'party-list', label: 'Party List' },
-];
-
-const activeViewTokens = computed(() =>
-    props.view
-        .split(',')
-        .map((token) => token.trim().toLowerCase())
-        .filter(Boolean),
-);
-const activeViewLabel = computed(() =>
-    activeViewTokens.value.length === 0 ||
-    activeViewTokens.value.includes('all')
-        ? 'All contests'
-        : activeViewTokens.value
-              .map((token) => viewOptions.find((option) => option.value === token)?.label ?? token)
-              .join(' + '),
-);
-const filteredContests = computed(() => {
-    if (
-        activeViewTokens.value.length === 0 ||
-        activeViewTokens.value.includes('all')
-    ) {
-        return props.simulation.ballot.contests;
-    }
-
-    return props.simulation.ballot.contests.filter((contest) =>
-        activeViewTokens.value.some((token) => contestMatchesView(contest, token)),
-    );
-});
-
-function publicBoardUrl(view: string): string {
-    const url = new URL(props.actions.publicBoard, window.location.origin);
-    url.searchParams.set('view', view);
-
-    return url.toString();
-}
-
-function contestMatchesView(contest: Contest, token: string): boolean {
-    if (token === 'national') {
-        return (
-            contest.id.includes('philippines') ||
-            contest.id.includes('party_list')
-        );
-    }
-
-    if (token === 'local') {
-        return !contestMatchesView(contest, 'national');
-    }
-
-    return contest.id.replaceAll('_', '-').includes(token);
-}
 
 async function fetchScannerState(): Promise<void> {
     try {
@@ -180,48 +119,29 @@ onBeforeUnmount(() => {
                         {{ precinct.label }}
                     </h1>
                     <p class="mt-1 text-sm text-stone-600">
-                        {{ activeViewLabel }} ·
-                        {{ scannerState.latest_message ?? 'Waiting for scans.' }}
+                        {{
+                            scannerState.latest_message ?? 'Waiting for scans.'
+                        }}
                     </p>
-                </div>
-
-                <div class="flex flex-wrap gap-2">
-                    <a
-                        v-for="option in viewOptions"
-                        :key="option.value"
-                        :href="publicBoardUrl(option.value)"
-                        class="border px-3 py-2 text-sm font-bold"
-                        :class="
-                            activeViewTokens.includes(option.value) ||
-                            (option.value === 'all' &&
-                                (activeViewTokens.length === 0 ||
-                                    activeViewTokens.includes('all')))
-                                ? 'border-blue-800 bg-blue-800 text-white'
-                                : 'border-stone-300 bg-white text-stone-700'
-                        "
-                    >
-                        {{ option.label }}
-                    </a>
                 </div>
             </div>
 
-            <TallyBoard
+            <PrecinctTallyBoard
                 eyebrow="Timer-updated public board"
                 title="Precinct ballot QR tally"
                 :accepted-count="scannerState.accepted_count"
                 accepted-label="accepted ballot scans"
-                :contests="filteredContests"
+                :contests="simulation.ballot.contests"
                 :tally="scannerState.tally"
+                :view="view"
                 :flash-key="scannerState.revision"
-                enable-candidate-sort
-            >
-                <template #stats>
-                    <p class="mt-2 text-xs text-stone-500">
-                        Revision {{ scannerState.revision }}
-                        <span v-if="lastUpdatedAt">· {{ lastUpdatedAt }}</span>
-                    </p>
-                </template>
-            </TallyBoard>
+                :revision="scannerState.revision"
+                :last-updated-at="lastUpdatedAt"
+                :status-message="
+                    scannerState.latest_message ?? 'Waiting for scans.'
+                "
+                :public-board-url="actions.publicBoard"
+            />
         </section>
     </main>
 </template>

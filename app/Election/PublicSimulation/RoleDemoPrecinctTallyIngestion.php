@@ -377,6 +377,7 @@ final class RoleDemoPrecinctTallyIngestion
             'id' => (string) $event->id,
             'title' => $this->eventTitle($event),
             'subtitle' => $event->precinct_id,
+            'scanned_at' => $event->received_at?->toJSON(),
             'meta' => "{$this->sourceLabel($event->source)} · single QR document · {$event->message}",
             'hash' => $event->document_hash ?? $event->payload_hash,
             'status' => $event->status,

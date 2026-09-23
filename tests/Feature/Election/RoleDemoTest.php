@@ -1,6 +1,7 @@
 <?php
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Printing\ControlNumberPrinter;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\Support\ElectionStorage;
@@ -349,6 +350,43 @@ test('role demo voter can generate a self service control number before claiming
             ->where('ballot.contests.0.office', 'PRESIDENT')
             ->has('ballot.contests.0.candidates', 10)
         );
+});
+
+test('role demo officer generated control number is printed by event listener', function (): void {
+    $printed = new class implements ControlNumberPrinter
+    {
+        /**
+         * @var list<array<string, mixed>>
+         */
+        public array $releases = [];
+
+        public function print(array $release): array
+        {
+            $this->releases[] = $release;
+
+            return [
+                'schema_version' => 'control-number-print-job-1',
+                'release_id' => $release['release_id'],
+                'status' => 'submitted',
+            ];
+        }
+    };
+
+    app()->instance(ControlNumberPrinter::class, $printed);
+
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+
+    $this->post(route('election.role-demo.admit'))
+        ->assertRedirectToRoute('election.role-demo.officer');
+
+    $authorization = session('role_demo.control_number');
+
+    expect($authorization)->toBeArray()
+        ->and($printed->releases)->toHaveCount(1)
+        ->and($printed->releases[0]['release_id'])->toBe($authorization['authorization_id'])
+        ->and($printed->releases[0]['release_code'])->toBe($authorization['code'])
+        ->and($printed->releases[0]['paper_ballot_serial'])->toBeNull()
+        ->and($printed->releases[0]['expires_at'])->toBe($authorization['expires_at']);
 });
 
 test('role demo heals an open precinct with a missing ballot package before rendering voter ballot', function (): void {
