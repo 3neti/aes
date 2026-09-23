@@ -110,9 +110,7 @@ const ballotPreviewKey = computed(() =>
 
 <template>
     <section class="border border-stone-300 bg-white">
-        <header
-            class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 p-4"
-        >
+        <header class="border-b border-stone-200 p-4">
             <div>
                 <p class="text-xs font-black text-blue-800 uppercase">
                     {{ eyebrow }}
@@ -129,10 +127,15 @@ const ballotPreviewKey = computed(() =>
             </div>
             <div
                 v-if="document"
-                class="border border-stone-300 px-3 py-2 text-right text-xs font-bold text-stone-700"
+                class="mx-auto mt-4 max-w-xl border-2 border-stone-400 bg-stone-50 px-5 py-4 text-center"
             >
-                <p>{{ document.title }}</p>
-                <p v-if="document.subtitle" class="font-mono">
+                <p class="text-3xl leading-none font-black text-stone-950">
+                    {{ document.title }}
+                </p>
+                <p
+                    v-if="document.subtitle"
+                    class="mt-2 font-mono text-lg font-black text-blue-900"
+                >
                     {{ document.subtitle }}
                 </p>
             </div>

@@ -133,6 +133,9 @@ const props = defineProps<{
 
 const stationId = 'role-demo-precinct';
 const liveScannerState = ref<ScannerState>({ ...props.scannerState });
+const selectedBallotHash = ref<string | null>(
+    selectedHashFromState(props.scannerState),
+);
 const scannedBallots = computed(() => liveScannerState.value.accepted_ballots);
 const scanEvents = computed(() => liveScannerState.value.scan_events);
 const runningTally = computed(() => liveScannerState.value.tally);
@@ -173,6 +176,32 @@ const latestAcceptedBallot = computed(
                 liveScannerState.value.latest_accepted_ballot_hash,
         ) ?? lastBallot.value,
 );
+const selectedBallotIndex = computed(() => {
+    if (scannedBallots.value.length === 0) {
+        return -1;
+    }
+
+    const index = scannedBallots.value.findIndex(
+        (ballot) => ballot.payload_hash === selectedBallotHash.value,
+    );
+
+    return index >= 0 ? index : scannedBallots.value.length - 1;
+});
+const selectedBallot = computed(() =>
+    selectedBallotIndex.value >= 0
+        ? (scannedBallots.value[selectedBallotIndex.value] ?? null)
+        : null,
+);
+const selectedBallotPosition = computed(() =>
+    selectedBallotIndex.value >= 0 ? selectedBallotIndex.value + 1 : 0,
+);
+const canNavigateBallots = computed(() => scannedBallots.value.length > 1);
+const canMoveToPreviousBallot = computed(() => selectedBallotIndex.value > 0);
+const canMoveToNextBallot = computed(
+    () =>
+        selectedBallotIndex.value >= 0 &&
+        selectedBallotIndex.value < scannedBallots.value.length - 1,
+);
 const scannedCount = computed(() => liveScannerState.value.accepted_count);
 const scannerPulsePercent = computed(() =>
     scannerStatus.value === 'scanning' ? 72 : scannedCount.value > 0 ? 100 : 0,
@@ -195,10 +224,8 @@ function ballotLedgerDocument(ballot: ScannerBallot): LedgerDocument {
 const scannedDocuments = computed<LedgerDocument[]>(() =>
     scannedBallots.value.map((ballot) => ballotLedgerDocument(ballot)),
 );
-const latestScannedDocument = computed<LedgerDocument | null>(() =>
-    latestAcceptedBallot.value
-        ? ballotLedgerDocument(latestAcceptedBallot.value)
-        : null,
+const selectedScannedDocument = computed<LedgerDocument | null>(() =>
+    selectedBallot.value ? ballotLedgerDocument(selectedBallot.value) : null,
 );
 const liveDocumentPendingMessage = computed(() =>
     liveScannerState.value.latest_status === 'partial'
@@ -263,6 +290,7 @@ async function resetScanner(): Promise<void> {
 
         if (response.ok) {
             liveScannerState.value = state;
+            selectedBallotHash.value = selectedHashFromState(state);
             hardwareScanStatus.value = state.latest_message;
         }
     } catch {
@@ -303,6 +331,7 @@ async function processBallotPayload(
 
         if (result.state) {
             liveScannerState.value = result.state;
+            selectedBallotHash.value = selectedHashFromState(result.state);
         }
 
         hardwareScanStatus.value =
@@ -331,7 +360,17 @@ async function fetchScannerState(): Promise<void> {
         const state = await response.json();
 
         if (response.ok && state.revision !== liveScannerState.value.revision) {
+            const previousLatestHash =
+                liveScannerState.value.latest_accepted_ballot_hash;
             liveScannerState.value = state;
+
+            if (
+                state.latest_accepted_ballot_hash !== null &&
+                state.latest_accepted_ballot_hash !== previousLatestHash
+            ) {
+                selectedBallotHash.value = selectedHashFromState(state);
+            }
+
             hardwareScanStatus.value =
                 state.latest_message ?? 'Scanner state refreshed.';
             lastUpdatedAt.value = new Date().toLocaleTimeString();
@@ -584,6 +623,47 @@ function sourceLabel(source: string): string {
         : 'Generated demo ballot payloads';
 }
 
+function selectedHashFromState(state: ScannerState): string | null {
+    if (state.latest_accepted_ballot_hash) {
+        return state.latest_accepted_ballot_hash;
+    }
+
+    return (
+        state.accepted_ballots[state.accepted_ballots.length - 1]
+            ?.payload_hash ?? null
+    );
+}
+
+function showFirstBallot(): void {
+    selectedBallotHash.value = scannedBallots.value[0]?.payload_hash ?? null;
+}
+
+function showPreviousBallot(): void {
+    if (!canMoveToPreviousBallot.value) {
+        return;
+    }
+
+    selectedBallotHash.value =
+        scannedBallots.value[selectedBallotIndex.value - 1]?.payload_hash ??
+        null;
+}
+
+function showNextBallot(): void {
+    if (!canMoveToNextBallot.value) {
+        return;
+    }
+
+    selectedBallotHash.value =
+        scannedBallots.value[selectedBallotIndex.value + 1]?.payload_hash ??
+        null;
+}
+
+function showLatestBallot(): void {
+    selectedBallotHash.value =
+        scannedBallots.value[scannedBallots.value.length - 1]?.payload_hash ??
+        null;
+}
+
 onMounted(() => {
     window.addEventListener('keydown', handleGlobalScannerKeydown);
     window.addEventListener('paste', handleGlobalScannerPaste);
@@ -611,16 +691,73 @@ onBeforeUnmount(() => {
 
         <section class="mx-auto max-w-[1800px] space-y-3 px-3 py-4">
             <section class="grid gap-3 xl:grid-cols-2">
-                <LiveDocumentView
-                    :key="latestScannedDocument?.id ?? 'empty-ballot-preview'"
-                    title="Live Ballot View"
-                    eyebrow="Latest accepted ballot"
-                    :document="latestScannedDocument"
-                    :contests="simulation.ballot.contests"
-                    :rendering-kit="simulation.document_rendering"
-                    :pending-message="liveDocumentPendingMessage"
-                    empty-message="No completed ballot scan yet."
-                />
+                <section class="space-y-2">
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-3 border border-stone-300 bg-white p-3"
+                    >
+                        <div>
+                            <p
+                                class="text-xs font-black text-blue-800 uppercase"
+                            >
+                                Ballot navigation
+                            </p>
+                            <p class="mt-1 text-sm font-bold text-stone-700">
+                                Showing ballot {{ selectedBallotPosition }} of
+                                {{ scannedBallots.length }}
+                            </p>
+                        </div>
+                        <div
+                            class="grid grid-cols-4 border border-stone-300 text-xs font-black"
+                        >
+                            <button
+                                type="button"
+                                class="border-r border-stone-300 px-3 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+                                :disabled="!canNavigateBallots"
+                                @click="showFirstBallot"
+                            >
+                                First
+                            </button>
+                            <button
+                                type="button"
+                                class="border-r border-stone-300 px-3 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+                                :disabled="!canMoveToPreviousBallot"
+                                @click="showPreviousBallot"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                type="button"
+                                class="border-r border-stone-300 px-3 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+                                :disabled="!canMoveToNextBallot"
+                                @click="showNextBallot"
+                            >
+                                Next
+                            </button>
+                            <button
+                                type="button"
+                                class="px-3 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+                                :disabled="!canNavigateBallots"
+                                @click="showLatestBallot"
+                            >
+                                Last
+                            </button>
+                        </div>
+                    </div>
+
+                    <LiveDocumentView
+                        :key="
+                            selectedScannedDocument?.id ??
+                            'empty-ballot-preview'
+                        "
+                        title="Live Ballot View"
+                        eyebrow="Selected accepted ballot"
+                        :document="selectedScannedDocument"
+                        :contests="simulation.ballot.contests"
+                        :rendering-kit="simulation.document_rendering"
+                        :pending-message="liveDocumentPendingMessage"
+                        empty-message="No completed ballot scan yet."
+                    />
+                </section>
 
                 <PrecinctTallyBoard
                     eyebrow="Live tally sheet"
