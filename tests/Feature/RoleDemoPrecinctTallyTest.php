@@ -80,6 +80,10 @@ test('role demo precinct tally scans loaded demo ballots into a polling public b
             ->component('Election/RoleDemoPrecinctTallyPublic')
             ->where('view', 'president')
             ->where('scannerState.accepted_count', 1)
+            ->has('scannerState.accepted_ballots', 1)
+            ->where('scannerState.accepted_ballots.0.pdf_available', true)
+            ->where('scannerState.accepted_ballots.0.pdf_url', route('election.role-demo.watcher.ballot', ['sequence' => 1]))
+            ->has('simulation.document_rendering.asset_bundle')
             ->where('actions.scannerState', route('election.role-demo.precinct-tally.scanner-events.index'))
             ->where('actions.operatorBoard', route('election.role-demo.precinct-tally'))
         );

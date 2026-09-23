@@ -45,7 +45,7 @@ const props = withDefaults(
 );
 
 const sortByVotes = ref(true);
-const hideZeroVoteCandidates = ref(false);
+const hideZeroVoteCandidates = ref(true);
 const candidateSortMode = computed<CandidateSortMode>(() => {
     if (!props.enableCandidateSort) {
         return 'ballot';
