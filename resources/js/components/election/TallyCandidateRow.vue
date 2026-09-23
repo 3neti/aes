@@ -23,6 +23,10 @@ const displayName = computed(() => {
 
     return normalizedName.length > 0 ? normalizedName : props.candidate.name;
 });
+
+const wasUpdatedByLatestScan = computed(
+    () => (props.delta?.addedVotes ?? 0) > 0,
+);
 </script>
 
 <template>
@@ -35,7 +39,10 @@ const displayName = computed(() => {
         >
             {{ displayName }}
         </p>
-        <p class="text-right font-mono text-base leading-none font-black tabular-nums text-blue-900">
+        <p
+            class="text-right font-mono text-base leading-none font-black tabular-nums"
+            :class="wasUpdatedByLatestScan ? 'text-red-700' : 'text-stone-950'"
+        >
             {{ votes }}
         </p>
         <div class="compact-tally col-span-2">

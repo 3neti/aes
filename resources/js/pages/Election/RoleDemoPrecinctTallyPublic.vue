@@ -6,6 +6,18 @@ import PrecinctTallyBoard from '@/components/election/PrecinctTallyBoard.vue';
 
 type Tally = Record<string, Record<string, number>>;
 
+type TallyDelta = Record<
+    string,
+    Record<
+        string,
+        {
+            previousTotal: number;
+            addedVotes: number;
+            finalTotal: number;
+        }
+    >
+>;
+
 type Contest = {
     id: string;
     title: string;
@@ -112,6 +124,11 @@ const latestScannedDocument = computed<LedgerDocument | null>(() =>
         ? ballotLedgerDocument(latestAcceptedBallot.value)
         : null,
 );
+const lastScanDelta = computed<TallyDelta>(() =>
+    latestAcceptedBallot.value
+        ? deltaForTally(latestAcceptedBallot.value.this_ballot_tally)
+        : {},
+);
 
 function ballotLedgerDocument(ballot: ScannerBallot): LedgerDocument {
     return {
@@ -126,6 +143,30 @@ function ballotLedgerDocument(ballot: ScannerBallot): LedgerDocument {
             type: 'official-ballot',
         },
     };
+}
+
+function deltaForTally(tally: Tally): TallyDelta {
+    const delta: TallyDelta = {};
+
+    Object.entries(tally).forEach(([contestId, candidateVotes]) => {
+        Object.entries(candidateVotes).forEach(([candidateId, addedVotes]) => {
+            if (addedVotes < 1) {
+                return;
+            }
+
+            const currentTotal =
+                scannerState.value.tally[contestId]?.[candidateId] ?? 0;
+
+            delta[contestId] ??= {};
+            delta[contestId][candidateId] = {
+                previousTotal: Math.max(0, currentTotal - addedVotes),
+                addedVotes,
+                finalTotal: currentTotal,
+            };
+        });
+    });
+
+    return delta;
 }
 
 async function fetchScannerState(): Promise<void> {
@@ -221,6 +262,7 @@ onBeforeUnmount(() => {
                     :contests="simulation.ballot.contests"
                     :tally="scannerState.tally"
                     :view="view"
+                    :last-scan-delta="lastScanDelta"
                     :flash-key="scannerState.revision"
                     :revision="scannerState.revision"
                     :last-updated-at="lastUpdatedAt"
