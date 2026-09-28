@@ -1,0 +1,24 @@
+[Unit]
+Description=WAES Laravel Reverb server
+PartOf=waes-runtime.target
+After=network.target
+
+[Service]
+Type=simple
+User=ace
+Group=ace
+WorkingDirectory=/var/www/aes
+EnvironmentFile=-/etc/waes/runtime.env
+ExecStart=/usr/bin/php artisan reverb:start --host=127.0.0.1 --port=8080
+ExecReload=/usr/bin/php artisan reverb:restart
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/www/aes/storage /var/www/aes/bootstrap/cache
+
+[Install]
+WantedBy=waes-runtime.target

@@ -1,0 +1,26 @@
+[Unit]
+Description=WAES USB QR scanner bridge
+PartOf=waes-runtime.target
+Wants=postgresql.service
+After=local-fs.target postgresql.service
+
+[Service]
+Type=simple
+User=ace
+Group=ace
+SupplementaryGroups=input
+WorkingDirectory=/var/www/aes
+EnvironmentFile=-/etc/waes/runtime.env
+ExecStart=/var/www/aes/scripts/waes-scanner-service
+Restart=always
+RestartSec=3
+TimeoutStopSec=15
+KillMode=control-group
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/www/aes/storage /var/www/aes/bootstrap/cache
+
+[Install]
+WantedBy=waes-runtime.target

@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+app_dir="${WAES_APP_DIR:-/var/www/aes}"
+python_binary="${WAES_PYTHON_BINARY:-/usr/bin/python3}"
+php_binary="${WAES_PHP_BINARY:-/usr/bin/php}"
+scanner_device="${ELECTION_SCANNER_DEVICE:-/dev/input/by-id/usb-Scanner_Barcode_0215-event-kbd}"
+scanner_mode="${ELECTION_SCANNER_INGESTION:-precinct}"
+heartbeat_path="${ELECTION_SCANNER_HEARTBEAT_PATH:-${app_dir}/storage/app/private/runtime/heartbeats/scanner.json}"
+
+case "${scanner_mode}" in
+    precinct)
+        station_id="${ELECTION_SCANNER_STATION_ID:-role-demo-precinct}"
+        ingest_command="election:precinct-ballot-scanner-ingest"
+        ;;
+    canvassing)
+        station_id="${ELECTION_SCANNER_STATION_ID:-canvassing-demo-city}"
+        ingest_command="election:canvassing-scanner-ingest"
+        ;;
+    *)
+        printf 'Unsupported ELECTION_SCANNER_INGESTION: %s\n' "${scanner_mode}" >&2
+        exit 64
+        ;;
+esac
+
+cd "${app_dir}"
+
+"${python_binary}" scripts/canvassing-scanner-bridge.py \
+    --device "${scanner_device}" \
+    --heartbeat-path "${heartbeat_path}" \
+    --heartbeat-interval "${ELECTION_SCANNER_HEARTBEAT_INTERVAL:-30}" \
+    --reconnect-delay "${ELECTION_SCANNER_RECONNECT_DELAY:-2}" \
+    | "${php_binary}" artisan "${ingest_command}" \
+        --station-id="${station_id}" \
+        --source=scanner_bridge

@@ -17,7 +17,7 @@ Intended usage on the device:
     sudo apt-get install -y python3-evdev
 
     python3 scripts/canvassing-scanner-bridge.py \
-        --device /dev/input/by-id/usb-LWTEK_Barcode_Scanner_00000000011C-event-kbd \
+        --device /dev/input/by-id/usb-Scanner_Barcode_0215-event-kbd \
         | php artisan election:canvassing-scanner-ingest --station-id=canvassing-demo-city
 
 Run `python3 scripts/canvassing-scanner-bridge.py --list` to discover
@@ -27,7 +27,14 @@ candidate keyboard-class input devices if the --device path changes.
 from __future__ import annotations
 
 import argparse
+import json
+import os
+import select
+import socket
 import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
 
 try:
     import evdev
@@ -72,20 +79,108 @@ KEY_CHAR_MAP: dict[int, tuple[str, str]] = {
 
 ENTER_KEYS = {ecodes.KEY_ENTER, ecodes.KEY_KPENTER}
 SHIFT_KEYS = {ecodes.KEY_LEFTSHIFT, ecodes.KEY_RIGHTSHIFT}
+CTRL_KEYS = {ecodes.KEY_LEFTCTRL, ecodes.KEY_RIGHTCTRL}
 
 
 def find_scanner_device(name_hint: str) -> str | None:
     for path in evdev.list_devices():
         device = evdev.InputDevice(path)
-        if name_hint.lower() in device.name.lower():
-            return path
+        try:
+            if name_hint.lower() in device.name.lower():
+                return path
+        finally:
+            device.close()
     return None
 
 
 def list_devices() -> None:
     for path in evdev.list_devices():
         device = evdev.InputDevice(path)
-        print(f"{path}\t{device.name}")
+        try:
+            print(f"{path}\t{device.name}")
+        finally:
+            device.close()
+
+
+def record_heartbeat(path: Path | None, device_path: str) -> None:
+    if path is None:
+        return
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    heartbeat = {
+        "schema_version": "waes-runtime-heartbeat-1",
+        "service": "scanner",
+        "recorded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "process_id": os.getpid(),
+        "host": socket.gethostname(),
+        "device": device_path,
+    }
+    temporary_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary_path.write_text(
+        json.dumps(heartbeat, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(temporary_path, path)
+
+
+def emit_buffer(buffer: list[str]) -> None:
+    payload = "".join(buffer).strip()
+    buffer.clear()
+
+    if payload != "":
+        print(payload, flush=True)
+
+
+def read_scanner(
+    device: evdev.InputDevice,
+    heartbeat_path: Path | None,
+    heartbeat_interval: float,
+) -> None:
+    shift_held = False
+    ctrl_held = False
+    buffer: list[str] = []
+
+    record_heartbeat(heartbeat_path, device.path)
+
+    while True:
+        readable, _, _ = select.select(
+            [device.fd],
+            [],
+            [],
+            heartbeat_interval,
+        )
+
+        if not readable:
+            record_heartbeat(heartbeat_path, device.path)
+            continue
+
+        for event in device.read():
+            if event.type != ecodes.EV_KEY:
+                continue
+
+            # value: 0 = key up, 1 = key down, 2 = autorepeat.
+            if event.code in SHIFT_KEYS:
+                shift_held = event.value != 0
+                continue
+
+            if event.code in CTRL_KEYS:
+                ctrl_held = event.value != 0
+                continue
+
+            if event.value != 1:
+                continue
+
+            if event.code in ENTER_KEYS or (ctrl_held and event.code == ecodes.KEY_C):
+                emit_buffer(buffer)
+                record_heartbeat(heartbeat_path, device.path)
+                continue
+
+            chars = KEY_CHAR_MAP.get(event.code)
+
+            if chars is None:
+                continue
+
+            buffer.append(chars[1] if shift_held else chars[0])
 
 
 def main() -> int:
@@ -93,7 +188,7 @@ def main() -> int:
     parser.add_argument(
         "--device",
         help="Path to the scanner's evdev device node "
-        "(e.g. /dev/input/by-id/usb-LWTEK_Barcode_Scanner_00000000011C-event-kbd)",
+        "(e.g. /dev/input/by-id/usb-Scanner_Barcode_0215-event-kbd)",
     )
     parser.add_argument(
         "--name-hint",
@@ -106,64 +201,70 @@ def main() -> int:
         action="store_true",
         help="List available input devices and exit",
     )
+    parser.add_argument(
+        "--heartbeat-path",
+        help="Write an atomic scanner heartbeat JSON file while the device is open",
+    )
+    parser.add_argument(
+        "--heartbeat-interval",
+        type=float,
+        default=30.0,
+        help="Seconds between scanner heartbeats while idle (default: 30)",
+    )
+    parser.add_argument(
+        "--reconnect-delay",
+        type=float,
+        default=2.0,
+        help="Seconds before retrying a missing or disconnected scanner (default: 2)",
+    )
     args = parser.parse_args()
 
     if args.list:
         list_devices()
         return 0
 
-    device_path = args.device or find_scanner_device(args.name_hint)
+    heartbeat_path = Path(args.heartbeat_path) if args.heartbeat_path else None
+    heartbeat_interval = max(1.0, args.heartbeat_interval)
+    reconnect_delay = max(0.25, args.reconnect_delay)
 
-    if device_path is None:
-        sys.stderr.write(
-            "Could not find a scanner input device. "
-            "Run with --list to see available devices, "
-            "then pass --device explicitly.\n"
-        )
-        return 1
+    while True:
+        device_path = args.device or find_scanner_device(args.name_hint)
 
-    try:
-        device = evdev.InputDevice(device_path)
-    except PermissionError:
-        sys.stderr.write(
-            f"Permission denied opening {device_path}. "
-            "Add this user to the 'input' group and re-login: "
-            "sudo usermod -aG input $(whoami)\n"
-        )
-        return 1
-
-    shift_held = False
-    buffer: list[str] = []
-
-    for event in device.read_loop():
-        if event.type != ecodes.EV_KEY:
+        if device_path is None:
+            sys.stderr.write(
+                "Scanner input device is not present; retrying. "
+                "Run with --list to inspect available devices.\n"
+            )
+            time.sleep(reconnect_delay)
             continue
 
-        # value: 0 = key up, 1 = key down, 2 = autorepeat.
-        if event.code in SHIFT_KEYS:
-            shift_held = event.value != 0
-            continue
+        try:
+            device = evdev.InputDevice(device_path)
+            device.grab()
+            sys.stderr.write(f"Scanner connected: {device.path} ({device.name})\n")
 
-        if event.value != 1:
-            continue
-
-        if event.code in ENTER_KEYS:
-            payload = "".join(buffer).strip()
-            buffer = []
-
-            if payload != "":
-                print(payload, flush=True)
-
-            continue
-
-        chars = KEY_CHAR_MAP.get(event.code)
-
-        if chars is None:
-            continue
-
-        buffer.append(chars[1] if shift_held else chars[0])
-
-    return 0
+            try:
+                read_scanner(device, heartbeat_path, heartbeat_interval)
+            finally:
+                try:
+                    device.ungrab()
+                except OSError:
+                    pass
+                device.close()
+        except PermissionError:
+            sys.stderr.write(
+                f"Permission denied opening {device_path}. "
+                "Add this user to the 'input' group and restart the service.\n"
+            )
+            return 1
+        except BrokenPipeError:
+            sys.stderr.write("Scanner ingestion consumer closed the pipeline.\n")
+            return 1
+        except OSError as exception:
+            sys.stderr.write(
+                f"Scanner disconnected or unavailable ({exception}); retrying.\n"
+            )
+            time.sleep(reconnect_delay)
 
 
 if __name__ == "__main__":

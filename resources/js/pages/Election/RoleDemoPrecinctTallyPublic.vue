@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useConnectionStatus, useEchoPublic } from '@laravel/echo-vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import LiveDocumentView from '@/components/election/LiveDocumentView.vue';
 import PrecinctTallyBoard from '@/components/election/PrecinctTallyBoard.vue';
 import {
     cumulativeTallyThroughBallot,
     deltaForReplayBallot,
-    type Tally,
-    type TallyDelta,
 } from '@/components/election/tallyReplay';
+import type { Tally, TallyDelta } from '@/components/election/tallyReplay';
 
 type Contest = {
     id: string;
@@ -70,6 +70,11 @@ type ScannerState = {
     latest_status?: string | null;
 };
 
+type ScannerStateUpdated = {
+    station_id: string;
+    revision: number;
+};
+
 const props = defineProps<{
     precinct: {
         code: string;
@@ -96,6 +101,7 @@ const props = defineProps<{
 }>();
 
 const stationId = 'role-demo-precinct';
+const realtimeStatus = useConnectionStatus();
 const scannerState = ref<ScannerState>({ ...props.scannerState });
 const selectedBallotHash = ref<string | null>(
     selectedHashFromState(props.scannerState),
@@ -148,6 +154,22 @@ const replayStatusMessage = computed(() =>
     selectedBallotPosition.value > 0
         ? `As of ballot ${selectedBallotPosition.value} of ${scannedBallots.value.length}`
         : 'No ballots selected.',
+);
+const isRealtimeConnected = computed(
+    () => realtimeStatus.value === 'connected',
+);
+
+useEchoPublic<ScannerStateUpdated>(
+    `election.scanner.${stationId}`,
+    'ScannerScanEventRecorded',
+    (event) => {
+        if (
+            event.station_id === stationId &&
+            event.revision > scannerState.value.revision
+        ) {
+            void fetchScannerState();
+        }
+    },
 );
 
 function ballotLedgerDocument(ballot: ScannerBallot): LedgerDocument {
@@ -237,16 +259,27 @@ function showLatestBallot(): void {
         null;
 }
 
+function startStatePolling(): void {
+    if (statePoller.value !== null) {
+        window.clearInterval(statePoller.value);
+    }
+
+    statePoller.value = window.setInterval(
+        () => {
+            if (document.visibilityState !== 'hidden') {
+                void fetchScannerState();
+            }
+        },
+        isRealtimeConnected.value ? 15000 : 2000,
+    );
+}
+
 onMounted(() => {
     void fetchScannerState();
-    statePoller.value = window.setInterval(() => {
-        if (document.visibilityState === 'hidden') {
-            return;
-        }
-
-        void fetchScannerState();
-    }, 2000);
+    startStatePolling();
 });
+
+watch(isRealtimeConnected, startStatePolling);
 
 onBeforeUnmount(() => {
     if (statePoller.value !== null) {
@@ -359,7 +392,11 @@ onBeforeUnmount(() => {
                 </section>
 
                 <PrecinctTallyBoard
-                    eyebrow="Timer-updated public board"
+                    :eyebrow="
+                        isRealtimeConnected
+                            ? 'Live public board'
+                            : 'Timer-updated public board'
+                    "
                     title="Precinct ballot QR tally"
                     :accepted-count="selectedBallotPosition"
                     accepted-label="ballots included"

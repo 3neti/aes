@@ -1,0 +1,25 @@
+[Unit]
+Description=WAES Laravel queue worker
+PartOf=waes-runtime.target
+Wants=postgresql.service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=ace
+Group=ace
+WorkingDirectory=/var/www/aes
+EnvironmentFile=-/etc/waes/runtime.env
+ExecStart=/usr/bin/php artisan queue:work database --queue=broadcasts,default --sleep=1 --tries=3 --timeout=60 --max-time=3600
+ExecReload=/usr/bin/php artisan queue:restart
+Restart=always
+RestartSec=3
+TimeoutStopSec=90
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/www/aes/storage /var/www/aes/bootstrap/cache
+
+[Install]
+WantedBy=waes-runtime.target

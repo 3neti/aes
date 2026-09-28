@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useConnectionStatus, useEchoPublic } from '@laravel/echo-vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TallyBoard from '@/components/election/TallyBoard.vue';
 
 type Tally = Record<string, Record<string, number>>;
@@ -31,6 +32,11 @@ type ScannerState = {
     latest_accepted_return_hash?: string | null;
     latest_message?: string | null;
     latest_status?: string | null;
+};
+
+type ScannerStateUpdated = {
+    station_id: string;
+    revision: number;
 };
 
 const props = defineProps<{
@@ -64,6 +70,7 @@ const props = defineProps<{
 }>();
 
 const stationId = 'canvassing-demo-city';
+const realtimeStatus = useConnectionStatus();
 const scannerState = ref<ScannerState>({
     revision: 0,
     accepted_return_hashes: [],
@@ -74,6 +81,22 @@ const simulatorRunning = ref(false);
 const simulatorBusy = ref(false);
 const simulatorMessage = ref('Simulator idle.');
 const lastUpdatedAt = ref<string | null>(null);
+const isRealtimeConnected = computed(
+    () => realtimeStatus.value === 'connected',
+);
+
+useEchoPublic<ScannerStateUpdated>(
+    `election.scanner.${stationId}`,
+    'ScannerScanEventRecorded',
+    (event) => {
+        if (
+            event.station_id === stationId &&
+            event.revision > scannerState.value.revision
+        ) {
+            void fetchScannerState();
+        }
+    },
+);
 
 const activeViewTokens = computed(() =>
     props.view
@@ -302,12 +325,27 @@ function addTally(target: Tally, source: Tally): void {
     });
 }
 
+function startStatePolling(): void {
+    if (statePoller.value !== null) {
+        window.clearInterval(statePoller.value);
+    }
+
+    statePoller.value = window.setInterval(
+        () => {
+            if (document.visibilityState !== 'hidden') {
+                void fetchScannerState();
+            }
+        },
+        isRealtimeConnected.value ? 15000 : 1000,
+    );
+}
+
 onMounted(() => {
     void fetchScannerState();
-    statePoller.value = window.setInterval(() => {
-        void fetchScannerState();
-    }, 1000);
+    startStatePolling();
 });
+
+watch(isRealtimeConnected, startStatePolling);
 
 onBeforeUnmount(() => {
     stopSimulator();

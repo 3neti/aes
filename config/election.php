@@ -17,6 +17,14 @@ return [
     ],
     'runtime' => [
         'run_type' => env('ELECTION_RUN_TYPE'),
+        'heartbeat_max_age_seconds' => (int) env('ELECTION_RUNTIME_HEARTBEAT_MAX_AGE', 150),
+        'cups_timeout_seconds' => (int) env('ELECTION_RUNTIME_CUPS_TIMEOUT', 3),
+        'scanner' => [
+            'mode' => (string) env('ELECTION_SCANNER_RUNTIME_MODE', 'browser'),
+            'device' => (string) env('ELECTION_SCANNER_DEVICE', ''),
+            'ingestion' => (string) env('ELECTION_SCANNER_INGESTION', 'precinct'),
+            'station_id' => (string) env('ELECTION_SCANNER_STATION_ID', 'role-demo-precinct'),
+        ],
     ],
     'cloud_evidence' => [
         'enabled' => (bool) env('ELECTION_CLOUD_EVIDENCE_ENABLED', false),

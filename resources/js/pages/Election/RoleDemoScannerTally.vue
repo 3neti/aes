@@ -1,16 +1,23 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useConnectionStatus, useEchoPublic } from '@laravel/echo-vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    watch,
+} from 'vue';
 import LiveDocumentView from '@/components/election/LiveDocumentView.vue';
 import PrecinctTallyBoard from '@/components/election/PrecinctTallyBoard.vue';
 import ScanLedger from '@/components/election/ScanLedger.vue';
 import {
     cumulativeTallyThroughBallot,
     deltaForReplayBallot,
-    type Tally,
-    type TallyDelta,
 } from '@/components/election/tallyReplay';
-import { type CandidateCodeMapEntry } from '@/components/election/truthQr';
+import type { Tally, TallyDelta } from '@/components/election/tallyReplay';
+import type { CandidateCodeMapEntry } from '@/components/election/truthQr';
 import { index as roleDemoIndex } from '@/routes/election/role-demo';
 
 type Contest = {
@@ -75,6 +82,11 @@ type ScannerState = {
     latest_status?: string | null;
 };
 
+type ScannerStateUpdated = {
+    station_id: string;
+    revision: number;
+};
+
 const props = defineProps<{
     precinct: {
         code: string;
@@ -124,6 +136,7 @@ const props = defineProps<{
 }>();
 
 const stationId = 'role-demo-precinct';
+const realtimeStatus = useConnectionStatus();
 const liveScannerState = ref<ScannerState>({ ...props.scannerState });
 const selectedBallotHash = ref<string | null>(
     selectedHashFromState(props.scannerState),
@@ -152,6 +165,22 @@ const hardwareScanStatus = ref('Ready for scanner input.');
 const manualScanInput = ref<HTMLTextAreaElement | null>(null);
 const statePoller = ref<number | null>(null);
 const lastUpdatedAt = ref<string | null>(null);
+const isRealtimeConnected = computed(
+    () => realtimeStatus.value === 'connected',
+);
+
+useEchoPublic<ScannerStateUpdated>(
+    `election.scanner.${stationId}`,
+    'ScannerScanEventRecorded',
+    (event) => {
+        if (
+            event.station_id === stationId &&
+            event.revision > liveScannerState.value.revision
+        ) {
+            void fetchScannerState();
+        }
+    },
+);
 
 const nextBallot = computed(
     () =>
@@ -377,13 +406,16 @@ async function fetchScannerState(): Promise<void> {
 function startStatePolling(): void {
     stopStatePolling();
 
-    statePoller.value = window.setInterval(() => {
-        if (document.visibilityState === 'hidden') {
-            return;
-        }
+    statePoller.value = window.setInterval(
+        () => {
+            if (document.visibilityState === 'hidden') {
+                return;
+            }
 
-        void fetchScannerState();
-    }, 1000);
+            void fetchScannerState();
+        },
+        isRealtimeConnected.value ? 15000 : 1000,
+    );
 }
 
 function stopStatePolling(): void {
@@ -640,6 +672,8 @@ onMounted(() => {
     void fetchScannerState();
     startStatePolling();
 });
+
+watch(isRealtimeConnected, startStatePolling);
 
 onBeforeUnmount(() => {
     stopAutomaticScanner();

@@ -14,6 +14,7 @@ beforeEach(function (): void {
     config()->set('election.public_simulation.role_demo_bulk_ballots.rendered_pdf_limit', 0);
     app(ElectionStorage::class)->reset();
     $this->withoutVite();
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
 });
 
 test('canvassing scanner ingests election return qr parts in any order', function (): void {

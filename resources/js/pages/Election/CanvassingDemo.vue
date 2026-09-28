@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { useConnectionStatus, useEchoPublic } from '@laravel/echo-vue';
 import {
     computed,
     nextTick,
@@ -10,10 +11,7 @@ import {
 } from 'vue';
 import ScanLedger from '@/components/election/ScanLedger.vue';
 import TallyBoard from '@/components/election/TallyBoard.vue';
-import {
-    parseElectionReturnEnvelopeMetadata,
-    type ErEnvelopeMetadata,
-} from '@/components/election/truthQr';
+import { parseElectionReturnEnvelopeMetadata } from '@/components/election/truthQr';
 
 type Tally = Record<string, Record<string, number>>;
 
@@ -130,6 +128,11 @@ type ScannerState = {
     latest_status?: string | null;
 };
 
+type ScannerStateUpdated = {
+    station_id: string;
+    revision: number;
+};
+
 const props = defineProps<{
     simulation: {
         maximum_ballots: number;
@@ -175,6 +178,7 @@ const props = defineProps<{
 }>();
 
 const stationId = 'canvassing-demo-city';
+const realtimeStatus = useConnectionStatus();
 const scannedReturns = ref<ReturnScan[]>([]);
 const scannedQrPayloadsInCurrentReturn = ref(0);
 const currentMultipartBuffer = ref<MultipartBuffer | null>(null);
@@ -194,6 +198,22 @@ const keyboardScanBuffer = ref('');
 const manualScanPayload = ref('');
 const hardwareScanStatus = ref('Ready for scanner input.');
 const manualScanInput = ref<HTMLTextAreaElement | null>(null);
+const isRealtimeConnected = computed(
+    () => realtimeStatus.value === 'connected',
+);
+
+useEchoPublic<ScannerStateUpdated>(
+    `election.scanner.${stationId}`,
+    'ScannerScanEventRecorded',
+    (event) => {
+        if (
+            event.station_id === stationId &&
+            event.revision > scannerStateRevision.value
+        ) {
+            void fetchScannerState();
+        }
+    },
+);
 
 const nextReturn = computed(
     () => props.simulation.scanner.returns[scannedReturns.value.length] ?? null,
@@ -743,6 +763,21 @@ function cloneTally(tally: Tally): Tally {
     );
 }
 
+function startScannerStatePolling(): void {
+    if (scannerStatePoller.value !== null) {
+        window.clearInterval(scannerStatePoller.value);
+    }
+
+    scannerStatePoller.value = window.setInterval(
+        () => {
+            if (document.visibilityState !== 'hidden') {
+                void fetchScannerState();
+            }
+        },
+        isRealtimeConnected.value ? 15000 : 1000,
+    );
+}
+
 watch(
     () => props.simulation.run?.generated_at ?? null,
     (generatedAt, previousGeneratedAt) => {
@@ -756,20 +791,22 @@ watch(
     },
 );
 
+watch(isRealtimeConnected, startScannerStatePolling);
+
 onMounted(() => {
     void fetchScannerState();
-    scannerStatePoller.value = window.setInterval(() => {
-        void fetchScannerState();
-    }, 1000);
+    startScannerStatePolling();
     window.addEventListener('keydown', handleGlobalScannerKeydown);
     window.addEventListener('paste', handleGlobalScannerPaste);
 });
 
 onBeforeUnmount(() => {
     stopAutomaticScanner();
+
     if (scannerStatePoller.value !== null) {
         window.clearInterval(scannerStatePoller.value);
     }
+
     window.removeEventListener('keydown', handleGlobalScannerKeydown);
     window.removeEventListener('paste', handleGlobalScannerPaste);
 });
@@ -1035,7 +1072,9 @@ onBeforeUnmount(() => {
                                 class="h-20 w-full resize-none border border-stone-700 bg-black p-2 font-mono text-[10px] text-yellow-200 outline-none"
                                 placeholder="truth://..."
                                 @paste="handleManualScannerPaste"
-                                @keydown.enter.prevent="submitManualScannerInput"
+                                @keydown.enter.prevent="
+                                    submitManualScannerInput
+                                "
                             />
                             <div class="grid grid-cols-2 gap-2">
                                 <button
@@ -1140,8 +1179,8 @@ onBeforeUnmount(() => {
                                         has this page open.
                                     </li>
                                     <li>
-                                        Configure the scanner suffix as Enter
-                                        or carriage return.
+                                        Configure the scanner suffix as Enter or
+                                        carriage return.
                                     </li>
                                     <li>
                                         Keep Capture on, then scan each ER QR

@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+start_runtime=false
+
+if [[ "${1:-}" == "--start" ]]; then
+    start_runtime=true
+elif [[ $# -gt 0 ]]; then
+    printf 'Usage: %s [--start]\n' "$0" >&2
+    exit 64
+fi
+
+if [[ "${EUID}" -ne 0 ]]; then
+    printf 'Run this installer as root.\n' >&2
+    exit 77
+fi
+
+deployment_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+app_dir="$(cd "${deployment_dir}/.." && pwd)"
+runtime_user="ace"
+runtime_group="ace"
+unit_dir="/etc/systemd/system"
+environment_dir="/etc/waes"
+environment_file="${environment_dir}/runtime.env"
+nginx_snippet="/etc/nginx/snippets/waes-reverb.conf"
+
+if [[ "${app_dir}" != "/var/www/aes" ]]; then
+    printf 'Expected the deployed repository at /var/www/aes; found %s.\n' "${app_dir}" >&2
+    exit 78
+fi
+
+if ! id "${runtime_user}" >/dev/null 2>&1; then
+    printf 'Runtime account %s does not exist.\n' "${runtime_user}" >&2
+    exit 78
+fi
+
+if ! id -nG "${runtime_user}" | grep -qw input; then
+    printf 'Runtime account %s must belong to the input group.\n' "${runtime_user}" >&2
+    exit 78
+fi
+
+if ! /usr/bin/python3 -c 'import evdev' >/dev/null 2>&1; then
+    printf 'python3-evdev is required before installing the scanner service.\n' >&2
+    exit 69
+fi
+
+install -d -m 0750 -o root -g "${runtime_group}" "${environment_dir}"
+
+if [[ ! -f "${environment_file}" ]]; then
+    install -m 0640 -o root -g "${runtime_group}" \
+        "${deployment_dir}/environment/waes-runtime.env.example" \
+        "${environment_file}"
+    printf 'Created %s. Configure unique Reverb credentials before starting.\n' "${environment_file}"
+else
+    printf 'Preserved existing %s.\n' "${environment_file}"
+fi
+
+for unit in "${deployment_dir}"/systemd/waes-*; do
+    install -m 0644 "${unit}" "${unit_dir}/$(basename "${unit}")"
+done
+
+install -m 0644 "${deployment_dir}/nginx/waes-reverb.conf.example" "${nginx_snippet}"
+install -m 0755 "${deployment_dir}/waes-runtime" /usr/local/sbin/waes-runtime
+chmod 0755 "${app_dir}/scripts/waes-scanner-service" "${app_dir}/scripts/canvassing-scanner-bridge.py"
+
+systemctl daemon-reload
+systemctl enable waes-runtime.target
+
+printf 'Installed WAES runtime units and %s.\n' "${nginx_snippet}"
+printf 'Runtime support command: waes-runtime {start|stop|restart|status|check|logs}.\n'
+printf 'Include the Nginx snippet in /etc/nginx/sites-available/aes, then run nginx -t.\n'
+printf 'Keep matching Reverb server values in %s and Laravel .env; rebuild Vite after VITE_REVERB_* changes.\n' "${environment_file}"
+
+if [[ "${start_runtime}" == true ]]; then
+    systemctl restart waes-runtime.target
+    printf 'Started waes-runtime.target. Verify with: php artisan election:runtime-check\n'
+else
+    printf 'Runtime was enabled for boot but not started. Re-run with --start after configuration.\n'
+fi
