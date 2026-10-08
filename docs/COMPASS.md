@@ -1,773 +1,122 @@
-# Alternative Election System
-
-# Architecture Compass
-
-## Implementation Status
-
-- Completed Slice: Public Admission Queue, Browser Ticket Privacy Coverage, Officer Contention Reporting, Anonymous Intake Pause Control, and Public Participation Policy
-- Active Program: Public Election Simulation Server
-- Completed Slice: Controlled public-simulation retention review and formal evidence-disposition policy
-- Completed Slice: Facilitated public-simulation debrief observations
-- Completed Slice: Facilitator observation review
-- Completed Slice: External usability session preparation
-- Completed Slice: Public-simulation improvement backlog
-- Completed Slice: Persisted facilitated usability simulation script
-- Current Slice: Conduct external usability session with real participants
-- Next Slice: Convert real prioritized backlog items into product fixes
-- Program Compass: `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
-
-## Domains, Waves, and Vertical Slices
-
-> **Working Draft**
->
-> This document is the engineering compass for the Alternative Election System.
->
-> It is not an implementation plan.
->
-> It is not a project schedule.
->
-> It is the architectural roadmap that allows the team to continuously answer:
->
-> - Where are we now?
-> - What remains to be built?
-> - What belongs together?
-> - What should be implemented next?
->
-> Every future implementation plan should derive from this document.
-
----
-
-# 1. Philosophy
-
-The project shall be developed using **vertical slices**.
-
-Each slice must produce a working increment of the system.
-
-No wave should exist merely to "prepare infrastructure."
-
-Every wave should produce something demonstrable.
-
----
-
-# 2. Development Strategy
-
-The project is divided into three dimensions.
-
-```
-Domains
-        ↓
-Waves
-        ↓
-Vertical Slices
-```
-
-The domains remain relatively stable.
-
-Waves represent maturity.
-
-Slices represent implementation work.
-
----
-
-# 3. Domains
-
-The current architecture is divided into the following domains.
-
-```
-Election Core
-
-Lifecycle
-
-Preparation
-
-Voting
-
-Printing
-
-Counting
-
-Election Return
-
-Evidence
-
-Certification / FTS
-
-Custody
-
-Transmission
-
-Audit
-
-Scenario Runner
-
-Diagnostics
-
-Devices
-
-Infrastructure
-```
-
-These domains intentionally describe business capabilities rather than software packages.
-
----
-
-# 4. Domain Overview
-
-## Election Core
-
-The heart of the election.
-
-Responsibilities:
-
-- ceremonies
-- state transitions
-- domain models
-- legal procedure boundaries
-
----
-
-## Lifecycle
-
-Responsibilities:
-
-- ceremony ordering
-- workflow engine
-- navigation
-- timeline
-- next-action guidance
-
----
-
-## Preparation
-
-Responsibilities:
-
-- national registries
-- Election Package
-- precinct activation
-- deterministic mapping
-- configuration persistence
-
----
-
-## Voting
-
-Responsibilities:
-
-- voting session
-- ballot navigation
-- review
-- finalization
-- QR generation
-
----
-
-## Printing
-
-Responsibilities:
-
-- print jobs
-- printer abstraction
-- PDF rendering
-- ESC/POS rendering
-- print evidence
-
----
-
-## Counting
-
-Responsibilities:
-
-- QR decoding
-- tally journal
-- ballot validation
-- counting workflow
-- temporary tally generation
-
----
-
-## Election Return
-
-Responsibilities:
-
-- Election Return generation
-- printable returns
-- digital return artifacts
-- return signing and posting evidence
-
----
-
-## Evidence
-
-Responsibilities:
-
-- activity journals
-- legal Minutes
-- reports
-- certificates
-- receipts
-- printed artifacts
-- QR artifacts
-- generated forms
-- signatures and attestations
-
----
-
-## Certification / FTS
-
-Responsibilities:
-
-- COMELEC Final Testing and Sealing
-- certification ballots
-- diagnostics
-- initialization report
-- manual verification
-- comparison
-- VVPAT or approved equivalent verification
-- zero-out
-- sealing readiness
-
----
-
-## Custody
-
-Responsibilities:
-
-- envelopes
-- paper seals
-- ballot boxes
-- storage devices
-- evidence containers
-- recipients
-- turnover
-- chain of custody
-
----
-
-## Transmission
-
-Responsibilities:
-
-- official handoff of election artifacts
-- Official Handoff as the transmission ceremony
-- Manual Handoff as the first delivery driver
-- Delivery Package generation
-- export checksum or hash evidence
-- recipient acknowledgement
-- Delivery Receipts and transmission reports
-- future delivery drivers such as SD cards, USB storage, LTE, REST APIs, government networks, satellites, and future technologies
-
----
-
-## Audit
-
-Responsibilities:
-
-- evidence reconciliation
-- manual audit
-- independent recount
-- custody review
-- verification
-
----
-
-## Scenario Runner
-
-Responsibilities:
-
-- deterministic scenarios
-- lifecycle replay
-- hardware simulation
-- legal ceremony simulation
-- acceptance testing
-
----
-
-## Diagnostics
-
-Responsibilities:
-
-- logs
-- hashes
-- versions
-- printer health
-- scanner health
-- technician tools
-- diagnostic reports
-
----
-
-## Devices
-
-Responsibilities:
-
-- Raspberry Pi
-- printers
-- scanners
-- cameras
-- tablets
-- storage media
-
----
-
-## Infrastructure
-
-Responsibilities:
-
-- PWA
-- storage
-- security
-- adapters
-- configuration
-
----
-
-# 5. Waves
-
-The project shall evolve through successive waves.
-
-Each wave leaves behind a usable system.
-
----
-
-# Wave 1
-
-## Foundation
-
-Objective
-
-Build a functioning precinct appliance.
-
-Deliverables
-
-- Laravel application
-- Vue PWA
-- lifecycle shell
-- dictionary
-- Scenario Runner
-- diagnostics shell
-
-No election logic yet.
-
----
-
-# Wave 2
-
-## Preparation
-
-Deliverables
-
-- nationwide registries
-- Election Package
-- deterministic mapping
-- activation
-- configuration persistence
-
-End Result
-
-Generic appliance becomes a precinct appliance.
-
----
-
-# Wave 3
-
-## Certification
-
-Deliverables
-
-- Final Testing and Sealing workflow
-- certification summary report
-- diagnostic report
-- initialization report
-- certification ballots
-- manual verification
-- zero-out
-- sealing evidence
-- readiness verification
-
-End Result
-
-Certified and sealed precinct.
-
----
-
-# Wave 4
-
-## Voting
-
-Deliverables
-
-- voting UI
-- review
-- finalize
-- QR generation
-- tablet workflow
-
-End Result
-
-Electronic ballot completed.
-
----
-
-# Wave 5
-
-## Printing
-
-Deliverables
-
-- print abstraction
-- PDF driver
-- ESC/POS driver
-- print journal
-- spoilage workflow
-
-End Result
-
-Official paper ballot.
-
----
-
-# Wave 6
-
-## Counting
-
-Deliverables
-
-- QR scanning
-- append-only counting journal
-- tally generation
-- counting UI
-
-End Result
-
-Machine-assisted counting.
-
----
-
-# Wave 7
-
-## Election Return
-
-Deliverables
-
-- Election Return
-- printable reports
-- QR representation
-- digital artifacts
-- return signing and posting evidence
-
-End Result
-
-Official precinct result.
-
----
-
-# Wave 8
-
-## Transmission and Custody
-
-Deliverables
-
-- Official Handoff workflow
-- Delivery Package
-- export checksum or hash evidence
-- Delivery Receipt
-- recipient acknowledgement
-- future delivery-driver extension point
-- custody records
-- envelopes and seals
-- final backup
-- turnover checklist
-
-End Result
-
-Official election artifacts handed off with custody evidence; election artifacts secured.
-
----
-
-# Wave 9
-
-## Audit
-
-Deliverables
-
-- manual audit support
-- independent recount
-- reconciliation
-- comparison reports
-
-End Result
-
-Public confidence.
-
----
-
-# Wave 10
-
-## Hardening
-
-Deliverables
-
-- backup appliance
-- recovery
-- performance
-- stress testing
-- resilience
-
-End Result
-
-Election-ready appliance.
-
----
-
-# 6. Vertical Slice Strategy
-
-Every implementation task should complete a vertical path.
-
-Example
-
-```
-Voting
-
-↓
-
-Domain
-
-↓
-
-Action
-
-↓
-
-Storage
-
-↓
-
-API
-
-↓
-
-Vue
-
-↓
-
-Scenario
-
-↓
-
-Tests
-```
-
-Nothing should be implemented halfway.
-
----
-
-# 7. Testing Strategy
-
-Every slice should include:
-
-Unit Tests
-
-↓
-
-Integration Tests
-
-↓
-
-Scenario Tests
-
-↓
-
-Hardware Tests
-
-↓
-
-Certification Tests
-
----
-
-# 8. User Interface Strategy
-
-The UI is organized around ceremonies.
-
-Not administration.
-
-Primary ceremonies:
-
-```
-Provision
-
-Final Testing and Sealing
-
-Open Polls
-
-Voting
-
-Close Polls
-
-Counting
-
-Election Return
-
-Transmission
-
-Final Backup
-
-Custody Turnover
-
-Close Precinct
-```
-
-The application always displays one primary action.
-
-The UI may use simpler local labels, but the underlying ceremony model must remain legally explicit. "Certification" is a product concept; **Final Testing and Sealing** is the legal ceremony it implements.
-
----
-
-# 9. Adapter Strategy
-
-All hardware shall be abstracted.
-
-Adapters include:
-
-```
-Printer
-
-Scanner
-
-Camera
-
-Storage
-
-Signing
-
-Export
-
-Import
-```
-
-Business logic shall never depend on hardware.
-
----
-
-# 10. Cross-Cutting Concerns
-
-The following capabilities apply across every domain.
-
-- Domain Dictionary
-- Evidence
-- Activity Journals
-- Minutes
-- Scenario Runner
-- Certification
-- Diagnostics
-- Custody
-- Hashing
-- Signatures
-- Reporting
-
----
-
-# 11. Extraction Candidates
-
-The following concepts may eventually become reusable packages.
-
-Not before they stabilize.
-
-Potential candidates include:
-
-- Certification
-- Evidence
-- Custody
-- Scenario Runner
-- Election Dictionary
-- Printer Abstraction
-- QR Package Loader
-- Device Management
-
-No extraction shall occur until practical experience justifies reuse.
-
----
-
-# 12. Completion Criteria
-
-A wave is complete only when:
-
-- functionality exists;
-- UI exists;
-- Scenario Runner supports it;
-- automated tests exist;
-- hardware tests pass;
-- documentation is updated.
-
----
-
-# 13. Current Position
-
-Current implementation status:
-
-- Current wave: Wave 9 - Hardening
-- Completed slice: Multi-Tablet Review Room
-- Next recommended slice: Concurrent voting hardening, followed by the COMELEC Review Kit
-
-Completed:
-
-- architectural vision
-- strategy
-- customer journey
-- precinct preparation narrative
-- functional specification
-- architecture compass
-- ceremony-driven browser lifecycle from precinct activation through audit
-- deterministic POP and CLC precinct configuration for clustered precinct 39010001
-- ballot finalization, printing, spoilage, scanning, tally, Election Return, handoff, custody, and archive verification
-- recorded WebM walkthrough, Playwright trace, full-page screenshots, and readable viewport frames
-- offline HTML, 49-page PDF, and structured JSON storyboard with precise COMELEC review notes and screenshot hashes
-- final evidence TAR containing the storyboard and its source captures, re-hashed with zero mismatches
-- protected Laravel Cloud review mode with PHP 8.4, deployment migrations, continuous demonstration availability, PostgreSQL, Redis, and private evidence storage
-- role-paired Multi-Tablet Review Room for one officer, five default voter tablets, private printing, watcher observation, and a projection-safe presentation screen
-- signed QR joins, one-browser station binding, role-restricted routes, connectivity status, and an append-only hash-chained room journal
-- public three-precinct simulation lobby with isolated evidence roots, Device Tabulation with Paper Audit closeout, sealed VVDAT freeze, tally/ER watcher publication, policy-controlled anonymized VVDAT export, and a non-destructive archive/reset flow
-- public precinct Random Manual Audit room: deterministic sample selection, browser-camera or scanner QR comparison, dual officer approval or written discrepancy, reconciliation, detailed officer evidence, and redacted watcher summary without mutation of official result artifacts
-- deterministic three-voter public precinct exercise that proves repeated admission, private vote, print/deposit, device closeout, tally, and neighbouring-precinct storage isolation
-- shared public voting gate that blocks closeout on unresolved voter/print work, plus a two-browser workflow proving isolated private voter sessions and closeout refusal while voters are active
-- optional bounded anonymous admission queue with expiring tickets, officer-only release into the existing four-digit control-number flow, and browser proof that a voter never sees a released code
-- officer-only redacted contention reporting with aggregate admission, queue, expiry, and closeout-block counts; each report is journaled and stored in the voting evidence bundle without voter, ballot, code, ticket, QR, or browser/session data
-- officer-controlled pause and resume of new anonymous waiting tickets, with journaled voting evidence; existing tickets and issued four-digit control numbers remain valid while intake is paused
-- session-only public simulation participation acknowledgment before the voter code screen, backed by a policy artifact with a configurable retention window and no identity, authorization, ballot, or session evidence
-- `election:public-simulation:review-kit {round}` creates a self-contained `REVIEW-KIT` folder with a readable guide and hash-addressed index of ceremony-level public simulation evidence, excluding private voter and ballot material
-- `election:public-simulation:retention-review {round}` creates a no-delete `RETENTION-REVIEW` report that identifies whether an archived round is due for a human retain, external archive, or separately authorized deletion decision
-- `election:public-simulation:field-rehearsal {round} {precinct} --voters=5` runs a ready public precinct through a bounded voter cohort, proves closeout is held while voters are active, then publishes VVDAT results and a privacy-safe rehearsal report
-- after watcher publication, the Election Officer may record a structured facilitator, officer, voter, or watcher observation in `12-audit-and-reconciliation/operational-observations`; the public page shows aggregate assessments only and the journal excludes observation notes
-- `election:public-simulation:observation-review {round} {precinct}` writes a facilitator-only audit report with role, ceremony, and severity summaries plus private follow-up notes; its journal record contains counts and the review hash, never the notes
-- `election:public-simulation:usability-session-kit {round} {precinct}` prepares a ready precinct with a privacy-safe facilitator guide, participant observation sheet, and structured success criteria without storing officer credentials or participant data
-- `election:public-simulation:improvement-backlog {round} {precinct}` converts the latest private observation review into open, prioritized improvement items in `12-audit-and-reconciliation/improvement-backlog`; its journal record contains counts and the backlog hash, never the private problem statements
-- `election:public-simulation:facilitated-usability-simulation {round?} {precinct?} --voters=5` runs a clearly labeled synthetic dry-run from usability kit through voter cohort, closeout, tally, Election Return, publication, synthetic observations, observation review, and improvement backlog; it writes a pointer report in `12-audit-and-reconciliation/usability-simulations`
-
-Next:
-
-Exercise five and ten independent voter flows through verified evidence
-bundles, including close-versus-finalize races and backpressure behaviour.
-Then conduct an external usability session with actual Election Officers,
-voters, and watchers, record their observations, and convert the real
-prioritized backlog into product fixes.
-
----
-
-# 14. Guiding Principle
-
-The compass exists to keep the project moving in one direction.
-
-Whenever uncertainty arises, ask three questions:
-
-**Which domain does this belong to?**
-
-**Which wave should introduce it?**
-
-**Which vertical slice will prove it works?**
-
-If those questions can be answered clearly...
-
-the implementation will remain simple, incremental, testable, and understandable.
-
-That is the purpose of this compass.
+# Alternative Election System Compass
+
+## North Star
+
+AES is a ceremony-driven precinct appliance for voter-verifiable elections. It
+uses local evidence, printed artifacts, append-only journals, and Truth QR
+payloads so election workers, watchers, auditors, and later canvassing stations
+can verify election records without trusting a hidden mutable database or a live
+internet connection.
+
+The current product direction is a configurable election appliance with two
+tabulation profiles:
+
+- **Device Tabulation with Paper Audit**, the default profile. Voters verify and
+  deposit paper ballots, while closeout counts sealed VVDAT records and preserves
+  paper ballots for audit.
+- **Paper-First QR Scan Tally**, an alternate profile. Closeout can scan ballot
+  Truth QR payloads and tally accepted paper records.
+
+## Current Center of Gravity
+
+The project has moved beyond the original foundation waves. Current work centers
+on:
+
+1. Truth QR as the shared verification layer for ballots, election returns,
+   canvassing, and future non-election applications.
+2. COMELEC-facing role demonstrations that show Election Officer, Voter,
+   Printing Station, Poll Watcher, Auditor, and Canvassing perspectives.
+3. Split national and local election returns, compact tally sheets, print
+   profiles, and watcher/auditor evidence views.
+4. Air-gapped runtime readiness: scanner ownership, Reverb-as-notification-only,
+   polling fallback, health checks, and appliance diagnostics.
+5. EML interoperability at controlled boundaries without making XML canonical
+   election truth.
+
+## Canonical Rules
+
+1. Paper artifacts remain voter-visible evidence.
+2. The precinct appliance is an evidence appliance, not the legal authority by
+   itself.
+3. The system must operate offline once commissioned.
+4. Election UI is ceremony-driven, not an admin dashboard.
+5. Important actions are journaled and reproducible.
+6. SQLite, PostgreSQL, caches, and browser state are convenience layers.
+7. Truth QR payloads carry compact election meaning, context, mapping identity,
+   hashes, and signatures where required.
+8. EML, PDF, JSON, CSV, and QR are representations of canonical state; none may
+   silently become a parallel tally.
+9. Transmission is optional future behavior. The core local verification flow
+   must not depend on transmission.
+
+## Active Program Compasses
+
+- Public simulation and role-demo flow:
+  `docs/PUBLIC_SIMULATION_SERVER_COMPASS.md`
+- Precinct realism and COMELEC review readiness:
+  `docs/REALISM_COMPASS.md`
+- Air-gapped real-time appliance runtime:
+  `docs/AIR_GAPPED_REALTIME_RUNTIME_COMPASS.md`
+- EML interoperability:
+  `docs/EML_INTEROPERABILITY_COMPASS.md`
+- Truth QR and patent drafting context:
+  `docs/patents/README.md`
+
+## Implemented Capabilities
+
+- POP and CLC import pipeline for real precinct and candidate data.
+- Role-demo entrypoint for Election Officer, Voter, Poll Watcher, Auditor, and
+  demonstration flows.
+- Voter Control Number for ballot admission.
+- Voter Print PIN for privacy-preserving ballot printing.
+- Paper-facsimile ballot marking UI with position and surname navigation.
+- Demonstration helper to fill remaining candidate selections.
+- Voter completion page with printable ballot preview.
+- Selected-candidate paper ballot artifact with logos, Truth QR, and decoded QR
+  inspection support.
+- Configurable ballot UI profile and print profiles.
+- Tally sheet with tally-stick visual display and compact result output.
+- National and local election return artifacts with COMELEC-oriented layout.
+- Truth QR ballot payloads that encode precinct context and candidate codes.
+- Truth QR election-return payloads with multipart QR support, signatures, and
+  EML binding.
+- Watcher ballot viewer with pagination and live tally horizon.
+- Random Manual Audit scanner and discrepancy-recording flow.
+- Public/role demo canvassing board and scanner simulation.
+- Direct-print scaffolding for control-number receipts, ballots, tally sheets,
+  and election returns.
+- Air-gapped realtime runtime design and implementation baseline.
+- EML 7 base profile exports for 110, 230, 410, 480, 510, 520, and 530.
+- EML schema validation, staging-only configuration import, artifact signing,
+  evidence packages, and offline verification command.
+
+## Current Dirty Slice
+
+The current intentional uncommitted slice is the EML interoperability baseline
+plus associated Truth QR and canvassing-demo binding work. It includes EML
+services, routes, controller actions, UI validation support, fixtures, tests, and
+documentation.
+
+Local generated or environment files must be reviewed before staging. In
+particular, `.env.pre-demo-backup`, generated `tmp/`, and generated `output/`
+artifacts should not be committed unless deliberately promoted as evidence or
+submission material.
+
+## Next Recommended Work
+
+1. Finish the repo-memory refresh by updating the functional specification,
+   implementation status, and fresh-agent handoff.
+2. Run focused EML, Truth QR, and canvassing tests.
+3. Stage only intentional source, test, fixture, and documentation files.
+4. Commit the EML interoperability baseline and documentation refresh.
+5. In a later slice, implement official EML evidence-package intake with custody,
+   authorization, duplicate, and supersession ceremonies.
+6. In a later slice, add any COMELEC-specific EML profile only after an
+   authoritative profile, schemas, fixtures, or acceptance criteria are supplied.
+
+## Update Rule
+
+Update this compass whenever the active program changes, a major ceremony flow
+changes, or a representation becomes operationally significant. A new agent
+should be able to read this file and immediately understand the current product
+direction.

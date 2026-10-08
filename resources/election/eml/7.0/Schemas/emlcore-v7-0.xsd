@@ -1,0 +1,2836 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+     Election Markup Language (EML) Specification Version 7.0
+     Committee Specification (CS) 01
+     27 October 2011
+     Copyright (c) OASIS Open 2011. All Rights Reserved.
+     Source: http://docs.oasis-open.org/election/eml/v7.0/cs01/Schemas/
+-->
+<!--
+	EML Core Schema - contains definitions of core elements re-used by EML
+	
+	History: 4.0 Edited by Paul Spencer (Boynings Consulting) 2005/2006
+	- major release revision
+	
+	5.0 Edited by David RR Webber 2007-02-11
+	- Added additional values to CountQualifier
+	- Added CandidateGender to CandidateIdentifier (issue 2.12)
+	- Added ShortCode to CandidateIdentifier (issue 2.14)
+	- Added DateOfBirth to ProposerStructure (issue 2.18)
+	- Added VoterID and IdType (for US SSN) (issue 2.15)
+	- Added 'NOR' to VotingMethodType for Norse (issue 2.15 / 2.18)
+	- Added 'partisan' to VotingMethodType for USA (issue per NIST)
+	- Added 'Cumulative' to VotingMethodType for USA (issue 2.15 / 2.18)
+	- Added WriteIn type for US and Norse use (issue 2.15 / 2.18)
+	- Added Endorsement for party endorsements of candidates (issue per NIST)
+	5.0 Edited by David RR Webber 2007-05-08
+	- Added Type element token (required) to Affiliation structure
+	- Renamed Party to Supporter as global change in terminology / name
+	5.0 Edited by David RR Webber 2007-05-21
+	- Added support for ballot option / referendum item structure to CandidateStructure for crosslinkage to EML600 ballot option items.
+	5.0 Edited by David RR Webber 2007-05-25
+	- Added support for Count metrics
+	- Added support for Results Reported structure
+	5.0 Edited by David RR Webber 2007-05-29
+	- Changed Count metrics to allow decimal numbers for percentages
+	- Changed Count metrics to add algorithm reference Id and XPath location in reporting structure (needed to reference from 410 to 510)
+	5.0 Edited by David RR Webber 2007-06-06
+	- Corrected Candidate attributes issue
+	- Added IRV and RCV to VotingMethodType
+	5.0 Edited by David RR Webber 2007-06-29
+	- Replaced IdType on VoterId with xsi:type mechanism
+	- Cosmetic change: reordered declarations of element, complexType and simpleType alphabetically
+	- Supporter structure items retained - however implementers are cautioned these are expected to be deprecated in V6 of EML
+	- Added OASIS standard copyright and use and IPR notice here - so it is referenced and applies to each EML schema
+	6.0 Edited by David RR Webber 2008-11-10
+	- Support for CIQ v3
+	6.0 Edited by David RR Webber 2009-01-19 and 2009-04-13 and 14
+	- Remove EMLStructure@Id and add fixed @ ID value to each EML structure instead
+	- Remove Supporter element
+	- Add Candidate Status
+	- Add Source to Candidate, Voter Information and Polling Place and District
+	- Add OfficialStatus type
+	- Add missing annotations
+	- Add ward and locality to division types
+	- Add contest element to pollingplace.
+	- Enhanced Proposal structure with optional PassThreshold, AbstainEffect and StatementType
+	7.0 Edited by David RR Webber and Stacy Marino 2011-03-31/2011-05-31 
+	- Edits for V7 - consolidate annotations
+	- Refactor EMLStructure for EMLHeader grouping
+	- Documentation added for elements
+	- Checksum added to URL
+-->
+
+<!--
+Metadata: Owner: EML (OASIS Election Markup Language TC)
+Product: EML
+Product Version: 7.0
+Artifact Type: Schema
+Stage: os (OASIS Standard)
+Descriptive Name: EML Core - global definitions for EML components
+Revision: None
+Language: en (English)
+Form: xsd (schema)
+Date: 20070629 (10 November 2008)
+  -->
+<!--
+
+Copyright &#169; OASIS&#174; 1993/2009. All Rights Reserved. OASIS trademark, IPR and other policies apply.
+
+All capitalized terms in the following text have the meanings assigned to them in the OASIS Intellectual Property Rights Policy (the "OASIS IPR Policy"). The full Policy may be found at the OASIS website.
+
+This document and translations of it may be copied and furnished to others, and derivative works that comment on or otherwise explain it or assist in its implementation may be prepared, copied, published, and distributed, in whole or in part, without restriction of any kind, provided that the above copyright notice and this section are included on all such copies and derivative works. However, this document itself may not be modified in any way, including by removing the copyright notice or references to OASIS, except as needed for the purpose of developing any document or deliverable produced by an OASIS Technical Committee (in which case the rules applicable to copyrights, as set forth in the OASIS IPR Policy, must be followed) or as required to translate it into languages other than English.
+
+The limited permissions granted above are perpetual and will not be revoked by OASIS or its successors or assigns.
+
+This document and the information contained herein is provided on an "AS IS" basis and OASIS DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION HEREIN WILL NOT INFRINGE ANY OWNERSHIP RIGHTS OR ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+OASIS requests that any OASIS Party or any other party that believes it has patent claims that would necessarily be infringed by implementations of this OASIS Committee Specification or OASIS Standard, to notify OASIS TC Administrator and provide an indication of its willingness to grant patent licenses to such patent claims in a manner consistent with the IPR Mode of the OASIS Technical Committee that produced this specification.
+
+OASIS invites any party to contact the OASIS TC Administrator if it is aware of a claim of ownership of any patent claims that would necessarily be infringed by implementations of this specification by a patent holder that is not willing to provide a license to such patent claims in a manner consistent with the IPR Mode of the OASIS Technical Committee that produced this specification. OASIS may include such claims on its website, but disclaims any obligation to do so.
+
+OASIS takes no position regarding the validity or scope of any intellectual property or other rights that might be claimed to pertain to the implementation or use of the technology described in this document or the extent to which any license under such rights might or might not be available; neither does it represent that it has made any effort to identify any such rights. Information on OASIS' procedures with respect to rights in any document or deliverable produced by an OASIS Technical Committee can be found on the OASIS website. Copies of claims of rights made available for publication and any assurances of licenses to be made available, or the result of an attempt made to obtain a general license or permission for the use of such proprietary rights by implementers or users of this OASIS Committee Specification or OASIS Standard, can be obtained from the OASIS TC Administrator. OASIS makes no representation that any information or list of intellectual property rights will at any time be complete, or that any claims in such list are, in fact, Essential Claims.
+
+The names "OASIS", "Election Markup Language (EML)" are trademarks of OASIS, the owner and developer of this specification, and should be used only to refer to the organization and its official outputs. OASIS welcomes reference to, and implementation and use of, specifications, while reserving the right to enforce its marks against misleading uses. Please see http://www.oasis-open.org/who/trademark.php for above guidance.
+  -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:ts="urn:oasis:names:tc:evs:schema:eml:ts" xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:oasis:names:tc:evs:schema:eml"
+	targetNamespace="urn:oasis:names:tc:evs:schema:eml" elementFormDefault="qualified"
+	attributeFormDefault="unqualified" version="7.0" id="eml-core">
+	<xs:annotation>
+		<xs:documentation> 
+      Specification Name: OASIS EML TC - Election Markup Language (EML) 
+      Description: This schema here is a member of a library of the XML schemas used in EML. The XML schemas define the formal structures of the election data that can be processed.
+      Produced by: OASIS Election Technical Committee
+      URL: http://www.oasis-open.org/committees/election
+      Version: 7.0  
+      Status: Committee Draft 
+      Copyright: 2001-11, OASIS, http://www.oasis-open.org
+      Conformance: This is a base implementation schema - actual localization schema for use may be derived from this schema - but may not contradict the structure definitions provided here.
+    </xs:documentation>
+	</xs:annotation>
+	<xs:include schemaLocation="emlexternals-v7-0.xsd"/>
+	<xs:import namespace="urn:oasis:names:tc:evs:schema:eml:ts"
+		schemaLocation="external/emltimestamp.xsd"/>
+	<xs:import namespace="http://www.w3.org/2000/09/xmldsig#"
+		schemaLocation="external/xmldsig-core-schema.xsd"/>
+	<xs:element name="Accepted" type="YesNoType">
+		<xs:annotation>
+			<xs:documentation>Indicates if an item has been accepted or not.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Affiliation" type="AffiliationStructure">
+		<xs:annotation>
+			<xs:documentation>Indicates the membership of some organisation such as a political party</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="AffiliationIdentifier" type="AffiliationIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>Components that indicate the association details.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Agent" type="AgentStructure">
+		<xs:annotation>
+			<xs:documentation>Details of a representative agent person or entity that acts to promote or on behalf of an election entity.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="AgentIdentifier" type="AgentIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>Content that identifies an agent entity.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Area" type="AreaStructure">
+		<xs:annotation>
+			<xs:documentation>A geographic area covered by a contest.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="AuditInformation" type="AuditInformationStructure">
+		<xs:annotation>
+			<xs:documentation>Information to be sent to an audit system to provide traceability of voting-related messages.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="AuthorityIdentifier" type="AuthorityIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>The identifier of the authority running the election.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="BallotIdentifier" type="BallotIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>The identification number of a ballot.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="BallotIdentifierRange" type="BallotIdentifierRangeStructure">
+		<xs:annotation>
+			<xs:documentation>A range of ballot identifiers. These might, for example, be sent to a printer.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Candidate" type="CandidateStructure">
+		<xs:annotation>
+			<xs:documentation>An individual or party standing in a contest.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="CandidateIdentifier" type="CandidateIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>The system ID for the candidate, as well as the name to which the candidate's name will appear on the ballot.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Channel" type="ChannelStructure">
+		<xs:annotation>
+			<xs:documentation>Device or method for exchanging information relating to an election.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ContactDetails" type="ContactDetailsStructure">
+		<xs:annotation>
+			<xs:documentation>Information describing how to communicate with an entity or organization.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ContestIdentifier" type="ContestIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>The official designation of the contest.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="CountingAlgorithm" type="CountingAlgorithmType">
+		<xs:annotation>
+			<xs:documentation>The method of counting used for more complex forms of election.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="CountMetric" type="CountMetricStructure">
+		<xs:annotation>
+			<xs:documentation>Details of how a count item has been calculated and reported.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="CountQualifier" type="CountQualifierStructure">
+		<xs:annotation>
+			<xs:documentation>Describes the determination means of a count value.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="DocumentIdentifier" type="DocumentIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>A reference to external documents relevant to a specific message type.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ElectionIdentifier" type="ElectionIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>The official designation of the election.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ElectionStatement" type="MessagesStructure">
+		<xs:annotation>
+			<xs:documentation>Information message relating to an election by a candidate, organization or election official.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Endorsement" type="SupporterStructure">
+		<xs:annotation>
+			<xs:documentation>Affirming statement regarding an election entity, issue or candidate.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="EventIdentifier" type="EventIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>The official designation of the event.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="EventQualifier" type="EventQualifierStructure">
+		<xs:annotation>
+			<xs:documentation>Content that uniquely identifies an election event.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Gender" type="GenderType">
+		<xs:annotation>
+			<xs:documentation>Persons orientation preference statement.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Logo" type="BinaryItemStructure">
+		<xs:annotation>
+			<xs:documentation>A logo for a political party or other organization can be represented by a URL or a Base64 encoded binary value. The latter must indicate the format of the logo (PNG, GIF or JPEG).</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ManagingAuthority" type="ManagingAuthorityStructure">
+		<xs:annotation>
+			<xs:documentation>The body responsible for the election event, election, contest or reporting unit.  There can be different authorities operating at each of these levels at the same time. It is identified by a name and ID.  It also has an address and optional logo.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="MaxVotes" type="xs:positiveInteger" default="1">
+		<xs:annotation>
+			<xs:documentation>The maximum number of votes allowed.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="MessageType" type="MessageTypeDetails">
+		<xs:annotation>
+			<xs:documentation>A qualifier that clarifies the content context and/or use of a message.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="MinVotes" type="xs:nonNegativeInteger" default="0">
+		<xs:annotation>
+			<xs:documentation>The minimum number of votes allowed.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="NominatingOfficer" type="NominatingOfficerStructure">
+		<xs:annotation>
+			<xs:documentation>Official who is formally nominating or coordinating nomination.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="NumberInSequence" type="xs:positiveInteger">
+		<xs:annotation>
+			<xs:documentation>Large messages can be divided into smaller parts for transmission. This element indicates the total number of sub-messages forming a sequence.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="NumberOfPositions" type="xs:positiveInteger" default="1">
+		<xs:annotation>
+			<xs:documentation>Total ballot positions available for candidates to be elected to for a particular office or position.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="OfficialStatusDetail" type="OfficialStatusDetails">
+		<xs:annotation>
+			<xs:documentation>Designates the status of this return and if it is approved or in a particular pending status.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Period" type="PeriodStructure">
+		<xs:annotation>
+			<xs:documentation>Elapsed time that is applicable for an event or position.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="PersonName" type="PersonNameStructure">
+		<xs:annotation>
+			<xs:documentation>Persons formally name details.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="PollingDistrict" type="PollingDivisionStructure">
+		<xs:annotation>
+			<xs:documentation>Used to indicate the district within which a voter is allowed to vote.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="PollingPlace" type="PollingPlaceStructure">
+		<xs:annotation>
+			<xs:documentation>The physical location (polling station or postal vote address) or an electronic location (for internet, SMS, telephone and other electronic means of voting) where a voter casts his/her vote.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Position" type="PositionStructure">
+		<xs:annotation>
+			<xs:documentation>The position (e.g. President) for which people are voting.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="PreviousElectoralAddress" type="ElectoralAddressStructure">
+		<xs:annotation>
+			<xs:documentation>A previously used electoral qualification address.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Profile" type="MessagesStructure">
+		<xs:annotation>
+			<xs:documentation>Information about a entity, person or organization that describes their background.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Proposal" type="ProposalStructure">
+		<xs:annotation>
+			<xs:documentation>A formal item that is recorded for a ballot for voting on.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ProposalIdentifier" type="ProposalIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>Unique identifier of a ballot proposal item. Often this will have been legally assigned by the election administration process.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Proposer" type="ProposerStructure">
+		<xs:annotation>
+			<xs:documentation>Person or entity who submitted an election item or entity for consideration and adoption for balloting or election to a position.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ProposalItem" type="ProposalItemStructure">
+		<xs:annotation>
+			<xs:documentation>Formal item submitted for inclusion on a ballot.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Proxy" type="ProxyStructure">
+		<xs:annotation>
+			<xs:documentation>Person or entity that can act on behalf of a person or entity for balloting and election purposes.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ReferendumOptionIdentifier" type="ReferendumOptionIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>The official designation of one of the possible responses to a refendum question.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ReportingUnitIdentifier" type="ReportingUnitIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>The identifier of an administrative unit which collects a portion of the votes for a specific contest and passes either the votes or a count of the votes for combining with those from other reporting units to generate a final result.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ResponsibleOfficer" type="ResponsibleOfficerStructure">
+		<xs:annotation>
+			<xs:documentation>Person responsible for organising and ensuring a fair and accurate election in accordance with election laws. Each officer will have a defined responsibility, name and contact details.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="ScrutinyRequirement" type="ScrutinyRequirementStructure">
+		<xs:annotation>
+			<xs:documentation>Describes the type of oversight needed of a process relating to the performing of an election.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="Seal" type="SealStructure">
+		<xs:annotation>
+			<xs:documentation>Electronic equivalent of a signature that locks content in an electronic exchange of information so that the sender and receiver can subsequently verify the information exchanged.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="SequenceNumber" type="xs:positiveInteger">
+		<xs:annotation>
+			<xs:documentation>Where a message is split to reduce transmission size, this element indicates the position of a specified part in the sequence of sub-messages.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="SupporterIdentifier" type="SupporterIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>Identifies an entity that provides support to an entity or proposal during election process.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="TransactionId" type="xs:token">
+		<xs:annotation>
+			<xs:documentation>A reference number for a message. When a message is divided into sub-messages, each will have the same TransactionId.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="VoterName" type="PersonNameStructure">
+		<xs:annotation>
+			<xs:documentation>Formal registered name of a voter entitled to participate in an election and cast ballots.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="VotingChannel" type="VotingChannelType">
+		<xs:annotation>
+			<xs:documentation>Device or method for the submission of voting ballots and information about the voting process.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="VotingMethod" type="VotingMethodType">
+		<xs:annotation>
+			<xs:documentation>BCM - Board Count Method;  CCM - Condorcet Count Method; FFP - First Past the Post;</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="VToken" type="VTokenStructure">
+		<xs:annotation>
+			<xs:documentation>A unique identifier for a device or entity involved in the voting process.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="VTokenQualified" type="VTokenQualifiedStructure">
+		<xs:annotation>
+			<xs:documentation>VToken that is permitted to be used for the purpose and context of a particular process and event. </xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="WriteIn" type="WriteInType">
+		<xs:annotation>
+			<xs:documentation>On a voting ballot an ad hoc entry item for voters to complete as an alternate to formally declared ballot items and choices.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:complexType name="AffiliationIdentifierStructure">
+		<xs:annotation>
+			<xs:documentation>Associates a relationship between entities around an election.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="RegisteredName" type="xs:token">
+				<xs:annotation>
+					<xs:documentation>The official name of an affiliation such as a political party.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdOpt"/>
+		<xs:attributeGroup ref="PersonalCandidateGroup"/>
+	</xs:complexType>
+	<xs:complexType name="AffiliationStructure">
+		<xs:sequence>
+			<xs:element ref="AffiliationIdentifier">
+				<xs:annotation>
+					<xs:documentation>Allows affliation to be denoted to party, organization and so on.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Type" type="xs:token" minOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Denotes the affliation type depending on the jurisdiction types permitted.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Description" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Optionally allows description of the type of affliation denoted such as voting party, election official, and so on.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="Logo" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="AgentIdentifierStructure">
+		<xs:sequence>
+			<xs:element name="AgentName" type="PersonNameStructure">
+				<xs:annotation>
+					<xs:documentation>The full name of the agent.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdOpt"/>
+	</xs:complexType>
+	<xs:complexType name="AgentStructure">
+		<xs:sequence>
+			<xs:element ref="AgentIdentifier">
+				<xs:annotation>
+					<xs:documentation>The agent's name and ID</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="Affiliation" minOccurs="0"/>
+			<xs:element name="OfficialAddress" type="OfficialAddressStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The official address of a candidate.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Contact" type="ContactDetailsStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Mailing address, email address, phone number etc. for any person involved I the election process. There is an option to indicate which contact method is preferred.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdOpt"/>
+		<xs:attribute name="Role" type="xs:token" use="optional"/>
+	</xs:complexType>
+	<xs:complexType name="AreaStructure">
+		<xs:annotation>
+			<xs:documentation>The geographical area (and its type, such as County) covered by a contest</xs:documentation>
+		</xs:annotation>
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attribute name="Type" type="xs:token" use="optional">
+					<xs:annotation>
+						<xs:documentation>Denotes the type of geographical area e.g. county, district, state applicable.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attributeGroup ref="DisplayIdOpt"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="AuditInformationStructure">
+		<xs:sequence>
+			<xs:element ref="VotingChannel" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The method and associated device type in which the vote is being cast.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ProcessingUnits" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Any item of equipment used within the electoral process.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="OriginatingDevice" type="ProcessingUnitStructure"
+							minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The device through which a vote was cast.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="Gateway" type="ProcessingUnitStructure" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>A system that provides the interface between a voting device such as an SMS phone and the voting system.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="VotingSystem" type="ProcessingUnitStructure" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The physical system used to collect votes cast electronically.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="CountingSystem" type="ProcessingUnitStructure"
+							minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The system used to accumulate votes that have been cast.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="VTokenLoggingSystem" type="ProcessingUnitStructure"
+							minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The system that carries out adding voting tokens to an audit log.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="SealLoggingSystem" type="ProcessingUnitStructure"
+							minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The system that carries out adding seals to an audit log.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="Other" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>A type of logging system not covered by pre-defined types.</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="ProcessingUnitStructure">
+										<xs:attribute name="Type" type="xs:token" use="required">
+											<xs:annotation>
+												<xs:documentation>Denotes the type of processing unit structure e.g. transaction unit.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="AuthorityIdentifierStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attributeGroup ref="DisplayIdOpt"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="BallotIdentifierRangeStructure">
+		<xs:sequence>
+			<xs:element name="Start" type="BallotIdentifierStructure">
+				<xs:annotation>
+					<xs:documentation>Range start point for a group of ballots processing.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="End" type="BallotIdentifierStructure">
+				<xs:annotation>
+					<xs:documentation>Range end point for a group of ballots processing.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Colour" type="xs:token" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional attribute that denotes the colour that identifies this ballot type.  Colour may be presented in various ways to voters so that they can recognize the intended ballot.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="BallotIdentifierStructure">
+		<xs:sequence>
+			<xs:element name="BallotName" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The official name assigned to a ballot.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="BallotStyleImageURL" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Optional URL locating or identifying the ballot style image.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:anyURI">
+							<xs:attribute name="MimeType" type="xs:token">
+								<xs:annotation>
+									<xs:documentation>Optional designation of the mimetype of the ballot image binary format.</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdMand"/>
+	</xs:complexType>
+	<xs:complexType name="BinaryItemStructure">
+		<xs:choice>
+			<xs:element name="URL" >
+				<xs:annotation>
+					<xs:documentation>A Uniform Resource Locator to RFC 1738</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:anyURI">
+							<xs:attributeGroup ref="ChecksumGrp"/>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Binary">
+				<xs:annotation>
+					<xs:documentation>A binary digital image object, eg fingerprint, photo, graphic or scanned signature; can be used for identification of the person. It may be given as either a link or as Base64 encoded binary data. In the latter case, the format of the binary must be either bmp, gif, jpeg, png or tiff.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:base64Binary">
+							<xs:attribute name="Format" use="required">
+								<xs:annotation>
+									<xs:documentation>Indicates the specific format of the graphical binary representation encoding used.</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:annotation>
+										<xs:documentation>Code indicating the specific binary graphical format encoding for the content.</xs:documentation>
+									</xs:annotation>
+									<xs:restriction base="xs:NMTOKEN">
+										<xs:enumeration value="bmp"/>
+										<xs:enumeration value="gif"/>
+										<xs:enumeration value="jpeg"/>
+										<xs:enumeration value="png"/>
+										<xs:enumeration value="tiff"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:choice>
+		<xs:attributeGroup ref="DisplayIdOpt">
+			<xs:annotation>
+				<xs:documentation>Display ID options attributes details.</xs:documentation>
+			</xs:annotation>
+		</xs:attributeGroup>
+		<xs:attribute name="ItemType" type="xs:token" use="optional">
+			<xs:annotation>
+				<xs:documentation>Denotes the type of the item associated with the attribute group</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Verified" type="YesNoType" use="optional">
+			<xs:annotation>
+				<xs:documentation>Boolean denoting if the content is verified.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Problem" type="YesNoType" use="optional">
+			<xs:annotation>
+				<xs:documentation>Boolean denoting if there is a problem or issue with this content item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Notes" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional textual notes relating to the item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Role" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>An indicator denoting the role of this item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="CandidateIdentifierStructure">
+		<xs:sequence>
+			<xs:element name="CandidateName" type="PersonNameType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The full name of the candidate.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KnownAs" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The name by which a candidate is usually known that is different from their official name. This might, for example, be used to differentiate on a ballot between candidates with similar names.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="CandidateGender" maxOccurs="1" minOccurs="0" type="GenderType">
+				<xs:annotation>
+					<xs:documentation>The gender of the candidate as it will appear in the result of the election.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ShortCode" minOccurs="0" maxOccurs="1" type="ShortCodeType">
+				<xs:annotation>
+					<xs:documentation>Identifies the election when voting using SMS or other voting mechanisms where a short identifier is required.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdOpt"/>
+		<xs:attributeGroup ref="PersonalCandidateGroup"/>
+	</xs:complexType>
+	<xs:complexType name="CandidateStructure">
+		<xs:sequence>
+			<xs:element name="Source" type="ProcessingUnitStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Indicates the sending device for an EML 120 (interDB) message.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:choice minOccurs="0">
+				<xs:sequence>
+					<xs:element ref="CandidateIdentifier">
+						<xs:annotation>
+							<xs:documentation>The system ID for the candidate, as well as the name to which the candidate's name will appear on the ballot.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="CandidateFullName" type="CandidateFullNameType" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>The full name of the candidate.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="StatusDetails" type="StatusDetailsStructure" minOccurs="1">
+						<xs:annotation>
+							<xs:documentation>Structure of items that control the status of the candidate and associated ballot entries.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="DateOfBirth" type="xs:date" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>The date of birth of the voter or candidate.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="Age" type="xs:positiveInteger" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>The age of a voter or candidate. </xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element ref="Gender" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>The gender of a voter or candidate.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="QualifyingAddress" type="QualifyingAddressStructure"
+						minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>The address of a candidate in an election that entitles him or her to stand.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="Contact" type="ContactDetailsStructure" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Mailing address, email address, phone number etc. for any person involved in the election process. There is an option to indicate which contact method is preferred.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:choice minOccurs="0">
+						<xs:element ref="Affiliation">
+							<xs:annotation>
+								<xs:documentation>Indicates the membership of some organization such as a political party</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element ref="Logo" maxOccurs="unbounded"/>
+						<xs:element name="SiteURL" type="xs:anyURI" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>A Uniform Resource Locator to RFC 1738</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:choice>
+					<xs:element name="Profession" type="xs:token" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>The profession of a candidate.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element ref="Agent" minOccurs="0" maxOccurs="unbounded">
+						<xs:annotation>
+							<xs:documentation>Someone who works for the candidate.  There are various different roles for a candidate's agent</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="Photo" type="BinaryItemStructure" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Optionally allows a photograph of candidate.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element ref="Profile" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>A description of a candidate.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element ref="ElectionStatement" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Describes the opinions of the candidate.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+				</xs:sequence>
+				<xs:element ref="ProposalItem">
+					<xs:annotation>
+						<xs:documentation>The name/title of a proposal item.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:choice>
+		</xs:sequence>
+		<xs:attribute name="DisplayOrder" type="xs:positiveInteger" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional number to control the order the item is displayed in when presented visually such as in a ballot form, screen or report.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Independent" type="YesNoType" use="optional">
+			<xs:annotation>
+				<xs:documentation>This indicates that a candidate in an election, although they may specify an affiliation, is officially classed as an independent candidate. This might be used to alter the ballot layout, for example in elections held under the party list system.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="StatusDetailsStructure">
+		<xs:annotation>
+			<xs:documentation>Denotes the details of the status of the candidate.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="StatusItem" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Tracks the status of a candidate and associated dates for status changes.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:attribute name="setting">
+						<xs:annotation>
+							<xs:documentation>Denotes the status code associated with a candidate.</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:string">
+								<xs:enumeration value="new"/>
+								<xs:enumeration value="pending"/>
+								<xs:enumeration value="nominated"/>
+								<xs:enumeration value="candidate"/>
+								<xs:enumeration value="disqualified"/>
+								<xs:enumeration value="reinstated"/>
+								<xs:enumeration value="withdrawn"/>
+								<xs:enumeration value="timedout"/>
+								<xs:enumeration value="unresponsive"/>
+								<xs:enumeration value="died"/>
+								<xs:enumeration value="elected"/>
+								<xs:enumeration value="eliminated"/>
+								<xs:enumeration value="cut"/>
+								<xs:enumeration value="notselected"/>
+								<xs:enumeration value="showresults"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:attribute>
+					<xs:attribute name="date" type="xs:date">
+						<xs:annotation>
+							<xs:documentation>Date that status event occurred, or status was changed / updated.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="ChannelStructure">
+		<xs:annotation>
+			<xs:documentation>Details about the channel being used to exchange voting artifacts.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="PreferredChannel" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>The voter's preferred channel of voting, e.g. Kiosk, paper ballot, scanner.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="VotingChannelType">
+							<xs:attribute name="Fixed" type="YesNoType" use="optional">
+								<xs:annotation>
+									<xs:documentation>Boolean denoting if the voting channel is static or dynamic.</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element ref="Period" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>A period of time.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="ComplexDateRangeStructure">
+		<xs:choice>
+			<xs:element name="SingleDate" type="DateType">
+				<xs:annotation>
+					<xs:documentation>An event date associated with a single entity.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="End" type="DateType">
+				<xs:annotation>
+					<xs:documentation>The end of a range of ballot identifiers.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:sequence>
+				<xs:element name="Start" type="DateType">
+					<xs:annotation>
+						<xs:documentation>The start of a range of ballot identifiers.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="End" type="DateType" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>The end of a range of ballot identifiers.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:sequence>
+		</xs:choice>
+		<xs:attribute name="Type" type="xs:token" use="required"/>
+	</xs:complexType>
+	<xs:complexType name="ContactDetailsStructure">
+		<xs:annotation>
+			<xs:documentation>Details relating to a contact person supporting the voting process.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="MailingAddress" type="MailingAddressStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>A simple address format used for mailing purposes. The format can be tailored to local needs.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Email" type="EmailStructure" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>An email address</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Telephone" type="TelephoneStructure" minOccurs="0"
+				maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>A telephone number</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Fax" type="TelephoneStructure" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>A fax number</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PreferredContact" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Statement as to the which is the preferred contact method when there are multiple contact methods.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="DisplayOrder" type="xs:positiveInteger" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional number to control the order the item is displayed in when presented visually such as in a ballot form, screen or report.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="ContestIdentifierStructure">
+		<xs:sequence>
+			<xs:element name="ContestName" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The official name of the contest</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdMand"/>
+		<xs:attribute name="ShortCode" type="ShortCodeType" use="optional">
+			<xs:annotation>
+				<xs:documentation>A short hand notation for particular use of display id structure type.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="CountMetricStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:decimal">
+				<xs:attribute name="Type" type="xs:string" use="required">
+					<xs:annotation>
+						<xs:documentation>Defines a short code determining the type of count metric.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="Id" type="xs:token" use="optional">
+					<xs:annotation>
+						<xs:documentation>Unique identifier for the specific metric value.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="AlgorithmId" type="xs:token" use="optional">
+					<xs:annotation>
+						<xs:documentation>Indicates the way the count metric value was computed.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="PositionXPath" type="xs:string" use="optional">
+					<xs:annotation>
+						<xs:documentation>Optional XPath rule that identifies components in the xml structure.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="CountQualifierStructure">
+		<xs:sequence>
+			<xs:element name="Simulation" type="YesNoType" minOccurs="0"/>
+			<xs:element name="Final" type="YesNoType" minOccurs="0"/>
+			<xs:element name="Extrapolation" type="YesNoType" minOccurs="0"/>
+			<xs:element name="Partial" type="YesNoType" minOccurs="0"/>
+			<xs:element name="Previous" type="YesNoType" minOccurs="0"/>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="DocumentIdentifierStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attribute name="Href" type="xs:anyURI" use="required">
+					<xs:annotation>
+						<xs:documentation>A valid URL reference address value.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="ElectionGroupStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attribute name="Id" type="xs:token" use="required">
+					<xs:annotation>
+						<xs:documentation>This optional Id is primarily intend to allow identification of the Association itself, so that searches can locate entries relating to an Association. If used for different purpose - please document use details.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="ElectionIdentifierStructure">
+		<xs:sequence>
+			<xs:element name="ElectionName" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The official name of an election.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ElectionGroup" type="ElectionGroupStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Used to group multiple elections together. For example, a set of questions forming a referendum might be grouped together, as might two parts of an election held under the Additional Member System.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ElectionCategory" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Used in messages where several elections are included in the message. This allows a rules processor to distinguish between the elections.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdMand"/>
+		<xs:attribute name="ShortCode" type="ShortCodeType" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identifies the election when voting using SMS or other voting mechanisms where a short identifier is required.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="EmailStructure">
+		<xs:simpleContent>
+			<xs:extension base="EmailType">
+				<xs:attribute name="Preferred" type="YesNoType" use="optional">
+					<xs:annotation>
+						<xs:documentation>The preferred contact method (E.g., email, mailing address)</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="EMLstructure">
+		<xs:annotation>
+			<xs:documentation>EML reference structure layout.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="EMLHeader">
+				<xs:annotation>
+					<xs:documentation>Common information exchange header with metadata about the exchange activities.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element ref="TransactionId"/>
+						<xs:sequence minOccurs="0">
+							<xs:element ref="SequenceNumber"/>
+							<xs:element ref="NumberInSequence"/>
+							<xs:element name="SequencedElementName" type="xs:NMTOKEN">
+								<xs:annotation>
+									<xs:documentation>Where a message is split to reduce transmission size, this indicates the element, repetitions of which are divided between the sub-messages.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+						<xs:element name="AdditionalValidation" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>A URI for different rule engines to validate</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="Location" type="xs:anyURI">
+										<xs:annotation>
+											<xs:documentation>Location of the URI</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+									<xs:element name="Type" type="xs:token">
+										<xs:annotation>
+											<xs:documentation>The type of rule engine</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="MessageLanguage" type="LanguageType" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The language to be used when displaying a message.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="RequestedResponseLanguage" type="LanguageType"
+							minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The language in which a voter would like a response to a message.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element ref="ManagingAuthority" minOccurs="0"/>
+						<xs:element name="IssueDate" type="DateType" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The date that this managing authority detail was issued.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="OfficialStatusDetail" minOccurs="1" maxOccurs="1"
+							id="d2e1412">
+							<xs:annotation>
+								<xs:documentation>OfficialStatusDetails</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="OfficialStatus" minOccurs="1" maxOccurs="1"
+										type="OfficialStatusDefinition" id="d2e1425">
+										<xs:annotation>
+											<xs:documentation>OfficialStatusDefinition</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+									<xs:element name="StatusDate" minOccurs="1" maxOccurs="1"
+										type="StatusDateDefinition" id="d2e1439">
+										<xs:annotation>
+											<xs:documentation>StatusDateDefinition</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="Display" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Provides information related to the rendering of a message for display</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="Stylesheet" maxOccurs="unbounded">
+										<xs:annotation>
+											<xs:documentation>A display stylesheet for rendering displayable content (e.g. xslt or css) such as to HTML.</xs:documentation>
+										</xs:annotation>
+										<xs:complexType>
+											<xs:simpleContent>
+												<xs:extension base="xs:anyURI">
+												<xs:attribute name="Type" type="xs:token"
+												use="required">
+												<xs:annotation>
+												<xs:documentation>URL reference address location of the stylesheet.</xs:documentation>
+												</xs:annotation>
+												</xs:attribute>
+												</xs:extension>
+											</xs:simpleContent>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+								<xs:attribute name="Format" type="xs:NMTOKEN" use="optional">
+									<xs:annotation>
+										<xs:documentation>Indicates the format of the stylesheet syntax, e.g. xslt, css.</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+							</xs:complexType>
+						</xs:element>
+						<xs:element ref="Seal" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The means of providing assurance that a vote, voting token or complete message has not be altered between creation and consumption.  Used also to authenticae the identity of the system that collected the vote, and provide proof of the time at which the vote was cast.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<!-- xs:attribute name="Id" type="MessageTypeType" use="required"/ -->
+		<xs:attribute name="SchemaVersion" type="xs:NMTOKEN" use="required" fixed="7.0">
+			<xs:annotation>
+				<xs:documentation>Denotes the version of the OASIS Election Markup Language specification.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="EventIdentifierStructure">
+		<xs:sequence>
+			<xs:element name="EventName" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The official name of the election event.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="EventQualifier" type="EventQualifierStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>An additional designator for the event, usually used when management of an event is divided between authorities. For example, an event might be 'London Elections', and each borough will have its own Qualifier.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdOpt"/>
+	</xs:complexType>
+	<xs:complexType name="EventQualifierStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attribute name="IdNumber" type="xs:NMTOKEN" use="optional">
+					<xs:annotation>
+						<xs:documentation>Points to details about the event and associates a unique identifier.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="IncomingGenericCommunicationStructure">
+		<xs:sequence>
+			<xs:element name="Voter">
+				<xs:annotation>
+					<xs:documentation>Voter details associated with the information exchange.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="VoterIdentification" type="VoterIdentificationStructure">
+							<xs:annotation>
+								<xs:documentation>Information that identifies the specific voter.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="VoterContact" type="ContactDetailsStructure">
+							<xs:annotation>
+								<xs:documentation>Means by which communications with a voter may occur.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element ref="Proxy" minOccurs="0"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Recipient" type="ResponsibleOfficerStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Information about the intended entity that is permitted to process the exchange message content.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="EventIdentifier" minOccurs="0"/>
+			<xs:element ref="ElectionIdentifier" minOccurs="0"/>
+			<xs:element ref="ContestIdentifier" minOccurs="0"/>
+			<xs:element name="Messages" type="MessagesStructure" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="InternalGenericCommunicationStructure">
+		<xs:sequence>
+			<xs:element name="From" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Source of a message exchange.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:any namespace="##targetNamespace" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="To" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Recipient of a message exchange.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:any namespace="##targetNamespace" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element ref="EventIdentifier" minOccurs="0"/>
+			<xs:element ref="ElectionIdentifier" minOccurs="0"/>
+			<xs:element ref="ContestIdentifier" minOccurs="0"/>
+			<xs:element name="Messages" type="MessagesStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Collection of messages exchanged.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="ManagingAuthorityStructure">
+		<xs:sequence>
+			<xs:element ref="AuthorityIdentifier"/>
+			<xs:element name="AuthorityName" type="AuthorityNameType" minOccurs="1" maxOccurs="1"
+				id="d2e232">
+				<xs:annotation>
+					<xs:documentation>OrgNameStructure</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Description" minOccurs="1" maxOccurs="1" type="DescriptionDefinition"
+				id="d2e358">
+				<xs:annotation>
+					<xs:documentation>DescriptionDefinition</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="OrganizationURL" minOccurs="1" maxOccurs="1"
+				type="OrganizationURLDefinition" id="d2e373">
+				<xs:annotation>
+					<xs:documentation>OrganizationURLDefinition</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="AuthorityAddress" type="AuthorityAddressStructure">
+				<xs:annotation>
+					<xs:documentation>The address of the authority running the election.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="ResponsibleOfficer" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element ref="Logo" minOccurs="0"/>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="MessagesStructure">
+		<xs:sequence>
+			<xs:element name="Message" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>A general display of information. Can be text or have element content.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:sequence>
+						<xs:any namespace="##other" processContents="lax" minOccurs="0"
+							maxOccurs="unbounded"/>
+					</xs:sequence>
+					<xs:attribute name="MessageId" type="xs:token" use="optional">
+						<xs:annotation>
+							<xs:documentation>Uniquely identifies the message content.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="DisplayOrder" type="xs:positiveInteger" use="optional">
+						<xs:annotation>
+							<xs:documentation>Optional number to control the order the item is displayed in when presented visually such as in a ballot form, screen or report. </xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="DateTime" type="xs:dateTime" use="optional">
+						<xs:annotation>
+							<xs:documentation>When the message was created.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="ChannelId" type="xs:token" use="optional">
+						<xs:annotation>
+							<xs:documentation>Optionally indicates the channel that the message was generated from or associated with the use of.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Format" type="xs:NMTOKEN" use="optional">
+						<xs:annotation>
+							<xs:documentation>Indicates the format of the pre-rendered message content, e.g. HTML, xhtml.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Type" type="xs:token" use="optional">
+						<xs:annotation>
+							<xs:documentation>Denotes the type of message e.g. pre-election, post-election, priority, confirm, reject, pending.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Seqn" type="xs:integer" use="optional">
+						<xs:annotation>
+							<xs:documentation>Optionally controls the sequence of message display.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="MimeType" type="xs:token" use="optional">
+						<xs:annotation>
+							<xs:documentation>Optionally denotes the mimetype of the content of the message.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Lang" type="LanguageType" use="optional">
+						<xs:annotation>
+							<xs:documentation>The language of displayed information in the message.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="NominatingOfficerStructure">
+		<xs:sequence>
+			<xs:element name="Name" type="PersonNameStructure"/>
+			<xs:element name="Contact" type="ContactDetailsStructure"/>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="OutgoingGenericCommunicationStructure">
+		<xs:annotation>
+			<xs:documentation>Note that this can include multiple voters to allow communication with a distributor.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Voter" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="VoterIdentification" type="VoterIdentificationStructure"/>
+						<xs:element name="VoterContact" type="ContactDetailsStructure"/>
+						<xs:element ref="Proxy" minOccurs="0"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element ref="EventIdentifier" minOccurs="0"/>
+			<xs:element ref="ElectionIdentifier" minOccurs="0"/>
+			<xs:element ref="ContestIdentifier" minOccurs="0"/>
+			<xs:element name="ReturnTo" type="ResponsibleOfficerStructure" minOccurs="0"/>
+			<xs:element name="Messages" type="MessagesStructure" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="PeriodStructure">
+		<xs:choice>
+			<xs:element name="Dates">
+				<xs:annotation>
+					<xs:documentation>A collection of dates.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Start" type="xs:date" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>The start of a range of ballot identifiers.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="End" type="xs:date">
+							<xs:annotation>
+								<xs:documentation>The end of a range of ballot identifiers.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Event" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Also known as 'election event'. A series of elections that for some reason are grouped together into one event.  For example they may be completely different elections but for logistic reasons they are all run on the same day.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element ref="EventIdentifier"/>
+						<xs:element ref="ElectionIdentifier" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Permanent">
+				<xs:annotation>
+					<xs:documentation>Indicates whether a voter who has registered to vote in a particular way has asked for that to be used until revoked (rather than for a specified time period, election etc).</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:token">
+						<xs:enumeration value="yes"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:choice>
+	</xs:complexType>
+	<xs:complexType name="PollingDivisionStructure">
+		<xs:sequence>
+			<xs:element name="Source" type="ProcessingUnitStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Indicates the sending device for an EML 120 (interDB) message.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Name" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Name by which the division is identified to voters.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:normalizedString">
+							<xs:attribute name="divisionType" type="divisionTypeDefinition">
+								<xs:annotation>
+									<xs:documentation>Reference to the division type details</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Association" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Associates a polling district with some other entity, such as a constituency.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:token">
+							<xs:attribute name="Id" type="xs:token" use="optional">
+								<xs:annotation>
+									<xs:documentation>This optional Id is primarily intend to allow identification of the Association itself, so that searches can locate entries relating to an Association. If used for different purpose - please document use details.</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdOpt"/>
+	</xs:complexType>
+	<xs:complexType name="PollingPlaceStructure">
+		<xs:sequence>
+			<xs:choice>
+				<xs:element name="PhysicalLocation">
+					<xs:annotation>
+						<xs:documentation>The physical location of a polling place (in contrast to an electronic location).</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Source" type="ProcessingUnitStructure" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Indicates the sending device for an EML 120 (interDB) message.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="PlaceName" minOccurs="0" maxOccurs="1"
+								type="xs:string" id="d2e1000">
+								<xs:annotation>
+									<xs:documentation>Name of the location of a polling place (e.g. building name).</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="Notes" minOccurs="0" maxOccurs="1" id="d2e1057">
+								<xs:annotation>
+									<xs:documentation>Clarifying notes and details to assist with accessing the location.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="Note" minOccurs="1" maxOccurs="unbounded"
+											id="d2e1063" type="xs:string">
+											<xs:annotation>
+												<xs:documentation>Additional details pertaining to the location, how to access it or any special details.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="Address" type="PhysicalAddressStructure">
+								<xs:annotation>
+									<xs:documentation>Top level element for address with geocode details</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="PollingStation" minOccurs="0" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>A place where a voter may physically cast a vote. Several polling stations may be at the same polling place.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:simpleContent>
+										<xs:extension base="xs:token">
+											<xs:attribute name="IdNumber" type="xs:NMTOKEN"
+												use="optional">
+												<xs:annotation>
+												<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+												</xs:annotation>
+											</xs:attribute>
+										</xs:extension>
+									</xs:simpleContent>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="Map" type="BinaryItemStructure" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Map showing physical location of polling station as a binary graphic.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="IdNumber" type="xs:NMTOKEN" use="optional">
+							<xs:annotation>
+								<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+							</xs:annotation>
+						</xs:attribute>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="PostalLocation">
+					<xs:annotation>
+						<xs:documentation>The address to which a postal vote should be returned.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:complexContent>
+							<xs:extension base="PostalLocationStructure">
+								<xs:attributeGroup ref="DisplayIdOpt"/>
+							</xs:extension>
+						</xs:complexContent>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="ElectronicLocation">
+					<xs:annotation>
+						<xs:documentation>Used for describing a Polling Place, it must indicate its address (e.g. phone number, URL).</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:simpleContent>
+							<xs:extension base="xs:token">
+								<xs:attributeGroup ref="DisplayIdOpt"/>
+							</xs:extension>
+						</xs:simpleContent>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="OtherLocation">
+					<xs:annotation>
+						<xs:documentation>A type of location not covered by the pre-defined types.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:simpleContent>
+							<xs:extension base="xs:string">
+								<xs:attributeGroup ref="DisplayIdOpt"/>
+							</xs:extension>
+						</xs:simpleContent>
+					</xs:complexType>
+				</xs:element>
+			</xs:choice>
+			<xs:element name="TimeAvailable" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Used for special circumstances (such as the use of a mobile polling station), when the time a location is available is not the same time when the channel is available.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Start" type="xs:dateTime">
+							<xs:annotation>
+								<xs:documentation>The start of a date of ballot availability.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="End" type="xs:dateTime">
+							<xs:annotation>
+								<xs:documentation>The end of a date of ballot availability.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute name="pollingEventType">
+						<xs:annotation>
+							<xs:documentation>Short code that describes the type of a polling event.</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:token">
+								<xs:enumeration value="Polling_Day"/>
+								<xs:enumeration value="Ballot_Drop"/>
+								<xs:enumeration value="Early_Voting"/>
+								<xs:enumeration value="Absentee_Ballot"/>
+								<xs:enumeration value="Any"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="ContestAssociation" type="BallotIdentifierStructure" minOccurs="0"
+				maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Used to associate the actual ballots being voted on for the current election at this polling place.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ResultsReported" type="ResultsReportedStructure" minOccurs="0"
+				maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Details of actual results that have been recorded and made public.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PollAssociation" type="PollAssociationType" minOccurs="0"
+				maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Linkage to a particular poll within an election.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="IdNumber" type="xs:NMTOKEN" use="optional">
+			<xs:annotation>
+				<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Channel" type="VotingChannelType" use="required">
+			<xs:annotation>
+				<xs:documentation>The type of the channel used to deliver the voting information. </xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DisplayOrder" type="xs:positiveInteger" use="optional"/>
+	</xs:complexType>
+	<xs:complexType name="OfficialStatusDetails">
+		<xs:sequence>
+			<xs:element name="OfficialStatus" type="OfficialStatusType">
+				<xs:annotation>
+					<xs:documentation>Denotes the official status of the associated item.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="StatusDate" type="DateType">
+				<xs:annotation>
+					<xs:documentation>Date that the official status was recorded and returned.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="PollAssociationType">
+		<xs:annotation>
+			<xs:documentation>Used to link between the various components of the polling district contained within the EML 150 content instance.  Id attribute points to the Id of the associated information, and idType provides actual target. Implementers are responsible for documenting how they are using these mechanisms in their specific data content.</xs:documentation>
+		</xs:annotation>
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attribute name="Id" type="xs:token">
+					<xs:annotation>
+						<xs:documentation>Value of the Id of the content being associated to within this EML 150 content structure..</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="IdType" use="optional">
+					<xs:annotation>
+						<xs:documentation>Types of the associated information from the overall EML 150 content structure referenced by the Id attribute value.</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:token">
+							<xs:enumeration value="district"/>
+							<xs:enumeration value="pollingPlace"/>
+							<xs:enumeration value="pollingDivision"/>
+							<xs:enumeration value="pollingStation"/>
+							<xs:enumeration value="placeResources"/>
+							<xs:enumeration value="geoBoundary"/>
+							<xs:enumeration value="geoLocation"/>
+							<xs:enumeration value="geoDistrict"/>
+							<xs:enumeration value="boundary"/>
+							<xs:enumeration value="ballot"/>
+							<xs:enumeration value="election"/>
+							<xs:enumeration value="contest"/>
+							<xs:enumeration value="other"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:attribute>
+				<xs:attribute name="note" use="optional" type="xs:string">
+					<xs:annotation>
+						<xs:documentation>Optional implementers note documenting relationships being used in the data content.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="PositionStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attributeGroup ref="DisplayIdOpt"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="ProcessingUnitStructure">
+		<xs:sequence>
+			<xs:element name="Name" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Details about the system processing unit.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="IdValue" type="xs:token">
+				<xs:annotation>
+					<xs:documentation>Denotes a unique identifier for the processing unit device.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Role" use="required">
+			<xs:annotation>
+				<xs:documentation>The delivery role performed by the processing unit.</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:token">
+					<xs:enumeration value="next receiver"/>
+					<xs:enumeration value="previous sender"/>
+					<xs:enumeration value="receiver"/>
+					<xs:enumeration value="sender"/>
+					<xs:enumeration value=""/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="ProposalIdentifierStructure">
+		<xs:sequence>
+			<xs:element name="ProposalName" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Formal name of the proposal item as it will appear of ballot materials for voting.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdOpt"/>
+		<xs:attribute name="ShortCode" type="ShortCodeType" use="optional">
+			<xs:annotation>
+				<xs:documentation>Proposal shortcode reference - typically proposition number or other legal reference number.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ExpectedConfirmationReference" type="ConfirmationReferenceType"
+			use="optional"/>
+	</xs:complexType>
+	<xs:complexType name="ProposalItemStructure">
+		<xs:sequence>
+			<xs:element name="ProposalText" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The full text of the proposal item to be used on the ballot.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SelectionText" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The text that the voter will see on the ballot and use to select the proposal item.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="StatementType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Whether the proposal text is for or against the item.</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:token">
+						<xs:enumeration value="for"/>
+						<xs:enumeration value="against"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="PassThreshold" type="xs:integer" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Integer value representing the pass percentage for the proposal.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="AbstainEffect" minOccurs="0" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Text indicating if there is any effect from abstaining to vote on the proposal.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="ReferendumOptionIdentifier" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>Formal reference number of the referendum item - typically the legal number or proposition reference.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ProposalIdentifier" type="xs:token" use="optional">
+			<xs:annotation>
+				<xs:documentation>Formal legal reference number for a proposal item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Lang" type="LanguageType" use="optional">
+			<xs:annotation>
+				<xs:documentation>Language used for the materials and text in this item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="ProposalStructure">
+		<xs:sequence>
+			<xs:choice>
+				<xs:sequence>
+					<xs:element ref="ProposalIdentifier"/>
+					<xs:element name="Description" type="MessagesStructure" minOccurs="0"/>
+					<xs:element name="Options">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element ref="ReferendumOptionIdentifier" maxOccurs="unbounded"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+					<xs:any namespace="##other" processContents="lax" minOccurs="0"
+						maxOccurs="unbounded"/>
+				</xs:sequence>
+				<xs:element ref="ProposalItem"/>
+			</xs:choice>
+		</xs:sequence>
+		<xs:attribute name="Type" type="xs:token" use="optional"/>
+	</xs:complexType>
+
+	<xs:complexType name="ProposerStructure">
+		<xs:sequence>
+			<xs:element name="Name" type="PersonNameStructure"/>
+			<xs:element name="Contact" type="ContactDetailsStructure" minOccurs="0"/>
+			<xs:element name="JobTitle" type="xs:token" minOccurs="0"/>
+			<xs:element name="DateOfBirth" type="xs:date" minOccurs="0"/>
+			<xs:element name="IdValue" type="xs:token" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="Category" use="optional">
+			<xs:simpleType>
+				<xs:restriction base="xs:token">
+					<xs:enumeration value="primary"/>
+					<xs:enumeration value="secondary"/>
+					<xs:enumeration value="other"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="ProxyStructure">
+		<xs:sequence>
+			<xs:choice>
+				<xs:element name="Position" type="xs:token"/>
+				<xs:sequence>
+					<xs:element name="Name" type="PersonNameStructure"/>
+					<xs:element name="Position" type="xs:token" minOccurs="0"/>
+				</xs:sequence>
+			</xs:choice>
+			<xs:element name="Address" type="ProxyAddressStructure" minOccurs="0"/>
+			<xs:element name="DateOfBirth" type="xs:date" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Official date of birth.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Qualification" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Proxy is qualified because of trusted relationship cited here.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Reason" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Need for use of proxy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="Period" minOccurs="0"/>
+			<xs:element name="ProxyAgrees" type="YesNoType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Set if the proxy nominated acquieses to perform proxy duties.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PreferredLanguage" type="LanguageType" minOccurs="0"/>
+			<xs:element ref="Channel" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Device channel associated with the operation. </xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:choice minOccurs="0">
+				<xs:element ref="VToken"/>
+				<xs:element ref="VTokenQualified"/>
+			</xs:choice>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="DisplayOrder" type="xs:positiveInteger" use="optional"/>
+		<xs:attribute name="IdNumber" type="xs:NMTOKEN" use="optional"/>
+	</xs:complexType>
+	<xs:complexType name="ReferendumOptionIdentifierStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attributeGroup ref="DisplayIdOpt"/>
+				<xs:attributeGroup ref="PersonalCandidateGroup"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="ReportingUnitIdentifierStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attributeGroup ref="DisplayIdOpt"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="ResultsReportedStructure">
+		<xs:sequence>
+			<xs:element name="Status">
+				<xs:annotation>
+					<xs:documentation>Status of the entity. e.g. Old, Current, Inactive, Active, etc</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="ChannelID" type="xs:string" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Unique identifier for the channel that the service is operating on.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="Notes" type="xs:string" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Optional additional notes relating to the channel.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute name="DateTime" type="xs:dateTime">
+						<xs:annotation>
+							<xs:documentation>Specific date and time that results were reported on this channel.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Type" type="xs:NMTOKEN" use="optional">
+						<xs:annotation>
+							<xs:documentation>Content type relating to election event exchanged on this channel.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="CurrentStatus" type="xs:NMTOKEN" use="optional">
+			<xs:annotation>
+				<xs:documentation>Denotes the status of the content exchanged on the channel.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="ResponsibleOfficerStructure">
+		<xs:sequence>
+			<xs:choice>
+				<xs:sequence>
+					<xs:element name="Responsibility" type="xs:token">
+						<xs:annotation>
+							<xs:documentation>An indication of the responsibility of a responsible officer.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="Name" type="PersonNameStructure" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Name by which the division is identified to voters.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+				</xs:sequence>
+				<xs:element name="Name" type="PersonNameStructure">
+					<xs:annotation>
+						<xs:documentation>Responsible officer name details structure.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:choice>
+			<xs:element name="Contact" type="ContactDetailsStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Mailing address, email address, phone number etc. for any person involved in the election process. There is an option to indicate which contact method is preferred.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="IdNumber" type="xs:NMTOKEN" use="optional">
+			<xs:annotation>
+				<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="ScrutinyRequirementStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:token"/>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="SealStructure">
+		<xs:choice>
+			<xs:element ref="ds:Signature"/>
+			<xs:element ref="ts:Timestamp"/>
+			<xs:element name="OtherSeal">
+				<xs:annotation>
+					<xs:documentation>A type of seal not covered by the pre-defined types.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:any namespace="##other"/>
+					</xs:sequence>
+					<xs:attribute name="Type" type="xs:token" use="required">
+						<xs:annotation>
+							<xs:documentation>Denotes the type of seal used.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+		</xs:choice>
+	</xs:complexType>
+	<xs:complexType name="SimpleDateRangeStructure">
+		<xs:sequence>
+			<xs:element name="Start" type="DateType">
+				<xs:annotation>
+					<xs:documentation>The start date of an associated item.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="End" type="DateType">
+				<xs:annotation>
+					<xs:documentation>The end date of when an associated item is applicable.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="SupporterIdentifierStructure">
+		<xs:sequence>
+			<xs:element name="SupporterName" type="xs:token"/>
+			<xs:element name="SupporterAbbreviation" type="xs:token"/>
+			<xs:element name="RegisteredFullName" type="xs:normalizedString"/>
+			<xs:element name="AlternativeName" type="xs:normalizedString"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdOpt"/>
+	</xs:complexType>
+	<xs:complexType name="SupporterStructure">
+		<xs:sequence>
+			<xs:element ref="SupporterIdentifier"/>
+			<xs:element ref="Logo" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TelephoneStructure">
+		<xs:sequence>
+			<xs:element name="Number" type="TelephoneNumberType">
+				<xs:annotation>
+					<xs:documentation>Data associated with the number of the premises. E.g.House 15, number range, number suffix, telephone number</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Extension" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The extension number in a telephone number.</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:annotation>
+						<xs:documentation>Regular expression for telephone number content format.</xs:documentation>
+					</xs:annotation>
+					<xs:restriction base="xs:token">
+						<xs:maxLength value="6"/>
+						<xs:minLength value="1"/>
+						<xs:pattern value="[0-9]{1,6}"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Preferred" type="YesNoType" use="optional">
+			<xs:annotation>
+				<xs:documentation>The preferred contact method (E.g., email, mailing address)</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Mobile" type="YesNoType" use="optional">
+			<xs:annotation>
+				<xs:documentation>A mobile telephone number</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="VoterIdentificationStructure">
+		<xs:sequence>
+			<xs:element name="Source" type="ProcessingUnitStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Indicates the sending device for an EML 120 (interDB) message.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="VoterName" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The name of an eligible voter.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ElectoralAddress" type="ElectoralAddressStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>This is the address that gives the voter the right to vote</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PreviousElectoralAddress" type="ElectoralAddressStructure"
+				minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>If a voter has been at his/her current address for less than a predefined period, then this may be required by the registration system.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:choice minOccurs="0">
+				<xs:element ref="VToken">
+					<xs:annotation>
+						<xs:documentation>Contains information required to authenticate the voter's right to vote in a specific contest or election.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element ref="VTokenQualified">
+					<xs:annotation>
+						<xs:documentation>Used when there is a query of a voter's right to vote.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:choice>
+			<xs:element name="VoterId" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>The identification number of a voter.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:token">
+							<xs:attribute name="type" type="xs:token" use="optional">
+								<xs:annotation>
+									<xs:documentation>optionally denotes the type of identification used, e.g. drivers license, employee id, student id and so on.</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<!-- attribute - use xsi localization definition - e.g. xsi:type="driverslicense" content mechanism to control content mask for permitted VoterId values -->
+			<xs:element name="VoterSignature" type="BinaryItemStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The signature of a voter.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="VoterPhysicalID" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Physical identification reference # or document for voter and type of that document. E.g. Drivers license #.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:token">
+							<xs:attribute use="required" name="IdType" type="xs:token">
+								<xs:annotation>
+									<xs:documentation>Type of the Id used by voter - e.g. Drivers license, SSN#, Membership card, Employment card, Birth Certificate, et al.</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="DisplayOrder" type="xs:positiveInteger" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional number to control the order the item is displayed in when presented visually such as in a ballot form, screen or report.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Id" type="xs:token" use="optional">
+			<xs:annotation>
+				<xs:documentation>This optional Id is primarily intend to allow identification of the Association itself, so that searches can locate entries relating to an Association. If used for different purpose - please document use details.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="VoterInformationStructure">
+		<xs:sequence>
+			<xs:element name="Source" type="ProcessingUnitStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Indicates the sending device for a EML 120 (interDB) message.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Contact" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Mailing address, email address, phone number etc. for any person involved I the election process. There is an option to indicate which contact method is preferred.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:complexContent>
+						<xs:extension base="ContactDetailsStructure">
+							<xs:attribute name="ElectionId" type="xs:NMTOKEN" use="optional">
+								<xs:annotation>
+									<xs:documentation>Associates a relationship between the contact and a specific election event id.</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+						</xs:extension>
+					</xs:complexContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="DateOfBirth" type="xs:date" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The date of birth of the voter or candidate.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PlaceOfBirth" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The place of birth of a voter.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="EffectiveDateAdded" type="xs:date" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The date at which a person was added to an electoral register.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="EffectiveDateRemoved" type="xs:date" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The date at which a person was removed from an electoral register.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PreferredLanguage" type="LanguageType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The language which a voter prefers to use.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="Channel" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>A medium through which votes can be cast, e.g. 'internet' or 'postal'.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Qualifier" type="xs:token" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>e.g. military or other factor that may affect right to vote or how votes are managed</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="CheckBox" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Used to allow name-value pairs in information about a voter. The only allowed values are 'yes' and 'no'.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="YesNoType">
+							<xs:attribute name="Type" type="xs:token" use="required">
+								<xs:annotation>
+									<xs:documentation>Boolean Yes/No indicator</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Eligibility" type="xs:token" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>The election types for which the voter is eligible.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="PollingDistrict" minOccurs="0"/>
+			<xs:element ref="PollingPlace" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="Affiliation" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Indicates the membership of some organization such as a political party</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Gender" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Gender type associated with a person, where known or reported.</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:token">
+						<xs:enumeration value="male"/>
+						<xs:enumeration value="female"/>
+						<xs:enumeration value="unknown"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="Nationality" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The nationality of a voter.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Ethnicity" type="xs:token" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The ethnicity of a voter.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SpecialRequest" type="xs:token" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>A request made by a voter and held on the electoral register. This might, for exmaple, indicate a need for wheelchair access to a polling station.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="Proxy" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="FurtherInformation" type="MessagesStructure" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Information about a voter that is not included in the standard elements.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="DisplayIdOpt"/>
+	</xs:complexType>
+	<xs:complexType name="VTokenStructure">
+		<xs:sequence>
+			<xs:element name="Component" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>A specific part of a voting token. For example, a voting token might have components called 'PIN' and 'password'.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:sequence>
+						<xs:any namespace="##other" minOccurs="0"/>
+					</xs:sequence>
+					<xs:attribute name="Type" type="xs:token" use="optional">
+						<xs:annotation>
+							<xs:documentation>Denotes the type of component specified.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+			<xs:element ref="BallotIdentifier" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="VTokenId" type="xs:token" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional identifier for a VToken used to verify the voters entitlement to vote.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Status" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optionally tracks use of the VToken with associated status values.</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:token">
+					<xs:enumeration value="voted"/>
+					<xs:enumeration value="unvoted"/>
+					<xs:enumeration value="issued"/>
+					<xs:enumeration value="submitted"/>
+					<xs:enumeration value="received"/>
+					<xs:enumeration value="rejected"/>
+					<xs:enumeration value="resubmitted"/>
+					<xs:enumeration value="accepted"/>
+					<xs:enumeration value="spoiled"/>
+					<xs:enumeration value="exempted"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="VTokenQualifiedStructure">
+		<xs:complexContent>
+			<xs:extension base="VTokenStructure">
+				<xs:sequence>
+					<xs:element name="Reason">
+						<xs:annotation>
+							<xs:documentation>The reason for appointing a proxy, qualification of a token, blocking a vote etc.</xs:documentation>
+						</xs:annotation>
+						<xs:complexType>
+							<xs:simpleContent>
+								<xs:extension base="xs:token">
+									<xs:attribute name="Type" type="xs:token" use="required"/>
+									<xs:attribute name="Status" use="required">
+										<xs:simpleType>
+											<xs:restriction base="xs:token">
+												<xs:enumeration value="voted"/>
+												<xs:enumeration value="unvoted"/>
+												<xs:enumeration value="withdrawn"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:attribute>
+								</xs:extension>
+							</xs:simpleContent>
+						</xs:complexType>
+					</xs:element>
+					<xs:element ref="VToken" minOccurs="0">
+						<xs:annotation>
+							<xs:documentation>Contains information required to authenticate the voter's right to vote in a specific contest or election.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="LocationByCoordinatesType">
+		<xs:annotation>
+			<xs:documentation>Simple Geo-coordinates of the address/location</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Latitude" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Latitude details</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:attribute name="DegreesMeasure" type="xs:string">
+						<xs:annotation>
+							<xs:documentation>Measure of the latitude in degrees</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="MinutesMeasure" type="xs:string">
+						<xs:annotation>
+							<xs:documentation>Measure of the latitude in minutes</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="SecondsMeasure" type="xs:string">
+						<xs:annotation>
+							<xs:documentation>Measure of the latitude in seconds</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Direction" type="DirectionTypeList">
+						<xs:annotation>
+							<xs:documentation>The direction of latitude measurement offset from the equator</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other" processContents="lax"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Longitude" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Longitude details</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:attribute name="DegreesMeasure" type="xs:string">
+						<xs:annotation>
+							<xs:documentation>Measure of the longitude in degrees</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="MinutesMeasure" type="xs:string">
+						<xs:annotation>
+							<xs:documentation>Measure of the longitude in minutes</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="SecondsMeasure" type="xs:string">
+						<xs:annotation>
+							<xs:documentation>Measure of the longitude in seconds</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Direction" type="DirectionTypeList">
+						<xs:annotation>
+							<xs:documentation>The direction of  longitude measurement offset from the equator</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other" processContents="lax"/>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Meridian" type="xs:normalizedString">
+			<xs:annotation>
+				<xs:documentation>The collection of the coordinate numeric values for latitude amd longtitude depends on the agreed position of the meridian. Declaration of the meridian is necessary as it cannot be assumed in the data</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="MeridianCodeType" type="xs:string">
+			<xs:annotation>
+				<xs:documentation>Type of code used. e.g. EPSG Code</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DatumCodeType" type="xs:string">
+			<xs:annotation>
+				<xs:documentation>Type of code used. e.g. EPSG Code, WGS-84</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ProjectionCodeType" type="xs:string">
+			<xs:annotation>
+				<xs:documentation>Type of code used. e.g. EPSG Code</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:anyAttribute namespace="##other" processContents="lax"/>
+	</xs:complexType>
+	<xs:complexType name="SiteMessageType">
+		<xs:annotation>
+			<xs:documentation>Information message to be used on a web site providing services in support of an election.</xs:documentation>
+		</xs:annotation>
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="FromDate" type="xs:dateTime" use="optional">
+					<xs:annotation>
+						<xs:documentation>Provides a date and time that the message is active from and should be presented to people visiting the associated site.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="ToDate" type="xs:dateTime" use="optional">
+					<xs:annotation>
+						<xs:documentation>Provides a date and time that the message is active until. After that time it will not be presented to people.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="Priority" type="xs:token" use="optional">
+					<xs:annotation>
+						<xs:documentation>Provides a priority value so that rendering can position or highlight accordingly on the associated site.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="DisplayOrder" type="xs:integer" use="optional">
+					<xs:annotation>
+						<xs:documentation>Allows control of the sequence in which message appears.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="PageLocation" type="xs:token" use="optional">
+					<xs:annotation>
+						<xs:documentation>Denotes an area, location and alignment relative to other content on the page of display for the site.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="MimeType" type="xs:token" use="optional">
+					<xs:annotation>
+						<xs:documentation>Optionally provides specific MIME type of the content message. This allows for pre-rendered content - usually for legal presentation purposes - to be exactly defined.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<!-- Simple Types -->
+	<xs:simpleType name="DirectionTypeList">
+		<xs:annotation>
+			<xs:documentation>A list of directions for geo-coordinates</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString">
+			<xs:enumeration value="East"/>
+			<xs:enumeration value="West"/>
+			<xs:enumeration value="North"/>
+			<xs:enumeration value="South"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="ConfirmationReferenceType">
+		<xs:annotation>
+			<xs:documentation>Details of confirmation reported</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token"/>
+	</xs:simpleType>
+	<xs:simpleType name="CountingAlgorithmType">
+		<xs:annotation>
+			<xs:documentation>Code that denotes that type of counting algorithm used.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token"/>
+	</xs:simpleType>
+	<xs:simpleType name="DateType">
+		<xs:annotation>
+			<xs:documentation>Base date type for representing a date value.</xs:documentation>
+		</xs:annotation>
+		<xs:union memberTypes="xs:date xs:dateTime"/>
+	</xs:simpleType>
+	<xs:simpleType name="EmailType">
+		<xs:restriction base="xs:token">
+			<xs:maxLength value="129"/>
+			<xs:pattern value="[^@]+@[^@]+"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="ErrorCodeType">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="\d{4}[a-z]?\-\d{3}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="GenderType">
+		<xs:annotation>
+			<xs:documentation>Gender details as Male or Female or unknown value code</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="male"/>
+			<xs:enumeration value="female"/>
+			<xs:enumeration value="unknown"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="LanguageType">
+		<xs:annotation>
+			<xs:documentation>Language name type code (of type ISO language codes for XML language).</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:language"/>
+	</xs:simpleType>
+	<xs:complexType name="MessageTypeDetails">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attribute name="Type" type="xs:token" use="optional">
+					<xs:annotation>
+						<xs:documentation>Optional type qualifier for message</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="Date" type="xs:date" use="optional">
+					<xs:annotation>
+						<xs:documentation>Optional date when the message was created on.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="ChannelId" type="xs:token" use="optional">
+					<xs:annotation>
+						<xs:documentation>Denotes how or where the message originated.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+				<xs:attribute name="MessageID" type="xs:token" use="optional">
+					<xs:annotation>
+						<xs:documentation>Unique identifier for the specific message.</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:simpleType name="SealUsageType">
+		<xs:annotation>
+			<xs:documentation>A short code value that denotes role associated with seal used.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:NMTOKEN">
+			<xs:enumeration value="receiver"/>
+			<xs:enumeration value="sender"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="OfficialStatusDefinition">
+		<xs:annotation>
+			<xs:documentation>The type for OfficialStatus.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string"/>
+	</xs:simpleType>
+	<xs:simpleType name="StatusDateDefinition">
+		<xs:annotation>
+			<xs:documentation>The type for StatusDate.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:date"/>
+	</xs:simpleType>
+	<xs:simpleType name="ShortCodeType">
+		<xs:annotation>
+			<xs:documentation>A short code value that denotes a type associated with an item.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:NMTOKEN"/>
+	</xs:simpleType>
+	<xs:simpleType name="TelephoneNumberType">
+		<xs:annotation>
+			<xs:documentation>Details of a telephone number conforming to this content mask.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:maxLength value="35"/>
+			<xs:minLength value="1"/>
+			<xs:pattern value="\+?[0-9\(\)\-\s]{1,35}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="VotingChannelType">
+		<xs:annotation>
+			<xs:documentation>Denotes the type of voting channel used to record voting.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="SMS"/>
+			<xs:enumeration value="WAP"/>
+			<xs:enumeration value="digitalTV"/>
+			<xs:enumeration value="internet"/>
+			<xs:enumeration value="kiosk"/>
+			<xs:enumeration value="polling"/>
+			<xs:enumeration value="postal"/>
+			<xs:enumeration value="telephone"/>
+			<xs:enumeration value="digitalstorage device"/>
+			<xs:enumeration value="paper"/>
+			<xs:enumeration value="fax"/>
+			<xs:enumeration value="email"/>
+			<xs:enumeration value="website"/>
+			<xs:enumeration value="abroad postal"/>
+			<xs:enumeration value="abroad electronic"/>
+			<xs:enumeration value="abroad other"/>
+			<xs:enumeration value="n/a"/>
+			<xs:enumeration value="other"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="VotingMethodType">
+		<xs:annotation>
+			<xs:documentation>Code denoting the type of election result determination method.  E.g. FPP = First Past the Post.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="AMS"/>
+			<xs:enumeration value="FPP"/>
+			<xs:enumeration value="IRV"/>
+			<xs:enumeration value="NOR"/>
+			<xs:enumeration value="OPV"/>
+			<xs:enumeration value="RCV"/>
+			<xs:enumeration value="SPV"/>
+			<xs:enumeration value="STV"/>
+			<xs:enumeration value="cumulative"/>
+			<xs:enumeration value="approval"/>
+			<xs:enumeration value="block"/>
+			<xs:enumeration value="supporterlist"/>
+			<xs:enumeration value="partisan"/>
+			<xs:enumeration value="supplementaryvote"/>
+			<xs:enumeration value="other"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="VotingValueType">
+		<xs:annotation>
+			<xs:documentation>The weight or preference applied to a selection</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:positiveInteger"/>
+	</xs:simpleType>
+	<xs:simpleType name="WriteInType">
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="allowed"/>
+			<xs:enumeration value="none"/>
+			<xs:enumeration value="strikeout"/>
+			<xs:enumeration value="other"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="YesNoType">
+		<xs:annotation>
+			<xs:documentation>Primitive boolean type for Yes of No response.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="no"/>
+			<xs:enumeration value="yes"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="OfficialStatusType">
+		<xs:annotation>
+			<xs:documentation>Primitive type of officual status - union of both vote status and content status.</xs:documentation>
+		</xs:annotation>
+		<xs:union memberTypes="VoteStatusType ContentStatusType"/>
+	</xs:simpleType>
+	<xs:simpleType name="VoteStatusType">
+		<xs:annotation>
+			<xs:documentation>Code denoting the status of a vote.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="official"/>
+			<xs:enumeration value="provisional"/>
+			<xs:enumeration value="interim"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="ContentStatusType">
+		<xs:annotation>
+			<xs:documentation>Code denoting the status of content associated with an election item.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="proposed"/>
+			<xs:enumeration value="pending"/>
+			<xs:enumeration value="approved"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="divisionTypeDefinition">
+		<xs:annotation>
+			<xs:documentation>Denotes the type of election division code.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="precinct"/>
+			<xs:enumeration value="precinct split"/>
+			<xs:enumeration value="polling"/>
+			<xs:enumeration value="division"/>
+			<xs:enumeration value="ward"/>
+			<xs:enumeration value="locality"/>
+			<xs:enumeration value="city"/>
+			<xs:enumeration value="town"/>
+			<xs:enumeration value="locale"/>
+			<xs:enumeration value="other"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="DescriptionDefinition">
+		<xs:annotation>
+			<xs:documentation>The type for Description.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token"/>
+	</xs:simpleType>
+	<xs:simpleType name="OrganizationURLDefinition">
+		<xs:annotation>
+			<xs:documentation>The type for OrganizationURL.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:anyURI"/>
+	</xs:simpleType>
+	<xs:attributeGroup name="DisplayIdMand">
+		<xs:annotation>
+			<xs:documentation>Indictates if the display id is mandatory or not and then the details of the id use.</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="IdNumber" type="xs:NMTOKEN" use="required">
+			<xs:annotation>
+				<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DisplayOrder" type="xs:positiveInteger" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional number to control the order the item is displayed in when presented visually such as in a ballot form, screen or report.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="DisplayIdOpt">
+		<xs:attribute name="IdNumber" type="xs:NMTOKEN" use="optional">
+			<xs:annotation>
+				<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DisplayOrder" type="xs:positiveInteger" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional number to control the order the item is displayed in when presented visually such as in a ballot form, screen or report.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="ChecksumGrp">
+		<xs:attribute name="Checksum" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional actual value for checksum from applying hash calculation algorithm to content.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="HashAlgorithm" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional hash algorithm to verify content.  For USA Federal purposes must be SHA-2 based or better.</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:token">
+					<xs:enumeration value="SHA-224"/>
+					<xs:enumeration value="SHA-256"/>
+					<xs:enumeration value="SHA-384"/>
+					<xs:enumeration value="SHA-512"/>
+					<xs:enumeration value="CRC32"/>
+					<xs:enumeration value="SHA-3"/>
+					<xs:enumeration value="MD5"/>
+					<xs:enumeration value="SHA1"/>
+					<xs:enumeration value="OTHER"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+		<xs:attribute name="HMAC" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional type of HMAC; text or hex value.</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:token">
+					<xs:enumeration value="text"/>
+					<xs:enumeration value="hex"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+		<xs:attribute name="HMACkey" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional HMAC key value used with computing hash value for checksum.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="MimeType" type="xs:token" use="optional">
+			<xs:annotation>
+				<xs:documentation>Optional designation of the mimetype of the content referenced by the checksum.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:attributeGroup>
+	
+	<xs:attributeGroup name="PersonalCandidateGroup">
+		<xs:attribute name="ShortCode" type="ShortCodeType" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identifies the election when voting using SMS or other voting mechanisms where a short identifier is required.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ExpectedConfirmationReference" type="ConfirmationReferenceType"
+			use="optional">
+			<xs:annotation>
+				<xs:documentation>Some e-voting mechanisms provide candidate identifiers that are individual to each voter as part of their security mechanism. These might also tailor the response codes for successful votes. This element indicates the response code that a specified voter should expect for a specified candidate.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:attributeGroup>
+</xs:schema>

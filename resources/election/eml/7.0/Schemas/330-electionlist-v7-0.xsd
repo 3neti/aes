@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Election Markup Language (EML) Specification Version 7.0
+     Committee Specification (CS) 01
+     27 October 2011
+     Copyright (c) OASIS Open 2011. All Rights Reserved.
+     Source: http://docs.oasis-open.org/election/eml/v7.0/cs01/Schemas/
+-->
+<!--
+  EML 330 Schema - Election List
+
+  History: 4.0 Edited by Paul Spencer (Boynings Consulting) 2005/2006
+                - major release revision
+
+           5.0 Edited by David RR Webber 2006-10-10
+                Added additional optional elements for (request from IEEE P1622):
+                - BallotFormIdentifier (repeatable) - for each of the ballots voter is entitled to cast vote in.
+                 - permitted
+                 - received
+                - VoterArtifact (repeatable) - for use for registration signature, photograph and binary images verification
+                 - itemType
+                 - verified
+                 - problem
+                 - notes
+                - VoterIdAuthenticated (repeatable) for use with government ID numbers such as SSN, National Insurance, Drivers license and voter ID
+           5.0 Edited by Paul Spencer 2006-11-10 make VoterIdentificationStructure generic.
+           6.0 Edited by David RR Webber 2008-11-13
+                2009-05-03 rename include location
+		   7.0 Changes, April 2011
+  -->
+<xs:schema xmlns="urn:oasis:names:tc:evs:schema:eml" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	targetNamespace="urn:oasis:names:tc:evs:schema:eml" elementFormDefault="qualified"
+	attributeFormDefault="unqualified" version="7.0" id="eml-330">
+	<xs:annotation>
+		<xs:documentation> 
+      Specification Name: OASIS EML TC - Election Markup Language (EML) 
+      Description: This schema here is a member of a library of the XML schemas used in EML. The XML schemas define the formal structures of the election data that can be processed.
+      Produced by: OASIS Election Technical Committee
+      URL: http://www.oasis-open.org/committees/election
+      Version: 7.0  
+      Status: Committee Draft 
+      Copyright: 2001-11, OASIS, http://www.oasis-open.org
+      Conformance: This is a base implementation schema - actual localization schema for use may be derived from this schema - but may not contradict the structure definitions provided here.
+    </xs:documentation>
+	</xs:annotation>
+	<xs:include schemaLocation="310-330-include-v7-0.xsd"/>
+	<xs:element name="EML">
+		<xs:annotation>
+			<xs:documentation>Election list of participating voters, status and ballots.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="EMLstructure">
+					<xs:sequence>
+						<xs:element ref="ElectionList"/>
+					</xs:sequence>
+					<xs:attribute name="Id" fixed="330" use="required"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+		<!-- xs:unique name="DisplayOrder">
+			<xs:selector xpath=".//*"/>
+			<xs:field xpath="@DisplayOrder"/>
+		</xs:unique -->
+	</xs:element>
+	<xs:element name="ElectionList">
+		<xs:annotation>
+			<xs:documentation>Election list details.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Qualifier" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Details of how this list is applied in voting process.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="VotingChannel" minOccurs="0" maxOccurs="unbounded"/>
+							<xs:element name="VoterGroup" type="xs:token" minOccurs="0"
+								maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>e.g. proxies, blocked</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="Comment" type="xs:token" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>General clarifications and descriptive text line.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="ListStartDate" type="DateType" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Date from which this list is considered to be definitive.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="ListEndDate" type="DateType" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Date at which this list is no longer applicable.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="ListPurpose" type="xs:string" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Defines the functional need for this election list.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element ref="PollingDistrict" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element ref="EventIdentifier" minOccurs="0"/>
+				<xs:element name="EventDate" type="SimpleDateRangeStructure" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Election event associated with this voter list.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="VoterDetails" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>Collection of voters contained in this list.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="RequestedAction" minOccurs="0">
+								<xs:simpleType>
+									<xs:restriction base="xs:NMTOKEN">
+										<xs:enumeration value="add"/>
+										<xs:enumeration value="delete"/>
+										<xs:enumeration value="replace"/>
+									</xs:restriction>
+								</xs:simpleType>
+							</xs:element>
+							<xs:element ref="VoterRegistration">
+								<xs:annotation>
+									<xs:documentation>Consolidated list of registered voters for this election group.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="Election" minOccurs="0" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>Details of the applicable election(s) associated with this voter list.</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element ref="ElectionIdentifier" minOccurs="0"/>
+										<xs:element ref="ContestIdentifier" minOccurs="0"/>
+										<xs:element ref="PollingDistrict" minOccurs="0"/>
+										<xs:element ref="PollingPlace" minOccurs="0"
+											maxOccurs="unbounded"/>
+										<xs:element ref="Blocked" minOccurs="0"
+											maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>If the election belongs to a block of ballots or is a single ballot.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="VoterArtifact" type="BinaryItemStructure"
+								minOccurs="0" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>Identifying information for the voter.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="VoterIdAuthenticated"
+								type="VoterIdentificationStructure" minOccurs="0"
+								maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>Denotes if the voter was authenticated and how during the balloting process.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Blocked">
+		<xs:complexType>
+			<xs:simpleContent>
+				<xs:extension base="YesNoType">
+					<xs:attribute name="Reason" type="xs:token" use="optional">
+						<xs:annotation>
+							<xs:documentation>Reason for blocked processing</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Channel" type="VotingChannelType" use="optional">
+						<xs:annotation>
+							<xs:documentation>Voting channel for election.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:extension>
+			</xs:simpleContent>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

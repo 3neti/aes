@@ -1,0 +1,563 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xnl="urn:oasis:names:tc:ciq:xnl:4"
+  targetNamespace="urn:oasis:names:tc:ciq:xnl:4" version="4.0 draft" elementFormDefault="qualified">
+  <xsd:annotation>
+    <xsd:documentation>
+                    OASIS: OASIS Committee Specification (CS) schema
+                    OASIS: Each namespace has its own import domain subset schema
+                    OASIS: External Standard(s) schema are placed in the external folder
+
+                    Description: CIQ v4 lightweight implementation of name types
+                    Owner: OASIS CIQ TC
+                    Date: 2011-02-06T18:26:30
+                    Version: 4.0 draft
+                    XSD generator: v1.45
+                    NS Mode: true
+                    XSDOutput Mode: OASIS Draft
+
+                           OASIS: Copyright (C) OASIS Open 2001-2011. All Rights Reserved.
+                           OASIS: Information on OASIS's  procedures with respect to rights in OASIS
+                           OASIS: specifications can be found at the OASIS website.
+                           OASIS: The terms and conditions of use may also be found at the OASIS website.
+                           OASIS:  For complete legal license and use text see the OASIS website - http://www.oasis-open.org
+    </xsd:documentation>
+    <xsd:appinfo source="CAM">CIQNameTypes</xsd:appinfo>
+  </xsd:annotation>
+  <xsd:element name="PartyNameComponents" type="xnl:PartyNameType">
+    <xsd:annotation>
+      <xsd:documentation>Components relating to name details of a party.</xsd:documentation>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:complexType name="PartyNameType" id="ciqd2e50">
+    <xsd:annotation>
+      <xsd:documentation>Name details for a formal party or entity.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="NameLine" minOccurs="0" maxOccurs="unbounded" id="ciqd2e106">
+        <xsd:annotation>
+          <xsd:documentation>Define name as a free format text as a single text string. This name format is not broken down into individual elements (e.g. unstructured, unparsed) or is beyond the provided types. The name represented may be formatted in the right order or may not be as it is not parsed/broken into atomic fields. Use this when the type of the entity (person or organisation) is unknown.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="PersonName" minOccurs="0" maxOccurs="unbounded" id="ciqd2e135">
+        <xsd:annotation>
+          <xsd:documentation>Container for person name details. Same person with many types (e.g. alias, pet name, nick name)  of names can be used by this container.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="NameElement" minOccurs="0" maxOccurs="unbounded" id="ciqd2e193">
+              <xsd:annotation>
+                <xsd:documentation>Name or part of a name.</xsd:documentation>
+              </xsd:annotation>
+              <xsd:complexType>
+                <xsd:simpleContent>
+                  <xsd:extension base="xsd:token">
+                    <xsd:attribute name="Type" id="ciqd2e149" use="optional">
+                      <xsd:annotation>
+                        <xsd:documentation>Enumerated list of type of name.  example: Alias, Nick Name, former name, known as, etc</xsd:documentation>
+                      </xsd:annotation>
+                      <xsd:simpleType>
+                        <xsd:restriction base="xsd:token">
+                          <xsd:enumeration value="Alias"/>
+                          <xsd:enumeration value="LegalName"/>
+                          <xsd:enumeration value="KnownAs"/>
+                          <xsd:enumeration value="MaidenName"/>
+                          <xsd:enumeration value="FormerName"/>
+                          <xsd:enumeration value="CommonUse"/>
+                          <xsd:enumeration value="NameAtBirth"/>
+                          <xsd:enumeration value="PreferredName"/>
+                          <xsd:enumeration value="OfficialName"/>
+                          <xsd:enumeration value="UnofficialName"/>
+                          <xsd:enumeration value="NickName"/>
+                          <xsd:enumeration value="PetName"/>
+                        </xsd:restriction>
+                      </xsd:simpleType>
+                    </xsd:attribute>
+                  </xsd:extension>
+                </xsd:simpleContent>
+              </xsd:complexType>
+            </xsd:element>
+          </xsd:sequence>
+          <xsd:attribute name="id" type="xsd:token" id="ciqd2e165" use="optional">
+            <xsd:annotation>
+              <xsd:documentation>Globally unique identifier</xsd:documentation>
+            </xsd:annotation>
+          </xsd:attribute>
+          <xsd:attribute name="LanguageCode" type="xsd:language" id="ciqd2e179" use="optional">
+            <xsd:annotation>
+              <xsd:documentation>Optional type of written language code designature for the content - e.g. us-EN or ISO language code values and so on.</xsd:documentation>
+            </xsd:annotation>
+          </xsd:attribute>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="OrganisationName" minOccurs="0" maxOccurs="unbounded" id="ciqd2e225">
+        <xsd:annotation>
+          <xsd:documentation>A container for organisation name details. Same organisation with many types of names can be used by this container.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="NameElement" minOccurs="0" maxOccurs="unbounded" id="ciqd2e283">
+              <xsd:annotation>
+                <xsd:documentation>Name or part of a name; define name as a free format text. Use this when the type of the entity (person or organisation) is unknown, or not broken into individual elements or is beyond the provided types.</xsd:documentation>
+              </xsd:annotation>
+              <xsd:complexType>
+                <xsd:simpleContent>
+                  <xsd:extension base="xsd:token">
+                    <xsd:attribute name="Type" type="xsd:token" id="ciqd2e149a" use="optional">
+                      <xsd:annotation>
+                        <xsd:documentation>Type for the organization.</xsd:documentation>
+                      </xsd:annotation>
+                    </xsd:attribute>
+                  </xsd:extension>
+                </xsd:simpleContent>
+              </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="SubDivisionName" minOccurs="0" maxOccurs="unbounded" id="ciqd2e315">
+              <xsd:annotation>
+                <xsd:documentation>Name of a subdivision of an organisation (e.g. department)</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+          </xsd:sequence>
+          <xsd:attribute name="Type" id="ciqd2e239" use="optional">
+            <xsd:annotation>
+              <xsd:documentation>Enumerated list of type of Organization.  Example: Corporation, small business, former name, known as, etc</xsd:documentation>
+            </xsd:annotation>
+            <xsd:simpleType>
+              <xsd:restriction base="xsd:token">
+                <xsd:enumeration value="LegalName"/>
+                <xsd:enumeration value="FormerName"/>
+                <xsd:enumeration value="CommonUse"/>
+                <xsd:enumeration value="PublishingName"/>
+                <xsd:enumeration value="OfficialName"/>
+                <xsd:enumeration value="UnofficialName"/>
+                <xsd:enumeration value="Undefined"/>
+              </xsd:restriction>
+            </xsd:simpleType>
+          </xsd:attribute>
+          <xsd:attribute name="id" type="xsd:token" id="ciqd2e255" use="optional">
+            <xsd:annotation>
+              <xsd:documentation>Globally unique identifier</xsd:documentation>
+            </xsd:annotation>
+          </xsd:attribute>
+          <xsd:attribute name="LanguageCode" type="xsd:language" id="ciqd2e269" use="optional">
+            <xsd:annotation>
+              <xsd:documentation>Optional type of written language code designature for the content - e.g. us-EN or ISO language code values and so on.</xsd:documentation>
+            </xsd:annotation>
+          </xsd:attribute>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:sequence>
+    <xsd:attribute name="id" type="xsd:token" id="ciqd2e63" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>Globally unique identifier</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="JointNameConnector" type="xsd:token" id="ciqd2e77" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>The connector used to join more than one person name. Example: Mr Hunt AND Mrs Clark, where AND is the JointNameConnector. The flow is from the preceding to the following. If there is more than 2 names then all names are connected using this connector in the natural order.</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="LanguageCode" type="xsd:language" id="ciqd2e91" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>Optional type of written language code designature for the content - e.g. us-EN or ISO language code values and so on.</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
+
+  <xsd:complexType name="PersonNameType" id="ciqd2e348">
+    <xsd:annotation>
+      <xsd:documentation>Contains the details of a person name.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="NameElement" type="xsd:token" minOccurs="0" maxOccurs="unbounded"
+        id="ciqd2e406">
+        <xsd:annotation>
+          <xsd:documentation>Name or part of a name.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="PersonFullName" minOccurs="0" maxOccurs="1"
+        type="xnl:PersonFullNameDefinition" id="ciqd2e437">
+        <xsd:annotation>
+          <xsd:documentation>Person name in unformatted single string line.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="PersonPreviousName" minOccurs="0" maxOccurs="unbounded"
+        type="xnl:PersonPreviousNameDefinition" id="ciqd2e453">
+        <xsd:annotation>
+          <xsd:documentation>Previous name used by person; could be prior name before marriage, adoption or a legal name change.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="PersonNameDetail" minOccurs="0" maxOccurs="1" id="ciqd2e471">
+        <xsd:annotation>
+          <xsd:documentation>Structured name of a person with components for each aspect of the name.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="NamePrefixText" minOccurs="0" maxOccurs="1"
+              type="xnl:NamePrefixTextDefinition" id="ciqd2e483">
+              <xsd:annotation>
+                <xsd:documentation>Text that appears before someones name, such as Mr, Mrs, Right Honourable, Judge, etc
+NamePrefixTextDefinition</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="GivenName" minOccurs="0" maxOccurs="1" type="xnl:GivenNameDefinition"
+              id="ciqd2e499">
+              <xsd:annotation>
+                <xsd:documentation>Persons original name that they were called by their parents or guardians
+GivenNameDefinition</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="MiddleName" minOccurs="0" maxOccurs="unbounded"
+              type="xnl:MiddleNameDefinition" id="ciqd2e515">
+              <xsd:annotation>
+                <xsd:documentation>MiddleNameDefinition
+Middle name, initials or names used by the person.</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="FamilyName" minOccurs="0" maxOccurs="1"
+              type="xnl:FamilyNameDefinition" id="ciqd2e533">
+              <xsd:annotation>
+                <xsd:documentation>The family name associated with this person
+FamilyNameDefinition</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="NameSuffixText" minOccurs="0" maxOccurs="1"
+              type="xnl:NameSuffixTextDefinition" id="ciqd2e550">
+              <xsd:annotation>
+                <xsd:documentation>Text typically appended after persons name such as Junior, JR, III, a title PhD, or other designation
+NameSuffixTextDefinition</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:sequence>
+    <xsd:attribute name="Type" id="ciqd2e361" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>Optional type of the name - e.g. official, previous, voter, etc.</xsd:documentation>
+      </xsd:annotation>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:token">
+          <xsd:enumeration value="Alias"/>
+          <xsd:enumeration value="LegalName"/>
+          <xsd:enumeration value="KnownAs"/>
+          <xsd:enumeration value="MaidenName"/>
+          <xsd:enumeration value="FormerName"/>
+          <xsd:enumeration value="CommonUse"/>
+          <xsd:enumeration value="NameAtBirth"/>
+          <xsd:enumeration value="PreferredName"/>
+          <xsd:enumeration value="OfficialName"/>
+          <xsd:enumeration value="UnofficialName"/>
+          <xsd:enumeration value="NickName"/>
+          <xsd:enumeration value="PetName"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:attribute>
+    <xsd:attribute name="id" type="xsd:token" id="ciqd2e377" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>Globally unique identifier</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="LanguageCode" type="xsd:language" id="ciqd2e391" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>Optional type of written language code designature for the content - e.g. us-EN or ISO language code values and so on.</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
+
+  <xsd:complexType name="OrganisationNameType" id="ciqd2e568">
+    <xsd:annotation>
+      <xsd:documentation>Provides the organizations name details.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="NameElement" minOccurs="0" maxOccurs="unbounded" id="ciqd2e626">
+        <xsd:annotation>
+          <xsd:documentation>Name or part of a name.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="SubDivisionName" minOccurs="0" maxOccurs="unbounded" id="ciqd2e657">
+        <xsd:annotation>
+          <xsd:documentation>Name of a subdivision of an organisation (e.g. department)</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+    <xsd:attribute name="Type" id="ciqd2e581" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>List of type of Organization.  Example: Corporation, small business, former name, known as, etc</xsd:documentation>
+      </xsd:annotation>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:token">
+          <xsd:enumeration value="LegalName"/>
+          <xsd:enumeration value="FormerName"/>
+          <xsd:enumeration value="CommonUse"/>
+          <xsd:enumeration value="PublishingName"/>
+          <xsd:enumeration value="OfficialName"/>
+          <xsd:enumeration value="UnofficialName"/>
+          <xsd:enumeration value="Undefined"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:attribute>
+    <xsd:attribute name="id" type="xsd:token" id="ciqd2e597" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>Globally unique identifier</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="LanguageCode" type="xsd:language" id="ciqd2e611" use="optional">
+      <xsd:annotation>
+        <xsd:documentation>Optional type of written language code designature for the content - e.g. us-EN or ISO language code values and so on.</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
+
+  <xsd:complexType name="LatencyControlType" id="ciqd2e690">
+    <xsd:annotation>
+      <xsd:documentation>Optional mechanism to designate the status and control of an item.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="LatencyItem" minOccurs="1" maxOccurs="unbounded" id="ciqd2e703">
+        <xsd:annotation>
+          <xsd:documentation>Designated rule applying to an XML instance item denoting the status and detail associated with that item.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="XPathLocator" minOccurs="1" maxOccurs="1"
+              type="xnl:XPathLocatorDefinition" id="ciqd2e769">
+              <xsd:annotation>
+                <xsd:documentation>This is the XPath locator reference expression pointing to the structure item that the Latency applies too.</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="LatencyDateTime" minOccurs="0" maxOccurs="1"
+              type="xnl:LatencyDateTimeDefinition" id="ciqd2e783">
+              <xsd:annotation>
+                <xsd:documentation>LatencyDateTime will be not present for latest LatencyItem - and then for prior items, those will be updated with the datetime they were deprecated.</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+          </xsd:sequence>
+          <xsd:attribute name="id" type="xsd:token" id="ciqd2e716" use="optional">
+            <xsd:annotation>
+              <xsd:documentation>Optional field to locate the precise instance item this rule applies to.</xsd:documentation>
+            </xsd:annotation>
+          </xsd:attribute>
+          <xsd:attribute name="usage" type="xsd:token" id="ciqd2e729" use="optional">
+            <xsd:annotation>
+              <xsd:documentation>Type of use of this data. e.g. data exchange, contact, update, create</xsd:documentation>
+            </xsd:annotation>
+          </xsd:attribute>
+          <xsd:attribute name="status" type="xsd:token" id="ciqd2e742" use="optional">
+            <xsd:annotation>
+              <xsd:documentation>Status of the entity. e.g. Old, Current, Inactive, Active, etc</xsd:documentation>
+            </xsd:annotation>
+          </xsd:attribute>
+          <xsd:attribute name="NameKeyRef" type="xsd:token" id="ciqd2e756" use="optional">
+            <xsd:annotation>
+              <xsd:documentation>A foreign key to reference attribute Key of Party or Entity Name.</xsd:documentation>
+            </xsd:annotation>
+          </xsd:attribute>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <!-- More complexTypes -->
+
+  <xsd:complexType name="PersonNameDetailType" id="ciq1415e66">
+    <xsd:annotation>
+      <xsd:documentation>Itemized name details for a person.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="NamePrefixText" type="xnl:NamePrefixText" minOccurs="0" maxOccurs="1"
+        id="ciq1415e72">
+        <xsd:annotation>
+          <xsd:documentation>Person name prefix text; e.g. Mr, Mrs, Dr, Professor.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="GivenName" type="xnl:GivenName" minOccurs="0" maxOccurs="1" id="ciq1415e79">
+        <xsd:annotation>
+          <xsd:documentation>The person's given name they use conversationally to refer to themselves.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="MiddleName" type="xnl:MiddleName" minOccurs="0" maxOccurs="unbounded"
+        id="ciq1415e86">
+        <xsd:annotation>
+          <xsd:documentation>A middle or alternate name for the person.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="FamilyName" type="xnl:FamilyName" minOccurs="0" maxOccurs="1"
+        id="ciq1415e95">
+        <xsd:annotation>
+          <xsd:documentation>The family name of the person that denotes their lineage.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="NameSuffixText" type="xnl:NameSuffixText" minOccurs="0" maxOccurs="1"
+        id="ciq1415e102">
+        <xsd:annotation>
+          <xsd:documentation>Optional suffix that a person uses formal to designate a detail regarding their name such as III, Junior, or a formal title or accreditation.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <xsd:complexType name="NameElement">
+    <!-- Element with 1 attributes.-->
+    <xsd:annotation>
+      <xsd:documentation>The name of an entity or person expressed as a simple text string without any structure embedding.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:token">
+        <xsd:attribute name="ElementType" type="xsd:token" id="ciq1415e9" use="required">
+          <xsd:annotation>
+            <xsd:documentation>Denotes the formal designation type of the name element such as school, council, public works, hospital.</xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="SubDivisionName">
+    <!-- Element with 1 attributes.-->
+    <xsd:annotation>
+      <xsd:documentation>Geographical organizational entity that is a sub-component of a larger area.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:token">
+        <xsd:attribute name="Type" type="xsd:token" id="d1415e25" use="optional">
+          <xsd:annotation>
+            <xsd:documentation>Formal designation of subdivision such as precinct, city, town, county.</xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="PersonName">
+    <xsd:annotation>
+      <xsd:documentation>The container element for PersonName
+        content model.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexContent>
+      <xsd:extension base="xnl:PersonNameType"/>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <!-- End of Parent complexTypes
+
+-->
+  <!-- Local simpleTypes (default namespace)
+
+-->
+  <xsd:simpleType name="NameLineDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for NameLine.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="NameElementDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for NameElement.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="SubDivisionNameDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for SubDivisionName.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="PersonFullNameDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for PersonFullName.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="PersonPreviousNameDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for PersonPreviousName.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="NamePrefixTextDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for NamePrefixText.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="GivenNameDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for GivenName.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="MiddleNameDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for MiddleName.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="FamilyNameDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for FamilyName.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="NameSuffixTextDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for NameSuffixText.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="XPathLocatorDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for XPathLocator.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="LatencyDateTimeDefinition">
+    <xsd:annotation>
+      <xsd:documentation>The type for LatencyDateTime.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:dateTime"/>
+  </xsd:simpleType>
+  <!-- Additional simpleTypes -->
+  <xsd:simpleType name="NamePrefixText">
+    <xsd:annotation>
+      <xsd:documentation>The type for NamePrefixText. </xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="GivenName">
+    <xsd:annotation>
+      <xsd:documentation>The type for GivenName. </xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="MiddleName">
+    <xsd:annotation>
+      <xsd:documentation>The type for MiddleName. </xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="FamilyName">
+    <xsd:annotation>
+      <xsd:documentation>The type for FamilyName. </xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="NameSuffixText">
+    <xsd:annotation>
+      <xsd:documentation>The type for NameSuffixText. </xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="PersonFullName">
+    <xsd:annotation>
+      <xsd:documentation>The type for PersonFullName. </xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+  <xsd:simpleType name="PersonPreviousName">
+    <xsd:annotation>
+      <xsd:documentation>The type for PersonPreviousName. </xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:token"/>
+  </xsd:simpleType>
+
+</xsd:schema>

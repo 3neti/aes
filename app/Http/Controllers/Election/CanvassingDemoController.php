@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers\Election;
 
+use App\Election\Interoperability\Eml\EmlArtifactService;
 use App\Election\PublicSimulation\CanvassingDemoSimulation;
 use App\Election\PublicSimulation\CanvassingScannerIngestion;
+use App\Election\Support\ElectionStorage;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class CanvassingDemoController extends Controller
 {
@@ -24,6 +27,9 @@ final class CanvassingDemoController extends Controller
                 'scannerIngest' => route('election.canvassing-demo.scanner-events.store'),
                 'scannerReset' => route('election.canvassing-demo.scanner-events.reset'),
                 'simulatorTick' => route('election.canvassing-demo.simulator.tick'),
+                'eml520' => route('election.canvassing-demo.eml.show', ['messageType' => '520']),
+                'eml530' => route('election.canvassing-demo.eml.show', ['messageType' => '530']),
+                'validateEml' => route('election.eml.validate'),
             ],
         ]);
     }
@@ -97,5 +103,28 @@ final class CanvassingDemoController extends Controller
         return response()->json(
             $ingestion->simulateNext((string) ($validated['station_id'] ?? 'canvassing-demo-city')),
         );
+    }
+
+    public function emlArtifact(
+        Request $request,
+        CanvassingScannerIngestion $ingestion,
+        EmlArtifactService $eml,
+        ElectionStorage $storage,
+        string $messageType,
+    ): BinaryFileResponse {
+        $stationId = (string) $request->string('station_id', 'canvassing-demo-city');
+        $acceptedReturns = (array) ($ingestion->state($stationId)['accepted_returns'] ?? []);
+        abort_if($acceptedReturns === [], 409, 'Scan at least one complete election return before exporting the canvass.');
+        $artifacts = $eml->canvassArtifacts(
+            $storage->readJson('runtime/active-precinct.json'),
+            $acceptedReturns,
+        );
+        $reference = $artifacts[$messageType] ?? abort(404);
+        $path = $storage->path((string) $reference['path']);
+        abort_unless(is_file($path), 404);
+
+        return response()->download($path, "canvassing-demo-eml-{$messageType}.xml", [
+            'Content-Type' => 'application/xml; charset=UTF-8',
+        ]);
     }
 }

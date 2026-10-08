@@ -279,6 +279,21 @@ final class CanvassingScannerIngestion
         if (is_array($profile) && $profile !== $expectedProfile) {
             throw new RuntimeException('Election return document profile mismatch.');
         }
+
+        if (($decoded['truth_signature_valid'] ?? false) !== true) {
+            throw new RuntimeException('Election return Truth payload signature is invalid.');
+        }
+
+        $eml = $decoded['eml'] ?? null;
+
+        if (
+            ! is_array($eml)
+            || ($eml['profile'] ?? null) !== config('election.eml.profile', 'waes-eml-7-base-1')
+            || ! is_string($eml['artifact_sha256'] ?? null)
+            || strlen((string) $eml['artifact_sha256']) !== 64
+        ) {
+            throw new RuntimeException('Election return EML artifact binding is missing or unsupported.');
+        }
     }
 
     /**

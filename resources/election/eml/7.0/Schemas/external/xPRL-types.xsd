@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns="urn:oasis:names:tc:ciq:xprl:3" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:oasis:names:tc:ciq:xprl:3" elementFormDefault="qualified" attributeFormDefault="qualified">
+	<xs:annotation>
+		<xs:documentation> 
+		Specification Name: OASIS CIQ TC - extensible Party Relationships Language Types (xPRL-types)
+		Description: Defines the W3C schema that provides enumeration lists to support xPRL v3.0
+		(Using XML Schema based standard code list/enumeration mechanism - OPTION 1 AND DEFAULT)
+		Produced by: OASIS Customer Information Quality Technical Committee
+		URL: http://www.oasis-open.org/committees/ciq
+		Version: 3.0  
+		Status: Public Review Draft PRD 01
+		Copyright: 2007-08, OASIS, http://www.oasis-open.org
+		Last Modified: 03 October 2008
+		Last Modified by: Ram Kumar, Chair, OASIS CIQ TC
+		
+		NOTE: This is the schema that users can customise the enumeration lists to meet their
+		exchange requirements. The enumeration values provided are ONLY SAMPLES and 
+		is not complete. It is upto the application to decide what the values should be.  To achieve 
+		interoperability between applications using this specification, it is recommended that an
+		SLA/agreement is in place as to what the enumeration values will be used in this file 
+		</xs:documentation>
+	</xs:annotation>
+	<xs:simpleType name="RelationshipCategoryList">
+		<xs:annotation>
+			<xs:documentation>List of category of relationship between the two Parties</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString">
+			<xs:enumeration value="Business"/>
+			<xs:enumeration value="Formal"/>
+			<xs:enumeration value="Personal"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="RelationshipEndReasonList">
+		<xs:annotation>
+			<xs:documentation>List of reasons for end of relationship between the two Parties</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString"/>
+	</xs:simpleType>
+	<xs:simpleType name="RelationshipIDTypeList">
+		<xs:annotation>
+			<xs:documentation>List of ID types for relationship</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString"/>
+	</xs:simpleType>
+	<xs:simpleType name="RelationshipPriorityList">
+		<xs:annotation>
+			<xs:documentation>List of priorities of the relationships</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString">
+			<xs:enumeration value="Critical"/>
+			<xs:enumeration value="High"/>
+			<xs:enumeration value="Medium"/>
+			<xs:enumeration value="Low"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="RelationshipRelativityList">
+		<xs:annotation>
+			<xs:documentation>List of relativity types in relationship</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString">
+			<xs:enumeration value="Equal"/>
+			<xs:enumeration value="High"/>
+			<xs:enumeration value="Low"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="RelationshipRoleList">
+		<xs:annotation>
+			<xs:documentation>List of roles played by the Party in relationship with other party</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString"/>
+	</xs:simpleType>
+	<xs:simpleType name="RelationshipStartReasonList">
+		<xs:annotation>
+			<xs:documentation>List of reasons for start of a relationship between the two Parties</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString"/>
+	</xs:simpleType>
+	<xs:simpleType name="RelationshipStatusList">
+		<xs:annotation>
+			<xs:documentation>List of Status of the Relationships between the two Parties</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString"/>
+	</xs:simpleType>
+	<xs:simpleType name="RelationshipTypeList">
+		<xs:annotation>
+			<xs:documentation>List of types of relationships between the two Parties</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString"/>
+	</xs:simpleType>
+	<xs:simpleType name="OtherPartyRelationshipRoleList">
+		<xs:annotation>
+			<xs:documentation>List of roles played by the other Party in relationship with the Party in discussion</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString"/>
+	</xs:simpleType>
+</xs:schema>

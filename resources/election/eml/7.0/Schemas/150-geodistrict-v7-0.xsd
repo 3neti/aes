@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Election Markup Language (EML) Specification Version 7.0
+     Committee Specification (CS) 01
+     27 October 2011
+     Copyright (c) OASIS Open 2011. All Rights Reserved.
+     Source: http://docs.oasis-open.org/election/eml/v7.0/cs01/Schemas/
+-->
+<!--
+  EML 150 Schema - Geographical District Mapping
+
+  History: 6.0 Edited by David RR Webber 2009-04-14
+                - first release
+		   7.0 Changes, April 2011
+
+  -->
+<xs:schema targetNamespace="urn:oasis:names:tc:evs:schema:eml" xmlns="urn:oasis:names:tc:evs:schema:eml" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:geo-oasis="urn:oasis:names:tc:emergency:EDXL:HAVE:1.0:geo-oasis" elementFormDefault="qualified" attributeFormDefault="unqualified"
+	version="7.0" id="eml-150">
+ <xs:annotation>
+    <xs:documentation> 
+      Specification Name: OASIS EML TC - Election Markup Language (EML) 
+      Description: This schema here is a member of a library of the XML schemas used in EML. The XML schemas define the formal structures of the election data that can be processed.
+      Produced by: OASIS Election Technical Committee
+      URL: http://www.oasis-open.org/committees/election
+      Version: 7.0  
+      Status: Committee Draft 
+      Copyright: 2001-11, OASIS, http://www.oasis-open.org
+      Conformance: This is a base implementation schema - actual localization schema for use may be derived from this schema - but may not contradict the structure definitions provided here.
+    </xs:documentation>
+  </xs:annotation>
+	<xs:include schemaLocation="150-include-v7-0.xsd"/>
+	<xs:element name="EML">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="EMLstructure">
+					<xs:sequence>
+						<xs:element ref="ElectionDistricts"/>
+					</xs:sequence>
+					<xs:attribute name="Id" fixed="150" use="required"/>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

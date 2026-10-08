@@ -67,6 +67,9 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('actions.printReturns.national', route('election.role-demo.print.election-return.scoped', ['scope' => 'national']))
             ->where('actions.printReturns.local', route('election.role-demo.print.election-return.scoped', ['scope' => 'local']))
             ->where('actions.printReturns.combined', route('election.role-demo.print.election-return.scoped', ['scope' => 'combined']))
+            ->where('actions.eml.count510National', route('election.role-demo.eml.show', ['messageType' => '510', 'scope' => 'national']))
+            ->where('actions.eml.evidencePackage', route('election.role-demo.eml.evidence-package'))
+            ->where('actions.eml.validate', route('election.eml.validate'))
             ->where('bulkBallots.enabled', true)
             ->where('bulkBallots.chunk_size', 5)
         );
@@ -263,6 +266,13 @@ test('role demo runs officer voter print and watcher points of view without clos
     $this->assertStringContainsString('q 216.00 0 0 216.00', $nationalElectionReturnContent);
     $this->assertStringContainsString('TRUTHTALLY Local Election Return QR', $localElectionReturnContent);
     $this->assertStringContainsString('q 216.00 0 0 216.00', $localElectionReturnContent);
+
+    $this->get(route('election.role-demo.eml.show', ['messageType' => '510', 'scope' => 'national']))
+        ->assertDownload('TONDO-01-eml-510.xml');
+    $this->get(route('election.role-demo.eml.show', ['messageType' => '110']))
+        ->assertDownload('TONDO-01-eml-110.xml');
+    $this->get(route('election.role-demo.eml.evidence-package'))
+        ->assertDownload('TONDO-01-eml-evidence-package.zip');
 
     $this->post(route('election.role-demo.print.tally-sheet'))
         ->assertRedirectToRoute('election.role-demo.officer')

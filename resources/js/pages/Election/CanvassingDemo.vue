@@ -11,6 +11,7 @@ import {
 } from 'vue';
 import ScanLedger from '@/components/election/ScanLedger.vue';
 import TallyBoard from '@/components/election/TallyBoard.vue';
+import EmlValidationPanel from '@/components/election/EmlValidationPanel.vue';
 import { parseElectionReturnEnvelopeMetadata } from '@/components/election/truthQr';
 
 type Tally = Record<string, Record<string, number>>;
@@ -174,6 +175,9 @@ const props = defineProps<{
         scannerIngest: string;
         scannerReset: string;
         simulatorTick: string;
+        eml520: string;
+        eml530: string;
+        validateEml: string;
     };
 }>();
 
@@ -1263,6 +1267,48 @@ onBeforeUnmount(() => {
                         </p>
                     </template>
                 </TallyBoard>
+
+                <section class="border border-stone-300 bg-white p-4">
+                    <h2 class="font-black text-stone-950">
+                        Canvass EML exports
+                    </h2>
+                    <p class="mt-1 text-sm text-stone-700">
+                        Generated from the election returns accepted by this scanner
+                        station. These exports do not alter the live canvass.
+                    </p>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <a
+                            v-if="scannedCount > 0"
+                            :href="actions.eml520"
+                            class="min-h-11 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white"
+                        >
+                            Download EML 520 Result
+                        </a>
+                        <span
+                            v-else
+                            class="min-h-11 border border-stone-300 bg-stone-100 px-4 py-3 text-center text-sm font-bold text-stone-500"
+                        >
+                            EML 520 available after first ER
+                        </span>
+                        <a
+                            v-if="scannedCount > 0"
+                            :href="actions.eml530"
+                            class="min-h-11 border-2 border-stone-700 bg-white px-4 py-3 text-center text-sm font-bold text-stone-950"
+                        >
+                            Download EML 530 Statistics
+                        </a>
+                        <span
+                            v-else
+                            class="min-h-11 border border-stone-300 bg-stone-100 px-4 py-3 text-center text-sm font-bold text-stone-500"
+                        >
+                            EML 530 available after first ER
+                        </span>
+                    </div>
+                    <EmlValidationPanel
+                        class="mt-5"
+                        :action="actions.validateEml"
+                    />
+                </section>
             </section>
         </section>
     </main>

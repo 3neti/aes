@@ -6,6 +6,8 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
 use App\Election\Documents\DocumentProfileRegistry;
+use App\Election\Interoperability\Eml\EmlArtifactService;
+use App\Election\Interoperability\Eml\EmlEvidencePackageService;
 use App\Election\Printing\Documents\ElectionReturnPdf;
 use App\Election\Printing\PrintFormArtifactService;
 use App\Election\Support\ElectionStorage;
@@ -25,6 +27,8 @@ final class ElectionReturnService
         private readonly ElectionReturnPayloadEnvelope $envelope,
         private readonly StandardQrCode $qrCode,
         private readonly DocumentProfileRegistry $documents,
+        private readonly EmlArtifactService $eml,
+        private readonly EmlEvidencePackageService $emlEvidence,
     ) {}
 
     /**
@@ -48,6 +52,10 @@ final class ElectionReturnService
             'document_profile' => $this->documents->electionReturnReference(),
         ];
         $return['return_hash'] = $this->json->hash($return);
+        $return['eml'] = [
+            'profile' => (string) config('election.eml.profile', 'waes-eml-7-base-1'),
+            'scopes' => $this->eml->precinctCountArtifacts($configuration, $return),
+        ];
         $return['truth_tally'] = $this->truthTallyArtifacts($return);
 
         $this->storage->writeJson("returns/{$return['precinct_id']}-return.json", $return);
@@ -58,6 +66,7 @@ final class ElectionReturnService
         );
         $this->writeScopedReturnArtifacts($configuration, $return);
         $this->forms->writeElectionReturn($configuration, $return);
+        $return['eml_evidence'] = $this->emlEvidence->writePrecinct($return, (array) ($return['eml']['scopes'] ?? []));
         $this->journal->record('return.generated', [
             'precinct_id' => $return['precinct_id'],
             'return_hash' => $return['return_hash'],

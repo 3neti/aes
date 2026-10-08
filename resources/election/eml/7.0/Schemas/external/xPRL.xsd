@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns="urn:oasis:names:tc:ciq:xprl:3" xmlns:a="urn:oasis:names:tc:ciq:xal:3" xmlns:n="urn:oasis:names:tc:ciq:xnl:3" xmlns:p="urn:oasis:names:tc:ciq:xpil:3" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ct="urn:oasis:names:tc:ciq:ct:3" targetNamespace="urn:oasis:names:tc:ciq:xprl:3" elementFormDefault="qualified" attributeFormDefault="qualified">
+	<xs:annotation>
+		<xs:documentation> 
+		Specification Name: OASIS CIQ TC - extensible Party Relationships Language (xPRL) 
+		Description: Defines the W3C schema for representing party relationship information 
+		(Using XML Schema based standard code list/enumeration mechanism - OPTION 1 AND DEFAULT)
+		Produced by: OASIS Customer Information Quality Technical Committee
+		URL: http://www.oasis-open.org/committees/ciq
+		Version: 3.0  
+		Status: Public Review Draft PRD 01
+		Copyright: 2007-08, OASIS, http://www.oasis-open.org
+		Last Modified: 03 October 2008
+		Last Modified by: Ram Kumar, Chair, OASIS CIQ TC
+		
+		NOTE: Do not modify this schema as it will break specifications compatibility 
+		</xs:documentation>
+	</xs:annotation>
+	<xs:include schemaLocation="xPRL-types.xsd"/>
+	<xs:import namespace="http://www.w3.org/1999/xlink" schemaLocation="xlink-2003-12-31.xsd"/>
+	<xs:import namespace="urn:oasis:names:tc:ciq:ct:3" schemaLocation="CommonTypes.xsd"/>
+	<xs:import namespace="urn:oasis:names:tc:ciq:xpil:3" schemaLocation="xPIL.xsd"/>
+	<xs:complexType name="PartyType">
+		<xs:annotation>
+			<xs:documentation>A Party (could be individual (person or organisation) or a group) that is in relationship with another party and could be individual (person or organisation) or a group)</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="p:PartyType">
+				<xs:sequence>
+					<xs:element name="Relationship" minOccurs="0" maxOccurs="unbounded">
+						<xs:annotation>
+							<xs:documentation>All relationship details between the two parties</xs:documentation>
+						</xs:annotation>
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element name="Party" type="PartyType">
+									<xs:annotation>
+										<xs:documentation>The other party (could be individual (person or organisation) or a group) in relationship with the party in context/discussion. This party in turn can have relationship with another party and under this cicumstances, this party is the party in context/ discussion </xs:documentation>
+									</xs:annotation>
+								</xs:element>
+							</xs:sequence>
+							<xs:attribute name="RelationshipID" type="ct:String">
+								<xs:annotation>
+									<xs:documentation>A unique identifier for the relationship</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipIDType" type="RelationshipIDTypeList">
+								<xs:annotation>
+									<xs:documentation>Type ofidentifier for relationship</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="ID" type="ct:String">
+								<xs:annotation>
+									<xs:documentation>Global unique identifier</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipType" type="RelationshipTypeList">
+								<xs:annotation>
+									<xs:documentation>Type of relationship between the two parties. e.g.Marriage (Husband-wife), IN TRUST FOR, DOING BUSINESS AS, Father-Son, Team Leader-Team Member, Organisation-Employee, Parent-Subsidiary, Corporation, Supplier-Client, Siblings, Employment, etc. Could be formal relationship titles. </xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipCategory" type="RelationshipCategoryList">
+								<xs:annotation>
+									<xs:documentation>Category of relationship between two parties. e.g. Business, Personal, Formal, etc</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipStatus" type="RelationshipStatusList">
+								<xs:annotation>
+									<xs:documentation>Status of relationship. e.g. current, history, potential, suspended</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipStartDateTime" type="xs:dateTime">
+								<xs:annotation>
+									<xs:documentation>Date and Time when relationship was established</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipEndDateTime" type="xs:dateTime">
+								<xs:annotation>
+									<xs:documentation>Date and Time when relationship ended (if it did). Ended could be suspended date also</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipStartReason" type="RelationshipStartReasonList">
+								<xs:annotation>
+									<xs:documentation>Reason for start of a relationship. e.g. merger, fiancee, Friend, etc</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipEndReason" type="RelationshipEndReasonList">
+								<xs:annotation>
+									<xs:documentation>Reason why relationship ended (if it did).
+e.g. Lost contact, did not renew maintenance contract, suspended account, renewal lapsed</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipRelativityWithOtherParty" type="RelationshipRelativityList">
+								<xs:annotation>
+									<xs:documentation>Whether Party 1 is higher or lower or equaly in relativity with Party 2.
+For example, Party 1 manages Party2. Here relativity of Party 1 is "Higher" than Party 2. If Party 1 and Party 2 are company directors, then Party 1 relativity is equalt to Party 2 relativity. </xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipRole" type="RelationshipRoleList">
+								<xs:annotation>
+									<xs:documentation>Role of this party in its relationship with the other party. e.g. Husband, Wife, Customer, Client, Supervisor, Parent, etc</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="OtherPartyRelationshipRole" type="OtherPartyRelationshipRoleList">
+								<xs:annotation>
+									<xs:documentation>Role of the other party in its relationship with this party (the party in context/discussion). e.g. Husband, Wife, Customer, Client, Supervisor, Parent, etc</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attribute name="RelationshipPriority" type="RelationshipPriorityList">
+								<xs:annotation>
+									<xs:documentation>Priority of the relationship between the two parties. e.g. High, Medium, Low, insignificant, significant, etc</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+							<xs:attributeGroup ref="ct:grDataQuality"/>
+							<xs:attributeGroup ref="ct:grLanguageCode"/>
+							<xs:anyAttribute namespace="##other"/>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:element name="Party" type="PartyType"/>
+</xs:schema>

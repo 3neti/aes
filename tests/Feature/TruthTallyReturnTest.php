@@ -1,6 +1,7 @@
 <?php
 
 use App\Election\Counting\CountingService;
+use App\Election\Interoperability\Eml\EmlEvidencePackageService;
 use App\Election\Preparation\ActivateSamplePackage;
 use App\Election\Returns\ElectionReturnPayloadEnvelope;
 use App\Election\Returns\ElectionReturnQrPayload;
@@ -32,12 +33,14 @@ test('election return truth tally payload uses compact candidate codes and decod
         ->and($return['truth_tally']['canonical_payload'])->toStartWith('waes-er-compact-1:WAESER1|')
         ->and($return['truth_tally']['canonical_payload'])->toContain('CAND')
         ->and($return['truth_tally']['canonical_payload'])->not->toContain('pres-ada')
-        ->and($return['truth_tally']['qr_payloads'][0])->toStartWith('truth://v1/waes-election-return/waes-er-compact-1?p=')
-        ->and($return['truth_tally']['scopes']['national']['qr_payloads'][0])->toStartWith('truth://v1/waes-election-return/waes-er-compact-1?p=')
-        ->and($return['truth_tally']['scopes']['local']['qr_payloads'][0])->toStartWith('truth://v1/waes-election-return/waes-er-compact-1?p=')
-        ->and(app(ElectionStorage::class)->path('returns/0421-A-truth-tally-qr.png'))->toBeReadableFile()
-        ->and(app(ElectionStorage::class)->path('returns/0421-A-truth-tally-national-qr.png'))->toBeReadableFile()
-        ->and(app(ElectionStorage::class)->path('returns/0421-A-truth-tally-local-qr.png'))->toBeReadableFile();
+        ->and($return['truth_tally']['qr_payloads'][0])->toStartWith('truth://v1/waes-election-return/')
+        ->and($return['truth_tally']['scopes']['national']['qr_payloads'][0])->toStartWith('truth://v1/waes-election-return/')
+        ->and($return['truth_tally']['scopes']['local']['qr_payloads'][0])->toStartWith('truth://v1/waes-election-return/')
+        ->and($return['eml']['scopes']['combined']['schema_valid'])->toBeTrue()
+        ->and($return['eml']['scopes']['combined']['sha256'])->toHaveLength(64)
+        ->and($return['truth_tally']['qr_artifacts'][0]['artifact_path'])->toBeReadableFile()
+        ->and($return['truth_tally']['scopes']['national']['qr_artifacts'][0]['artifact_path'])->toBeReadableFile()
+        ->and($return['truth_tally']['scopes']['local']['qr_artifacts'][0]['artifact_path'])->toBeReadableFile();
 
     $decoded = app(ElectionReturnQrPayload::class)->decode(
         app(ElectionReturnPayloadEnvelope::class)->reassemble($return['truth_tally']['qr_payloads']),
@@ -52,6 +55,9 @@ test('election return truth tally payload uses compact candidate codes and decod
     expect($decoded['precinct_id'])->toBe('0421-A')
         ->and($decoded['return_scope'])->toBe(ElectionReturnScope::Combined->value)
         ->and($decoded['accepted_ballots'])->toBe(1)
+        ->and($decoded['truth_signature_valid'])->toBeTrue()
+        ->and($decoded['eml']['profile'])->toBe('waes-eml-7-base-1')
+        ->and($decoded['eml']['artifact_sha256'])->toBe($return['eml']['scopes']['combined']['sha256'])
         ->and($decoded['tally']['president']['pres-ada'])->toBe(1)
         ->and($decoded['tally']['mayor']['mayor-lina'])->toBe(1)
         ->and($decodedNational['return_scope'])->toBe(ElectionReturnScope::National->value)
@@ -59,7 +65,9 @@ test('election return truth tally payload uses compact candidate codes and decod
         ->and($decodedNational['tally'])->not->toHaveKey('mayor')
         ->and($decodedLocal['return_scope'])->toBe(ElectionReturnScope::Local->value)
         ->and($decodedLocal['tally'])->toHaveKey('mayor')
-        ->and($decodedLocal['tally'])->not->toHaveKey('president');
+        ->and($decodedLocal['tally'])->not->toHaveKey('president')
+        ->and(app(EmlEvidencePackageService::class)->verifyPrecinctManifest($return['eml_evidence']['manifest_path']))
+        ->valid->toBeTrue();
 });
 
 test('election return truth tally payload can be split and reassembled from qr fragments', function (): void {

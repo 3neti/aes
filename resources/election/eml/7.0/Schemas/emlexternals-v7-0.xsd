@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+     Election Markup Language (EML) Specification Version 7.0
+     Committee Specification (CS) 01
+     27 October 2011
+     Copyright (c) OASIS Open 2011. All Rights Reserved.
+     Source: http://docs.oasis-open.org/election/eml/v7.0/cs01/Schemas/
+-->
+<!--
+  EML Externals Schema - Includes
+
+  History: 4.0 Edited by Paul Spencer (Boynings Consulting) 2005/2006
+                - major release revision
+
+           5.0 Edited by David RR Webber (OVS) 2007-02-07
+           6.0 Edited by David RR Webber (OVS) 2008-11-10
+           added numbering and  segmentType to StreetSegments
+	7.0 Release March, 2011
+	2011-06-10 changes for CIQ v4.0 xAL and xNL
+  -->
+<xs:schema xmlns="urn:oasis:names:tc:evs:schema:eml" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:xal="urn:oasis:names:tc:ciq:xal:4" xmlns:xnl="urn:oasis:names:tc:ciq:xnl:4"
+	targetNamespace="urn:oasis:names:tc:evs:schema:eml" elementFormDefault="qualified"
+	attributeFormDefault="unqualified" version="7.0" id="eml-externals">
+	<xs:annotation>
+		<xs:documentation>This file provides mappings between the various name and address data types and any external data types that are to be used for a specific election scenario. By default, the OASIS Extensible Name and Address Language is used. If you wish to change this, do so by editing this file, but do not change the file name as this will require changes to other EML files.</xs:documentation>
+	</xs:annotation>
+	<xs:annotation>
+		<xs:documentation> 
+      Specification Name: OASIS EML TC - Election Markup Language (EML) 
+      Description: This schema here is a member of a library of the XML schemas used in EML. The XML schemas define the formal structures of the election data that can be processed.
+      Produced by: OASIS Election Technical Committee
+      URL: http://www.oasis-open.org/committees/election
+      Version: 7.0  
+      Status: Committee Draft 
+      Copyright: 2001-09, OASIS, http://www.oasis-open.org
+      Conformance: This is a base implementation schema - actual localization schema for use may be derived from this schema - but may not contradict the structure definitions provided here.
+    </xs:documentation>
+	</xs:annotation>
+
+	<xs:import namespace="urn:oasis:names:tc:ciq:xal:4" schemaLocation="external/CIQ-xAL-v4.xsd"/>
+	<xs:import namespace="urn:oasis:names:tc:ciq:xnl:4" schemaLocation="external/CIQ-xNL-v4.xsd"/>
+
+	<!--addresses -->
+	<xs:complexType name="MailingAddressStructure">
+		<xs:complexContent>
+			<xs:extension base="xal:AddressType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="PhysicalAddressStructure">
+		<xs:complexContent>
+			<xs:extension base="xal:AddressType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="ProxyAddressStructure">
+		<xs:complexContent>
+			<xs:extension base="xal:AddressType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="QualifyingAddressStructure">
+		<xs:complexContent>
+			<xs:extension base="xal:AddressType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="PostalLocationStructure">
+		<xs:complexContent>
+			<xs:extension base="xal:AddressType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="AuthorityAddressStructure">
+		<xs:complexContent>
+			<xs:extension base="xal:AddressType"/>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="ElectoralAddressStructure">
+		<xs:complexContent>
+			<xs:extension base="xal:AddressType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="OfficialAddressStructure">
+		<xs:complexContent>
+			<xs:extension base="xal:AddressType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<!-- names -->
+	<xs:complexType name="PersonNameStructure">
+		<xs:complexContent>
+			<xs:extension base="xnl:PersonNameType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:simpleType name="PersonNameType">
+		<xs:restriction base="xs:token">
+			<xs:maxLength value="70"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<!-- Types -->
+	<xs:complexType name="PersonName">
+		<xs:annotation>
+			<xs:documentation>The container element for PersonName content model.</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="xnl:PersonNameType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="MailingAddressType">
+		<xs:annotation>
+			<xs:documentation>The container element for MailingAddress
+				content model.</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="xal:MailingAddress"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="CandidateFullNameDetails">
+		<xs:annotation>
+			<xs:documentation>The container element for CandidateFullName
+				content model.</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="CandidateFullNameType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="QualifyingAddress">
+		<xs:annotation>
+			<xs:documentation>The container element for QualifyingAddress
+				content model.</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="QualifyingAddressType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="AgentName">
+		<xs:annotation>
+			<xs:documentation>The container element for AgentName
+				content model.</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="AgentNameType"/>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="CandidateFullNameType">
+		<xs:annotation>
+			<xs:documentation>Candidates personal name structured as the separate details and components.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="NameElement" type="xnl:NameElement" minOccurs="0"
+				maxOccurs="unbounded" id="ciq2e4148"/>
+			<xs:element name="PersonFullName" type="xnl:PersonFullName" minOccurs="0" maxOccurs="1"
+				id="ciq2e4164"/>
+			<xs:element name="PersonPreviousName" type="xnl:PersonPreviousName" minOccurs="0"
+				maxOccurs="unbounded" id="ciq2e4171"/>
+			<xs:element name="PersonNameDetail" type="xnl:PersonNameDetailType" minOccurs="0"
+				maxOccurs="1" id="ciq2e4180"/>
+		</xs:sequence>
+		<xs:attribute name="Type" type="xs:token" id="ciq2e4069"/>
+		<xs:attribute name="id" type="xs:token" id="ciq2e4083"/>
+		<xs:attribute name="usage" type="xs:token" id="ciq2e4097"/>
+		<xs:attribute name="status" type="xs:token" id="ciq2e4111"/>
+		<xs:attribute name="NameKeyRef" type="xs:token" id="ciq2e4126"/>
+		<xs:attribute name="LanguageCode" type="xs:language" id="ciq2e4140"/>
+	</xs:complexType>
+
+	<xs:complexType name="AgentNameType">
+		<xs:annotation>
+			<xs:documentation>Person or entity that is acting as an agent on behalf of an entity or person involved in an election.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element id="ciq2e5189" maxOccurs="unbounded" minOccurs="0" name="NameElement"
+				type="xnl:NameElement">
+				<xs:annotation>
+					<xs:documentation>Formal name component of an entity.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element id="ciq2e5205" maxOccurs="1" minOccurs="0" name="PersonFullName"
+				type="xnl:PersonFullName">
+				<xs:annotation>
+					<xs:documentation>Person's complete name as a simple text string without any embedded structure.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element id="ciq2e5212" maxOccurs="unbounded" minOccurs="0" name="PersonPreviousName"
+				type="xnl:PersonPreviousName">
+				<xs:annotation>
+					<xs:documentation>Prior name used by a person.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element id="ciq2e5222" maxOccurs="1" minOccurs="0" name="PersonNameDetail"
+				type="xnl:PersonNameDetailType">
+				<xs:annotation>
+					<xs:documentation>Person name structured as the separate details and components.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute id="ciq2e5110" name="Type" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>Classification of the type of entity and its function such as Library, City Council, Ministry.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="ciq2e5124" name="id" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>A unique identifier value for this item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="ciq2e5138" name="usage" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>Indication of the usage expected e.g. mail, legal, any, restricted.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="ciq2e5153" name="status" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>Designation of the status particularly for latency or approval such as Current, Former, Pending.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="ciq2e5167" name="NameKeyRef" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>Foreign key value used to look up or associate items to this entry.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="ciq2e5181" name="LanguageCode" type="xs:language">
+			<xs:annotation>
+				<xs:documentation>The ISO language code of the content for this entry and its details.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="AuthorityNameType">
+		<xs:annotation>
+			<xs:documentation>Name of an organization or administrative entity that has jurisdiction in an election.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element id="d2e324" maxOccurs="unbounded" minOccurs="0" name="NameElement"
+				type="xnl:NameElement">
+				<xs:annotation>
+					<xs:documentation>Formal name component of an entity.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element id="d2e340" maxOccurs="unbounded" minOccurs="0" name="SubDivisionName"
+				type="xnl:SubDivisionName">
+				<xs:annotation>
+					<xs:documentation>Name by which the voting subdivision is known for legal purposes.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute id="d2e245" name="Type" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>Classification of the type of entity and its function such as Library, City Council, Ministry.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="d2e259" name="id" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>A unique identifier value for this item.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="d2e273" name="usage" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>Indication of the usage expected e.g. mail, legal, any, restricted.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="d2e288" name="status" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>Designation of the status particularly for latency or approval such as Current, Former, Pending.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="d2e302" name="NameKeyRef" type="xs:token">
+			<xs:annotation>
+				<xs:documentation>Foreign key value used to look up or associate items to this entry.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute id="d2e316" name="LanguageCode" type="xs:language">
+			<xs:annotation>
+				<xs:documentation>The ISO language code of the content for this entry and its details.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="QualifyingAddressType">
+		<xs:annotation>
+			<xs:documentation>Denotes the address that entitles a person to voting rights for a ballot.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element id="d2e4369" maxOccurs="1" minOccurs="0" name="FreeTextAddress"
+				type="xal:FreeTextAddressType"/>
+			<xs:element id="d2e4399" maxOccurs="1" minOccurs="0" name="PostalAddress"
+				type="xal:PostalAddressType"/>
+			<xs:element id="d2e4538" maxOccurs="1" minOccurs="0" name="GeoRSS" type="xal:GeoRSS"/>
+		</xs:sequence>
+		<xs:attribute id="d2e4312" name="type" type="xs:token"/>
+		<xs:attribute id="d2e4326" name="addressID" type="xs:token"/>
+		<xs:attribute id="d2e4340" name="usage" type="xs:token"/>
+		<xs:attribute id="d2e4354" name="status" type="xs:token"/>
+	</xs:complexType>
+</xs:schema>

@@ -4,6 +4,7 @@ namespace App\Election\Returns;
 
 use App\Election\Core\CanonicalJson;
 use App\Election\Documents\DocumentProfileRegistry;
+use App\Election\Interoperability\Eml\EmlArtifactSigner;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\CandidateCodeMap;
 use RuntimeException;
@@ -20,6 +21,7 @@ final class ElectionReturnQrPayload
         private readonly DocumentProfileRegistry $documents,
         private readonly ElectionReturnContestScopes $scopes,
         private readonly ElectionStorage $storage,
+        private readonly EmlArtifactSigner $signer,
     ) {}
 
     /**
@@ -28,6 +30,8 @@ final class ElectionReturnQrPayload
     public function encode(array $return, ElectionReturnScope $scope = ElectionReturnScope::Combined): string
     {
         $material = $this->compactMaterial($return, $scope);
+
+        $signature = $this->signer->sign($this->json->encode($material));
 
         return self::CompactPrefix.implode('|', [
             'WAESER1',
@@ -44,7 +48,12 @@ final class ElectionReturnQrPayload
             $this->escape((string) ($material['document_profile']['hash'] ?? '')),
             $this->escape((string) ($material['document_profile']['asset_bundle_id'] ?? '')),
             $this->escape((string) ($material['document_profile']['asset_bundle_hash'] ?? '')),
+            $this->escape((string) ($material['eml']['profile'] ?? '')),
+            $this->escape((string) ($material['eml']['artifact_sha256'] ?? '')),
+            $this->escape((string) ($material['eml']['signing_key_id'] ?? '')),
             $this->encodeCodeTotals((array) $material['candidate_code_totals']),
+            $this->escape((string) $signature['public_key']),
+            $this->escape((string) $signature['signature']),
         ]);
     }
 
@@ -65,13 +74,17 @@ final class ElectionReturnQrPayload
             throw new RuntimeException('Election return QR payload has an unsupported format.');
         }
 
-        $parts = explode('|', substr($payload, strlen(self::CompactPrefix)), 15);
+        $parts = explode('|', substr($payload, strlen(self::CompactPrefix)), 20);
 
-        if (! in_array(count($parts), [11, 15], true) || $parts[0] !== 'WAESER1') {
+        if (! in_array(count($parts), [11, 15, 20], true) || $parts[0] !== 'WAESER1') {
             throw new RuntimeException('Compact election return QR payload is malformed.');
         }
 
-        $candidateTotalsIndex = count($parts) === 15 ? 14 : 10;
+        $candidateTotalsIndex = match (count($parts)) {
+            20 => 17,
+            15 => 14,
+            default => 10,
+        };
         $material = [
             'schema_version' => 'election-return-payload-compact-1',
             'election_id' => $this->unescape($parts[1]),
@@ -96,9 +109,36 @@ final class ElectionReturnQrPayload
             ];
         }
 
+        if (count($parts) === 20) {
+            $material['document_profile'] = [
+                'type' => 'election-return',
+                'id' => $this->unescape($parts[10]),
+                'hash' => $this->unescape($parts[11]),
+                'asset_bundle_id' => $this->unescape($parts[12]),
+                'asset_bundle_hash' => $this->unescape($parts[13]),
+            ];
+            $material['eml'] = [
+                'profile' => $this->unescape($parts[14]),
+                'artifact_sha256' => $this->unescape($parts[15]),
+                'signing_key_id' => $this->unescape($parts[16]),
+            ];
+            $material['truth_signature'] = [
+                'algorithm' => 'Ed25519',
+                'key_id' => $material['eml']['signing_key_id'],
+                'public_key' => $this->unescape($parts[18]),
+                'signature' => $this->unescape($parts[19]),
+            ];
+        }
+
+        $truthSignature = (array) ($material['truth_signature'] ?? []);
+        unset($material['truth_signature']);
+        $signatureValid = $truthSignature !== [] && $this->signer->verify($this->json->encode($material), $truthSignature);
+
         return [
             ...$material,
             'payload_hash' => $this->json->hash($material),
+            'truth_signature' => $truthSignature,
+            'truth_signature_valid' => $signatureValid,
             'tally' => $this->candidateCodes->tallyForCodeTotals((array) $material['candidate_code_totals']),
         ];
     }
@@ -109,6 +149,8 @@ final class ElectionReturnQrPayload
      */
     private function compactMaterial(array $return, ElectionReturnScope $scope): array
     {
+        $eml = (array) data_get($return, "eml.scopes.{$scope->value}", []);
+
         return [
             'schema_version' => 'election-return-payload-compact-1',
             'election_id' => $return['election_id'] ?? null,
@@ -121,6 +163,11 @@ final class ElectionReturnQrPayload
             'tally_hash' => $return['tally_hash'] ?? null,
             'return_hash' => $return['return_hash'] ?? null,
             'document_profile' => $return['document_profile'] ?? $this->documents->electionReturnReference(),
+            'eml' => [
+                'profile' => $return['eml']['profile'] ?? config('election.eml.profile', 'waes-eml-7-base-1'),
+                'artifact_sha256' => $eml['sha256'] ?? null,
+                'signing_key_id' => $eml['signing_key_id'] ?? null,
+            ],
             'candidate_code_totals' => $this->candidateCodes->codeTotalsForTally(
                 $this->scopedTally((array) ($return['tally'] ?? []), $scope),
             ),

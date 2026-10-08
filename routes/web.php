@@ -7,6 +7,7 @@ use App\Http\Controllers\Election\CountingController;
 use App\Http\Controllers\Election\DemoRoomController;
 use App\Http\Controllers\Election\DemoRoomPrintStationController;
 use App\Http\Controllers\Election\DiagnosticsController;
+use App\Http\Controllers\Election\EmlArtifactController;
 use App\Http\Controllers\Election\HomeController;
 use App\Http\Controllers\Election\PrintingController;
 use App\Http\Controllers\Election\PrintStationController;
@@ -36,6 +37,12 @@ Route::prefix('election')->name('election.')->group(function (): void {
     Route::post('/canvassing-demo/scanner-events', [CanvassingDemoController::class, 'storeScannerEvent'])->middleware('throttle:120,1')->name('canvassing-demo.scanner-events.store');
     Route::post('/canvassing-demo/scanner-events/reset', [CanvassingDemoController::class, 'resetScannerEvents'])->name('canvassing-demo.scanner-events.reset');
     Route::post('/canvassing-demo/simulator/tick', [CanvassingDemoController::class, 'simulatorTick'])->middleware('throttle:240,1')->name('canvassing-demo.simulator.tick');
+    Route::get('/canvassing-demo/eml/{messageType}', [CanvassingDemoController::class, 'emlArtifact'])
+        ->whereIn('messageType', ['520', '530'])
+        ->name('canvassing-demo.eml.show');
+    Route::post('/eml/validate', [EmlArtifactController::class, 'validateArtifact'])
+        ->middleware('throttle:20,1')
+        ->name('eml.validate');
 
     Route::prefix('role-demo')->name('role-demo.')->group(function (): void {
         Route::get('/', [RoleDemoController::class, 'index'])->name('index');
@@ -73,6 +80,11 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/print/election-returns/{scope}/{profile?}', [RoleDemoController::class, 'submitScopedElectionReturn'])->name('print.election-return.scoped');
         Route::get('/election-returns/{scope}/{profile?}', [RoleDemoController::class, 'scopedElectionReturn'])->name('election-return.scoped');
         Route::get('/election-return/{profile?}', [RoleDemoController::class, 'electionReturn'])->name('election-return');
+        Route::get('/eml/{messageType}/{scope?}', [RoleDemoController::class, 'emlArtifact'])
+            ->whereIn('messageType', ['110', '230', '410', '480', '510', '530'])
+            ->whereIn('scope', ['national', 'local', 'combined'])
+            ->name('eml.show');
+        Route::get('/eml-evidence-package', [RoleDemoController::class, 'emlEvidencePackage'])->name('eml.evidence-package');
     });
 
     Route::prefix('demo-room')->name('demo-room.')->group(function (): void {

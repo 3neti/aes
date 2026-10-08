@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Election Markup Language (EML) Specification Version 7.0
+     Committee Specification (CS) 01
+     27 October 2011
+     Copyright (c) OASIS Open 2011. All Rights Reserved.
+     Source: http://docs.oasis-open.org/election/eml/v7.0/cs01/Schemas/
+-->
+<!--
+  EML 150 Schema - include
+
+  History: 6.0 Edited by David RR Webber 2009-04-14
+                - first release 
+ 
+ Add PollAssociation to PollingDivisionBoundary.
+ Add pollingDivision to IdType enumerations
+ 
+           7.0 Changes, April 2011
+  -->
+<xs:schema targetNamespace="urn:oasis:names:tc:evs:schema:eml" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="urn:oasis:names:tc:evs:schema:eml"
+	xmlns:ct="urn:oasis:names:tc:ciq:ct:3" xmlns:xal="urn:oasis:names:tc:ciq:xal:3" elementFormDefault="qualified" attributeFormDefault="unqualified"
+	version="7.0" id="eml-150">
+ <xs:annotation>
+    <xs:documentation> 
+      Specification Name: OASIS EML TC - Election Markup Language (EML) 
+      Description: This schema here is a member of a library of the XML schemas used in EML. The XML schemas define the formal structures of the election data that can be processed.
+      Produced by: OASIS Election Technical Committee
+      URL: http://www.oasis-open.org/committees/election
+      Version: 7.0  
+      Status: Committee Draft 
+      Copyright: 2001-11, OASIS, http://www.oasis-open.org
+      Conformance: This is a base implementation schema - actual localization schema for use may be derived from this schema - but may not contradict the structure definitions provided here.
+    </xs:documentation>
+  </xs:annotation>
+	<xs:include schemaLocation="emlcore-v7-0.xsd"/>
+	<xs:element name="ElectionDistricts" type="DistrictStructure"/>
+	<xs:complexType name="DistrictStructure">
+		<xs:annotation>
+			<xs:documentation>Collection of information relating to each district, boundaries, streets and polling places.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="ListDate" type="DateType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Date of publication of this information.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="Accepted" minOccurs="0"/>
+			<xs:element name="District" minOccurs="1" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Details of the election district or area within which elections occur and results are posted for.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="DistrictName" type="xs:normalizedString">
+							<xs:annotation>
+								<xs:documentation>Name by which the district is identified to voters.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="Description" type="MessagesStructure" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Detail description in one or more language that describes the district.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element ref="Area" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Geographic, political area or legislature that the district belongs to. </xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="ManagingAuthority" type="ManagingAuthorityStructure" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Authority that is responsible for managing and certifying the information, its accessiblity, its content and its accuracy. </xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element ref="OfficialStatusDetail" minOccurs="1">
+							<xs:annotation>
+								<xs:documentation>Provides users with the official status of this information. </xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="PollingDivision" type="PollingDivisionStructure" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Within a physical district there may be one or more political divisions for the purposes of reporting poll results and organizing voting participation. </xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="PollingDivisionBoundary" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Textual description of the polling boundary that can be read and understood and identifies physical features and landmarks as a means to convey the borders of a specific polling district. </xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="Source" type="ProcessingUnitStructure" minOccurs="0">
+										<xs:annotation>
+											<xs:documentation>Optional information about where the information provide here came from; particularly if inserted from another computer system or data source.</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+									<xs:element name="DivisionName">
+										<xs:annotation>
+											<xs:documentation>Name by which the division is identified to voters.</xs:documentation>
+										</xs:annotation>
+										<xs:complexType>
+											<xs:simpleContent>
+												<xs:extension base="xs:normalizedString">
+													<xs:attribute name="divisionType" type="divisionTypeDefinition"/>
+												</xs:extension>
+											</xs:simpleContent>
+										</xs:complexType>
+									</xs:element>
+									<xs:element name="DivisionDescription" type="MessagesStructure" minOccurs="0">
+										<xs:annotation>
+											<xs:documentation>Optional supplemental text description of the district relating to the district name.</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+									<xs:element name="PollAssociation" type="PollAssociationType" minOccurs="0" maxOccurs="unbounded"/>
+									<xs:element name="BoundaryMarkers" minOccurs="0">
+										<xs:annotation>
+											<xs:documentation>The collection of physical markers that denote and set down the boundary of the district physically relating to landmarks and reference points.</xs:documentation>
+										</xs:annotation>
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element name="BoundaryMarker" minOccurs="1" maxOccurs="unbounded">
+													<xs:annotation>
+														<xs:documentation>Physical point on a boundary path. </xs:documentation>
+													</xs:annotation>
+													<xs:complexType>
+														<xs:sequence>
+															<xs:element name="StreetSegment" minOccurs="0" maxOccurs="unbounded">
+																<xs:annotation>
+																	<xs:documentation>Container for Street Segments of the boundary denoted by a physical street or road feature. </xs:documentation>
+																</xs:annotation>
+																<xs:complexType>
+																	<xs:sequence>
+																		<xs:element name="StreetSegmentMember" minOccurs="0"
+																			maxOccurs="unbounded">
+																			<xs:annotation>
+																				<xs:documentation>Segment of the boundary denoted by a physical street or road feature. </xs:documentation>
+																			</xs:annotation>
+																			<xs:complexType>
+																				<xs:complexContent>
+																					<xs:extension base="PhysicalAddressStructure">
+																						<xs:attribute name="SegmentType" use="optional">
+																							<xs:annotation>
+																								<xs:documentation>Optional attribute for EML 150 that indicates the relationship of the street segment to the polling boundary definition.</xs:documentation>
+																							</xs:annotation>
+																							<xs:simpleType>
+																								<xs:restriction base="xs:token">
+																									<xs:enumeration value="interior"/>
+																									<xs:enumeration value="boundary"/>
+																									<xs:enumeration value="other"/>
+																								</xs:restriction>
+																							</xs:simpleType>
+																						</xs:attribute>
+																						<xs:attribute name="NumberingMode" use="optional" type="NumberingModeType"/>
+																					</xs:extension>
+																				</xs:complexContent>
+																			</xs:complexType>
+																		</xs:element>
+																	</xs:sequence>
+																	<xs:attribute name="NumberingMode" use="optional" type="NumberingModeType"/>
+																</xs:complexType>
+															</xs:element>
+														</xs:sequence>
+														<xs:attribute name="Mode" use="optional">
+															<xs:annotation>
+																<xs:documentation>How the street or road feature relates to the boundary path description. </xs:documentation>
+															</xs:annotation>
+															<xs:simpleType>
+																<xs:restriction base="xs:token">
+																	<xs:enumeration value="intersectionOf"/>
+																	<xs:enumeration value="endsAt"/>
+																	<xs:enumeration value="beginsAt"/>
+																	<xs:enumeration value="includes"/>
+																	<xs:enumeration value="excludes"/>
+																</xs:restriction>
+															</xs:simpleType>
+														</xs:attribute>
+														<xs:attribute name="Id" type="xs:token" use="optional">
+															<xs:annotation>
+																<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+															</xs:annotation>
+														</xs:attribute>
+														<xs:attribute name="SequenceNumber" type="xs:positiveInteger" use="optional">
+															<xs:annotation>
+																<xs:documentation>Optional value to control relative sequence of each boundary marker in a set.</xs:documentation>
+															</xs:annotation>
+														</xs:attribute>
+													</xs:complexType>
+												</xs:element>
+												<xs:element name="PollAssociation" type="PollAssociationType" minOccurs="0" maxOccurs="unbounded"/>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+									<xs:element name="BoundaryGeoPath" minOccurs="0" maxOccurs="unbounded">
+										<xs:annotation>
+											<xs:documentation>The container element for specifying the geo-coded electoral district path. </xs:documentation>
+										</xs:annotation>
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element name="BoundaryMarkerGeo" minOccurs="1" maxOccurs="unbounded">
+													<xs:annotation>
+														<xs:documentation>Records a geolocation coordinates for a point of the boundary path. </xs:documentation>
+													</xs:annotation>
+													<xs:complexType>
+														<xs:complexContent>
+															<xs:extension base="LocationByCoordinatesType">
+																<xs:sequence>
+																	<xs:element name="Source" type="ProcessingUnitStructure" minOccurs="0">
+																		<xs:annotation>
+																		<xs:documentation>Optional information about where the information provide here came from; particularly if inserted from another computer system or data source.</xs:documentation>
+																		</xs:annotation>
+																	</xs:element>
+																</xs:sequence>
+																<xs:attribute name="Mode">
+																	<xs:annotation>
+																		<xs:documentation>How the goelocation point relates to the boundary path trace.</xs:documentation>
+																	</xs:annotation>
+																	<xs:simpleType>
+																		<xs:restriction base="xs:token">
+																		<xs:enumeration value="intersectionOf"/>
+																		<xs:enumeration value="endsAt"/>
+																		<xs:enumeration value="beginsAt"/>
+																		<xs:enumeration value="includes"/>
+																		<xs:enumeration value="excludes"/>
+																		</xs:restriction>
+																	</xs:simpleType>
+																</xs:attribute>
+																<xs:attribute name="Id" type="xs:token" use="optional">
+																	<xs:annotation>
+																		<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+																	</xs:annotation>
+																</xs:attribute>
+															</xs:extension>
+														</xs:complexContent>
+													</xs:complexType>
+												</xs:element>
+												<xs:element name="PollAssociation" type="PollAssociationType" minOccurs="0" maxOccurs="unbounded"/>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+								<xs:attribute name="IdNumber" type="xs:NMTOKEN" use="optional">
+									<xs:annotation>
+										<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:attribute name="languageCode" use="optional">
+									<xs:annotation>
+										<xs:documentation>Identifies the written language that the content is expressed using. Should be an internationally recognized standard code set.</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+							</xs:complexType>
+						</xs:element>
+						<xs:element ref="PollingPlace" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Physical details describing a specific polling place to be used in elections.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="PollingPlaceResources" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Access and facilities details about a specific polling place to be used in elections. Id value points to specific polling place.</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="Facilities">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element name="FacilityDescription" type="xs:string">
+													<xs:annotation>
+														<xs:documentation>Details of the facilities and access at the polling station.</xs:documentation>
+													</xs:annotation>
+												</xs:element>
+												<xs:element name="FacilityService" type="serviceTypeList" minOccurs="0" maxOccurs="unbounded"/>
+												<xs:element name="FacilityAccess" type="accessTypeList" minOccurs="0" maxOccurs="unbounded"/>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+									<xs:element name="PollAssociation" type="PollAssociationType" minOccurs="0" maxOccurs="unbounded"/>
+								</xs:sequence>
+								<xs:attribute name="IdNumber" type="xs:NMTOKEN">
+									<xs:annotation>
+										<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="PollingPlaceGeoLocation" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>The container element for specifying the geo-coded address of a polling place linked by Id to a physical polling place. </xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="LocationByCoordinatesType">
+										<xs:sequence>
+											<xs:element name="Source" type="ProcessingUnitStructure" minOccurs="0"/>
+											<xs:element name="PollAssociation" type="PollAssociationType" minOccurs="0" maxOccurs="unbounded"/>
+										</xs:sequence>
+										<xs:attribute name="IdNumber" type="xs:token" use="optional">
+											<xs:annotation>
+												<xs:documentation>Unique identifier code value for referencing this item.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Source" type="ProcessingUnitStructure" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="serviceTypeList">
+		<xs:annotation>
+			<xs:documentation>Service item type.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="VotingStations"/>
+			<xs:enumeration value="ParkingPlaces"/>
+			<xs:enumeration value="OpeningTime"/>
+			<xs:enumeration value="ClosingTime"/>
+			<xs:enumeration value="AssistedVoting"/>
+			<xs:enumeration value="VotingMethod"/>
+			<xs:enumeration value="LanguageHelp"/>
+			<xs:enumeration value="ValidVoterIdType"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="accessTypeList">
+		<xs:annotation>
+			<xs:documentation>Access item type.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="WheelchairRamp"/>
+			<xs:enumeration value="Stairs"/>
+			<xs:enumeration value="FloorLevel"/>
+			<xs:enumeration value="ValidVoterIdType"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="NumberingModeType">
+		<xs:annotation>
+			<xs:documentation>Optional attribute for EML 150 that denotes the street numbering selection mode relative to the polling boundary; odd number houses, even, or all houses to be included. Can be used at street level or segment member level as needed.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:enumeration value="odd"/>
+			<xs:enumeration value="even"/>
+			<xs:enumeration value="all"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

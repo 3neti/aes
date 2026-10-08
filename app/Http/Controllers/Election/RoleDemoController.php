@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Election;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Counting\TallyPresentation;
+use App\Election\Interoperability\Eml\EmlArtifactService;
+use App\Election\Interoperability\Eml\EmlMessageType;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateConfiguredPrecinct;
@@ -144,6 +146,18 @@ final class RoleDemoController extends Controller
                     'national' => route('election.role-demo.print.election-return.scoped', [ElectionReturnScope::National->value]),
                     'local' => route('election.role-demo.print.election-return.scoped', [ElectionReturnScope::Local->value]),
                     'combined' => route('election.role-demo.print.election-return.scoped', [ElectionReturnScope::Combined->value]),
+                ],
+                'eml' => [
+                    'event110' => route('election.role-demo.eml.show', ['messageType' => '110']),
+                    'candidates230' => route('election.role-demo.eml.show', ['messageType' => '230']),
+                    'ballot410' => route('election.role-demo.eml.show', ['messageType' => '410']),
+                    'count510National' => route('election.role-demo.eml.show', ['messageType' => '510', 'scope' => 'national']),
+                    'count510Local' => route('election.role-demo.eml.show', ['messageType' => '510', 'scope' => 'local']),
+                    'count510Combined' => route('election.role-demo.eml.show', ['messageType' => '510', 'scope' => 'combined']),
+                    'audit480' => route('election.role-demo.eml.show', ['messageType' => '480']),
+                    'statistics530' => route('election.role-demo.eml.show', ['messageType' => '530']),
+                    'evidencePackage' => route('election.role-demo.eml.evidence-package'),
+                    'validate' => route('election.eml.validate'),
                 ],
                 'watcher' => route('election.role-demo.watcher'),
                 'reset' => route('election.role-demo.reset'),
@@ -698,6 +712,80 @@ final class RoleDemoController extends Controller
         $returnScope = ElectionReturnScope::tryFrom($scope) ?? abort(404);
 
         return $this->submitCloseoutArtifact($simulations, $storage, $profiles, $forms, $printer, 'election-return-'.$returnScope->value, $profile);
+    }
+
+    public function emlArtifact(
+        PublicSimulationService $simulations,
+        ElectionStorage $storage,
+        RoleDemoInterimCloseout $forms,
+        EmlArtifactService $eml,
+        ActivityJournal $journal,
+        string $messageType,
+        ?string $scope = null,
+    ): BinaryFileResponse {
+        $precinct = $this->precinct($simulations);
+        $configuration = $storage->readJson('runtime/active-precinct.json');
+        $type = EmlMessageType::tryFrom($messageType) ?? abort(404);
+
+        $reference = match ($type) {
+            EmlMessageType::ElectionEvent,
+            EmlMessageType::CandidateList,
+            EmlMessageType::BallotDefinition => $eml->configurationArtifacts($configuration)[$type->value],
+            EmlMessageType::AuditLog => $eml->auditArtifact($configuration, $journal->entries()),
+            EmlMessageType::PrecinctCount => $this->roleDemoCountEmlReference($forms, $precinct, $scope),
+            EmlMessageType::Statistics => $this->roleDemoStatisticsEmlReference($eml, $forms, $precinct, $configuration),
+            default => abort(404),
+        };
+        $path = $storage->path((string) $reference['path']);
+        abort_unless(is_file($path), 404);
+
+        return response()->download($path, "{$precinct->code}-eml-{$messageType}.xml", [
+            'Content-Type' => 'application/xml; charset=UTF-8',
+        ]);
+    }
+
+    public function emlEvidencePackage(
+        PublicSimulationService $simulations,
+        ElectionStorage $storage,
+        RoleDemoInterimCloseout $forms,
+    ): BinaryFileResponse {
+        $precinct = $this->precinct($simulations);
+        $generated = $forms->generate($precinct, 'role-demo-eml-evidence-package');
+        $relativePath = (string) data_get($generated, 'return.eml_evidence.package_path', '');
+        $path = $storage->path($relativePath);
+        abort_unless($relativePath !== '' && is_file($path), 404);
+
+        return response()->download($path, "{$precinct->code}-eml-evidence-package.zip", [
+            'Content-Type' => 'application/zip',
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function roleDemoCountEmlReference(RoleDemoInterimCloseout $forms, SimulationPrecinct $precinct, ?string $scope): array
+    {
+        $returnScope = ElectionReturnScope::tryFrom($scope ?? ElectionReturnScope::Combined->value) ?? abort(404);
+        $generated = $forms->generate($precinct, 'role-demo-eml-510-download');
+
+        return (array) data_get($generated, "return.eml.scopes.{$returnScope->value}", []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @return array<string, mixed>
+     */
+    private function roleDemoStatisticsEmlReference(EmlArtifactService $eml, RoleDemoInterimCloseout $forms, SimulationPrecinct $precinct, array $configuration): array
+    {
+        $generated = $forms->generate($precinct, 'role-demo-eml-530-download');
+        $return = (array) ($generated['return'] ?? []);
+
+        return $eml->export(EmlMessageType::Statistics, [
+            'configuration' => $configuration,
+            'result' => $return,
+            'scope' => ElectionReturnScope::Combined->value,
+            'mapping_hash' => $return['mapping_hash'] ?? null,
+            'tally_hash' => $return['tally_hash'] ?? null,
+            'return_hash' => $return['return_hash'] ?? null,
+        ], 'returns/eml/'.($return['precinct_id'] ?? 'unknown').'-combined-530.xml')->reference();
     }
 
     private function submitCloseoutArtifact(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, CloseoutArtifactPrinter $printer, string $artifact, ?string $profile = null): RedirectResponse

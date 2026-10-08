@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Election Markup Language (EML) Specification Version 7.0
+     Committee Specification (CS) 01
+     27 October 2011
+     Copyright (c) OASIS Open 2011. All Rights Reserved.
+     Source: http://docs.oasis-open.org/election/eml/v7.0/cs01/Schemas/
+-->
+<!--
+  EML 210 Schema - Nomination
+
+  History: 4.0 Edited by Paul Spencer (Boynings Consulting) 2005/2006
+                - major release revision
+
+           5.0 Edited by David RR Webber 2007-02-06
+           6.0 Edited by David RR Webber 2008-11-13
+           - fixed ID attribute added
+		   7.0 Changes, April 2011
+  -->
+<xs:schema targetNamespace="urn:oasis:names:tc:evs:schema:eml" xmlns="urn:oasis:names:tc:evs:schema:eml" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" elementFormDefault="qualified" attributeFormDefault="unqualified" version="7.0" id="eml-210">
+ <xs:annotation>
+    <xs:documentation> 
+      Specification Name: OASIS EML TC - Election Markup Language (EML) 
+      Description: This schema here is a member of a library of the XML schemas used in EML. The XML schemas define the formal structures of the election data that can be processed.
+      Produced by: OASIS Election Technical Committee
+      URL: http://www.oasis-open.org/committees/election
+      Version: 7.0  
+      Status: Committee Draft 
+      Copyright: 2001-11, OASIS, http://www.oasis-open.org
+      Conformance: This is a base implementation schema - actual localization schema for use may be derived from this schema - but may not contradict the structure definitions provided here.
+    </xs:documentation>
+  </xs:annotation>
+	<xs:include schemaLocation="emlcore-v7-0.xsd"/>
+	<xs:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="external/xmldsig-core-schema.xsd"/>
+	<xs:element name="EML">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="EMLstructure">
+					<xs:sequence>
+						<xs:element ref="Nomination"/>
+					</xs:sequence>
+					<xs:attribute name="Id" fixed="210" use="required"></xs:attribute>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+		<!-- xs:unique name="DisplayOrder">
+			<xs:selector xpath=".//*"/>
+			<xs:field xpath="@DisplayOrder"/>
+		</xs:unique -->
+	</xs:element>
+	<xs:element name="Nomination">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="ElectionIdentifier"/>
+				<xs:element ref="ContestIdentifier"/>
+				<xs:sequence>
+					<xs:choice>
+						<xs:element ref="Candidate"/>
+						<xs:element name="Affiliation">
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="AffiliationStructure">
+										<xs:sequence>
+											<xs:element ref="Candidate" minOccurs="0" maxOccurs="unbounded"/>
+										</xs:sequence>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+					</xs:choice>
+					<xs:choice minOccurs="0">
+						<xs:element ref="CandidateAction" maxOccurs="unbounded"/>
+						<xs:sequence>
+							<xs:element name="Nominate">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="Proposer" minOccurs="0" maxOccurs="unbounded">
+											<xs:complexType>
+												<xs:complexContent>
+													<xs:extension base="ProposerStructure">
+														<xs:sequence>
+															<xs:element name="Sign" minOccurs="0">
+																<xs:complexType>
+																	<xs:sequence>
+																		<xs:element ref="ds:Signature"/>
+																	</xs:sequence>
+																</xs:complexType>
+															</xs:element>
+														</xs:sequence>
+													</xs:extension>
+												</xs:complexContent>
+											</xs:complexType>
+										</xs:element>
+										<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element ref="CandidateAction" minOccurs="0"/>
+						</xs:sequence>
+					</xs:choice>
+				</xs:sequence>
+				<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element ref="AuditInformation" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="CandidateAction">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Action">
+					<xs:simpleType>
+						<xs:restriction base="xs:token">
+							<xs:enumeration value="consent"/>
+							<xs:enumeration value="withdraw"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+				<xs:element name="ScrutinyRequirements" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="ScrutinyRequirement" maxOccurs="unbounded"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="Sign" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="ds:Signature"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

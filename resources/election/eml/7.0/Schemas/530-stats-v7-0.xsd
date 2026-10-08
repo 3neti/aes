@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Election Markup Language (EML) Specification Version 7.0
+     Committee Specification (CS) 01
+     27 October 2011
+     Copyright (c) OASIS Open 2011. All Rights Reserved.
+     Source: http://docs.oasis-open.org/election/eml/v7.0/cs01/Schemas/
+-->
+<!--
+  EML 530 Schema - Statistics Reporting
+
+  History: 5.0 Edited by David RR Webber 2007-06-30
+               - Initial draft release for comment
+               6.0 Edited by David RR Webber 2009-01-24
+               - Update for V6 release
+			   7.0 Changes, April 2011
+  -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="urn:oasis:names:tc:evs:schema:eml" targetNamespace="urn:oasis:names:tc:evs:schema:eml" elementFormDefault="qualified" attributeFormDefault="unqualified" version="7.0" id="eml-510">
+ <xs:annotation>
+    <xs:documentation> 
+      Specification Name: OASIS EML TC - Election Markup Language (EML) 
+      Description: This schema here is a member of a library of the XML schemas used in EML. The XML schemas define the formal structures of the election data that can be processed.
+      Produced by: OASIS Election Technical Committee
+      URL: http://www.oasis-open.org/committees/election
+      Version: 7.0  
+      Status: Committee Draft 
+      Copyright: 2001-11, OASIS, http://www.oasis-open.org
+      Conformance: This is a base implementation schema - actual localization schema for use may be derived from this schema - but may not contradict the structure definitions provided here.
+    </xs:documentation>
+  </xs:annotation>
+	<xs:include schemaLocation="emlcore-v7-0.xsd"/>
+	<xs:element name="EML">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="EMLstructure">
+					<xs:sequence>
+						<xs:element ref="Statistics"/>
+					</xs:sequence>
+					<xs:attribute name="Id" fixed="530" use="required"></xs:attribute>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+		<!-- xs:unique name="DisplayOrder">
+			<xs:selector xpath=".//*"/>
+			<xs:field xpath="@DisplayOrder"/>
+		</xs:unique -->
+	</xs:element>
+	<xs:element name="Statistics">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="EventIdentifier"/>
+				<xs:element name="Election" maxOccurs="unbounded">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element ref="ElectionIdentifier"/>
+							<xs:element name="Contests">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="Contest" maxOccurs="unbounded">
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element ref="ContestIdentifier"/>
+													<xs:element ref="CountQualifier" minOccurs="0"/>
+													<xs:element ref="CountingAlgorithm" minOccurs="0"/>
+													<xs:element ref="NumberOfPositions" minOccurs="0"/>
+													<xs:choice>
+														<xs:sequence>
+															<xs:element name="TotalVotes">
+																<xs:complexType>
+																	<xs:sequence>
+																	<xs:element name="CountMetric" type="CountMetricsStructure" minOccurs="0" maxOccurs="unbounded"/>
+																		<xs:group ref="VoteGroup" minOccurs="0"/>
+																	</xs:sequence>
+																</xs:complexType>
+															</xs:element>
+															<xs:element ref="ReportingUnitVotes" minOccurs="0" maxOccurs="unbounded"/>
+														</xs:sequence>
+														<xs:element ref="ReportingUnitVotes"/>
+													</xs:choice>
+												</xs:sequence>
+												<xs:attribute name="ReportType" type="xs:token"></xs:attribute>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element ref="AuditInformation" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="ReportingUnitVotes">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="ReportingUnitIdentifier"/>
+				  <xs:sequence>
+				  	<xs:element name="CountMetric" type="CountMetricsStructure" minOccurs="0" maxOccurs="unbounded"/>
+				   </xs:sequence>
+				<xs:group ref="VoteGroup" minOccurs="0"/>
+			</xs:sequence>
+			<xs:attribute name="ReportType" type="xs:token" ></xs:attribute>
+		</xs:complexType>
+	</xs:element>
+	<xs:group name="VoteGroup">
+		<xs:sequence>
+			<xs:element name="Selection" minOccurs="0" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:choice>
+							<xs:sequence>
+								<xs:element ref="Candidate"/>
+							</xs:sequence>
+							<xs:sequence>
+								<xs:element ref="ReferendumOptionIdentifier"/>
+							</xs:sequence>
+							<xs:element ref="AffiliationIdentifier" minOccurs="0" maxOccurs="unbounded"/>
+						</xs:choice>
+						<xs:element name="ValidVotes" minOccurs="0" type="xs:nonNegativeInteger"/>
+						<xs:element name="CountMetric" type="CountMetricsStructure" minOccurs="0" maxOccurs="unbounded"/>
+					</xs:sequence>
+					<xs:attribute name="Value" type="VotingValueType" use="optional"/>
+					<xs:attribute name="Category" type="xs:token" use="optional"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Cast" type="xs:nonNegativeInteger" minOccurs="0"/>
+			<xs:element name="Read" type="xs:nonNegativeInteger" minOccurs="0"/>
+			<xs:element name="TotalCounted" type="xs:nonNegativeInteger" minOccurs="0"/>
+			<xs:element name="Provisionals" type="xs:nonNegativeInteger" minOccurs="0"/>
+			<xs:element name="Abstentions" type="xs:nonNegativeInteger" minOccurs="0"/>
+			<xs:element name="RejectedVotes" minOccurs="0" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:nonNegativeInteger">
+							<xs:attribute name="Reason" type="xs:token" use="optional"/>
+							<xs:attribute name="ReasonCode" type="xs:token" use="required"/>
+							<xs:attribute name="VoteType" type="xs:token" use="optional"/>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="UncountedVotes" minOccurs="0" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:simpleContent>
+						<xs:extension base="xs:nonNegativeInteger">
+							<xs:attribute name="Reason" type="xs:token" use="optional"/>
+							<xs:attribute name="ReasonCode" type="xs:token" use="required"/>
+							<xs:attribute name="VoteType" type="xs:token" use="optional"/>
+						</xs:extension>
+					</xs:simpleContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:group>
+	<xs:complexType name="CountMetricsStructure">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+			<xs:attribute name="Id" type="xs:token" use="optional"/>
+			<xs:attribute name="Type" type="xs:string" use="required"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+</xs:schema>

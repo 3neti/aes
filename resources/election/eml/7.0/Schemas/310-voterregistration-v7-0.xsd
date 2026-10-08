@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Election Markup Language (EML) Specification Version 7.0
+     Committee Specification (CS) 01
+     27 October 2011
+     Copyright (c) OASIS Open 2011. All Rights Reserved.
+     Source: http://docs.oasis-open.org/election/eml/v7.0/cs01/Schemas/
+-->
+<!--
+  EML 110 Schema - Election Event
+
+  History: 4.0 Edited by Paul Spencer (Boynings Consulting) 2005/2006
+                - major release revision
+
+           5.0 Edited by David RR Webber 2007-02-06
+           6.0 Edited by David RR Webber 2008-11-13
+                  2009-05-03 rename include location
+		   7.0 Changes March 2011
+  -->
+<xs:schema targetNamespace="urn:oasis:names:tc:evs:schema:eml" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="urn:oasis:names:tc:evs:schema:eml" elementFormDefault="qualified" attributeFormDefault="unqualified" version="7.0" id="eml-310">
+ <xs:annotation>
+    <xs:documentation> 
+      Specification Name: OASIS EML TC - Election Markup Language (EML) 
+      Description: This schema here is a member of a library of the XML schemas used in EML. The XML schemas define the formal structures of the election data that can be processed.
+      Produced by: OASIS Election Technical Committee
+      URL: http://www.oasis-open.org/committees/election
+      Version: 7.0  
+      Status: Committee Draft 
+      Copyright: 2001-11, OASIS, http://www.oasis-open.org
+      Conformance: This is a base implementation schema - actual localization schema for use may be derived from this schema - but may not contradict the structure definitions provided here.
+    </xs:documentation>
+  </xs:annotation>
+	<xs:include schemaLocation="310-330-include-v7-0.xsd"/>
+	<xs:element name="EML">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="EMLstructure">
+					<xs:sequence>
+						<xs:element ref="VoterRegistration"/>
+					</xs:sequence>
+					<xs:attribute name="Id" fixed="310" use="required"></xs:attribute>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+		<!-- xs:unique name="DisplayOrder">
+			<xs:selector xpath=".//*"/>
+			<xs:field xpath="@DisplayOrder"/>
+		</xs:unique -->
+	</xs:element>
+</xs:schema>

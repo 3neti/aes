@@ -16,7 +16,12 @@
 /vendor
 .env
 .env.backup
+.env.pre-demo-backup
 .env.production
+.env.testing
+.cloud/
+output/
+tmp/
 .phpactor.json
 .phpunit.result.cache
 Homestead.json

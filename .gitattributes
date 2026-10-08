@@ -6,5 +6,7 @@
 *.md diff=markdown
 *.php diff=php
 
+resources/election/eml/7.0/Schemas/**/*.xsd -text -eol
+
 CHANGELOG.md export-ignore
 README.md export-ignore

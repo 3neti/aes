@@ -69,6 +69,11 @@ test('canvassing scanner ingests election return qr parts in any order', functio
 
     expect(ScannerScanEvent::query()->count())->toBe(count($payloads));
 
+    $this->get(route('election.canvassing-demo.eml.show', ['messageType' => '520']))
+        ->assertDownload('canvassing-demo-eml-520.xml');
+    $this->get(route('election.canvassing-demo.eml.show', ['messageType' => '530']))
+        ->assertDownload('canvassing-demo-eml-530.xml');
+
     Event::assertDispatched(ScannerScanEventRecorded::class, count($payloads));
 });
 

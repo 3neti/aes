@@ -2,6 +2,7 @@
 import { Form, Head, Link, router, usePoll } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import NumericPinPad from '@/components/election/NumericPinPad.vue';
+import EmlValidationPanel from '@/components/election/EmlValidationPanel.vue';
 
 const props = defineProps<{
     precinct: {
@@ -82,6 +83,18 @@ const props = defineProps<{
             national: string;
             local: string;
             combined: string;
+        };
+        eml: {
+            event110: string;
+            candidates230: string;
+            ballot410: string;
+            count510National: string;
+            count510Local: string;
+            count510Combined: string;
+            audit480: string;
+            statistics530: string;
+            evidencePackage: string;
+            validate: string;
         };
         watcher: string;
         reset: string;
@@ -597,6 +610,51 @@ usePoll(
                             </button>
                         </Form>
                     </div>
+                </div>
+                <div class="mt-5 border-t border-stone-300 pt-5">
+                    <h3 class="text-base font-black text-stone-950">
+                        EML interoperability exports
+                    </h3>
+                    <p class="mt-1 text-sm text-stone-700">
+                        Signed, offline-verifiable OASIS EML 7.0 artifacts derived
+                        from the same election configuration and tally snapshot.
+                    </p>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <a :href="actions.eml.count510National" :class="viewLinkClass()">
+                            Download National EML 510
+                        </a>
+                        <a :href="actions.eml.count510Local" :class="viewLinkClass()">
+                            Download Local EML 510
+                        </a>
+                        <a :href="actions.eml.count510Combined" :class="viewLinkClass()">
+                            Download Combined EML 510
+                        </a>
+                        <a :href="actions.eml.event110" :class="viewLinkClass()">
+                            Download EML 110
+                        </a>
+                        <a :href="actions.eml.candidates230" :class="viewLinkClass()">
+                            Download EML 230
+                        </a>
+                        <a :href="actions.eml.ballot410" :class="viewLinkClass()">
+                            Download EML 410
+                        </a>
+                        <a :href="actions.eml.audit480" :class="viewLinkClass()">
+                            Download EML 480 Audit
+                        </a>
+                        <a :href="actions.eml.statistics530" :class="viewLinkClass()">
+                            Download EML 530 Statistics
+                        </a>
+                        <a
+                            :href="actions.eml.evidencePackage"
+                            class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-700"
+                        >
+                            Download Evidence Package
+                        </a>
+                    </div>
+                    <EmlValidationPanel
+                        class="mt-5"
+                        :action="actions.eml.validate"
+                    />
                 </div>
             </section>
 

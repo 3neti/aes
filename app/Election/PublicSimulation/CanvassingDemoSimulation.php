@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Counting\TallyPresentation;
 use App\Election\Documents\DocumentProfileRegistry;
+use App\Election\Interoperability\Eml\EmlArtifactService;
 use App\Election\Preparation\ActivatePrecinctBallotPackage;
 use App\Election\Preparation\ClcCandidateImporter;
 use App\Election\Preparation\PopWorkbookImporter;
@@ -47,6 +48,7 @@ final class CanvassingDemoSimulation
         private readonly CanonicalJson $json,
         private readonly ActivityJournal $journal,
         private readonly DocumentProfileRegistry $documents,
+        private readonly EmlArtifactService $eml,
     ) {}
 
     /**
@@ -307,6 +309,10 @@ final class CanvassingDemoSimulation
             'document_profile' => $this->documents->electionReturnReference(),
         ];
         $return['return_hash'] = $this->json->hash($return);
+        $return['eml'] = [
+            'profile' => (string) config('election.eml.profile', 'waes-eml-7-base-1'),
+            'scopes' => $this->eml->precinctCountArtifacts($configuration, $return),
+        ];
         $return['truth_tally'] = $this->truthTallyArtifacts($return, $precinctId);
 
         $this->storage->writeJson("returns/canvassing-demo/{$precinctId}-return.json", $return);
@@ -419,6 +425,8 @@ final class CanvassingDemoSimulation
             'payload_hash' => (string) ($decoded['payload_hash'] ?? ''),
             'return_hash' => (string) ($decoded['return_hash'] ?? ''),
             'document_profile' => $decoded['document_profile'] ?? null,
+            'eml' => $decoded['eml'] ?? null,
+            'truth_signature_valid' => $decoded['truth_signature_valid'] ?? false,
             'accepted_ballots' => (int) ($decoded['accepted_ballots'] ?? 0),
             'rejected_ballots' => (int) ($decoded['rejected_ballots'] ?? 0),
             'tally' => $decoded['tally'] ?? [],

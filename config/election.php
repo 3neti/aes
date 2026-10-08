@@ -155,6 +155,16 @@ return [
     'pdf' => [
         'ghostscript_binary' => env('ELECTION_PDF_GHOSTSCRIPT_BINARY', 'gs'),
     ],
+    'eml' => [
+        'enabled' => (bool) env('ELECTION_EML_ENABLED', true),
+        'profile' => 'waes-eml-7-base-1',
+        'schema_root' => resource_path('election/eml/7.0/Schemas'),
+        'maximum_xml_bytes' => (int) env('ELECTION_EML_MAXIMUM_XML_BYTES', 5_000_000),
+        'signing_seed' => (string) env('ELECTION_EML_SIGNING_SEED', ''),
+        'signing_key_id' => (string) env('ELECTION_EML_SIGNING_KEY_ID', ''),
+        'trusted_public_keys' => (string) env('ELECTION_EML_TRUSTED_PUBLIC_KEYS', ''),
+        'status_date' => (string) env('ELECTION_EML_STATUS_DATE', '2022-05-09'),
+    ],
     'print_forms' => [
         'default_profile' => env('ELECTION_PRINT_FORM_PROFILE', 'a4'),
         'available_profiles' => ['a4', 'thermal-80', 'thermal-58'],
