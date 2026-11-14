@@ -33,6 +33,19 @@ on:
 5. EML interoperability at controlled boundaries without making XML canonical
    election truth.
 
+## Package Prerequisite Track
+
+The EMS application is intentionally deferred until its domain packages are
+complete and consumable. The required sequence is:
+
+1. Finish `3neti/project-of-precincts`.
+2. Implement `3neti/election-rules`.
+3. Implement `3neti/candidate-registry`.
+4. Define the package contracts and integration boundaries.
+5. Only then scaffold the EMS application.
+
+The EMS must consume these packages; it must not absorb their domain logic.
+
 ## Canonical Rules
 
 1. Paper artifacts remain voter-visible evidence.
@@ -59,6 +72,8 @@ on:
   `docs/AIR_GAPPED_REALTIME_RUNTIME_COMPASS.md`
 - EML interoperability:
   `docs/EML_INTEROPERABILITY_COMPASS.md`
+- Truth QR offline signing, multipart ER verification, and canvassing preflight:
+  `docs/TRUTH_QR_OFFLINE_SIGNING_AND_CANVASSING.md`
 - Truth QR and patent drafting context:
   `docs/patents/README.md`
 
@@ -104,14 +119,21 @@ submission material.
 
 ## Next Recommended Work
 
-1. Finish the repo-memory refresh by updating the functional specification,
+1. Continue finishing `3neti/project-of-precincts`, including its approved
+   snapshot, lookup, reference-validation, ballot-style, and ACM package
+   boundaries.
+2. Implement the first vertical slice of `3neti/election-rules`.
+3. Implement the first vertical slice of `3neti/candidate-registry`.
+4. Define and test the cross-package contracts and integration boundaries.
+5. Only after those packages are ready, scaffold the EMS application.
+6. Finish the repo-memory refresh by updating the functional specification,
    implementation status, and fresh-agent handoff.
-2. Run focused EML, Truth QR, and canvassing tests.
-3. Stage only intentional source, test, fixture, and documentation files.
-4. Commit the EML interoperability baseline and documentation refresh.
-5. In a later slice, implement official EML evidence-package intake with custody,
+7. Run focused EML, Truth QR, and canvassing tests.
+8. Stage only intentional source, test, fixture, and documentation files.
+9. Commit the EML interoperability baseline and documentation refresh.
+10. In a later slice, implement official EML evidence-package intake with custody,
    authorization, duplicate, and supersession ceremonies.
-6. In a later slice, add any COMELEC-specific EML profile only after an
+11. In a later slice, add any COMELEC-specific EML profile only after an
    authoritative profile, schemas, fixtures, or acceptance criteria are supplied.
 
 ## Update Rule
