@@ -127,8 +127,10 @@ submission material.
 3. `3neti/candidate-registry` first vertical slice is complete: immutable
    candidate status, lookup, deterministic hashing, and rule-set compatibility
    validation.
-4. Define and test the cross-package contracts and integration boundaries.
-5. Only after those packages are ready, scaffold the EMS application.
+4. Cross-package contracts and integration boundaries are complete and tested:
+   POP, election-rules, and candidate-registry hashes are bound in the shared
+   ballot-style compilation context.
+5. Only now may the EMS application be scaffolded.
 6. Finish the repo-memory refresh by updating the functional specification,
    implementation status, and fresh-agent handoff.
 7. Run focused EML, Truth QR, and canvassing tests.
