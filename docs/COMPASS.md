@@ -119,12 +119,14 @@ submission material.
 
 ## Next Recommended Work
 
-1. Continue finishing `3neti/project-of-precincts`, including its approved
-   snapshot, lookup, reference-validation, ballot-style, and ACM package
-   boundaries.
+1. `3neti/project-of-precincts` package-consumption boundary is complete:
+   approved snapshots, lookup, reference validation, ballot-style inputs, and
+   ACM package output are implemented.
 2. `3neti/election-rules` first vertical slice is complete: immutable contest
    rules, deterministic contest ordering, and fail-closed selection validation.
-3. Implement the first vertical slice of `3neti/candidate-registry`.
+3. `3neti/candidate-registry` first vertical slice is complete: immutable
+   candidate status, lookup, deterministic hashing, and rule-set compatibility
+   validation.
 4. Define and test the cross-package contracts and integration boundaries.
 5. Only after those packages are ready, scaffold the EMS application.
 6. Finish the repo-memory refresh by updating the functional specification,
