@@ -1,0 +1,12 @@
+[Match]
+Name=wlp2s0
+
+[Link]
+RequiredForOnline=no
+
+[Network]
+Address=10.42.0.1/24
+DHCP=no
+ConfigureWithoutCarrier=yes
+LinkLocalAddressing=ipv6
+IPv6AcceptRA=no

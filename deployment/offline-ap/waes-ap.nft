@@ -1,0 +1,17 @@
+table inet waes_ap_forward {
+    chain forward {
+        type filter hook forward priority filter; policy accept;
+        iifname "wlp2s0" ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16 } drop
+        iifname "wlp2s0" oifname "enp1s0" ip saddr 10.42.0.0/24 ct state { new, established, related } accept
+        iifname "enp1s0" oifname "wlp2s0" ip daddr 10.42.0.0/24 ct state { established, related } accept
+        iifname "wlp2s0" drop
+        oifname "wlp2s0" drop
+    }
+}
+
+table ip waes_ap_nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        ip saddr 10.42.0.0/24 oifname "enp1s0" masquerade
+    }
+}

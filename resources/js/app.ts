@@ -1,9 +1,13 @@
 import { createInertiaApp } from '@inertiajs/vue3';
 import { configureEcho } from '@laravel/echo-vue';
+import { getBrowserWebSocketOptions } from '@/lib/browser-websocket-options';
 
 configureEcho(
     import.meta.env.VITE_REVERB_APP_KEY
-        ? { broadcaster: 'reverb' }
+        ? {
+              broadcaster: 'reverb',
+              ...getBrowserWebSocketOptions(window.location),
+          }
         : { broadcaster: 'null' },
 );
 
