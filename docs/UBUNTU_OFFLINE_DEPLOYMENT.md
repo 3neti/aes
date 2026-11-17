@@ -1,6 +1,6 @@
 # Ubuntu offline WAES deployment
 
-This runbook describes the Ubuntu 24.04 deployment commissioned in November 2026: Nginx, PHP 8.5-FPM, MySQL, local Reverb, a password-free Wi-Fi AP, an HID barcode scanner, HP Laser 108a ballot printing, and a 58 mm receipt printer.
+This runbook describes the Ubuntu 24.04 deployment commissioned in November 2026: Nginx, PHP 8.5-FPM, MySQL, local Reverb, a standalone Wi-Fi AP with password-free captive onboarding, an HID barcode scanner, HP Laser 108a ballot printing, and a 58 mm receipt printer.
 
 Use the matching templates in `deployment/offline-ap/`. The older `deployment/install-waes-runtime`, `deployment/systemd/`, and `deployment/environment/waes-runtime.env.example` describe a different PostgreSQL/`ace` runtime. Do not mix the two profiles.
 
@@ -8,7 +8,7 @@ Use the matching templates in `deployment/offline-ap/`. The older `deployment/in
 
 - Application: `/var/www/aes`, deployed by `ace`; runtime workers use `www-data`.
 - Ethernet: `enp1s0`, DHCP. Its address may change when moving networks.
-- AP: `wlp2s0`, SSID **WAES**, open/no password, Philippines, 2.4 GHz channel 6.
+- AP: `wlp2s0`, SSID **WAES**, Philippines, 2.4 GHz channel 6. The commissioned device now uses WPA2-Personal/AES; separate open and WPA2 examples are provided.
 - AP address: **10.42.0.1/24**; DHCP pool **10.42.0.50–10.42.0.200**.
 - Local application: **http://10.42.0.1**, redirecting to `/election/role-demo`.
 - Local DNS aliases: `waes.home.arpa` and `waes.consultel.ph`; these overrides apply only through the AP resolver.
@@ -17,7 +17,7 @@ Use the matching templates in `deployment/offline-ap/`. The older `deployment/in
 
 Adapt interface names, PHP socket paths, radio country/channel, and hardware identifiers to the actual device. Check AP support using `iw list`; this profile used the Intel `iwlwifi` adapter. Never assign an arbitrary static Ethernet address to hide competing DHCP servers.
 
-The open SSID does not provide wireless encryption. The welcome page is onboarding, not authentication or an Internet-access gate. Preserve/add application authentication separately when required by the deployment.
+Choose the Wi-Fi security variant explicitly. The optional open example does not provide wireless encryption; the WPA2 example requires a locally derived key. The welcome page remains password-free onboarding, not a second login or an Internet-access gate. Preserve/add application authentication separately when required by the deployment.
 
 ## 1. Back up and establish recovery access
 
@@ -235,12 +235,53 @@ If a scan lacks `truth://`, compare it with the stored QR/PDF before blaming the
 
 Perform this from the preserved Ethernet session with backup/rollback prepared. These commands do not change Ethernet addressing or replace the original Netplan file.
 
+### Prepare a private WPA2 configuration
+
+For a fresh WPA2 setup, create `/root/waes-hostapd.conf` from `hostapd-wpa2.conf.example` and substitute its placeholder privately. The example intentionally cannot start until a real key is supplied. Keep existing device credentials on updates; do not overwrite a secured device with the open example.
+
+This recipe prompts through the controlling terminal, never through command arguments. It stores only a derived PSK in a root-only file:
+
+```bash
+sudo python3 - <<'PY'
+import getpass
+import hashlib
+import hmac
+import os
+from pathlib import Path
+import re
+import tempfile
+
+with open("/dev/tty", "r+") as terminal:
+    if not os.isatty(terminal.fileno()):
+        raise RuntimeError("A secure interactive terminal is required")
+    os.environ["WAES_WIFI_PASSWORD"] = getpass.getpass("New WAES Wi-Fi password: ", stream=terminal)
+    confirmation = getpass.getpass("Confirm WAES Wi-Fi password: ", stream=terminal)
+if not re.fullmatch(r"[\x20-\x7e]{8,63}", os.environ["WAES_WIFI_PASSWORD"]):
+    raise RuntimeError("WPA2 requires 8-63 printable ASCII characters")
+if not hmac.compare_digest(os.environ["WAES_WIFI_PASSWORD"], confirmation):
+    raise RuntimeError("Passwords did not match")
+os.environ["WAES_WIFI_PSK"] = hashlib.pbkdf2_hmac(
+    "sha1", os.environ.pop("WAES_WIFI_PASSWORD").encode("ascii"), b"WAES", 4096, 32
+).hex()
+template = Path("/var/www/aes/deployment/offline-ap/hostapd-wpa2.conf.example").read_text()
+configuration = template.replace("SET_LOCALLY_DO_NOT_COMMIT_REAL_KEYS", os.environ.pop("WAES_WIFI_PSK"))
+with tempfile.NamedTemporaryFile("w", dir="/root", prefix=".waes-hostapd-", delete=False) as output:
+    output.write(configuration)
+    private = Path(output.name)
+private.chmod(0o600)
+os.replace(private, "/root/waes-hostapd.conf")
+PY
+```
+
+Use the private file for WPA2 installation below. Only if an open AP is explicitly wanted, select `hostapd.conf.example` instead. Wi-Fi password changes briefly disconnect clients; forget the previous WAES profile and reconnect with the new password. Never copy the resulting private file or key back into Git.
+
 ```bash
 PROFILE=/var/www/aes/deployment/offline-ap
+HOSTAPD_CONFIG=/root/waes-hostapd.conf
 sudo install -d -o root -g www-data -m 0750 /etc/waes
 sudo install -d /etc/hostapd /etc/systemd/system/hostapd.service.d /etc/systemd/system/dnsmasq.service.d
 sudo install -m 0644 "$PROFILE/05-waes-ap.network" /etc/systemd/network/05-waes-ap.network
-sudo install -m 0644 "$PROFILE/hostapd.conf.example" /etc/hostapd/hostapd.conf
+sudo install -m 0600 "$HOSTAPD_CONFIG" /etc/hostapd/hostapd.conf
 sudo install -m 0644 "$PROFILE/dnsmasq-ap.conf.example" /etc/waes/dnsmasq-ap.conf
 sudo install -m 0644 "$PROFILE/hostapd.service.conf" /etc/systemd/system/hostapd.service.d/waes-ap.conf
 sudo install -m 0644 "$PROFILE/dnsmasq.service.conf" /etc/systemd/system/dnsmasq.service.d/waes-ap.conf
@@ -261,6 +302,8 @@ sudo systemctl enable --now waes-ap-firewall.service hostapd.service dnsmasq.ser
 The scanner/runtime step installs `waes-ap-firewall.service` along with the other profile units. If performing AP-only setup, install that unit explicitly first.
 
 The profile avoids the DNS-port conflict by listening on `10.42.0.1`, not the system resolver's loopback addresses. The dnsmasq service drop-in suppresses resolver registration hooks so host DNS does not loop back into itself. DHCP remains confined to `wlp2s0`; it must never compete with Ethernet's DHCP server.
+
+`local-ttl=0` prevents resolver-side caching of locally supplied portal records. It does not override a phone's own captive-state cache. A client acknowledged within the 12-hour onboarding window normally receives a success probe instead of another pop-up. When forcing a fresh onboarding test, clear only the `waes-hotspot:` cache namespace—not the entire application cache, sessions, votes, or scan history.
 
 Only dedicated `waes_ap_forward` and `waes_ap_nat` tables are managed. Do not flush the host's firewall. IPv4 forwarding/NAT allows AP clients through `enp1s0` when an uplink exists; it blocks forwarded access to private Ethernet networks and does not bridge DHCP domains.
 
@@ -312,7 +355,7 @@ node --experimental-strip-types --test tests/Frontend/browser-websocket-options.
 npm run types:check
 ```
 
-The combined portal, receipt and deployment-profile suite passed 30 tests and 230 assertions; the browser host-selection suite passed 3 tests. Controller static analysis, formatting, route caching, TypeScript checking, DNS syntax, systemd unit verification, and frontend production build also passed.
+The combined portal, receipt and deployment-profile suite passed 31 tests and 239 assertions; the browser host-selection suite passed 3 tests. Controller static analysis, formatting, route caching, TypeScript checking, DNS syntax, systemd unit verification, and frontend production build also passed.
 
 ## 9. Updates, rollback and known limitations
 

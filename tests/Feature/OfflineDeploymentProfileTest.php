@@ -8,6 +8,7 @@ test('offline DNS profile is Wi-Fi-only and matches the configured captive probe
         ->toContain("except-interface=lo\n")
         ->toContain("listen-address=10.42.0.1\n")
         ->toContain("bind-dynamic\n")
+        ->toContain("local-ttl=0\n")
         ->toContain('dhcp-range=10.42.0.50,10.42.0.200,255.255.255.0,12h')
         ->not->toContain('address=/#/')
         ->not->toContain('option:114');
@@ -31,6 +32,19 @@ test('offline radio profile uses the requested open SSID without changing Ethern
         ->toContain("Address=10.42.0.1/24\n")
         ->toContain("DHCP=no\n")
         ->not->toContain('enp1s0');
+});
+
+test('WPA2 profile requires a locally supplied key and excludes WPA1 and TKIP', function (): void {
+    $radio = file_get_contents(base_path('deployment/offline-ap/hostapd-wpa2.conf.example'));
+
+    expect($radio)->toContain("ssid=WAES\n")
+        ->toContain("wpa=2\n")
+        ->toContain("wpa_key_mgmt=WPA-PSK\n")
+        ->toContain("rsn_pairwise=CCMP\n")
+        ->toContain("wpa_psk=SET_LOCALLY_DO_NOT_COMMIT_REAL_KEYS\n")
+        ->not->toMatch('/^wpa_psk=[a-f0-9]{64}$/mi')
+        ->not->toMatch('/^wpa_passphrase=/m')
+        ->not->toContain('TKIP');
 });
 
 test('offline runtime units consistently use the MySQL web-service profile', function (): void {

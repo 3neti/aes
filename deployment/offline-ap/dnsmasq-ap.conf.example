@@ -3,6 +3,7 @@ except-interface=enp1s0
 except-interface=lo
 listen-address=10.42.0.1
 bind-dynamic
+local-ttl=0
 user=dnsmasq
 no-hosts
 domain-needed
