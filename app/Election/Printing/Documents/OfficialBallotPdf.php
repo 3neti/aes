@@ -3,6 +3,7 @@
 namespace App\Election\Printing\Documents;
 
 use App\Election\Truth\TruthQrPrintGeometry;
+use Composer\InstalledVersions;
 
 final class OfficialBallotPdf
 {
@@ -60,7 +61,7 @@ final class OfficialBallotPdf
         $left = 42.0;
         $gutter = 8.0;
         $pairWidth = (511.0 - $gutter) / 2;
-        $contentBottom = 306.0;
+        $contentBottom = 347.0;
 
         foreach ([
             ['type' => 'pair', 'offices' => ['president', 'vice president']],
@@ -384,15 +385,15 @@ final class OfficialBallotPdf
     private function drawCompactResultFooter(ElectionPdfDocument $document, int $page, array $payload): void
     {
         $qrX = 337.0;
-        $qrY = 68.0;
+        $qrY = 103.0;
 
-        $document->line($page, 42, 306, 553, 306, 0.7, 0.2);
-        $document->text($page, 'VOTER VERIFICATION BEFORE DEPOSIT', 42, 284, 7.6, true);
+        $document->line($page, 42, 347, 553, 347, 0.7, 0.2);
+        $document->text($page, 'VOTER VERIFICATION BEFORE DEPOSIT', 42, 325, 7.6, true);
         $document->wrappedText(
             $page,
             'If any selected name is wrong, incomplete, or unreadable, return this paper for spoilage and replacement before deposit.',
             42,
-            269,
+            310,
             250,
             6.1,
             7.1,
@@ -401,17 +402,31 @@ final class OfficialBallotPdf
         $document->rectangle($page, $qrX - 8, $qrY - 8, self::BallotFaceQrSize + 16, self::BallotFaceQrSize + 16, 1);
         $document->rectangle($page, $qrX - 8, $qrY - 8, self::BallotFaceQrSize + 16, self::BallotFaceQrSize + 16, 0.08, false);
         $document->image($page, 'BallotQr', $qrX, $qrY, self::BallotFaceQrSize, self::BallotFaceQrSize);
-        $document->text($page, 'Ballot QR Verification', $qrX + (self::BallotFaceQrSize / 2), 292, 7.2, true, 'center');
+        $document->text($page, 'Ballot QR Verification', $qrX + (self::BallotFaceQrSize / 2), 335, 7.2, true, 'center');
+        $this->drawCompactQrCaption($document, $page, $payload, $qrX);
         $document->wrappedText(
             $page,
             substr((string) ($payload['payload_hash'] ?? 'unknown'), 0, 32),
             42,
-            226,
+            267,
             250,
             6.2,
             7.2,
             monospace: true,
         );
+    }
+
+    /** @param  array<string, mixed>  $payload */
+    private function drawCompactQrCaption(ElectionPdfDocument $document, int $page, array $payload, float $qrX): void
+    {
+        $center = $qrX + (self::BallotFaceQrSize / 2);
+        $qrPath = (string) parse_url((string) ($payload['qr_payload'] ?? ''), PHP_URL_PATH);
+        $wireVersion = basename($qrPath);
+        $packageVersion = InstalledVersions::getPrettyVersion('3neti/truth-qr') ?? 'unknown';
+
+        $document->text($page, 'Precinct '.(string) ($payload['precinct_id'] ?? 'unknown').' | Ballot '.(string) ($payload['paper_ballot_serial'] ?? 'UNNUMBERED'), $center, 88, 7.2, true, 'center');
+        $document->text($page, 'Printed '.(string) ($payload['printed_at'] ?? 'time unavailable'), $center, 76, 7, false, 'center');
+        $document->text($page, 'Truth QR '.$packageVersion.' | '.$wireVersion, $center, 64, 7, false, 'center');
     }
 
     /**

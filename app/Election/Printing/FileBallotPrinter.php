@@ -4,6 +4,7 @@ namespace App\Election\Printing;
 
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\BallotConfigurationLabels;
+use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\PaperBallotLedger;
 
@@ -11,6 +12,7 @@ final class FileBallotPrinter implements BallotPrinter
 {
     public function __construct(
         private readonly ElectionStorage $storage,
+        private readonly ElectionClock $clock,
         private readonly ActivityJournal $journal,
         private readonly PrintFormArtifactService $forms,
         private readonly PrintFormProfileResolver $profiles,
@@ -21,6 +23,7 @@ final class FileBallotPrinter implements BallotPrinter
     public function print(array $payload, ?PrintFormProfile $profile = null): array
     {
         $profile ??= $this->profiles->default();
+        $payload['printed_at'] ??= $this->clock->now()->toIso8601String();
         $ballotId = $payload['ballot_id'];
         $contents = "OFFICIAL SIMULATION BALLOT\n";
         $contents .= "Election: {$payload['election_id']}\n";
@@ -46,6 +49,7 @@ final class FileBallotPrinter implements BallotPrinter
             'ballot_id' => $ballotId,
             'payload_hash' => $payload['payload_hash'],
             'paper_ballot_serial' => $payload['paper_ballot_serial'] ?? null,
+            'printed_at' => $payload['printed_at'],
             'printer' => 'file',
             'status' => 'printed',
             'artifact_path' => $artifactPath,
@@ -57,7 +61,9 @@ final class FileBallotPrinter implements BallotPrinter
         ];
 
         $this->storage->writeJson("print-jobs/{$ballotId}.json", $job);
-        $this->paperBallots->recordPrinted($payload['payload_hash']);
+        if (! ($payload['role_demo_reprint'] ?? false)) {
+            $this->paperBallots->recordPrinted($payload['payload_hash']);
+        }
         $this->journal->record('ballot.printed', $job);
 
         return $job;

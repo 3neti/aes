@@ -15,7 +15,9 @@ use App\Election\Tabulation\TabulationProfileResolver;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
 use App\Election\Voting\SealedBallotBox;
+use Illuminate\Support\Facades\Crypt;
 use Inertia\Testing\AssertableInertia as Assert;
+use LBHurtado\TruthQr\Contracts\RecordService;
 
 beforeEach(function (): void {
     $this->withoutVite();
@@ -396,11 +398,14 @@ test('fallback ballot print code length is configurable between four and six dig
         'council' => ['council-ana'],
     ]);
     $record = app(ElectionStorage::class)->readJson("print-releases/{$release['release_id']}.json");
+    $ballot = json_decode(Crypt::decryptString($record['encrypted_payload']), true, flags: JSON_THROW_ON_ERROR);
 
     expect($release['pin_digits'])->toBe($expected)
         ->and($release['release_code'])->toMatch('/^[0-9]{'.$expected.'}$/')
         ->and($record['pin_digits'])->toBe($expected)
-        ->and($record)->not->toHaveKey('release_code');
+        ->and($record)->not->toHaveKey('release_code')
+        ->and(app(RecordService::class)->decodeRecord('aes-election-v1', [$ballot['qr_payload']])->fields['selections'])
+        ->toEqual($ballot['selections']);
 })->with([
     'below minimum falls back to four' => [3, 4],
     'four digits' => [4, 4],

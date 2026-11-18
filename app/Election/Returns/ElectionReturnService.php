@@ -12,6 +12,8 @@ use App\Election\Printing\Documents\ElectionReturnPdf;
 use App\Election\Printing\PrintFormArtifactService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Voting\StandardQrCode;
+use LBHurtado\TruthQr\Contracts\RecordService;
+use LBHurtado\TruthQr\Core\RecordPayload;
 
 final class ElectionReturnService
 {
@@ -24,11 +26,11 @@ final class ElectionReturnService
         private readonly BallotConfigurationLabels $labels,
         private readonly ElectionReturnLegalEvidenceService $legalEvidence,
         private readonly ElectionReturnQrPayload $qrPayload,
-        private readonly ElectionReturnPayloadEnvelope $envelope,
         private readonly StandardQrCode $qrCode,
         private readonly DocumentProfileRegistry $documents,
         private readonly EmlArtifactService $eml,
         private readonly EmlEvidencePackageService $emlEvidence,
+        private readonly RecordService $truthQr,
     ) {}
 
     /**
@@ -101,7 +103,10 @@ final class ElectionReturnService
     private function truthTallyArtifactsForScope(array $return, ElectionReturnScope $scope): array
     {
         $canonicalPayload = $this->qrPayload->encode($return, $scope);
-        $qrPayloads = $this->envelope->wrap($canonicalPayload);
+        $qrPayloads = $this->truthQr->encodeRecord(new RecordPayload('aes-election-v1', 'election_return', [
+            ...$return,
+            'return_scope' => $scope->value,
+        ]));
         $payloadHash = $this->qrPayload->compactHash($return, $scope);
         $precinctId = (string) ($return['precinct_id'] ?? 'unknown');
         $scopeSuffix = $scope === ElectionReturnScope::Combined ? '' : "-{$scope->value}";

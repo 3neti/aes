@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Election\AttestationController;
+use App\Http\Controllers\Election\BundleWorkbenchController;
 use App\Http\Controllers\Election\CanvassingDemoController;
 use App\Http\Controllers\Election\CertificationController;
 use App\Http\Controllers\Election\CountingController;
@@ -17,6 +18,8 @@ use App\Http\Controllers\Election\PublicSimulationGodModeController;
 use App\Http\Controllers\Election\PublicSimulationRandomManualAuditController;
 use App\Http\Controllers\Election\PublicSimulationVoterController;
 use App\Http\Controllers\Election\PublicSimulationWatcherController;
+use App\Http\Controllers\Election\ResearchLoginController;
+use App\Http\Controllers\Election\ResearchRunController;
 use App\Http\Controllers\Election\ReturnsController;
 use App\Http\Controllers\Election\ReviewRoomController;
 use App\Http\Controllers\Election\RoleDemoController;
@@ -27,9 +30,20 @@ use App\Http\Controllers\Election\VotingController;
 use App\Http\Controllers\Election\WatcherController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => to_route('election.role-demo.index'))->name('home');
+Route::get('/', fn () => to_route('election.role-demo.voter'))->name('home');
 
 Route::prefix('election')->name('election.')->group(function (): void {
+    Route::get('/bundle', [BundleWorkbenchController::class, 'index'])->name('bundle.index');
+    Route::get('/bundle/precincts/{precinct}', [BundleWorkbenchController::class, 'show'])
+        ->whereNumber('precinct')
+        ->name('bundle.precinct.show');
+    Route::get('/bundle/review/login', [ResearchLoginController::class, 'show'])->name('bundle.review.login');
+    Route::post('/bundle/review/login', [ResearchLoginController::class, 'login'])->middleware('throttle:5,1')->name('bundle.review.authenticate');
+    Route::post('/bundle/review/logout', [ResearchLoginController::class, 'logout'])->middleware('auth')->name('bundle.review.logout');
+    Route::post('/bundle/review', [ResearchRunController::class, 'store'])->middleware('auth')->name('bundle.review.store');
+    Route::get('/bundle/review/{run}', [ResearchRunController::class, 'show'])->middleware('auth')->name('bundle.review.show');
+    Route::post('/bundle/review/{run}/decisions', [ResearchRunController::class, 'decide'])->middleware('auth')->name('bundle.review.decide');
+    Route::post('/bundle/review/{run}/close', [ResearchRunController::class, 'close'])->middleware('auth')->name('bundle.review.close');
     Route::get('/canvassing-demo', [CanvassingDemoController::class, 'show'])->name('canvassing-demo.show');
     Route::post('/canvassing-demo', [CanvassingDemoController::class, 'generate'])->middleware('throttle:10,1')->name('canvassing-demo.generate');
     Route::get('/canvassing-demo/public', [CanvassingDemoController::class, 'public'])->name('canvassing-demo.public');
@@ -50,6 +64,9 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::get('/officer', [RoleDemoController::class, 'officer'])->name('officer');
         Route::post('/officer/admit', [RoleDemoController::class, 'admit'])->middleware('throttle:20,1')->name('admit');
         Route::post('/officer/dismiss-control-number', [RoleDemoController::class, 'dismissControlNumber'])->name('dismiss-control-number');
+        Route::post('/officer/ballot-readiness', [RoleDemoController::class, 'ballotReadiness'])->middleware('throttle:20,1')->name('print.readiness');
+        Route::post('/officer/reprint-vvpat', [RoleDemoController::class, 'reprintVvpat'])->middleware('throttle:20,1')->name('print.reprint');
+        Route::post('/officer/confirm-vvpat', [RoleDemoController::class, 'confirmVvpat'])->middleware('throttle:20,1')->name('print.confirm');
         Route::post('/officer/accept-print', [RoleDemoController::class, 'acceptPrint'])->middleware('throttle:20,1')->name('print.accept');
         Route::post('/officer/bulk-ballots', [RoleDemoController::class, 'bulkBallots'])->middleware('throttle:60,1')->name('bulk-ballots');
         Route::get('/officer/last-printed-ballot', [RoleDemoController::class, 'lastPrintedBallot'])->name('print.last-ballot');

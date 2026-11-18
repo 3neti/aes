@@ -5,5 +5,5 @@ test('returns a successful response', function () {
 
     $response = $this->get(route('home'));
 
-    $response->assertRedirect(route('election.role-demo.index'));
+    $response->assertRedirect(route('election.role-demo.voter'));
 });

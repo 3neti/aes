@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, router, usePage } from '@inertiajs/vue3';
+import { Form, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, ref } from 'vue';
 import NumericPinPad from '@/components/election/NumericPinPad.vue';
 import ReviewStationBar from '@/components/election/ReviewStationBar.vue';
@@ -11,6 +11,7 @@ const props = defineProps<{
         precinct_id: string;
     };
     claimAction?: string;
+    officerAction?: string;
     demoControlNumberAction?: string;
     joinQueueAction?: string;
     admissionQueue?: {
@@ -49,9 +50,11 @@ const shouldGenerateDemoControlNumber = computed(() => {
 });
 
 function csrfToken(): string | null {
-    return document
-        .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-        ?.getAttribute('content') ?? null;
+    return (
+        document
+            .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+            ?.getAttribute('content') ?? null
+    );
 }
 
 async function generateDemoControlNumber(): Promise<void> {
@@ -266,6 +269,12 @@ async function useGeneratedControlNumber(): Promise<void> {
                 class="mt-6 border-t border-stone-200 pt-4 text-sm text-stone-600"
             >
                 Precinct {{ precinct.precinct_id }} | {{ precinct.election_id }}
+                <Link
+                    v-if="officerAction"
+                    :href="officerAction"
+                    class="ml-3 text-xs text-stone-500 underline"
+                    >Officer</Link
+                >
             </p>
         </section>
 

@@ -12,6 +12,14 @@ final class BallotSelectionValidator
      */
     public function validate(array $configuration, array $selections): void
     {
+        $contestsById = array_column($configuration['contests'], null, 'id');
+
+        foreach (array_keys($selections) as $contestId) {
+            if (! isset($contestsById[$contestId])) {
+                throw new RuntimeException("Unknown contest [{$contestId}].");
+            }
+        }
+
         foreach ($configuration['contests'] as $contest) {
             $selected = array_values(array_unique($selections[$contest['id']] ?? []));
             $candidateIds = collect($contest['candidates'])->pluck('id')->all();

@@ -1,5 +1,7 @@
 # Alternative Election System Implementation Plan
 
+The current nationwide registry and signed bundle work is tracked in [Nationwide Election Bundle Plan](ELECTION_BUNDLE_PLAN.md). This document records the earlier simulation implementation plan.
+
 ## Executive Summary
 
 Build the first working simulation-mode Alternative Election System as a Laravel 13 and Inertia Vue precinct appliance. The implementation follows the documented waves and keeps every wave demonstrable through a vertical slice: domain logic, file storage, routes/controllers, ceremony UI, scenario runner support, Pest tests, and status documentation.

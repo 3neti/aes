@@ -31,6 +31,10 @@ final class ElectionReturnPdf
         $this->registerTruthTallyQrImages($document, $return, $scope);
         $page = $document->addPage('Return summary');
         $tableTop = 552.0;
+        $interimTimestamp = config('election.role_demo_interim_timestamp');
+        if (is_string($interimTimestamp)) {
+            $document->text($page, 'INTERIM DEMO RETURN - AS OF '.$interimTimestamp, 297.5, 735, 8, true, 'center');
+        }
 
         if ($scope === ElectionReturnScope::Combined) {
             $document->rectangle($page, 42, 688, 511, 36, 0.88);
@@ -660,12 +664,12 @@ final class ElectionReturnPdf
 
     private function machineStatus(): string
     {
-        return mb_strtoupper((string) config('election.election_return_form.machine_status', 'CLOSED'));
+        return config('election.role_demo_interim_timestamp') ? 'OPEN - INTERIM' : mb_strtoupper((string) config('election.election_return_form.machine_status', 'CLOSED'));
     }
 
     private function generatedAt(): string
     {
-        return (string) config('election.election_return_form.generated_at', 'May 9, 2022 at 19:18:50');
+        return (string) (config('election.role_demo_interim_timestamp') ?? config('election.election_return_form.generated_at', 'May 9, 2022 at 19:18:50'));
     }
 
     private function boardMemberName(string $role): string

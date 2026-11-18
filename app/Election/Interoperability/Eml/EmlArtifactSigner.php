@@ -2,9 +2,10 @@
 
 namespace App\Election\Interoperability\Eml;
 
+use LBHurtado\TruthQr\Contracts\SignatureProvider;
 use RuntimeException;
 
-final class EmlArtifactSigner
+final class EmlArtifactSigner implements SignatureProvider
 {
     /** @return array<string, string> */
     public function sign(string $canonicalXml): array

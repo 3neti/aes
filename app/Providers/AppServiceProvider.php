@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
+use App\Election\Bundle\AesEmlProjector;
 use App\Election\Core\ActivityJournal;
-use App\Election\Core\BallotConfigurationLabels;
 use App\Election\Core\CanonicalJson;
 use App\Election\Devices\CameraScannerHealthCheck;
 use App\Election\Devices\CupsPrinterHealthCheck;
@@ -12,6 +12,8 @@ use App\Election\Devices\DeviceHealthCheck;
 use App\Election\Devices\HandheldScannerHealthCheck;
 use App\Election\Devices\SimulatedPrinterHealthCheck;
 use App\Election\Devices\SimulatedScannerHealthCheck;
+use App\Election\Documents\DocumentProfileRegistry;
+use App\Election\Interoperability\Eml\EmlArtifactSigner;
 use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\ControlNumberPrinter;
 use App\Election\Printing\CupsBallotPrinter;
@@ -19,8 +21,6 @@ use App\Election\Printing\CupsControlNumberPrinter;
 use App\Election\Printing\FileBallotPrinter;
 use App\Election\Printing\FileControlNumberReceiptPrinter;
 use App\Election\Printing\NullControlNumberPrinter;
-use App\Election\Printing\PrintFormArtifactService;
-use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\Scanning\BallotScanner;
 use App\Election\Scanning\CameraImageScanner;
 use App\Election\Scanning\HandheldPayloadScanner;
@@ -29,7 +29,8 @@ use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\GhostscriptPdfTextExtractor;
 use App\Election\Support\PdfTextExtractor;
-use App\Election\Voting\PaperBallotLedger;
+use App\Election\Truth\TruthQrElectionContext;
+use App\Election\Voting\CandidateCodeMap;
 use App\Election\Voting\QrCodeDecoder;
 use App\Election\Voting\StandardQrCode;
 use App\Election\Voting\ZbarPngQrCodeDecoder;
@@ -39,6 +40,11 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use LBHurtado\ElectionCeremonies\Contracts\EmlProjector;
+use LBHurtado\TruthQr\Contracts\CandidateCodes;
+use LBHurtado\TruthQr\Contracts\DocumentReferences;
+use LBHurtado\TruthQr\Contracts\ElectionContext;
+use LBHurtado\TruthQr\Contracts\SignatureProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -49,19 +55,17 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ElectionClock::class);
         $this->app->bind(QrCodeDecoder::class, ZbarPngQrCodeDecoder::class);
+        $this->app->bind(CandidateCodes::class, CandidateCodeMap::class);
+        $this->app->bind(DocumentReferences::class, DocumentProfileRegistry::class);
+        $this->app->bind(ElectionContext::class, TruthQrElectionContext::class);
+        $this->app->bind(SignatureProvider::class, EmlArtifactSigner::class);
+        $this->app->bind(EmlProjector::class, AesEmlProjector::class);
         $this->app->bind(PdfTextExtractor::class, GhostscriptPdfTextExtractor::class);
 
         $this->app->bind(BallotPrinter::class, function (Application $app): BallotPrinter {
             if (config('election.devices.printer.driver') === 'cups') {
                 return new CupsBallotPrinter(
-                    new FileBallotPrinter(
-                        $app->make(ElectionStorage::class),
-                        $app->make(ActivityJournal::class),
-                        $app->make(PrintFormArtifactService::class),
-                        $app->make(PrintFormProfileResolver::class),
-                        $app->make(BallotConfigurationLabels::class),
-                        $app->make(PaperBallotLedger::class),
-                    ),
+                    $app->make(FileBallotPrinter::class),
                     $app->make(ElectionStorage::class),
                     $app->make(ActivityJournal::class),
                     (string) config('election.devices.printer.cups.name', ''),

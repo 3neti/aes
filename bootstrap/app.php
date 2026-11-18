@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->redirectGuestsTo('/election/bundle/review/login');
 
         $middleware->alias([
             'review-room-role' => RequireReviewRoomRole::class,

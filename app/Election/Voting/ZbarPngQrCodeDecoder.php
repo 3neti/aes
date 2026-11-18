@@ -2,24 +2,5 @@
 
 namespace App\Election\Voting;
 
-use RuntimeException;
-use Symfony\Component\Process\Process;
-
-final class ZbarPngQrCodeDecoder implements QrCodeDecoder
-{
-    public function decodePngFile(string $path): string
-    {
-        if (! file_exists($path)) {
-            throw new RuntimeException("QR artifact [{$path}] does not exist.");
-        }
-
-        $process = new Process(['zbarimg', '--quiet', '--raw', $path]);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new RuntimeException('Unable to decode QR artifact: '.$process->getErrorOutput());
-        }
-
-        return trim($process->getOutput());
-    }
-}
+/** @deprecated Use LBHurtado\TruthQr\Image\ZbarPngQrCodeDecoder directly. */
+class ZbarPngQrCodeDecoder extends \LBHurtado\TruthQr\Image\ZbarPngQrCodeDecoder implements QrCodeDecoder {}

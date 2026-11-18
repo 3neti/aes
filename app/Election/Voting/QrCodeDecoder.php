@@ -2,7 +2,4 @@
 
 namespace App\Election\Voting;
 
-interface QrCodeDecoder
-{
-    public function decodePngFile(string $path): string;
-}
+interface QrCodeDecoder extends \LBHurtado\TruthQr\Image\QrCodeDecoder {}

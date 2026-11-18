@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import { index as bundleWorkbench } from '@/routes/election/bundle';
 
 defineProps<{
     precinct: {
@@ -37,6 +38,9 @@ defineProps<{
         </div>
 
         <section class="mx-auto max-w-7xl px-5 py-6 sm:px-8">
+            <Link :href="bundleWorkbench.url()" class="mb-4 block border-l-4 border-blue-800 bg-white p-4 text-sm font-bold text-blue-900 hover:bg-blue-50">
+                Explore the 2025 election bundle research →
+            </Link>
             <div
                 class="grid gap-4 border border-stone-300 bg-white p-5 lg:grid-cols-[1.4fr_1fr]"
             >

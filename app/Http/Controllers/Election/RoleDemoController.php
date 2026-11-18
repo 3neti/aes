@@ -9,7 +9,6 @@ use App\Election\Interoperability\Eml\EmlMessageType;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\Preparation\ActivateConfiguredPrecinct;
-use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\CloseoutArtifactPrinter;
 use App\Election\Printing\ControlNumberPrinter;
 use App\Election\Printing\PrintFormProfile;
@@ -22,13 +21,13 @@ use App\Election\PublicSimulation\RoleDemoBulkBallotSeeder;
 use App\Election\PublicSimulation\RoleDemoInterimCloseout;
 use App\Election\PublicSimulation\RoleDemoPrecinctTallyIngestion;
 use App\Election\PublicSimulation\RoleDemoScannerTallySimulation;
+use App\Election\PublicSimulation\RoleDemoVvpatPrint;
 use App\Election\PublicSimulation\WatcherBallotReview;
 use App\Election\Returns\ElectionReturnScope;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\PartyLabelNormalizer;
 use App\Election\Voting\AnonymousVoterAuthorization;
 use App\Election\Voting\PrivateBallotRelease;
-use App\Election\Voting\SealedBallotBox;
 use App\Election\Voting\StandardQrCode;
 use App\Election\Voting\VoterBallotAnalytics;
 use App\Events\RoleDemoControlNumberIssued;
@@ -93,6 +92,7 @@ final class RoleDemoController extends Controller
         RoleDemoInterimCloseout $forms,
         RoleDemoBulkBallotSeeder $bulkBallots,
         CloseoutArtifactPrinter $closeoutPrinter,
+        RoleDemoVvpatPrint $vvpatPrint,
         StandardQrCode $qrCode,
         Request $request,
     ): Response {
@@ -116,6 +116,7 @@ final class RoleDemoController extends Controller
                 'tally_hash' => $tally['tally_hash'],
             ],
             'controlNumber' => $request->session()->get('role_demo.control_number'),
+            'pendingVvpat' => $vvpatPrint->pending(),
             'printFeedback' => $request->session()->get('role_demo.print_feedback'),
             'feedback' => $request->session()->get('role_demo.feedback'),
             'closeoutFeedback' => $request->session()->get('role_demo.closeout_feedback'),
@@ -128,6 +129,9 @@ final class RoleDemoController extends Controller
                 'admit' => route('election.role-demo.admit'),
                 'dismissControlNumber' => route('election.role-demo.dismiss-control-number'),
                 'acceptPrint' => route('election.role-demo.print.accept'),
+                'reprintVvpat' => route('election.role-demo.print.reprint'),
+                'confirmVvpat' => route('election.role-demo.print.confirm'),
+                'ballotReadiness' => route('election.role-demo.print.readiness'),
                 'bulkBallots' => route('election.role-demo.bulk-ballots'),
                 'precinctTally' => $precinctTallyUrl,
                 'publicPrecinctTally' => $publicPrecinctTallyUrl,
@@ -182,18 +186,24 @@ final class RoleDemoController extends Controller
         ]);
     }
 
-    public function admit(PublicSimulationService $simulations, PublicSimulationAdmissionCapacity $capacity, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting, Request $request): RedirectResponse
+    public function admit(PublicSimulationService $simulations, PublicSimulationAdmissionCapacity $capacity, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting, Request $request, RoleDemoVvpatPrint $vvpatPrint): RedirectResponse
     {
         $this->precinct($simulations);
 
         try {
-            $authorization = $voting->execute(fn (): array => $capacity->issue($authorizations));
+            $authorization = $voting->execute(function () use ($capacity, $authorizations, $vvpatPrint): array {
+                $authorization = $capacity->issue($authorizations);
+                if ($vvpatPrint->pending() === null) {
+                    event(RoleDemoControlNumberIssued::fromAuthorization($authorization));
+                }
+
+                return $authorization;
+            });
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['admission' => $exception->getMessage()]);
         }
 
         $request->session()->put('role_demo.control_number', $authorization);
-        event(RoleDemoControlNumberIssued::fromAuthorization($authorization));
 
         return to_route('election.role-demo.officer')
             ->with('role_demo.feedback', 'Give this four-digit control number to the next voter.');
@@ -247,33 +257,50 @@ final class RoleDemoController extends Controller
         return "{$summary['generated']} of {$summary['target']} demo ballots loaded. {$summary['remaining']} remaining; continue loading to finish the watcher demo set.";
     }
 
-    public function acceptPrint(RedeemPrintReleaseRequest $request, PublicSimulationService $simulations, PrivateBallotRelease $releases, BallotPrinter $printer, SealedBallotBox $ballotBox, PublicSimulationVotingGate $voting, RoleDemoInterimCloseout $forms): RedirectResponse
+    public function ballotReadiness(RedeemPrintReleaseRequest $request, PublicSimulationService $simulations, PrivateBallotRelease $releases): JsonResponse
     {
-        $precinct = $this->precinct($simulations);
+        $this->precinct($simulations);
 
+        return response()->json(['ready' => $releases->isReadyForPrint($request->validated('code'))]);
+    }
+
+    public function acceptPrint(RedeemPrintReleaseRequest $request, PublicSimulationService $simulations, RoleDemoVvpatPrint $vvpatPrint, PublicSimulationVotingGate $voting): RedirectResponse
+    {
+        $this->precinct($simulations);
         try {
-            $result = $voting->execute(function () use ($request, $releases, $printer, $ballotBox, $forms, $precinct): array {
-                $release = $releases->redeem($request->validated('code'));
-                $releases->print((string) $release['release_id'], $printer);
-                $printedPdf = $releases->printedBallotPdfPath((string) $release['release_id']);
-                $deposit = $ballotBox->deposit((string) $release['release_id']);
-                $forms->generate($precinct, 'role-demo-print-accepted');
-
-                return [
-                    'release' => $release,
-                    'deposit' => $deposit,
-                    'printed_pdf' => $printedPdf,
-                ];
-            });
+            $voting->execute(fn () => $vvpatPrint->start($request->validated('code')));
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['code' => $exception->getMessage()]);
         }
 
+        return to_route('election.role-demo.officer');
+    }
+
+    public function reprintVvpat(PublicSimulationService $simulations, RoleDemoVvpatPrint $vvpatPrint, PublicSimulationVotingGate $voting): RedirectResponse
+    {
+        $this->precinct($simulations);
+        try {
+            $voting->execute(fn () => $vvpatPrint->attempt());
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['vvpat' => $exception->getMessage()]);
+        }
+
+        return to_route('election.role-demo.officer');
+    }
+
+    public function confirmVvpat(Request $request, PublicSimulationService $simulations, RoleDemoVvpatPrint $vvpatPrint, PublicSimulationVotingGate $voting): RedirectResponse
+    {
+        $precinct = $this->precinct($simulations);
+        try {
+            $result = $voting->execute(fn (): array => $vvpatPrint->confirm($precinct));
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['vvpat' => $exception->getMessage()]);
+        }
         $request->session()->put('role_demo.last_printed_ballot_pdf', $result['printed_pdf']);
         $request->session()->flash('role_demo.print_feedback', [
             'status' => 'accepted',
-            'paper_ballot_serial' => $result['deposit']['paper_ballot_serial'] ?? $result['release']['paper_ballot_serial'] ?? null,
-            'message' => 'Ballot PDF generated and sealed VVDAT record deposited. The watcher tally has been refreshed.',
+            'paper_ballot_serial' => $result['deposit']['paper_ballot_serial'] ?? null,
+            'message' => 'VVPAT printing confirmed and sealed record deposited.',
         ]);
 
         return to_route('election.role-demo.officer');
@@ -290,7 +317,7 @@ final class RoleDemoController extends Controller
                 'precinct_id' => $configuration['precinct_id'] ?? null,
             ],
             'claimAction' => route('election.role-demo.voter.claim'),
-            'demoControlNumberAction' => route('election.role-demo.voter.control-number'),
+            'officerAction' => route('election.role-demo.officer'),
             'publicSimulation' => true,
             'initialControlNumber' => $this->initialControlNumber($request),
         ]);
@@ -404,7 +431,11 @@ final class RoleDemoController extends Controller
         }
 
         try {
-            $controlNumberPrinter->print($release);
+            $voting->execute(function () use ($controlNumberPrinter, $release): void {
+                if (app(RoleDemoVvpatPrint::class)->pending() === null) {
+                    $controlNumberPrinter->print($release);
+                }
+            });
         } catch (\Throwable $exception) {
             report($exception);
         }
@@ -669,7 +700,16 @@ final class RoleDemoController extends Controller
                 ->with('role_demo.closeout_feedback', 'The latest voter control number receipt cannot be reprinted.');
         }
 
-        $result = $printer->print($release);
+        $result = app(PublicSimulationVotingGate::class)->execute(function () use ($printer, $release): array {
+            if (app(RoleDemoVvpatPrint::class)->pending() !== null) {
+                return ['message' => 'Resolve the pending VVPAT before sending another document to the printer.'];
+            }
+
+            return $printer->print($release);
+        });
+        if (isset($result['message'])) {
+            return to_route('election.role-demo.officer')->with('role_demo.closeout_feedback', $result['message']);
+        }
         $status = (string) ($result['status'] ?? 'unknown');
         $printerName = (string) ($result['printer_name'] ?? $result['requested_cups_printer'] ?? $result['printer'] ?? 'printer');
         $message = $status === 'submitted'
@@ -791,11 +831,17 @@ final class RoleDemoController extends Controller
     private function submitCloseoutArtifact(PublicSimulationService $simulations, ElectionStorage $storage, PrintFormProfileResolver $profiles, RoleDemoInterimCloseout $forms, CloseoutArtifactPrinter $printer, string $artifact, ?string $profile = null): RedirectResponse
     {
         $precinct = $this->precinct($simulations);
-        $forms->generate($precinct, 'role-demo-closeout-print');
-        $configuration = $storage->readJson('runtime/active-precinct.json');
-        $precinctId = (string) ($configuration['precinct_id'] ?? '');
-        $resolved = $profiles->from($profile ?? PrintFormProfile::A4->value);
-        $result = $printer->print($artifact, $resolved, $precinct->code, $precinctId);
+        $result = app(PublicSimulationVotingGate::class)->execute(function () use ($storage, $profiles, $forms, $printer, $artifact, $profile, $precinct): array {
+            if (app(RoleDemoVvpatPrint::class)->pending() !== null) {
+                return ['message' => 'Resolve the pending VVPAT before sending another document to the printer.'];
+            }
+            $forms->generate($precinct, 'role-demo-closeout-print');
+            $configuration = $storage->readJson('runtime/active-precinct.json');
+            $precinctId = (string) ($configuration['precinct_id'] ?? '');
+            $resolved = $profiles->from($profile ?? PrintFormProfile::A4->value);
+
+            return $printer->print($artifact, $resolved, $precinct->code, $precinctId);
+        });
 
         return to_route('election.role-demo.officer')
             ->with('role_demo.closeout_feedback', (string) $result['message']);
@@ -874,9 +920,10 @@ final class RoleDemoController extends Controller
         return $review;
     }
 
-    public function lastPrintedBallot(Request $request): BinaryFileResponse
+    public function lastPrintedBallot(Request $request, PublicSimulationService $simulations, RoleDemoVvpatPrint $vvpatPrint): BinaryFileResponse
     {
-        $path = $request->session()->get('role_demo.last_printed_ballot_pdf');
+        $this->precinct($simulations);
+        $path = $vvpatPrint->pendingPdfPath() ?? $request->session()->get('role_demo.last_printed_ballot_pdf');
         abort_unless(is_string($path) && is_file($path), 404);
 
         return response()->file($path, [

@@ -26,7 +26,11 @@ final class ThermalElectionReturnPdf
         $y = $document->contentTop();
         $width = $document->right() - $document->left();
         $document->rectangle($page, $document->left(), $y - 69, $width, 69, 0.90);
-        $document->text($page, 'SIMULATION COPY - SUBJECT TO COMELEC FORM APPROVAL', $document->width() / 2, $y - 11, 5.8, true, 'center');
+        $interimTimestamp = config('election.role_demo_interim_timestamp');
+        $heading = is_string($interimTimestamp)
+            ? 'INTERIM DEMO RETURN - '.$interimTimestamp
+            : 'SIMULATION COPY - SUBJECT TO COMELEC FORM APPROVAL';
+        $document->text($page, $heading, $document->width() / 2, $y - 11, 5.8, true, 'center');
         $document->wrappedText($page, mb_strtoupper($scope->title()), $document->left() + 6, $y - 22, $width - 12, 6.2, 8);
         $document->text($page, 'Election: '.($return['election_id'] ?? 'unknown'), $document->left() + 6, $y - 38, 6.3);
         $document->text($page, 'Precinct: '.($return['precinct_id'] ?? 'unknown'), $document->left() + 6, $y - 50, 6.3);

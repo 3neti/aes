@@ -29,7 +29,14 @@ final class RoleDemoInterimCloseout
     public function generate(SimulationPrecinct $precinct, string $reason): array
     {
         $tally = $this->counting->tally();
-        $return = $this->returns->generate($tally);
+        $previous = config('election.role_demo_interim_timestamp');
+        config(['election.role_demo_interim_timestamp' => now()->toIso8601String()]);
+
+        try {
+            $return = $this->returns->generate($tally);
+        } finally {
+            config(['election.role_demo_interim_timestamp' => $previous]);
+        }
 
         $this->journal->record('role_demo.interim_forms_generated', [
             'precinct_code' => $precinct->code,

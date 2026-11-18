@@ -10,6 +10,9 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "3neti/election-ceremonies": "^0.3",
+        "3neti/election-ph": "^0.3",
+        "3neti/truth-qr": "^0.3",
         "bacon/bacon-qr-code": "^3.1",
         "inertiajs/inertia-laravel": "^3.0",
         "laravel/framework": "^13.17",
@@ -113,5 +116,10 @@
             "php-http/discovery": true
         }
     },
-    "minimum-stability": "stable"
+    "minimum-stability": "stable",
+    "repositories": [{
+        "name": "election-ceremonies",
+        "type": "vcs",
+        "url": "https://github.com/3neti/election-ceremonies.git"
+    }]
 }

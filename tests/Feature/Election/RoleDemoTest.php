@@ -1,12 +1,15 @@
 <?php
 
 use App\Election\Core\ActivityJournal;
+use App\Election\Printing\BallotPrinter;
 use App\Election\Printing\ControlNumberPrinter;
+use App\Election\Printing\PrintFormProfile;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationScope;
 use App\Election\Support\ElectionStorage;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
+use Composer\InstalledVersions;
 use Illuminate\Filesystem\Filesystem;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -87,12 +90,15 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->component('Election/VoterWelcome')
             ->where('initialControlNumber', $authorization['code'])
             ->where('claimAction', route('election.role-demo.voter.claim'))
-            ->where('demoControlNumberAction', route('election.role-demo.voter.control-number'))
+            ->missing('demoControlNumberAction')
+            ->where('officerAction', route('election.role-demo.officer'))
         );
 
     $this->post(route('election.role-demo.voter.claim'), [
         'code' => $authorization['code'],
     ])->assertRedirectToRoute('election.role-demo.voter.ballot');
+
+    $this->postJson(route('election.role-demo.print.readiness'), ['code' => $authorization['code']])->assertOk()->assertJson(['ready' => false]);
 
     $this->post(route('election.role-demo.print.accept'), [
         'code' => $authorization['code'],
@@ -130,6 +136,9 @@ test('role demo runs officer voter print and watcher points of view without clos
     expect($release)->toBeArray()
         ->and($release['release_code'])->toBe($authorization['code']);
 
+    $this->postJson(route('election.role-demo.print.readiness'), ['code' => $authorization['code']])->assertOk()->assertExactJson(['ready' => true]);
+    $this->postJson(route('election.role-demo.print.readiness'), ['code' => $authorization['code']])->assertOk()->assertExactJson(['ready' => true]);
+
     $this->get(route('election.role-demo.control-number.latest'))
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'application/pdf')
@@ -165,20 +174,57 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
         ->toContain('role_demo.voter_ballot_preview_generated');
 
+    $workingPrinter = app(BallotPrinter::class);
+    app()->instance(BallotPrinter::class, new class implements BallotPrinter
+    {
+        public function print(array $payload, ?PrintFormProfile $profile = null): array
+        {
+            return ['status' => 'failed'];
+        }
+    });
     $this->post(route('election.role-demo.print.accept'), [
         'code' => $authorization['code'],
     ])->assertRedirectToRoute('election.role-demo.officer');
+    $this->get(route('election.role-demo.officer'))->assertInertia(fn (Assert $page) => $page
+        ->where('pendingVvpat.code', $authorization['code'])
+        ->where('pendingVvpat.status', 'failed')
+        ->where('pendingVvpat.attempts', 1)
+    );
+    $this->post(route('election.role-demo.print.confirm'))->assertSessionHasErrors('vvpat');
+    app()->instance(BallotPrinter::class, $workingPrinter);
+    $this->post(route('election.role-demo.print.reprint'))->assertRedirectToRoute('election.role-demo.officer');
 
     $this->get(route('election.role-demo.officer'))
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('currentTally.accepted_ballots', 1)
-            ->where('printFeedback.status', 'accepted')
+            ->where('currentTally.accepted_ballots', 0)
+            ->where('pendingVvpat.code', $authorization['code'])
+            ->where('pendingVvpat.status', 'awaiting_confirmation')
+            ->where('pendingVvpat.attempts', 2)
         );
-
-    $this->post(route('election.role-demo.print.accept'), [
-        'code' => $authorization['code'],
-    ])->assertSessionHasErrors('code');
+    expect(app(ElectionStorage::class)->files('counting/sealed'))->toBeEmpty();
+    $this->get(route('election.role-demo.print.last-ballot'))->assertSuccessful()->assertHeader('Content-Type', 'application/pdf');
+    $this->get(route('election.role-demo.election-return.scoped', ['scope' => 'national']))->assertSuccessful();
+    $this->post(route('election.role-demo.print.election-return.scoped', ['scope' => 'national']))
+        ->assertRedirectToRoute('election.role-demo.officer')
+        ->assertSessionHas('role_demo.closeout_feedback', 'Resolve the pending VVPAT before sending another document to the printer.');
+    $this->post(route('election.role-demo.admit'))->assertRedirectToRoute('election.role-demo.officer');
+    $this->post(route('election.role-demo.print.accept'), ['code' => $authorization['code']])->assertSessionHasErrors('code');
+    $this->post(route('election.role-demo.print.reprint'))->assertRedirectToRoute('election.role-demo.officer');
+    $this->get(route('election.role-demo.officer'))->assertInertia(fn (Assert $page) => $page
+        ->where('pendingVvpat.code', $authorization['code'])
+        ->where('pendingVvpat.attempts', 3)
+        ->where('pendingVvpat.status', 'awaiting_confirmation')
+    );
+    expect(app(ElectionStorage::class)->files('counting/sealed'))->toBeEmpty();
+    $this->post(route('election.role-demo.print.confirm'))->assertRedirectToRoute('election.role-demo.officer');
+    $this->get(route('election.role-demo.officer'))->assertInertia(fn (Assert $page) => $page
+        ->where('currentTally.accepted_ballots', 1)
+        ->where('pendingVvpat', null)
+        ->where('printFeedback.status', 'accepted')
+    );
+    $this->post(route('election.role-demo.print.confirm'))->assertSessionHasErrors('vvpat');
+    $this->postJson(route('election.role-demo.print.readiness'), ['code' => $authorization['code']])->assertOk()->assertExactJson(['ready' => false]);
 
     $this->get(route('election.role-demo.scanner-tally'))
         ->assertSuccessful()
@@ -238,7 +284,11 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->toContain('q 216.00 0 0 216.00')
         ->toContain('SELECTED CANDIDATES ONLY')
         ->toContain('Ballot QR Verification')
+        ->toContain('Precinct '.$configuration['precinct_id'].' | Ballot '.$printedRelease['paper_ballot_serial'])
+        ->toContain('Printed '.$printedRelease['printed_at'])
+        ->toContain('Truth QR '.InstalledVersions::getPrettyVersion('3neti/truth-qr').' | aes-ballot-compact-1')
         ->not->toContain('BALLOT QR VERIFICATION COPY')
+        ->and($printJob['printed_at'])->toBe($printedRelease['printed_at'])
         ->and(count($printedPdfPages[0]))->toBe(1)
         ->and($qrImage[0])->toBeGreaterThanOrEqual(1080)
         ->and($qrImage[1])->toBeGreaterThanOrEqual(1080);
@@ -262,6 +312,8 @@ test('role demo runs officer voter print and watcher points of view without clos
         app(ElectionStorage::class)->path("print-forms/election-return/{$configuration['precinct_id']}/local/a4.pdf"),
     );
 
+    $this->assertStringContainsString('INTERIM DEMO RETURN - AS OF', $nationalElectionReturnContent);
+    $this->assertStringContainsString('INTERIM DEMO RETURN - AS OF', $localElectionReturnContent);
     $this->assertStringContainsString('TRUTHTALLY National Election Return QR', $nationalElectionReturnContent);
     $this->assertStringContainsString('q 216.00 0 0 216.00', $nationalElectionReturnContent);
     $this->assertStringContainsString('TRUTHTALLY Local Election Return QR', $localElectionReturnContent);
@@ -330,7 +382,8 @@ test('role demo voter can generate a self service control number before claiming
         ->assertInertia(fn (Assert $page) => $page
             ->component('Election/VoterWelcome')
             ->where('claimAction', route('election.role-demo.voter.claim'))
-            ->where('demoControlNumberAction', route('election.role-demo.voter.control-number'))
+            ->missing('demoControlNumberAction')
+            ->where('officerAction', route('election.role-demo.officer'))
             ->where('publicSimulation', true)
         );
 

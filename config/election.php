@@ -6,6 +6,15 @@ $reviewThirdMemberCode = (string) env('ELECTION_REVIEW_THIRD_MEMBER_CODE', 'SIM-
 $reviewOfficerPin = (string) env('ELECTION_REVIEW_OFFICER_PIN', '123456');
 
 return [
+    'bundle_workbench' => [
+        'archive' => env('ELECTION_BUNDLE_RESEARCH_ARCHIVE', storage_path('app/comelec-clc-2025/2025NLE-research-review-v1.zip')),
+        'trusted_key' => env('ELECTION_BUNDLE_RESEARCH_PUBLIC_KEY', storage_path('app/comelec-clc-2025/research-signing.pub')),
+        'reconciliation_directory' => env('ELECTION_BUNDLE_RECONCILIATION_DIRECTORY', storage_path('app/comelec-clc-2025/reconciliation-2025')),
+        'assignment_document' => env('ELECTION_RESEARCH_ASSIGNMENT_DOCUMENT', storage_path('app/election-research/assignment.json')),
+        'assignment_signature' => env('ELECTION_RESEARCH_ASSIGNMENT_SIGNATURE', storage_path('app/election-research/assignment.sig')),
+        'device_id' => env('ELECTION_RESEARCH_DEVICE_ID', 'aes-research-workstation'),
+        'run_directory' => env('ELECTION_RESEARCH_RUN_DIRECTORY', storage_path('app/election-research/runs')),
+    ],
     'storage' => [
         'directory' => env('ELECTION_STORAGE_DIRECTORY', 'election'),
     ],

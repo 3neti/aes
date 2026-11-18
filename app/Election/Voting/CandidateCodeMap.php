@@ -4,13 +4,15 @@ namespace App\Election\Voting;
 
 use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionStorage;
+use LBHurtado\TruthQr\Contracts\CandidateCodes;
 use RuntimeException;
 
-final class CandidateCodeMap
+final class CandidateCodeMap implements CandidateCodes
 {
     public function __construct(
         private readonly ElectionStorage $storage,
         private readonly CanonicalJson $json,
+        private readonly \LBHurtado\TruthQr\Election\CandidateCodeMap $converter,
     ) {}
 
     /**
@@ -60,24 +62,7 @@ final class CandidateCodeMap
      */
     public function codesForSelections(array $selections): array
     {
-        $manifest = $this->active();
-        $codesByCandidateId = collect($manifest['candidates'] ?? [])
-            ->mapWithKeys(fn (array $candidate, string $code): array => [(string) $candidate['candidate_id'] => $code]);
-        $codes = [];
-
-        foreach ($selections as $candidateIds) {
-            foreach ($candidateIds as $candidateId) {
-                $code = $codesByCandidateId->get((string) $candidateId);
-
-                if (! is_string($code)) {
-                    throw new RuntimeException("Candidate [{$candidateId}] has no compact QR code mapping.");
-                }
-
-                $codes[] = $code;
-            }
-        }
-
-        return $codes;
+        return $this->converter->codesForSelections($this->active(), $selections);
     }
 
     /**
@@ -86,23 +71,7 @@ final class CandidateCodeMap
      */
     public function selectionsForCodes(array $codes): array
     {
-        $manifest = $this->active();
-        $candidates = $manifest['candidates'] ?? [];
-        $selections = [];
-
-        foreach ($codes as $code) {
-            $candidate = $candidates[$code] ?? null;
-
-            if (! is_array($candidate)) {
-                throw new RuntimeException("Candidate code [{$code}] is not present in this precinct mapping.");
-            }
-
-            $contestId = (string) $candidate['contest_id'];
-            $selections[$contestId] ??= [];
-            $selections[$contestId][] = (string) $candidate['candidate_id'];
-        }
-
-        return $selections;
+        return $this->converter->selectionsForCodes($this->active(), $codes);
     }
 
     /**
@@ -111,30 +80,7 @@ final class CandidateCodeMap
      */
     public function codeTotalsForTally(array $tally): array
     {
-        $manifest = $this->active();
-        $codesByCandidateId = collect($manifest['candidates'] ?? [])
-            ->mapWithKeys(fn (array $candidate, string $code): array => [(string) $candidate['candidate_id'] => $code]);
-        $totals = [];
-
-        foreach ($tally as $candidateTotals) {
-            foreach ($candidateTotals as $candidateId => $votes) {
-                $code = $codesByCandidateId->get((string) $candidateId);
-
-                if (! is_string($code)) {
-                    throw new RuntimeException("Candidate [{$candidateId}] has no compact QR code mapping.");
-                }
-
-                $voteTotal = (int) $votes;
-
-                if ($voteTotal > 0) {
-                    $totals[$code] = $voteTotal;
-                }
-            }
-        }
-
-        ksort($totals);
-
-        return $totals;
+        return $this->converter->codeTotalsForTally($this->active(), $tally);
     }
 
     /**
@@ -143,24 +89,7 @@ final class CandidateCodeMap
      */
     public function tallyForCodeTotals(array $codeTotals): array
     {
-        $manifest = $this->active();
-        $candidates = $manifest['candidates'] ?? [];
-        $tally = [];
-
-        foreach ($codeTotals as $code => $votes) {
-            $candidate = $candidates[$code] ?? null;
-
-            if (! is_array($candidate)) {
-                throw new RuntimeException("Candidate code [{$code}] is not present in this precinct mapping.");
-            }
-
-            $contestId = (string) $candidate['contest_id'];
-            $candidateId = (string) $candidate['candidate_id'];
-            $tally[$contestId] ??= [];
-            $tally[$contestId][$candidateId] = (int) $votes;
-        }
-
-        return $tally;
+        return $this->converter->tallyForCodeTotals($this->active(), $codeTotals);
     }
 
     /**

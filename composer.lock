@@ -4,8 +4,145 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "eb870c97983a5b83bd88bdd6d6b6de47",
+    "content-hash": "3acb111bd9b902b759b44b70dc98b602",
     "packages": [
+        {
+            "name": "3neti/election-ceremonies",
+            "version": "v0.3.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/3neti/election-ceremonies.git",
+                "reference": "928ae26d5fbc41e91ea0b4043df05fe79e9f59b1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/3neti/election-ceremonies/zipball/928ae26d5fbc41e91ea0b4043df05fe79e9f59b1",
+                "reference": "928ae26d5fbc41e91ea0b4043df05fe79e9f59b1",
+                "shasum": ""
+            },
+            "require": {
+                "3neti/truth-qr": "^0.3",
+                "ext-pdo_sqlite": "*",
+                "ext-sodium": "*",
+                "ext-zip": "*",
+                "illuminate/container": "^13.0",
+                "illuminate/pipeline": "^13.0",
+                "php": "^8.4",
+                "symfony/yaml": "^8.0"
+            },
+            "require-dev": {
+                "pestphp/pest": "^4.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "LBHurtado\\ElectionCeremonies\\": "src/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest"
+                ]
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Offline election ceremonies and signed election bundle verification",
+            "support": {
+                "source": "https://github.com/3neti/election-ceremonies/tree/v0.3.1",
+                "issues": "https://github.com/3neti/election-ceremonies/issues"
+            },
+            "time": "2026-10-11T15:14:28+00:00"
+        },
+        {
+            "name": "3neti/election-ph",
+            "version": "v0.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/3neti/election-ph.git",
+                "reference": "4aa2952ad4ce3f0d64f4047ac471605bfefe3526"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/3neti/election-ph/zipball/4aa2952ad4ce3f0d64f4047ac471605bfefe3526",
+                "reference": "4aa2952ad4ce3f0d64f4047ac471605bfefe3526",
+                "shasum": ""
+            },
+            "require": {
+                "3neti/election-ceremonies": "^0.3",
+                "ext-pdo_sqlite": "*",
+                "php": "^8.4"
+            },
+            "require-dev": {
+                "pestphp/pest": "^4.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "LBHurtado\\ElectionPh\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "proprietary"
+            ],
+            "description": "Philippine election profile and registry builder for election ceremonies",
+            "support": {
+                "issues": "https://github.com/3neti/election-ph/issues",
+                "source": "https://github.com/3neti/election-ph/tree/v0.3.0"
+            },
+            "time": "2026-10-11T15:01:45+00:00"
+        },
+        {
+            "name": "3neti/truth-qr",
+            "version": "v0.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/3neti/truth-qr.git",
+                "reference": "79b9ed369ae728a6e3616d6d431b8a53c9206e24"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/3neti/truth-qr/zipball/79b9ed369ae728a6e3616d6d431b8a53c9206e24",
+                "reference": "79b9ed369ae728a6e3616d6d431b8a53c9206e24",
+                "shasum": ""
+            },
+            "require": {
+                "bacon/bacon-qr-code": "^3.1",
+                "ext-sodium": "*",
+                "php": "^8.4",
+                "symfony/process": "^8.0",
+                "symfony/yaml": "^8.0"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^11.0",
+                "pestphp/pest": "^4.0",
+                "pestphp/pest-plugin-laravel": "^4.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "LBHurtado\\TruthQr\\Laravel\\TruthQrServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "LBHurtado\\TruthQr\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "proprietary"
+            ],
+            "description": "Offline-verifiable QR records with versioned domain profiles",
+            "support": {
+                "issues": "https://github.com/3neti/truth-qr/issues",
+                "source": "https://github.com/3neti/truth-qr/tree/v0.3.0"
+            },
+            "time": "2026-10-10T05:14:33+00:00"
+        },
         {
             "name": "aws/aws-crt-php",
             "version": "v1.2.7",
@@ -7321,6 +7458,82 @@
             "time": "2026-06-09T10:54:51+00:00"
         },
         {
+            "name": "symfony/yaml",
+            "version": "v8.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/yaml.git",
+                "reference": "8e4cdd4311683516be06944f4b85244063cdb886"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/yaml/zipball/8e4cdd4311683516be06944f4b85244063cdb886",
+                "reference": "8e4cdd4311683516be06944f4b85244063cdb886",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.4.1",
+                "symfony/polyfill-ctype": "^1.8"
+            },
+            "conflict": {
+                "symfony/console": "<7.4"
+            },
+            "require-dev": {
+                "symfony/console": "^7.4|^8.0",
+                "yaml/yaml-test-suite": "*"
+            },
+            "bin": [
+                "Resources/bin/yaml-lint"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\Yaml\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Loads and dumps YAML files",
+            "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/yaml/tree/v8.1.1"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-06-09T11:06:24+00:00"
+        },
+        {
             "name": "tijsverkoyen/css-to-inline-styles",
             "version": "v2.4.0",
             "source": {
@@ -12842,82 +13055,6 @@
                 }
             ],
             "time": "2024-10-20T05:08:20+00:00"
-        },
-        {
-            "name": "symfony/yaml",
-            "version": "v8.1.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/symfony/yaml.git",
-                "reference": "8e4cdd4311683516be06944f4b85244063cdb886"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/symfony/yaml/zipball/8e4cdd4311683516be06944f4b85244063cdb886",
-                "reference": "8e4cdd4311683516be06944f4b85244063cdb886",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=8.4.1",
-                "symfony/polyfill-ctype": "^1.8"
-            },
-            "conflict": {
-                "symfony/console": "<7.4"
-            },
-            "require-dev": {
-                "symfony/console": "^7.4|^8.0",
-                "yaml/yaml-test-suite": "*"
-            },
-            "bin": [
-                "Resources/bin/yaml-lint"
-            ],
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Symfony\\Component\\Yaml\\": ""
-                },
-                "exclude-from-classmap": [
-                    "/Tests/"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Fabien Potencier",
-                    "email": "fabien@symfony.com"
-                },
-                {
-                    "name": "Symfony Community",
-                    "homepage": "https://symfony.com/contributors"
-                }
-            ],
-            "description": "Loads and dumps YAML files",
-            "homepage": "https://symfony.com",
-            "support": {
-                "source": "https://github.com/symfony/yaml/tree/v8.1.1"
-            },
-            "funding": [
-                {
-                    "url": "https://symfony.com/sponsor",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/fabpot",
-                    "type": "github"
-                },
-                {
-                    "url": "https://github.com/nicolas-grekas",
-                    "type": "github"
-                },
-                {
-                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
-                    "type": "tidelift"
-                }
-            ],
-            "time": "2026-06-09T11:06:24+00:00"
         },
         {
             "name": "ta-tikoma/phpunit-architecture-test",

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePoll } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
-import NumericPinPad from '@/components/election/NumericPinPad.vue';
 import EmlValidationPanel from '@/components/election/EmlValidationPanel.vue';
+import NumericPinPad from '@/components/election/NumericPinPad.vue';
 
 const props = defineProps<{
     precinct: {
@@ -39,6 +39,13 @@ const props = defineProps<{
         rejected_ballots: number;
         tally_hash: string;
     };
+    pendingVvpat: {
+        code: string;
+        attempts: number;
+        status: string;
+        message: string | null;
+        pdf_available: boolean;
+    } | null;
     controlNumber?: {
         code: string;
         expires_at: string;
@@ -64,7 +71,10 @@ const props = defineProps<{
         home: string;
         admit: string;
         dismissControlNumber: string;
+        reprintVvpat: string;
+        confirmVvpat: string;
         acceptPrint: string;
+        ballotReadiness: string;
         bulkBallots: string;
         precinctTally: string;
         publicPrecinctTally: string;
@@ -120,8 +130,62 @@ const props = defineProps<{
     };
 }>();
 
+const activeStep = ref<1 | 2 | 3>(props.pendingVvpat ? 2 : 1);
 const customBulkCount = ref<number | null>(null);
 const controlNumberForPrint = ref('');
+const checkedNumber = ref('');
+const readinessMessage = ref('');
+const checkingBallot = ref(false);
+
+watch(controlNumberForPrint, () => {
+    checkedNumber.value = '';
+    readinessMessage.value = '';
+});
+
+async function checkBallot(): Promise<void> {
+    const code = controlNumberForPrint.value;
+    checkingBallot.value = true;
+    readinessMessage.value = '';
+
+    try {
+        const token = document.querySelector<HTMLMetaElement>(
+            'meta[name="csrf-token"]',
+        )?.content;
+        const response = await fetch(props.actions.ballotReadiness, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+            },
+            body: JSON.stringify({ code }),
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                'Unable to check VVPAT readiness. Please try again.',
+            );
+        }
+
+        const result: { ready: boolean } = await response.json();
+
+        if (code !== controlNumberForPrint.value) {
+            return;
+        }
+
+        checkedNumber.value = result.ready ? code : '';
+        readinessMessage.value = result.ready
+            ? 'VVPAT ready to print'
+            : 'VVPAT not ready or control number unavailable. Check the number and try again.';
+    } catch {
+        readinessMessage.value =
+            'Unable to check VVPAT readiness. Please try again.';
+    } finally {
+        checkingBallot.value = false;
+    }
+}
+
 const bulkLoading = ref(false);
 const bulkMessage = ref<string | null>(null);
 const bulkError = ref<string | null>(null);
@@ -168,7 +232,10 @@ const bulkProgressPercent = computed<number>(() => {
         return 0;
     }
 
-    return Math.min(100, Math.round((displayedBulkRun.value.generated / target) * 100));
+    return Math.min(
+        100,
+        Math.round((displayedBulkRun.value.generated / target) * 100),
+    );
 });
 
 const pdfCacheKey = computed<string>(() =>
@@ -177,7 +244,9 @@ const pdfCacheKey = computed<string>(() =>
         props.currentTally.rejected_ballots,
         props.currentTally.tally_hash,
     ]
-        .filter((value) => value !== null && value !== undefined && value !== '')
+        .filter(
+            (value) => value !== null && value !== undefined && value !== '',
+        )
         .join('-'),
 );
 
@@ -323,7 +392,12 @@ async function loadBulkBallots(count: number): Promise<void> {
         } while (summary?.status !== 'complete');
 
         router.reload({
-            only: ['operationsBoard', 'currentTally', 'bulkBallots', 'feedback'],
+            only: [
+                'operationsBoard',
+                'currentTally',
+                'bulkBallots',
+                'feedback',
+            ],
         });
     } catch (error) {
         bulkError.value =
@@ -343,6 +417,7 @@ usePoll(
             'operationsBoard',
             'currentTally',
             'controlNumber',
+            'pendingVvpat',
             'feedback',
             'printFeedback',
             'bulkBallots',
@@ -365,10 +440,13 @@ usePoll(
 
         <header class="border-b border-stone-300 bg-white">
             <div
-                class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8"
+                class="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6"
             >
                 <div>
-                    <Link :href="actions.home" class="text-sm font-bold text-blue-800">
+                    <Link
+                        :href="actions.home"
+                        class="text-sm font-bold text-blue-800"
+                    >
                         Role POV room
                     </Link>
                     <h1 class="mt-1 text-2xl font-bold">
@@ -380,21 +458,21 @@ usePoll(
                     </p>
                 </div>
                 <Link
-                    :href="actions.watcher"
+                    :href="actions.precinctTally"
                     class="min-h-11 border border-stone-400 bg-white px-4 py-2 text-sm font-bold"
                 >
-                    Open watcher POV
+                    Tally Votes
                 </Link>
             </div>
         </header>
 
-        <section class="mx-auto max-w-6xl px-5 py-6 sm:px-8">
-            <div class="grid gap-3 sm:grid-cols-4">
+        <section class="mx-auto max-w-2xl px-4 py-5 sm:px-6">
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <p class="border border-stone-300 bg-white p-4">
                     <strong class="block text-2xl">{{
                         currentTally.accepted_ballots
                     }}</strong>
-                    <span class="text-sm text-stone-600">printed ballots</span>
+                    <span class="text-sm text-stone-600">VVPATs processed</span>
                 </p>
                 <p class="border border-stone-300 bg-white p-4">
                     <strong class="block text-2xl">{{
@@ -406,13 +484,17 @@ usePoll(
                     <strong class="block text-2xl">{{
                         operationsBoard.print_station.pending_pins
                     }}</strong>
-                    <span class="text-sm text-stone-600">submitted ballots</span>
+                    <span class="text-sm text-stone-600"
+                        >ballots submitted</span
+                    >
                 </p>
                 <p class="border border-stone-300 bg-white p-4">
                     <strong class="block font-mono text-sm">{{
                         currentTally.tally_hash.slice(0, 14)
                     }}</strong>
-                    <span class="text-sm text-stone-600">current tally hash</span>
+                    <span class="text-sm text-stone-600"
+                        >current tally hash</span
+                    >
                 </p>
             </div>
 
@@ -432,25 +514,86 @@ usePoll(
                     v-if="printFeedback.paper_ballot_serial"
                     class="mt-1 text-sm"
                 >
-                    Paper ballot serial {{ printFeedback.paper_ballot_serial }}
+                    VVPAT serial {{ printFeedback.paper_ballot_serial }}
                 </p>
                 <a
                     :href="actions.lastBallot"
                     class="mt-3 inline-flex min-h-11 items-center border border-blue-800 bg-white px-4 font-bold text-blue-800"
                     target="_blank"
                 >
-                    Open printable ballot PDF
+                    Open VVPAT PDF
                 </a>
             </div>
 
-            <div class="mt-5 grid gap-5 lg:grid-cols-2">
-                <section class="border border-stone-300 bg-white p-5">
+            <nav
+                aria-label="Officer workstation steps"
+                class="mt-5 grid grid-cols-3 gap-2"
+            >
+                <button
+                    type="button"
+                    :aria-pressed="activeStep === 1"
+                    :class="
+                        activeStep === 1
+                            ? 'border-blue-800 bg-blue-800 text-white'
+                            : 'border-stone-300 bg-white text-stone-800'
+                    "
+                    class="min-h-14 border-2 px-2 py-2 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
+                    @click="activeStep = 1"
+                >
+                    <span class="block text-xs">Step 1</span> Admit voter
+                </button>
+                <button
+                    type="button"
+                    :aria-pressed="activeStep === 2"
+                    :class="
+                        activeStep === 2
+                            ? 'border-blue-800 bg-blue-800 text-white'
+                            : 'border-stone-300 bg-white text-stone-800'
+                    "
+                    class="min-h-14 border-2 px-2 py-2 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
+                    @click="activeStep = 2"
+                >
+                    <span class="block text-xs">Step 2</span> Print VVPAT
+                    <span
+                        v-if="pendingVvpat"
+                        class="block text-xs font-black"
+                        :class="
+                            activeStep === 2
+                                ? 'text-yellow-200'
+                                : 'text-amber-800'
+                        "
+                        >Confirmation pending</span
+                    >
+                </button>
+                <button
+                    type="button"
+                    :aria-pressed="activeStep === 3"
+                    :class="
+                        activeStep === 3
+                            ? 'border-blue-800 bg-blue-800 text-white'
+                            : 'border-stone-300 bg-white text-stone-800'
+                    "
+                    class="min-h-14 border-2 px-2 py-2 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
+                    @click="activeStep = 3"
+                >
+                    <span class="block text-xs">Step 3</span> Election return
+                </button>
+            </nav>
+            <div class="mt-3">
+                <section
+                    v-show="activeStep === 1"
+                    class="border border-stone-300 bg-white p-5"
+                >
                     <p class="text-sm font-bold text-blue-800">Step 1</p>
                     <h2 class="mt-1 text-xl font-bold">Admit next voter</h2>
                     <p class="mt-2 text-sm text-stone-700">
                         Generate a four-digit control number after physical
                         identity checking. The voter enters this on the booth
                         tablet.
+                        <span v-if="pendingVvpat"
+                            >Write the number for the voter; receipt printing is
+                            paused while the VVPAT is pending.</span
+                        >
                     </p>
 
                     <div
@@ -488,13 +631,19 @@ usePoll(
                         #default="{ errors, processing }"
                         class="mt-5"
                     >
-                        <p v-if="errors.admission" class="mb-3 font-bold text-red-700">
+                        <p
+                            v-if="errors.admission"
+                            class="mb-3 font-bold text-red-700"
+                        >
                             {{ errors.admission }}
                         </p>
                         <button
                             class="review-next-action-button min-h-14 w-full bg-blue-800 px-5 text-lg font-bold text-white disabled:opacity-50"
                             type="submit"
-                            :disabled="processing || admission.available_admissions === 0"
+                            :disabled="
+                                processing ||
+                                admission.available_admissions === 0
+                            "
                         >
                             {{
                                 processing
@@ -505,88 +654,193 @@ usePoll(
                     </Form>
                 </section>
 
-                <section class="border border-stone-300 bg-white p-5">
+                <section
+                    v-show="activeStep === 2"
+                    class="border border-stone-300 bg-white p-5"
+                >
                     <p class="text-sm font-bold text-blue-800">Step 2</p>
+                    <h2 class="mt-1 text-xl font-bold">Print VVPAT</h2>
+                    <div
+                        v-if="pendingVvpat"
+                        class="mt-4 border-2 border-amber-500 bg-amber-50 p-4"
+                        role="status"
+                    >
+                        <h3 class="text-lg font-bold">
+                            Confirm VVPAT printing
+                        </h3>
+                        <p class="mt-2">
+                            Control number:
+                            <strong class="font-mono text-2xl">{{
+                                pendingVvpat.code
+                            }}</strong>
+                        </p>
+                        <p class="mt-2 text-sm">{{ pendingVvpat.message }}</p>
+                        <p class="mt-2 font-bold">
+                            Was the VVPAT printed successfully?
+                        </p>
+                        <a
+                            v-if="pendingVvpat.pdf_available"
+                            :href="actions.lastBallot"
+                            target="_blank"
+                            class="mt-3 block font-bold text-blue-800 underline"
+                            >Open VVPAT PDF</a
+                        >
+                        <Form
+                            :action="actions.confirmVvpat"
+                            method="post"
+                            #default="{ errors, processing }"
+                            class="mt-4"
+                        >
+                            <p v-if="errors.vvpat" class="mb-2 text-red-700">
+                                {{ errors.vvpat }}
+                            </p>
+                            <button
+                                class="min-h-12 w-full bg-emerald-700 px-4 font-bold text-white disabled:opacity-50"
+                                :disabled="
+                                    processing ||
+                                    pendingVvpat.status !==
+                                        'awaiting_confirmation'
+                                "
+                            >
+                                Yes, printed
+                            </button>
+                        </Form>
+                        <p class="mt-3 text-sm">
+                            If it did not print, clear the jam and check the
+                            printer before trying again.
+                        </p>
+                        <Form
+                            :action="actions.reprintVvpat"
+                            method="post"
+                            #default="{ errors, processing }"
+                            class="mt-2"
+                        >
+                            <p v-if="errors.vvpat" class="mb-2 text-red-700">
+                                {{ errors.vvpat }}
+                            </p>
+                            <button
+                                class="min-h-12 w-full border-2 border-amber-700 bg-white px-4 font-bold text-amber-900 disabled:opacity-50"
+                                :disabled="processing"
+                            >
+                                {{
+                                    processing
+                                        ? 'Submitting...'
+                                        : 'No, reprint VVPAT'
+                                }}
+                            </button>
+                        </Form>
+                    </div>
+                    <template v-else>
+                        <p class="mt-2 text-sm text-stone-700">
+                            Enter the voter’s control number to check whether
+                            their submitted ballot is ready. Then select Print
+                            VVPAT.
+                        </p>
+                        <form
+                            class="mt-5 space-y-3"
+                            @submit.prevent="checkBallot"
+                        >
+                            <NumericPinPad
+                                v-model="controlNumberForPrint"
+                                label="Voter Control Number"
+                                :digits="printPinDigits"
+                                :processing="checkingBallot"
+                                processing-label="Checking..."
+                                submit-label="Check VVPAT readiness"
+                            />
+                        </form>
+                        <p
+                            v-if="readinessMessage"
+                            class="mt-3 font-bold"
+                            role="status"
+                        >
+                            {{ readinessMessage }}
+                        </p>
+                        <Form
+                            v-if="checkedNumber"
+                            :action="actions.acceptPrint"
+                            method="post"
+                            #default="{ errors, processing }"
+                            class="mt-3"
+                            @success="controlNumberForPrint = ''"
+                        >
+                            <input
+                                type="hidden"
+                                name="code"
+                                :value="checkedNumber"
+                            />
+                            <p
+                                v-if="errors.code"
+                                class="mb-3 font-bold text-red-700"
+                            >
+                                {{ errors.code }}
+                            </p>
+                            <button
+                                type="submit"
+                                :disabled="processing"
+                                class="min-h-12 w-full bg-emerald-700 px-4 font-bold text-white disabled:opacity-50"
+                            >
+                                {{
+                                    processing
+                                        ? 'Submitting print...'
+                                        : 'Print VVPAT'
+                                }}
+                            </button>
+                        </Form>
+                    </template>
+                </section>
+                <section
+                    v-show="activeStep === 3"
+                    class="border border-stone-300 bg-white p-5"
+                >
+                    <p class="text-sm font-bold text-blue-800">Step 3</p>
                     <h2 class="mt-1 text-xl font-bold">
-                        Print submitted ballot
+                        Current / interim election return
                     </h2>
                     <p class="mt-2 text-sm text-stone-700">
-                        Enter the voter control number only after the voter has
-                        submitted the ballot. This prints the paper ballot PDF
-                        and deposits the sealed VVDAT record for the live
-                        watcher tally.
+                        {{ precinct.label }} · Totals reflect the snapshot
+                        generated when you view or print. Voting remains open.
                     </p>
-                    <Form
-                        :action="actions.acceptPrint"
-                        method="post"
-                        #default="{ errors, processing }"
-                        class="mt-5 space-y-3"
-                        reset-on-success
-                        @success="controlNumberForPrint = ''"
+                    <p
+                        v-if="pendingVvpat"
+                        class="mt-3 text-sm font-bold text-amber-900"
                     >
-                        <NumericPinPad
-                            v-model="controlNumberForPrint"
-                            label="Voter Control Number"
-                            :digits="printPinDigits"
-                            :error="errors.code"
-                            :processing="processing"
-                            processing-label="Printing and accepting..."
-                            submit-label="Print ballot and update tally"
-                            autofocus
-                        />
-                    </Form>
-                </section>
-            </div>
-
-            <section class="mt-5 border border-stone-300 bg-white p-5">
-                <p class="text-sm font-bold text-blue-800">Step 3</p>
-                <h2 class="mt-1 text-xl font-bold">
-                    Print current tally and Election Return
-                </h2>
-                <p class="mt-2 text-sm text-stone-700">
-                    These are interim demo forms from the currently deposited
-                    VVDAT records. The real demo room still handles formal
-                    closeout.
-                </p>
-                <p
-                    v-if="closeoutFeedback"
-                    class="mt-4 border-l-4 border-blue-700 bg-blue-50 p-3 text-sm font-bold text-blue-950"
-                >
-                    {{ closeoutFeedback }}
-                </p>
-                <div
-                    class="mt-4 border border-blue-100 bg-blue-50 p-3 text-sm text-stone-700"
-                >
-                    <strong class="text-stone-950">Printer mode:</strong>
-                    <span class="font-mono">{{ closeoutPrinter.driver }}</span>
-                    <span v-if="closeoutPrinter.printer_name">
-                        / {{ closeoutPrinter.printer_name }}
-                    </span>
-                    <span v-if="closeoutPrinter.driver === 'file'">
-                        / demo file printer
-                    </span>
-                </div>
-                <div class="mt-4 space-y-3">
+                        Printing is paused until the pending VVPAT is confirmed.
+                        Return previews remain available.
+                    </p>
+                    <p class="mt-2 text-sm text-stone-700">
+                        Printer:
+                        {{
+                            closeoutPrinter.printer_name ||
+                            closeoutPrinter.driver
+                        }}
+                        ·
+                        {{
+                            closeoutPrinter.enabled ? 'Configured' : 'Disabled'
+                        }}
+                    </p>
+                    <p
+                        v-if="closeoutFeedback"
+                        class="mt-3 text-sm font-bold"
+                        role="status"
+                    >
+                        {{ closeoutFeedback }}
+                    </p>
                     <div
-                        v-for="row in closeoutActionRows"
+                        v-for="row in closeoutActionRows.filter((row) =>
+                            ['national-er', 'local-er', 'combined-er'].includes(
+                                row.id,
+                            ),
+                        )"
                         :key="row.id"
-                        class="grid gap-3 md:grid-cols-2"
+                        class="mt-4 space-y-2 border-t border-stone-200 pt-3"
                     >
                         <a
-                            v-if="row.available !== false"
                             :href="freshPdfUrl(row.viewUrl)"
-                            :class="viewLinkClass()"
+                            :class="viewLinkClass() + ' block'"
                             target="_blank"
+                            >{{ row.viewLabel }}</a
                         >
-                            {{ row.viewLabel }}
-                        </a>
-                        <span
-                            v-else
-                            :class="`${viewLinkClass()} cursor-not-allowed opacity-45`"
-                            aria-disabled="true"
-                        >
-                            {{ row.viewLabel }}
-                        </span>
                         <Form
                             :action="row.printAction"
                             method="post"
@@ -597,326 +851,478 @@ usePoll(
                                 type="submit"
                                 :disabled="
                                     processing ||
-                                    row.available === false ||
-                                    (row.id !== 'latest-control-number' &&
-                                        !closeoutPrinter.enabled)
+                                    !closeoutPrinter.enabled ||
+                                    Boolean(pendingVvpat)
                                 "
                             >
                                 {{
                                     processing
                                         ? 'Submitting...'
-                                        : `${row.printSubmitLabel ?? closeoutPrinter.submit_label}: ${row.printLabel}`
+                                        : `Print ${row.printLabel}`
                                 }}
                             </button>
                         </Form>
                     </div>
-                </div>
-                <div class="mt-5 border-t border-stone-300 pt-5">
-                    <h3 class="text-base font-black text-stone-950">
-                        EML interoperability exports
-                    </h3>
-                    <p class="mt-1 text-sm text-stone-700">
-                        Signed, offline-verifiable OASIS EML 7.0 artifacts derived
-                        from the same election configuration and tally snapshot.
-                    </p>
-                    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        <a :href="actions.eml.count510National" :class="viewLinkClass()">
-                            Download National EML 510
-                        </a>
-                        <a :href="actions.eml.count510Local" :class="viewLinkClass()">
-                            Download Local EML 510
-                        </a>
-                        <a :href="actions.eml.count510Combined" :class="viewLinkClass()">
-                            Download Combined EML 510
-                        </a>
-                        <a :href="actions.eml.event110" :class="viewLinkClass()">
-                            Download EML 110
-                        </a>
-                        <a :href="actions.eml.candidates230" :class="viewLinkClass()">
-                            Download EML 230
-                        </a>
-                        <a :href="actions.eml.ballot410" :class="viewLinkClass()">
-                            Download EML 410
-                        </a>
-                        <a :href="actions.eml.audit480" :class="viewLinkClass()">
-                            Download EML 480 Audit
-                        </a>
-                        <a :href="actions.eml.statistics530" :class="viewLinkClass()">
-                            Download EML 530 Statistics
-                        </a>
-                        <a
-                            :href="actions.eml.evidencePackage"
-                            class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-700"
-                        >
-                            Download Evidence Package
-                        </a>
-                    </div>
-                    <EmlValidationPanel
-                        class="mt-5"
-                        :action="actions.eml.validate"
-                    />
-                </div>
-            </section>
+                </section>
+            </div>
 
-            <section class="mt-5 border border-blue-300 bg-white p-5">
-                <p class="text-sm font-bold text-blue-800">Demo load tools</p>
-                <h2 class="mt-1 text-xl font-bold">
-                    Load demo ballots
-                </h2>
-                <p class="mt-2 text-sm text-stone-700">
-                    Creates deposited demo ballots for printing and public QR
-                    tally verification. Rendered ballot PDFs are generated for
-                    the first {{ bulkBallots.rendered_pdf_limit }} ballots so the
-                    media viewer stays responsive. Tally sheets and Election
-                    Returns are rendered only when viewed or sent to the printer.
-                </p>
-                <div
-                    v-if="!bulkBallots.enabled"
-                    class="mt-4 border-l-4 border-stone-500 bg-stone-50 p-4 text-sm font-semibold text-stone-700"
-                >
-                    Bulk demo ballot generation is disabled by configuration.
-                </div>
-                <template v-else>
-                    <div
-                        v-if="displayedBulkRun.target"
-                        class="mt-4 border border-blue-200 bg-blue-50 p-4"
+            <details class="mt-5">
+                <summary class="cursor-pointer font-bold text-stone-700">
+                    Additional demo tools and documents
+                </summary>
+                <section class="mt-5 border border-stone-300 bg-white p-5">
+                    <p class="text-sm font-bold text-blue-800">Step 3</p>
+                    <h2 class="mt-1 text-xl font-bold">
+                        Print current tally and Election Return
+                    </h2>
+                    <p class="mt-2 text-sm text-stone-700">
+                        These are interim demo forms from the currently
+                        deposited VVDAT records. The real demo room still
+                        handles formal closeout.
+                    </p>
+                    <p
+                        v-if="closeoutFeedback"
+                        class="mt-4 border-l-4 border-blue-700 bg-blue-50 p-3 text-sm font-bold text-blue-950"
                     >
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <p class="text-sm font-bold text-blue-900">
-                                    Loading progress
-                                </p>
-                                <p class="mt-1 text-sm text-blue-900">
-                                    {{ displayedBulkRun.generated }} of
-                                    {{ displayedBulkRun.target }} deposited ballots
-                                    loaded.
-                                    <span v-if="displayedBulkRun.remaining > 0">
-                                        {{ displayedBulkRun.remaining }} remaining.
-                                    </span>
-                                </p>
+                        {{ closeoutFeedback }}
+                    </p>
+                    <div
+                        class="mt-4 border border-blue-100 bg-blue-50 p-3 text-sm text-stone-700"
+                    >
+                        <strong class="text-stone-950">Printer mode:</strong>
+                        <span class="font-mono">{{
+                            closeoutPrinter.driver
+                        }}</span>
+                        <span v-if="closeoutPrinter.printer_name">
+                            / {{ closeoutPrinter.printer_name }}
+                        </span>
+                        <span v-if="closeoutPrinter.driver === 'file'">
+                            / demo file printer
+                        </span>
+                    </div>
+                    <div class="mt-4 space-y-3">
+                        <div
+                            v-for="row in closeoutActionRows"
+                            :key="row.id"
+                            class="grid gap-3 md:grid-cols-2"
+                        >
+                            <a
+                                v-if="row.available !== false"
+                                :href="freshPdfUrl(row.viewUrl)"
+                                :class="viewLinkClass()"
+                                target="_blank"
+                            >
+                                {{ row.viewLabel }}
+                            </a>
+                            <span
+                                v-else
+                                :class="`${viewLinkClass()} cursor-not-allowed opacity-45`"
+                                aria-disabled="true"
+                            >
+                                {{ row.viewLabel }}
+                            </span>
+                            <Form
+                                :action="row.printAction"
+                                method="post"
+                                #default="{ processing }"
+                            >
+                                <button
+                                    :class="printButtonClass()"
+                                    type="submit"
+                                    :disabled="
+                                        processing ||
+                                        row.available === false ||
+                                        Boolean(pendingVvpat) ||
+                                        (row.id !== 'latest-control-number' &&
+                                            !closeoutPrinter.enabled)
+                                    "
+                                >
+                                    {{
+                                        processing
+                                            ? 'Submitting...'
+                                            : `${row.printSubmitLabel ?? closeoutPrinter.submit_label}: ${row.printLabel}`
+                                    }}
+                                </button>
+                            </Form>
+                        </div>
+                    </div>
+                    <div class="mt-5 border-t border-stone-300 pt-5">
+                        <h3 class="text-base font-black text-stone-950">
+                            EML interoperability exports
+                        </h3>
+                        <p class="mt-1 text-sm text-stone-700">
+                            Signed, offline-verifiable OASIS EML 7.0 artifacts
+                            derived from the same election configuration and
+                            tally snapshot.
+                        </p>
+                        <div
+                            class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                        >
+                            <a
+                                :href="actions.eml.count510National"
+                                :class="viewLinkClass()"
+                            >
+                                Download National EML 510
+                            </a>
+                            <a
+                                :href="actions.eml.count510Local"
+                                :class="viewLinkClass()"
+                            >
+                                Download Local EML 510
+                            </a>
+                            <a
+                                :href="actions.eml.count510Combined"
+                                :class="viewLinkClass()"
+                            >
+                                Download Combined EML 510
+                            </a>
+                            <a
+                                :href="actions.eml.event110"
+                                :class="viewLinkClass()"
+                            >
+                                Download EML 110
+                            </a>
+                            <a
+                                :href="actions.eml.candidates230"
+                                :class="viewLinkClass()"
+                            >
+                                Download EML 230
+                            </a>
+                            <a
+                                :href="actions.eml.ballot410"
+                                :class="viewLinkClass()"
+                            >
+                                Download EML 410
+                            </a>
+                            <a
+                                :href="actions.eml.audit480"
+                                :class="viewLinkClass()"
+                            >
+                                Download EML 480 Audit
+                            </a>
+                            <a
+                                :href="actions.eml.statistics530"
+                                :class="viewLinkClass()"
+                            >
+                                Download EML 530 Statistics
+                            </a>
+                            <a
+                                :href="actions.eml.evidencePackage"
+                                class="min-h-12 border border-blue-700 bg-blue-700 px-4 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 focus:ring-2 focus:ring-blue-700 focus:outline-none"
+                            >
+                                Download Evidence Package
+                            </a>
+                        </div>
+                        <EmlValidationPanel
+                            class="mt-5"
+                            :action="actions.eml.validate"
+                        />
+                    </div>
+                </section>
+
+                <section class="mt-5 border border-blue-300 bg-white p-5">
+                    <p class="text-sm font-bold text-blue-800">
+                        Demo load tools
+                    </p>
+                    <h2 class="mt-1 text-xl font-bold">Load demo ballots</h2>
+                    <p class="mt-2 text-sm text-stone-700">
+                        Creates deposited demo ballots for printing and public
+                        QR tally verification. Rendered VVPAT PDFs are generated
+                        for the first
+                        {{ bulkBallots.rendered_pdf_limit }} ballots so the
+                        media viewer stays responsive. Tally sheets and Election
+                        Returns are rendered only when viewed or sent to the
+                        printer.
+                    </p>
+                    <div
+                        v-if="!bulkBallots.enabled"
+                        class="mt-4 border-l-4 border-stone-500 bg-stone-50 p-4 text-sm font-semibold text-stone-700"
+                    >
+                        Bulk demo ballot generation is disabled by
+                        configuration.
+                    </div>
+                    <template v-else>
+                        <div
+                            v-if="displayedBulkRun.target"
+                            class="mt-4 border border-blue-200 bg-blue-50 p-4"
+                        >
+                            <div
+                                class="flex flex-wrap items-center justify-between gap-3"
+                            >
+                                <div>
+                                    <p class="text-sm font-bold text-blue-900">
+                                        Loading progress
+                                    </p>
+                                    <p class="mt-1 text-sm text-blue-900">
+                                        {{ displayedBulkRun.generated }} of
+                                        {{ displayedBulkRun.target }} deposited
+                                        ballots loaded.
+                                        <span
+                                            v-if="
+                                                displayedBulkRun.remaining > 0
+                                            "
+                                        >
+                                            {{ displayedBulkRun.remaining }}
+                                            remaining.
+                                        </span>
+                                    </p>
+                                </div>
+                                <button
+                                    v-if="
+                                        displayedBulkRun.status !==
+                                            'complete' &&
+                                        displayedBulkRun.target
+                                    "
+                                    class="min-h-11 border-2 border-blue-800 bg-white px-4 text-sm font-bold text-blue-800 disabled:opacity-50"
+                                    type="button"
+                                    :disabled="bulkLoading"
+                                    @click="
+                                        loadBulkBallots(displayedBulkRun.target)
+                                    "
+                                >
+                                    {{
+                                        bulkLoading
+                                            ? 'Loading...'
+                                            : 'Continue loading'
+                                    }}
+                                </button>
                             </div>
+                            <div
+                                class="mt-3 h-3 overflow-hidden border border-blue-300 bg-white"
+                            >
+                                <div
+                                    class="h-full bg-blue-800 transition-all"
+                                    :style="{
+                                        width: `${bulkProgressPercent}%`,
+                                    }"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-3">
                             <button
-                                v-if="
-                                    displayedBulkRun.status !== 'complete' &&
-                                    displayedBulkRun.target
-                                "
-                                class="min-h-11 border-2 border-blue-800 bg-white px-4 text-sm font-bold text-blue-800 disabled:opacity-50"
+                                v-for="preset in bulkBallots.presets"
+                                :key="preset"
+                                class="min-h-12 w-full border-2 border-blue-800 bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
                                 type="button"
-                                :disabled="bulkLoading"
-                                @click="loadBulkBallots(displayedBulkRun.target)"
+                                :disabled="
+                                    bulkLoading ||
+                                    preset > bulkBallots.max_count
+                                "
+                                @click="loadBulkBallots(preset)"
                             >
                                 {{
-                                    bulkLoading
+                                    bulkLoading &&
+                                    displayedBulkRun.target === preset
                                         ? 'Loading...'
-                                        : 'Continue loading'
+                                        : `Load to ${preset} ballots`
                                 }}
                             </button>
                         </div>
-                        <div class="mt-3 h-3 overflow-hidden border border-blue-300 bg-white">
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+                            <label class="block">
+                                <span class="text-sm font-bold"
+                                    >Custom count</span
+                                >
+                                <input
+                                    v-model.number="customBulkCount"
+                                    class="mt-1 min-h-12 w-full border-2 border-stone-400 px-4 font-mono text-xl font-bold"
+                                    type="number"
+                                    min="1"
+                                    :max="bulkBallots.max_count"
+                                    placeholder="700"
+                                />
+                            </label>
+                            <button
+                                class="min-h-12 self-end border-2 border-blue-800 bg-white px-5 font-bold text-blue-800 disabled:opacity-50"
+                                type="button"
+                                :disabled="
+                                    bulkLoading ||
+                                    !customBulkCount ||
+                                    customBulkCount < 1 ||
+                                    customBulkCount > bulkBallots.max_count
+                                "
+                                @click="loadBulkBallots(customBulkCount || 0)"
+                            >
+                                {{ bulkLoading ? 'Loading...' : 'Load custom' }}
+                            </button>
+                            <p
+                                v-if="bulkError"
+                                class="font-bold text-red-700 sm:col-span-2"
+                            >
+                                {{ bulkError }}
+                            </p>
+                            <p
+                                v-if="bulkMessage"
+                                class="font-semibold text-blue-900 sm:col-span-2"
+                            >
+                                {{ bulkMessage }}
+                            </p>
+                        </div>
+
+                        <p class="mt-3 text-xs text-stone-600">
+                            Maximum {{ bulkBallots.max_count }} total demo
+                            ballots. Loads {{ bulkBallots.chunk_size }} ballots
+                            per step so the page stays responsive. Use Reset
+                            role demo precinct before loading a fresh batch.
+                        </p>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
                             <div
-                                class="h-full bg-blue-800 transition-all"
-                                :style="{ width: `${bulkProgressPercent}%` }"
-                            />
+                                class="border border-amber-200 bg-amber-50 p-4"
+                            >
+                                <div class="flex items-center gap-4">
+                                    <img
+                                        :src="navigationQrs.precinctTally"
+                                        alt="Precinct tally scanner QR code"
+                                        class="h-28 w-28 border border-stone-300 bg-white p-2"
+                                    />
+                                    <div class="min-w-0 flex-1">
+                                        <p
+                                            class="text-sm font-black text-amber-950"
+                                        >
+                                            Precinct Tally Scanner
+                                        </p>
+                                        <p
+                                            class="mt-1 text-xs font-semibold text-stone-700"
+                                        >
+                                            Scan to open the scanner screen.
+                                        </p>
+                                    </div>
+                                </div>
+                                <a
+                                    :href="actions.precinctTally"
+                                    class="mt-4 block min-h-12 border-2 border-amber-800 bg-amber-800 px-4 py-3 text-center font-bold text-white"
+                                >
+                                    Open Precinct Tally Scanner
+                                </a>
+                            </div>
+
+                            <div
+                                class="border border-amber-200 bg-amber-50 p-4"
+                            >
+                                <div class="flex items-center gap-4">
+                                    <img
+                                        :src="navigationQrs.publicPrecinctTally"
+                                        alt="Public precinct tally QR code"
+                                        class="h-28 w-28 border border-stone-300 bg-white p-2"
+                                    />
+                                    <div class="min-w-0 flex-1">
+                                        <p
+                                            class="text-sm font-black text-amber-950"
+                                        >
+                                            Public Precinct Tally
+                                        </p>
+                                        <p
+                                            class="mt-1 text-xs font-semibold text-stone-700"
+                                        >
+                                            Scan to open the public tally board.
+                                        </p>
+                                    </div>
+                                </div>
+                                <a
+                                    :href="actions.publicPrecinctTally"
+                                    class="mt-4 block min-h-12 border-2 border-amber-800 bg-white px-4 py-3 text-center font-bold text-amber-900"
+                                    target="_blank"
+                                >
+                                    Open Public Precinct Tally
+                                </a>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                        <button
-                            v-for="preset in bulkBallots.presets"
-                            :key="preset"
-                            class="min-h-12 w-full border-2 border-blue-800 bg-blue-800 px-4 font-bold text-white disabled:opacity-50"
-                            type="button"
-                            :disabled="
-                                bulkLoading || preset > bulkBallots.max_count
-                            "
-                            @click="loadBulkBallots(preset)"
-                        >
-                            {{
-                                bulkLoading &&
-                                displayedBulkRun.target === preset
-                                    ? 'Loading...'
-                                    : `Load to ${preset} ballots`
-                            }}
-                        </button>
-                    </div>
-
-                    <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-                        <label class="block">
-                            <span class="text-sm font-bold">Custom count</span>
-                            <input
-                                v-model.number="customBulkCount"
-                                class="mt-1 min-h-12 w-full border-2 border-stone-400 px-4 font-mono text-xl font-bold"
-                                type="number"
-                                min="1"
-                                :max="bulkBallots.max_count"
-                                placeholder="700"
-                            />
-                        </label>
-                        <button
-                            class="min-h-12 self-end border-2 border-blue-800 bg-white px-5 font-bold text-blue-800 disabled:opacity-50"
-                            type="button"
-                            :disabled="
-                                bulkLoading ||
-                                !customBulkCount ||
-                                customBulkCount < 1 ||
-                                customBulkCount > bulkBallots.max_count
-                            "
-                            @click="loadBulkBallots(customBulkCount || 0)"
-                        >
-                            {{ bulkLoading ? 'Loading...' : 'Load custom' }}
-                        </button>
-                        <p
-                            v-if="bulkError"
-                            class="font-bold text-red-700 sm:col-span-2"
-                        >
-                            {{ bulkError }}
-                        </p>
-                        <p
-                            v-if="bulkMessage"
-                            class="font-semibold text-blue-900 sm:col-span-2"
-                        >
-                            {{ bulkMessage }}
-                        </p>
-                    </div>
-
-                    <p class="mt-3 text-xs text-stone-600">
-                        Maximum {{ bulkBallots.max_count }} total demo ballots.
-                        Loads {{ bulkBallots.chunk_size }} ballots per step so
-                        the page stays responsive. Use Reset role demo precinct
-                        before loading a fresh batch.
-                    </p>
-
-                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div class="border border-amber-200 bg-amber-50 p-4">
-                            <div class="flex items-center gap-4">
-                                <img
-                                    :src="navigationQrs.precinctTally"
-                                    alt="Precinct tally scanner QR code"
-                                    class="h-28 w-28 border border-stone-300 bg-white p-2"
-                                />
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-black text-amber-950">
-                                        Precinct Tally Scanner
+                        <div class="mt-4 border border-blue-200 bg-blue-50 p-4">
+                            <p
+                                class="text-sm font-black tracking-wide text-blue-950 uppercase"
+                            >
+                                Temporary scanner setup notes
+                            </p>
+                            <div class="mt-3 grid gap-3 lg:grid-cols-2">
+                                <div
+                                    class="border border-blue-200 bg-white p-3"
+                                >
+                                    <p class="font-bold text-blue-950">
+                                        Scanner plugged into the tablet or
+                                        browser
                                     </p>
-                                    <p class="mt-1 text-xs font-semibold text-stone-700">
-                                        Scan to open the scanner screen.
+                                    <ul
+                                        class="mt-2 list-disc space-y-1 pl-5 text-sm text-stone-700"
+                                    >
+                                        <li>
+                                            Open Precinct Tally Scanner and keep
+                                            that browser tab active.
+                                        </li>
+                                        <li>
+                                            Leave Capture checked. The scanner
+                                            can type anywhere on the page.
+                                        </li>
+                                        <li>
+                                            The scanner should send the
+                                            <span class="font-mono"
+                                                >truth://</span
+                                            >
+                                            payload followed by Enter.
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div
+                                    class="border border-blue-200 bg-white p-3"
+                                >
+                                    <p class="font-bold text-blue-950">
+                                        Scanner plugged into the server Linux
+                                        box
                                     </p>
+                                    <ul
+                                        class="mt-2 list-disc space-y-1 pl-5 text-sm text-stone-700"
+                                    >
+                                        <li>
+                                            Run the scanner ingestion service on
+                                            the server before scanning.
+                                        </li>
+                                        <li>
+                                            The scanner will feed the tally
+                                            through the server, not by typing
+                                            into the tablet browser.
+                                        </li>
+                                        <li>
+                                            If that service is not running, use
+                                            the tablet or browser setup above.
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
-                            <a
-                                :href="actions.precinctTally"
-                                class="mt-4 block min-h-12 border-2 border-amber-800 bg-amber-800 px-4 py-3 text-center font-bold text-white"
-                            >
-                                Open Precinct Tally Scanner
-                            </a>
                         </div>
+                    </template>
+                </section>
 
-                        <div class="border border-amber-200 bg-amber-50 p-4">
-                            <div class="flex items-center gap-4">
-                                <img
-                                    :src="navigationQrs.publicPrecinctTally"
-                                    alt="Public precinct tally QR code"
-                                    class="h-28 w-28 border border-stone-300 bg-white p-2"
-                                />
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-black text-amber-950">
-                                        Public Precinct Tally
-                                    </p>
-                                    <p class="mt-1 text-xs font-semibold text-stone-700">
-                                        Scan to open the public tally board.
-                                    </p>
-                                </div>
-                            </div>
-                            <a
-                                :href="actions.publicPrecinctTally"
-                                class="mt-4 block min-h-12 border-2 border-amber-800 bg-white px-4 py-3 text-center font-bold text-amber-900"
-                                target="_blank"
-                            >
-                                Open Public Precinct Tally
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 border border-blue-200 bg-blue-50 p-4">
+                <section class="mt-5 border border-stone-300 bg-white p-5">
+                    <h2 class="text-xl font-bold">Recent activity</h2>
+                    <div class="mt-3 divide-y divide-stone-200">
                         <p
-                            class="text-sm font-black uppercase tracking-wide text-blue-950"
+                            v-for="event in operationsBoard.timeline.slice(
+                                0,
+                                8,
+                            )"
+                            :key="`${event.event_type}-${event.occurred_at}`"
+                            class="py-2 text-sm"
                         >
-                            Temporary scanner setup notes
+                            <strong>{{ event.label }}</strong>
+                            <span class="ml-2 text-stone-500">{{
+                                event.occurred_at
+                            }}</span>
                         </p>
-                        <div class="mt-3 grid gap-3 lg:grid-cols-2">
-                            <div class="border border-blue-200 bg-white p-3">
-                                <p class="font-bold text-blue-950">
-                                    Scanner plugged into the tablet or browser
-                                </p>
-                                <ul
-                                    class="mt-2 list-disc space-y-1 pl-5 text-sm text-stone-700"
-                                >
-                                    <li>
-                                        Open Precinct Tally Scanner and keep
-                                        that browser tab active.
-                                    </li>
-                                    <li>
-                                        Leave Capture checked. The scanner can
-                                        type anywhere on the page.
-                                    </li>
-                                    <li>
-                                        The scanner should send the
-                                        <span class="font-mono">truth://</span>
-                                        payload followed by Enter.
-                                    </li>
-                                </ul>
-                            </div>
-
-                            <div class="border border-blue-200 bg-white p-3">
-                                <p class="font-bold text-blue-950">
-                                    Scanner plugged into the server Linux box
-                                </p>
-                                <ul
-                                    class="mt-2 list-disc space-y-1 pl-5 text-sm text-stone-700"
-                                >
-                                    <li>
-                                        Run the scanner ingestion service on the
-                                        server before scanning.
-                                    </li>
-                                    <li>
-                                        The scanner will feed the tally through
-                                        the server, not by typing into the
-                                        tablet browser.
-                                    </li>
-                                    <li>
-                                        If that service is not running, use the
-                                        tablet or browser setup above.
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
                     </div>
-                </template>
-            </section>
-
-            <section class="mt-5 border border-stone-300 bg-white p-5">
-                <h2 class="text-xl font-bold">Recent activity</h2>
-                <div class="mt-3 divide-y divide-stone-200">
-                    <p
-                        v-for="event in operationsBoard.timeline.slice(0, 8)"
-                        :key="`${event.event_type}-${event.occurred_at}`"
-                        class="py-2 text-sm"
-                    >
-                        <strong>{{ event.label }}</strong>
-                        <span class="ml-2 text-stone-500">{{
-                            event.occurred_at
-                        }}</span>
-                    </p>
-                </div>
-                <Form :action="actions.reset" method="post" class="mt-4">
-                    <button
-                        class="min-h-11 border-2 border-red-700 bg-white px-4 font-bold text-red-700"
-                        type="submit"
-                    >
-                        Reset role demo precinct
-                    </button>
-                </Form>
-            </section>
+                    <Form :action="actions.reset" method="post" class="mt-4">
+                        <button
+                            class="min-h-11 border-2 border-red-700 bg-white px-4 font-bold text-red-700"
+                            type="submit"
+                        >
+                            Reset role demo precinct
+                        </button>
+                    </Form>
+                </section>
+            </details>
         </section>
     </main>
 </template>

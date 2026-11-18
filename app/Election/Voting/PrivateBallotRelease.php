@@ -13,6 +13,8 @@ use App\Election\Support\ElectionClock;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
+use LBHurtado\TruthQr\Contracts\RecordService;
+use LBHurtado\TruthQr\Core\RecordPayload;
 use RuntimeException;
 
 final class PrivateBallotRelease
@@ -30,6 +32,7 @@ final class PrivateBallotRelease
         private readonly PrintFormArtifactService $forms,
         private readonly PrintFormProfileResolver $profiles,
         private readonly DocumentProfileRegistry $documents,
+        private readonly RecordService $truthQr,
     ) {}
 
     /**
@@ -66,7 +69,7 @@ final class PrivateBallotRelease
         ];
         $payload['payload_hash'] = $this->qrPayload->compactHash($payload);
         $payload['canonical_qr_payload'] = $this->qrPayload->encode($payload);
-        $payload['qr_payload'] = $this->envelope->wrap($payload['canonical_qr_payload']);
+        $payload['qr_payload'] = $this->truthQr->encodeRecord(new RecordPayload('aes-election-v1', 'ballot', $payload))[0];
         $expiresAt = $this->clock->now()->addSeconds(
             (int) config('election.voter.print_release_ttl_seconds', 600),
         );
@@ -115,6 +118,16 @@ final class PrivateBallotRelease
             'paper_ballot_serial' => $paperBallotSerial,
             'expires_at' => $record['expires_at'],
         ];
+    }
+
+    public function isReadyForPrint(string $code): bool
+    {
+        $normalized = Str::after(Str::lower(trim($code)), 'aes-print-release:');
+        $record = $this->recordForCode($normalized);
+
+        return is_array($record)
+            && ($record['status'] ?? null) === 'pending'
+            && ! $this->clock->now()->isAfter($record['expires_at']);
     }
 
     /**
@@ -181,16 +194,34 @@ final class PrivateBallotRelease
      */
     public function print(string $releaseId, BallotPrinter $printer): array
     {
+        return $this->printRelease($releaseId, $printer, false, false);
+    }
+
+    /** @return array<string, mixed> */
+    public function printForRoleDemo(string $releaseId, BallotPrinter $printer, bool $isReprint): array
+    {
+        return $this->printRelease($releaseId, $printer, true, $isReprint);
+    }
+
+    /** @return array<string, mixed> */
+    private function printRelease(string $releaseId, BallotPrinter $printer, bool $allowReprint, bool $isReprint): array
+    {
         $record = $this->record($releaseId);
 
-        if (! in_array($record['status'], ['pending', 'redeemed'], true)) {
+        if (! in_array($record['status'], $allowReprint ? ['redeemed', 'printed'] : ['pending', 'redeemed'], true)) {
             throw new RuntimeException('This paper ballot has already been printed.');
         }
 
+        $printedAt = $this->clock->now()->toIso8601String();
         $payload = $this->withPrintQrArtifacts($this->decryptPayload($record), 'ballots');
+        $payload['printed_at'] = $printedAt;
+        $payload['role_demo_reprint'] = $isReprint && is_file($this->storage->path("print-jobs/{$record['ballot_id']}.json"));
         $job = $printer->print($payload);
+        if (! in_array($job['status'] ?? null, ['printed', 'submitted'], true)) {
+            throw new RuntimeException('VVPAT printing failed.');
+        }
         $record['status'] = 'printed';
-        $record['printed_at'] = $this->clock->now()->toIso8601String();
+        $record['printed_at'] = $printedAt;
         $this->storage->writeJson("print-releases/{$releaseId}.json", $record);
         $this->journal->record('printing.ballot.generated_from_pin', [
             'release_id' => $releaseId,

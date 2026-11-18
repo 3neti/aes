@@ -15,6 +15,7 @@ use App\Election\Support\SimplePdf;
 use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\StandardQrCode;
+use Composer\InstalledVersions;
 
 beforeEach(function (): void {
     config()->set('election.tabulation.profile', TabulationProfile::PaperFirst->value);
@@ -76,8 +77,9 @@ test('compact selected candidates ballot fits paired offices grids and scan qr o
         'precinct_id' => '39010402',
         'ballot_style_id' => 'BS-COMPACT-RESULT',
         'paper_ballot_serial' => '39010402-DEMO-000001',
+        'printed_at' => '2026-10-10T01:14:07+00:00',
         'qr_artifact_path' => sampleQrPath(),
-        'qr_payload' => 'aes-ballot-compact-1:fixture',
+        'qr_payload' => 'truth://v1/waes-ballot/aes-ballot-compact-1?p=fixture',
         'payload_hash' => str_repeat('c', 64),
         'mapping_hash' => str_repeat('d', 64),
         'selections' => compactResultSelections(),
@@ -115,6 +117,9 @@ test('compact selected candidates ballot fits paired offices grids and scan qr o
         ->toContain('Senator Choice 12')
         ->toContain('Councilor Choice 06')
         ->toContain('Ballot QR Verification')
+        ->toContain('Precinct 39010402 | Ballot 39010402-DEMO-000001')
+        ->toContain('Printed 2026-10-10T01:14:07+00:00')
+        ->toContain('Truth QR '.InstalledVersions::getPrettyVersion('3neti/truth-qr').' | aes-ballot-compact-1')
         ->toContain('q 216.00 0 0 216.00')
         ->not->toContain('Unselected President')
         ->not->toContain('Senator Choice 13')

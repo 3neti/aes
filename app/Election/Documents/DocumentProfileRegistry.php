@@ -3,8 +3,9 @@
 namespace App\Election\Documents;
 
 use App\Election\Core\CanonicalJson;
+use LBHurtado\TruthQr\Contracts\DocumentReferences;
 
-final class DocumentProfileRegistry
+final class DocumentProfileRegistry implements DocumentReferences
 {
     public const BallotProfileId = 'waes-official-ballot-a4-tondo-2025';
 

@@ -79,8 +79,8 @@ function formatDuration(totalSeconds: number): string {
                         >No further voter action is needed</strong
                     >
                     <span class="mt-1 block text-blue-950">
-                        If you already printed and deposited your paper ballot,
-                        your voting session is complete.
+                        If you already printed and deposited your VVPAT, your
+                        voting session is complete.
                     </span>
                 </div>
                 <a
@@ -96,13 +96,13 @@ function formatDuration(totalSeconds: number): string {
                     Ballot finalized privately
                 </p>
                 <h1 class="mt-2 text-3xl font-bold">
-                    Your ballot is ready to print
+                    Your ballot has been submitted
                 </h1>
                 <p class="mt-4 text-stone-700">
-                    Leave this tablet in the voting booth. Bring your voter
-                    control number to the central print station to print your
-                    paper ballot. The print station will not display your
-                    choices.
+                    Leave this tablet in the voting booth. Return to the
+                    election officer with the same control number to collect
+                    your printed voter-verifiable paper audit trail (VVPAT).
+                    Check that it reflects your selections.
                 </p>
                 <img
                     :src="release.release_qr_data_uri"
@@ -166,12 +166,11 @@ function formatDuration(totalSeconds: number): string {
                     class="mt-6 border border-amber-300 bg-amber-50 p-4 text-left text-sm"
                 >
                     <strong class="block text-amber-900"
-                        >Before depositing the paper ballot</strong
+                        >Before depositing the VVPAT</strong
                     >
                     <span class="mt-1 block text-amber-900">
-                        Read the printed candidate names in private. If anything
-                        is wrong, do not deposit it; call an Election Board
-                        member.
+                        Read the names on your VVPAT in private. If anything is
+                        wrong, do not deposit it; call an Election Board member.
                     </span>
                 </div>
                 <Form
@@ -217,7 +216,7 @@ function formatDuration(totalSeconds: number): string {
                             id="voter-ballot-preview-title"
                             class="mt-1 text-2xl font-bold text-stone-950"
                         >
-                            Printable ballot preview
+                            VVPAT preview
                         </h2>
                         <p class="mt-1 max-w-3xl text-sm text-stone-700">
                             In a real precinct, the voter tablet does not show
@@ -237,7 +236,7 @@ function formatDuration(totalSeconds: number): string {
                     <iframe
                         :src="ballotPreviewAction"
                         class="h-[70vh] w-full border border-stone-300 bg-white"
-                        title="Printable ballot PDF preview"
+                        title="VVPAT PDF preview"
                     />
                 </div>
                 <footer

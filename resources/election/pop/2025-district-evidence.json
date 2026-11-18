@@ -1,0 +1,169 @@
+{
+    "schema_version": "ph-2025-district-evidence-1",
+    "election_id": "2025NLE",
+    "city_rules": [
+        {
+            "id": "comelec-2025-ncr-single-legislative-districts-mandaluyong",
+            "province": "NCR - 2ND DISTRICT",
+            "city_municipality": "CITY OF MANDALUYONG",
+            "legislative_district": "LONE",
+            "source_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/12202024_NoOfElectivePositions2025NLE.pdf",
+            "source_reference": "2025 Number of Elective Positions, page 2: City of Mandaluyong (1 LD)",
+            "review_state": "source_supported_pending_review"
+        },
+        {
+            "id": "comelec-2025-ncr-single-legislative-districts-pasig",
+            "province": "NCR - 2ND DISTRICT",
+            "city_municipality": "CITY OF PASIG",
+            "legislative_district": "LONE",
+            "source_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/12202024_NoOfElectivePositions2025NLE.pdf",
+            "source_reference": "2025 Number of Elective Positions, page 2: City of Pasig (1 LD)",
+            "review_state": "source_supported_pending_review"
+        },
+        {
+            "id": "comelec-2025-ncr-single-legislative-districts-san-juan",
+            "province": "NCR - 2ND DISTRICT",
+            "city_municipality": "CITY OF SAN JUAN",
+            "legislative_district": "LONE",
+            "source_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/12202024_NoOfElectivePositions2025NLE.pdf",
+            "source_reference": "2025 Number of Elective Positions, page 2: City of San Juan (1 LD)",
+            "review_state": "source_supported_pending_review"
+        },
+        {
+            "id": "comelec-2025-ncr-single-legislative-districts-malabon",
+            "province": "NCR - 3RD DISTRICT",
+            "city_municipality": "CITY OF MALABON",
+            "legislative_district": "LONE",
+            "source_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/12202024_NoOfElectivePositions2025NLE.pdf",
+            "source_reference": "2025 Number of Elective Positions, page 2: City of Malabon (1 LD)",
+            "review_state": "source_supported_pending_review"
+        },
+        {
+            "id": "comelec-2025-ncr-single-legislative-districts-navotas",
+            "province": "NCR - 3RD DISTRICT",
+            "city_municipality": "CITY OF NAVOTAS",
+            "legislative_district": "LONE",
+            "source_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/12202024_NoOfElectivePositions2025NLE.pdf",
+            "source_reference": "2025 Number of Elective Positions, page 2: City of Navotas (1 LD)",
+            "review_state": "source_supported_pending_review"
+        },
+        {
+            "id": "comelec-2025-ncr-single-legislative-districts-las-pinas",
+            "province": "NCR - 4TH DISTRICT",
+            "city_municipality": "CITY OF LAS PIÑAS",
+            "legislative_district": "LONE",
+            "source_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/12202024_NoOfElectivePositions2025NLE.pdf",
+            "source_reference": "2025 Number of Elective Positions, page 2: City of Las Piñas (1 LD)",
+            "review_state": "source_supported_pending_review"
+        },
+        {
+            "id": "comelec-2025-ncr-single-legislative-districts-muntinlupa",
+            "province": "NCR - 4TH DISTRICT",
+            "city_municipality": "CITY OF MUNTINLUPA",
+            "legislative_district": "LONE",
+            "source_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/12202024_NoOfElectivePositions2025NLE.pdf",
+            "source_reference": "2025 Number of Elective Positions, page 2: City of Muntinlupa (1 LD)",
+            "review_state": "source_supported_pending_review"
+        },
+        {
+            "id": "comelec-2025-ncr-single-legislative-districts-pasay",
+            "province": "NCR - 4TH DISTRICT",
+            "city_municipality": "PASAY CITY",
+            "legislative_district": "LONE",
+            "source_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/12202024_NoOfElectivePositions2025NLE.pdf",
+            "source_reference": "2025 Number of Elective Positions, page 2: Pasay City (1 LD)",
+            "review_state": "source_supported_pending_review"
+        }
+    ],
+    "district_rules": [
+        {
+            "id": "ra-9229-paranaque-first",
+            "province": "NCR - 4TH DISTRICT",
+            "city_municipality": "CITY OF PARAÑAQUE",
+            "legislative_district": "1",
+            "barangays": [
+                "BACLARAN",
+                "TAMBO",
+                "VITALEZ",
+                "SANTO NIÑO",
+                "DON GALO",
+                "LA HUERTA",
+                "SAN DIONISIO",
+                "SAN ISIDRO"
+            ],
+            "source_url": "https://elibrary.judiciary.gov.ph/thebookshelf/showdocs/2/301",
+            "source_reference": "Republic Act No. 9229, Section 2; POP spelling aliases reviewed against 2025 workbook",
+            "review_state": "source_supported_pending_review"
+        },
+        {
+            "id": "ra-9229-paranaque-second",
+            "province": "NCR - 4TH DISTRICT",
+            "city_municipality": "CITY OF PARAÑAQUE",
+            "legislative_district": "2",
+            "barangays": [
+                "B. F. HOMES",
+                "SAN ANTONIO",
+                "SUN VALLEY",
+                "SAN MARTIN DE PORRES",
+                "DON BOSCO",
+                "MERVILLE",
+                "MARCELO GREEN VILLAGE",
+                "MOONWALK"
+            ],
+            "source_url": "https://elibrary.judiciary.gov.ph/thebookshelf/showdocs/2/301",
+            "source_reference": "Republic Act No. 9229, Section 2; POP spelling aliases reviewed against 2025 workbook",
+            "review_state": "source_supported_pending_review"
+        }
+    ],
+    "precinct_evidence": [
+        {
+            "id": "comelec-davao-city-first-ballot-face-24020196",
+            "clustered_precinct": "24020196",
+            "province": "DAVAO DEL SUR",
+            "city_municipality": "CITY OF DAVAO",
+            "barangay": "BUCANA",
+            "legislative_district": "1",
+            "source_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/2025BallotFace/R11/DAVAODELSUR/DAVAOCITY_1ST_DIST.pdf",
+            "source_reference": "Ballot face header and filename identify this sample clustered precinct",
+            "review_state": "source_supported_pending_review"
+        }
+    ],
+    "corrections": [
+        {
+            "id": "pop-paranaque-first-district-change",
+            "category": "pop_precinct_change",
+            "scope": "CITY OF PARAÑAQUE, 1ST DISTRICT",
+            "source_url": "https://www.comelec.gov.ph/?r=2025NLE%2F2025NLEPOP",
+            "source_reference": "Change in the POP of the 1st District Parañaque City, NCR",
+            "review_state": "source_identified_contents_pending",
+            "applied": false
+        },
+        {
+            "id": "voting-center-names-2025-04-14",
+            "category": "voting_center_change",
+            "scope": "nationwide",
+            "source_url": "https://www.comelec.gov.ph/?r=2025NLE%2FRequestForTransferOfVotingCenters%2FApprovedRequestForTransferOfVotingCenters",
+            "source_reference": "Updated Names of Designated Voting Centers, dated 14 April 2025",
+            "review_state": "source_identified_contents_pending",
+            "applied": false
+        },
+        {
+            "id": "candidate-list-resolution-11097-b",
+            "category": "candidate_list_change",
+            "scope": "senatorial",
+            "source_url": "https://www.comelec.gov.ph/?r=2025NLE%2FResolutions",
+            "source_reference": "Resolution No. 11097-B, 24 January 2025",
+            "review_state": "source_identified_contents_pending",
+            "applied": false
+        },
+        {
+            "id": "ballot-template-pending-decisions",
+            "category": "ballot_template_notice",
+            "scope": "nationwide",
+            "source_url": "https://www.comelec.gov.ph/?r=2025NLE%2F2025BallotFace",
+            "source_reference": "26 January 2025 ballot face disclaimer for pending cases",
+            "review_state": "source_identified_contents_pending",
+            "applied": false
+        }
+    ]
+}

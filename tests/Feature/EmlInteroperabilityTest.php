@@ -1,5 +1,6 @@
 <?php
 
+use App\Election\Bundle\AesEmlProjector;
 use App\Election\Interoperability\Eml\EmlArtifactService;
 use App\Election\Interoperability\Eml\EmlArtifactSigner;
 use App\Election\Interoperability\Eml\EmlMessageType;
@@ -88,6 +89,18 @@ test('official EML schemas are hash pinned and validate every supported export',
             ->and($service->verifyStored($artifact->relativePath))
             ->valid->toBeTrue();
     }
+});
+
+test('ceremony EML projector exports and verifies an AES count artifact', function (): void {
+    $reference = app(AesEmlProjector::class)->export(EmlMessageType::PrecinctCount->value, [
+        'configuration' => emlConfiguration(),
+        'result' => emlResult(),
+    ]);
+
+    expect($reference['schema_valid'])->toBeTrue()
+        ->and($reference['signature_valid'])->toBeTrue()
+        ->and($reference['sha256'])->toHaveLength(64)
+        ->and($reference['path'])->toStartWith('ceremonies/eml/510-');
 });
 
 test('EML output is deterministic and a changed vote changes the artifact identity', function (): void {

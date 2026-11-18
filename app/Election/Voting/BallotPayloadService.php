@@ -6,6 +6,8 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Documents\DocumentProfileRegistry;
 use App\Election\Support\ElectionStorage;
+use LBHurtado\TruthQr\Contracts\RecordService;
+use LBHurtado\TruthQr\Core\RecordPayload;
 use RuntimeException;
 
 final class BallotPayloadService
@@ -20,6 +22,7 @@ final class BallotPayloadService
         private readonly PaperBallotLedger $paperBallots,
         private readonly BallotSelectionValidator $selections,
         private readonly DocumentProfileRegistry $documents,
+        private readonly RecordService $truthQr,
     ) {}
 
     /**
@@ -54,7 +57,7 @@ final class BallotPayloadService
 
         $payload['payload_hash'] = $this->qrPayload->compactHash($payload);
         $payload['canonical_qr_payload'] = $this->qrPayload->encode($payload);
-        $payload['qr_payload'] = $this->envelope->wrap($payload['canonical_qr_payload']);
+        $payload['qr_payload'] = $this->truthQr->encodeRecord(new RecordPayload('aes-election-v1', 'ballot', $payload))[0];
         $payload['qr_artifact_path'] = $this->storage->writeText(
             "ballots/{$payload['ballot_id']}-qr.png",
             $this->qrCode->renderPrintPng($payload['qr_payload']),

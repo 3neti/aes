@@ -888,6 +888,16 @@ final class ScenarioRunner
     private function electionReturnCopyDistributionScenario(): array
     {
         $activation = $this->activateConfiguredPrecinctBallot();
+        $contests = collect($activation['configuration']['contests']);
+        $scenarioContests = $contests->filter(fn (array $contest): bool => str_starts_with($contest['id'], 'president_')
+            || str_starts_with($contest['id'], 'mayor_')
+            || str_starts_with($contest['id'], 'councilor_'));
+        $acceptedSelections = $scenarioContests->mapWithKeys(fn (array $contest): array => [
+            $contest['id'] => [$contest['candidates'][0]['id']],
+        ])->all();
+        $rejectedSelections = $scenarioContests->mapWithKeys(fn (array $contest): array => [
+            $contest['id'] => [$contest['candidates'][1]['id'] ?? $contest['candidates'][0]['id']],
+        ])->all();
         $this->clock->tick();
         $devices = $this->devices->run();
 
@@ -895,17 +905,9 @@ final class ScenarioRunner
         $this->ceremonies->openPolls('Scenario Officer');
         $this->ceremonies->openPolls('Scenario Officer');
 
-        $acceptedPayload = $this->payloads->finalize([
-            'president' => ['pres-ada'],
-            'mayor' => ['mayor-lina'],
-            'council' => ['council-ana'],
-        ], 'scenario-copy-distribution-accepted');
+        $acceptedPayload = $this->payloads->finalize($acceptedSelections, 'scenario-copy-distribution-accepted');
 
-        $rejectedPayload = $this->payloads->finalize([
-            'president' => ['pres-sarah'],
-            'mayor' => ['mayor-jose'],
-            'council' => ['council-ben'],
-        ], 'scenario-copy-distribution-rejected');
+        $rejectedPayload = $this->payloads->finalize($rejectedSelections, 'scenario-copy-distribution-rejected');
         $this->spoil->handle($rejectedPayload['payload_hash']);
 
         $this->ceremonies->closePolls('Scenario Officer');

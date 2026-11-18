@@ -10,6 +10,9 @@ use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
+use LBHurtado\TruthQr\Contracts\RecordService;
+use LBHurtado\TruthQr\Core\ProfileRegistry;
+use LBHurtado\TruthQr\Core\RecordPayload;
 
 beforeEach(function (): void {
     config()->set('election.review.access.enabled', false);
@@ -20,6 +23,9 @@ beforeEach(function (): void {
 });
 
 test('election return truth tally payload uses compact candidate codes and decodes to a tally', function (): void {
+    expect(app(ProfileRegistry::class)->get('aes-election-v1')['records']['election_return']['fragment_version'])
+        ->toBe('waes-er-fragment-1');
+
     app(ActivateSamplePackage::class)->handle();
     $payload = app(BallotPayloadService::class)->finalize([
         'president' => ['pres-ada'],
@@ -28,6 +34,14 @@ test('election return truth tally payload uses compact candidate codes and decod
 
     app(CountingService::class)->accept($payload['qr_payload']);
     $return = app(ElectionReturnService::class)->generate(app(CountingService::class)->tally());
+    $truthQr = app(RecordService::class);
+    $encodedBallot = $truthQr->encodeRecord(new RecordPayload('aes-election-v1', 'ballot', $payload));
+    $encodedReturn = $truthQr->encodeRecord(new RecordPayload('aes-election-v1', 'election_return', $return));
+
+    expect($encodedBallot)->toBe([$payload['qr_payload']])
+        ->and($truthQr->decodeRecord('aes-election-v1', $encodedBallot)->fields['selections'])->toBe($payload['selections'])
+        ->and($encodedReturn)->toBe($return['truth_tally']['qr_payloads'])
+        ->and($truthQr->decodeRecord('aes-election-v1', $encodedReturn)->fields['truth_signature_valid'])->toBeTrue();
 
     expect($return['truth_tally']['payload_type'])->toBe('waes-election-return')
         ->and($return['truth_tally']['canonical_payload'])->toStartWith('waes-er-compact-1:WAESER1|')
@@ -87,7 +101,8 @@ test('election return truth tally payload can be split and reassembled from qr f
 
     $reassembled = app(ElectionReturnPayloadEnvelope::class)->reassemble(array_reverse($fragments));
 
-    expect($reassembled)->toBe($canonicalPayload);
+    expect($reassembled)->toBe($canonicalPayload)
+        ->and(app(ElectionReturnQrPayload::class)->decode($reassembled)['truth_signature_valid'])->toBeTrue();
 });
 
 test('deprecated role demo truth tally election return page redirects to the role demo hub', function (): void {

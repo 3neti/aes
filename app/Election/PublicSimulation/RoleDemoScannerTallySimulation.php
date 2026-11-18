@@ -9,6 +9,8 @@ use App\Election\Support\ElectionStorage;
 use App\Election\Voting\BallotPayloadEnvelope;
 use App\Election\Voting\BallotQrPayload;
 use Illuminate\Support\Facades\Crypt;
+use LBHurtado\TruthQr\Contracts\RecordService;
+use LBHurtado\TruthQr\Core\RecordPayload;
 
 final class RoleDemoScannerTallySimulation
 {
@@ -19,6 +21,7 @@ final class RoleDemoScannerTallySimulation
         private readonly TallyPresentation $presentation,
         private readonly CanonicalJson $json,
         private readonly DocumentProfileRegistry $documents,
+        private readonly RecordService $truthQr,
     ) {}
 
     /**
@@ -114,7 +117,7 @@ final class RoleDemoScannerTallySimulation
                 ];
                 $payload['payload_hash'] = $this->qrPayload->compactHash($payload);
                 $payload['canonical_qr_payload'] = $this->qrPayload->encode($payload);
-                $payload['qr_payload'] = $this->envelope->wrap($payload['canonical_qr_payload']);
+                $payload['qr_payload'] = $this->truthQr->encodeRecord(new RecordPayload('aes-election-v1', 'ballot', $payload))[0];
 
                 return $this->scannerBallot($payload, $payload['qr_payload'], $sequence, 'generated ballot payload');
             })
