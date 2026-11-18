@@ -30,6 +30,8 @@ use App\Http\Controllers\Election\VotingController;
 use App\Http\Controllers\Election\WatcherController;
 use Illuminate\Support\Facades\Route;
 
+require __DIR__.'/hotspot.php';
+
 Route::get('/', fn () => to_route('election.role-demo.voter'))->name('home');
 
 Route::prefix('election')->name('election.')->group(function (): void {

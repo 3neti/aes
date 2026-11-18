@@ -1,0 +1,27 @@
+[Unit]
+ConditionPathExists=/etc/waes/scanner.env
+Description=WAES USB QR scanner bridge
+PartOf=waes-runtime.target
+Wants=mysql.service
+After=local-fs.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+SupplementaryGroups=input
+WorkingDirectory=/var/www/aes
+EnvironmentFile=/etc/waes/scanner.env
+ExecStart=/usr/bin/bash /var/www/aes/scripts/waes-scanner-service
+Restart=always
+RestartSec=3
+TimeoutStopSec=15
+KillMode=control-group
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/www/aes/storage /var/www/aes/bootstrap/cache
+
+[Install]
+WantedBy=waes-runtime.target

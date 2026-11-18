@@ -1,0 +1,17 @@
+[Unit]
+Description=WAES Wi-Fi uplink forwarding and NAT
+After=network.target
+Before=hostapd.service dnsmasq.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/usr/sbin/sysctl -w net.ipv4.ip_forward=1
+ExecStartPre=-/usr/sbin/nft delete table inet waes_ap_forward
+ExecStartPre=-/usr/sbin/nft delete table ip waes_ap_nat
+ExecStart=/usr/sbin/nft -f /etc/waes/waes-ap.nft
+ExecStop=-/usr/sbin/nft delete table inet waes_ap_forward
+ExecStop=-/usr/sbin/nft delete table ip waes_ap_nat
+
+[Install]
+WantedBy=multi-user.target

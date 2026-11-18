@@ -1,5 +1,7 @@
 # WAES Air-Gapped Device Runtime
 
+> For the Ubuntu 24.04/MySQL offline AP profile, use [Ubuntu offline deployment](UBUNTU_OFFLINE_DEPLOYMENT.md). Keep its units and environment settings separate from the PostgreSQL/ace profile described here.
+
 ## Purpose
 
 This runbook operates the local WAES appliance without requiring an open terminal.

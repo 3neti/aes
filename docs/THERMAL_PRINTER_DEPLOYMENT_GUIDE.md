@@ -1,5 +1,7 @@
 # Guide: Deploying and Verifying the Thermal80 Control-Number Printer
 
+> The commissioned 58 mm Thermal58 profile, required portrait queue defaults, and centered receipt layout are documented in [Ubuntu offline deployment](UBUNTU_OFFLINE_DEPLOYMENT.md). Keep model-specific paper and margin settings consistent with the selected profile.
+
 ## Who this is for
 Whoever (human or agent) is implementing/testing `docs/CONTROL_NUMBER_THERMAL_PRINTING_DESIGN.md`.
 Read that design doc first for the code architecture. This guide is only about

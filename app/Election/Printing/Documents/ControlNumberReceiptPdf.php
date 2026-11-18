@@ -24,20 +24,12 @@ use Symfony\Component\Process\Process;
 final class ControlNumberReceiptPdf
 {
     /**
-     * The production printer's actual paper stock is a 2.25 inch
-     * (~57 mm) roll, not the 80 mm roll the "Thermal80" CUPS queue name
-     * and zj80 driver assume. Content wider than the physical paper is
-     * simply cut off by a hard left-aligned cutoff at a fixed width -
-     * confirmed directly on the device across several page shapes, and
-     * the cutoff position appears to shift depending on which
-     * orientation (portrait/landscape) the driver decides to use for a
-     * given page aspect ratio, which this code does not control.
-     * Rather than keep chasing an exact safe width per orientation, use
-     * a conservative width well inside every cutoff observed so far,
-     * and left-align content (see $x below) instead of centering, since
-     * centering previously pushed content further into a cutoff zone.
+     * Match the 58 mm roll width so centering respects the thermal driver's
+     * imageable area instead of clipping a narrow, left-aligned document.
      */
-    private const PageWidth = 100;
+    private const PageWidth = 164;
+
+    private const MaxNumberWidth = 76;
 
     /**
      * Reduced from an earlier 180pt: fine print positioned near the
@@ -58,27 +50,19 @@ final class ControlNumberReceiptPdf
     {
         $controlNumber = (string) ($release['release_code'] ?? '');
         $fontSize = $this->fontSize($controlNumber);
-        $x = 4;
+        $x = self::PageWidth / 2;
         $y = self::PageHeight - $fontSize - 5;
         [$precinctLine, $timeLine] = $this->finePrint($release, $configuration);
         $finePrintSize = 4.2;
-        $precinctLineX = 4;
-        $timeLineX = 4;
+        $precinctLineX = self::PageWidth / 2;
+        $timeLineX = self::PageWidth / 2;
         $precinctLineY = $y - 14;
         $timeLineY = $precinctLineY - 9;
 
-        // Two rotation directions were tried (90 and -90 with matching
-        // translate) attempting to compensate for what looked like
-        // driver auto-rotation. Neither was confirmed correct on the
-        // physical device, and the added transform caused the fine
-        // print lines to disappear entirely. The operator has opted to
-        // accept whatever orientation the printer naturally produces
-        // rather than keep fighting it, so declare the page directly at
-        // the corrected printable width/height with no added rotation.
         $postscript = sprintf(
             "%%!PS\n<< /PageSize [%.2F %.2F] >> setpagedevice\n".
-            "0.05 0.05 0.05 setrgbcolor\n/Courier-Bold findfont %.2F scalefont setfont\n%.2F %.2F moveto\n(%s) show\n".
-            "0 0 0 setrgbcolor\n/Helvetica-Bold findfont %.2F scalefont setfont\n%.2F %.2F moveto\n(%s) show\n%.2F %.2F moveto\n(%s) show\n".
+            "0.05 0.05 0.05 setrgbcolor\n/Courier-Bold findfont %.2F scalefont setfont\n%.2F %.2F moveto\n(%s) dup stringwidth pop 2 div neg 0 rmoveto show\n".
+            "0 0 0 setrgbcolor\n/Helvetica-Bold findfont %.2F scalefont setfont\n%.2F %.2F moveto\n(%s) dup stringwidth pop 2 div neg 0 rmoveto show\n%.2F %.2F moveto\n(%s) dup stringwidth pop 2 div neg 0 rmoveto show\n".
             "showpage\n",
             self::PageWidth,
             self::PageHeight,
@@ -158,7 +142,7 @@ final class ControlNumberReceiptPdf
     {
         $digits = max(1, strlen($controlNumber));
 
-        return min(84, (self::PageWidth - 24) / ($digits * 0.60));
+        return min(84, self::MaxNumberWidth / ($digits * 0.60));
     }
 
     /**
