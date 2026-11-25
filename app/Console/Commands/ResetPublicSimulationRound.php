@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Election\PublicSimulation\PublicSimulationService;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Models\SimulationRound;
 use Illuminate\Console\Command;
 use RuntimeException;
@@ -15,7 +16,14 @@ final class ResetPublicSimulationRound extends Command
     /** @var string */
     protected $description = 'Archive a completed simulation round and create a fresh three-precinct public lobby';
 
-    public function handle(PublicSimulationService $simulations): int
+    public function handle(PublicSimulationService $simulations, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->resetRound($simulations);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function resetRound(PublicSimulationService $simulations): int
     {
         $round = SimulationRound::query()->where('code', $this->argument('round'))->first();
 

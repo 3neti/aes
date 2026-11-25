@@ -18,6 +18,7 @@ return [
     'storage' => [
         'directory' => env('ELECTION_STORAGE_DIRECTORY', 'election'),
     ],
+    'voting_lock_driver' => env('ELECTION_VOTING_LOCK_DRIVER', 'cache'),
     'branding' => [
         'print_colored' => (bool) env('ELECTION_BALLOT_PRINT_COLORED', true),
         'comelec_logo' => (string) env('ELECTION_COMELEC_LOGO_PATH', resource_path('election/branding/comelec.png')),

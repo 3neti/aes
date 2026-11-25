@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Election\PublicSimulation\PublicSimulationFieldRehearsal;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
 use Illuminate\Console\Command;
@@ -16,7 +17,14 @@ final class RunPublicSimulationFieldRehearsal extends Command
     /** @var string */
     protected $description = 'Run a deterministic public-simulation voter cohort rehearsal and publish its results';
 
-    public function handle(PublicSimulationFieldRehearsal $rehearsal): int
+    public function handle(PublicSimulationFieldRehearsal $rehearsal, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->runRehearsal($rehearsal);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function runRehearsal(PublicSimulationFieldRehearsal $rehearsal): int
     {
         $round = SimulationRound::query()->where('code', $this->argument('round'))->first();
         $precinct = $round?->precincts()->where('code', $this->argument('precinct'))->first();

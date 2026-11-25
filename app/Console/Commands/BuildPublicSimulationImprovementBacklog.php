@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Election\PublicSimulation\PublicSimulationImprovementBacklog;
 use App\Election\PublicSimulation\PublicSimulationService;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
 use Illuminate\Console\Command;
@@ -17,7 +18,14 @@ final class BuildPublicSimulationImprovementBacklog extends Command
     /** @var string */
     protected $description = 'Create a private improvement backlog from reviewed public-simulation observations';
 
-    public function handle(PublicSimulationService $simulations, PublicSimulationImprovementBacklog $backlog): int
+    public function handle(PublicSimulationService $simulations, PublicSimulationImprovementBacklog $backlog, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->buildBacklog($simulations, $backlog);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function buildBacklog(PublicSimulationService $simulations, PublicSimulationImprovementBacklog $backlog): int
     {
         $round = SimulationRound::query()->where('code', $this->argument('round'))->first();
         $precinct = $round?->precincts()->where('code', $this->argument('precinct'))->first();

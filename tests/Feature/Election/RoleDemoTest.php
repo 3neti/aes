@@ -6,11 +6,19 @@ use App\Election\Printing\ControlNumberPrinter;
 use App\Election\Printing\PrintFormProfile;
 use App\Election\PublicSimulation\PublicSimulationAdmissionCapacity;
 use App\Election\PublicSimulation\PublicSimulationScope;
+use App\Election\PublicSimulation\PublicSimulationVotingGate;
+use App\Election\PublicSimulation\RoleDemoVvpatPrint;
 use App\Election\Support\ElectionStorage;
+use App\Election\Voting\PrivateBallotRelease;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
 use Composer\InstalledVersions;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function (): void {
@@ -24,6 +32,345 @@ beforeEach(function (): void {
     config()->set('election.devices.printer.driver', 'file');
     app(ElectionStorage::class)->reset();
     $this->withoutVite();
+});
+
+test('role demo pages display an open precinct without appending to a damaged journal', function (): void {
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $path = app(ElectionStorage::class)->path('journals/activity.jsonl');
+    $damaged = file_get_contents($path).file($path)[0];
+    file_put_contents($path, $damaged);
+
+    expect(app(ActivityJournal::class)->verifyChain()['passed'])->toBeFalse();
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $this->get(route('election.role-demo.voter'))->assertSuccessful();
+    $this->from(route('election.role-demo.officer'))
+        ->post(route('election.role-demo.admit'))
+        ->assertRedirectToRoute('election.role-demo.officer')
+        ->assertSessionHasErrors(['admission' => 'The activity journal is invalid. Operator reconciliation is required.'])
+        ->assertSessionMissing('role_demo.control_number');
+    expect(file_get_contents($path))->toBe($damaged);
+});
+
+test('a voter cannot repeat finalization while a release awaits reconciliation', function (): void {
+    config()->set('election.voting_lock_driver', 'local');
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $this->post(route('election.role-demo.admit'))->assertRedirect();
+    $code = session('role_demo.control_number.code');
+    $this->post(route('election.role-demo.voter.claim'), ['code' => $code])->assertRedirect();
+    $authorizationId = session('role_demo.authorization');
+    $storage = app(ElectionStorage::class);
+    $configuration = $storage->readJson('runtime/active-precinct.json');
+    $selections = collect($configuration['contests'])->mapWithKeys(fn (array $contest): array => [
+        $contest['id'] => collect($contest['candidates'])->take(1)->pluck('id')->all(),
+    ])->all();
+    $release = app(PrivateBallotRelease::class)->create($authorizationId, $selections, $code);
+
+    $this->post(route('election.role-demo.voter.finalize'), ['selections' => $selections])
+        ->assertSessionHasErrors('selections');
+
+    expect($storage->files('print-releases'))->toHaveCount(1)
+        ->and($storage->readJson("print-releases/{$release['release_id']}.json")['status'])->toBe('pending')
+        ->and($storage->readJson("voter-authorizations/{$authorizationId}.json")['status'])->toBe('claimed')
+        ->and(collect(app(ActivityJournal::class)->entries())->where('event_type', 'ballot.finalized_privately'))->toHaveCount(1);
+});
+
+test('an authorization lock timeout after release creation does not submit a receipt', function (): void {
+    config()->set('election.voting_lock_driver', 'local');
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $this->post(route('election.role-demo.admit'))->assertRedirect();
+    $code = session('role_demo.control_number.code');
+    $this->post(route('election.role-demo.voter.claim'), ['code' => $code])->assertRedirect();
+    $authorizationId = session('role_demo.authorization');
+    $storage = app(ElectionStorage::class);
+    $configuration = $storage->readJson('runtime/active-precinct.json');
+    $selections = collect($configuration['contests'])->mapWithKeys(fn (array $contest): array => [
+        $contest['id'] => collect($contest['candidates'])->take(1)->pluck('id')->all(),
+    ])->all();
+    $printer = new class implements ControlNumberPrinter
+    {
+        public int $calls = 0;
+
+        public function print(array $release): array
+        {
+            $this->calls++;
+
+            return ['status' => 'submitted'];
+        }
+    };
+    app()->instance(ControlNumberPrinter::class, $printer);
+    $path = storage_path('app/private/election-operation-locks').'/'.hash('sha256', $storage->root().'|voter-authorization').'.lock';
+    $handle = fopen($path, 'c');
+    expect(flock($handle, LOCK_EX | LOCK_NB))->toBeTrue();
+
+    try {
+        $this->post(route('election.role-demo.voter.finalize'), ['selections' => $selections])
+            ->assertSessionHasErrors(['selections' => 'Finalization could not be confirmed. Contact an operator before retrying.']);
+    } finally {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+
+    expect($storage->files('print-releases'))->toHaveCount(1)
+        ->and($storage->readJson("voter-authorizations/{$authorizationId}.json")['status'])->toBe('claimed')
+        ->and($printer->calls)->toBe(0);
+    $this->post(route('election.role-demo.voter.finalize'), ['selections' => $selections])->assertSessionHasErrors('selections');
+    expect($storage->files('print-releases'))->toHaveCount(1)->and($printer->calls)->toBe(0);
+});
+
+test('the officer page retains an unresolved deposit for review', function (): void {
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $storage = app(ElectionStorage::class);
+    $storage->writeJson('print-releases/release-deposit.json', [
+        'release_id' => 'release-deposit',
+        'ballot_id' => 'ballot-deposit',
+        'status' => 'deposited',
+    ]);
+    $storage->writeJson('runtime/role-demo-vvpat-pending.json', [
+        'encrypted_code' => Crypt::encryptString('1234'),
+        'release_id' => 'release-deposit',
+        'attempts' => 1,
+        'status' => 'depositing',
+        'message' => 'The deposit outcome is unresolved. Preserve this VVPAT and contact an operator for reconciliation.',
+    ]);
+
+    $this->get(route('election.role-demo.officer'))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pendingVvpat.status', 'depositing')
+            ->where('pendingVvpat.message', 'The deposit outcome is unresolved. Preserve this VVPAT and contact an operator for reconciliation.')
+        );
+});
+
+test('reconciliation does not create a demo round or alter lifecycle before officer verification', function (): void {
+    $data = [
+        'officer_code' => 'officer',
+        'officer_pin' => 'incorrect',
+        'reconciliation_token' => str_repeat('0', 64),
+        'no_usable_paper' => '1',
+        'queue_and_buffer_cleared' => '1',
+    ];
+    $roundCount = SimulationRound::query()->count();
+    $this->post(route('election.role-demo.print.reconcile'), $data)->assertSessionHasErrors('vvpat');
+    expect(SimulationRound::query()->count())->toBe($roundCount);
+
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $precinct = SimulationPrecinct::query()->firstOrFail();
+    $storage = app(ElectionStorage::class);
+    $storage->writeJson('runtime/lifecycle.json', ['stage' => 'closing']);
+    $this->post(route('election.role-demo.print.reconcile'), [...$data, 'officer_code' => $precinct->officer_code])
+        ->assertSessionHasErrors('vvpat');
+    expect($storage->readJson('runtime/lifecycle.json')['stage'])->toBe('closing')
+        ->and($precinct->fresh()->status)->toBe('open');
+});
+
+test('an ambiguous or invalid receipt record blocks selecting and printing a receipt', function (string $problem): void {
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $storage = app(ElectionStorage::class);
+    foreach (['first', 'second'] as $releaseId) {
+        $pdf = $storage->writeText("print-forms/control-number/{$releaseId}.pdf", '%PDF-test');
+        $storage->writeJson("print-jobs/control-number/{$releaseId}.json", [
+            'schema_version' => 'control-number-print-job-1',
+            'release_id' => $releaseId,
+            'pdf_artifact_path' => $pdf,
+            'status' => 'printed',
+        ]);
+        touch($storage->path("print-jobs/control-number/{$releaseId}.json"), time() - 10);
+    }
+    if ($problem === 'missing') {
+        unlink($storage->path('print-forms/control-number/second.pdf'));
+    } elseif ($problem === 'corrupt') {
+        file_put_contents($storage->path('print-jobs/control-number/second.json'), '{');
+    } elseif ($problem === 'invalid') {
+        $storage->writeJson('print-jobs/control-number/second.json', ['schema_version' => 'invalid']);
+    } elseif ($problem === 'status') {
+        $job = $storage->readJson('print-jobs/control-number/second.json');
+        $storage->writeJson('print-jobs/control-number/second.json', [...$job, 'status' => 'unknown']);
+    }
+    clearstatcache();
+    $printer = new class implements ControlNumberPrinter
+    {
+        public int $calls = 0;
+
+        public function print(array $release): array
+        {
+            $this->calls++;
+
+            return ['status' => 'submitted'];
+        }
+    };
+    app()->instance(ControlNumberPrinter::class, $printer);
+
+    $this->get(route('election.role-demo.control-number.latest'))->assertStatus(409);
+    $this->post(route('election.role-demo.print.control-number.latest'))
+        ->assertRedirectToRoute('election.role-demo.officer')
+        ->assertSessionHas('role_demo.closeout_feedback', 'The latest receipt cannot be identified. Preserve the receipts and contact an operator.');
+    expect($printer->calls)->toBe(0);
+})->with(['tied', 'missing', 'corrupt', 'invalid', 'status']);
+
+test('officer reconciliation authorizes a separate retry for the same pending attempt', function (string $unresolvedStatus): void {
+    config()->set('election.voting_lock_driver', 'local');
+    $this->withoutMiddleware(ThrottleRequests::class);
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $this->withCookie((string) config('session.cookie'), session()->getId());
+    $precinct = SimulationPrecinct::query()->firstOrFail();
+    $storage = app(ElectionStorage::class);
+    $storage->writeJson('print-releases/release-recovery.json', [
+        'release_id' => 'release-recovery',
+        'ballot_id' => 'ballot-recovery',
+        'release_code_hash' => hash_hmac('sha256', '1234', (string) config('app.key')),
+        'status' => 'redeemed',
+        'encrypted_payload' => Crypt::encryptString(json_encode([
+            'ballot_id' => 'ballot-recovery',
+            'qr_payload' => 'test-payload',
+            'payload_hash' => 'recovery-hash',
+            'paper_ballot_serial' => 'serial-recovery',
+        ], JSON_THROW_ON_ERROR)),
+    ]);
+    $storage->writeJson('runtime/role-demo-vvpat-pending.json', [
+        'encrypted_code' => Crypt::encryptString('1234'),
+        'release_id' => 'release-recovery',
+        'attempts' => 1,
+        'status' => $unresolvedStatus,
+    ]);
+    $token = app(RoleDemoVvpatPrint::class)->pending()['reconciliation_token'];
+    $data = [
+        'officer_code' => $precinct->officer_code,
+        'officer_pin' => '123456',
+        'reconciliation_token' => $token,
+        'no_usable_paper' => '1',
+        'queue_and_buffer_cleared' => '1',
+    ];
+
+    $this->post(route('election.role-demo.print.reconcile'), [...$data, 'no_usable_paper' => '0'])
+        ->assertSessionHasErrors('no_usable_paper');
+    $this->post(route('election.role-demo.print.reconcile'), [...$data, 'officer_pin' => 'incorrect'])
+        ->assertSessionHasErrors('vvpat');
+    $this->post(route('election.role-demo.print.reconcile'), [...$data, 'reconciliation_token' => str_repeat('0', 64)])
+        ->assertSessionHasErrors('vvpat');
+    expect($storage->readJson('runtime/role-demo-vvpat-pending.json')['status'])->toBe($unresolvedStatus);
+
+    $this->post(route('election.role-demo.print.reconcile'), $data)
+        ->assertRedirectToRoute('election.role-demo.officer');
+    $pending = $storage->readJson('runtime/role-demo-vvpat-pending.json');
+    $retryToken = session('role_demo.vvpat_retry_token');
+    expect($pending['status'])->toBe('ready_to_retry')
+        ->and($retryToken)->toBe($pending['reconciliation_revision'])
+        ->and($pending['release_id'])->toBe('release-recovery')
+        ->and($pending['attempts'])->toBe(1)
+        ->and(json_encode($pending, JSON_THROW_ON_ERROR))->not->toContain(session()->getId())
+        ->and($storage->files('print-jobs'))->toBeEmpty()
+        ->and($storage->files('counting/sealed'))->toBeEmpty();
+
+    $this->post(route('election.role-demo.print.reconcile'), $data)->assertSessionHasErrors('vvpat');
+    $audit = collect(app(ActivityJournal::class)->entries())->where('event_type', 'role_demo.vvpat_retry_authorized');
+    expect($audit)->toHaveCount(1)
+        ->and(json_encode($audit->first(), JSON_THROW_ON_ERROR))->not->toContain('123456', $precinct->officer_code);
+
+    $newReviewToken = app(RoleDemoVvpatPrint::class)->pending()['reconciliation_token'];
+    $this->post(route('election.role-demo.print.reconcile'), [...$data, 'reconciliation_token' => $newReviewToken])
+        ->assertRedirectToRoute('election.role-demo.officer');
+    $previousRetryToken = $retryToken;
+    $retryToken = session('role_demo.vvpat_retry_token');
+    expect($retryToken)->not->toBe($previousRetryToken);
+
+    $printer = new class implements BallotPrinter
+    {
+        public array $ballotIds = [];
+
+        public function print(array $payload, ?PrintFormProfile $profile = null): array
+        {
+            $this->ballotIds[] = $payload['ballot_id'];
+
+            return ['status' => 'printed'];
+        }
+    };
+    app()->instance(BallotPrinter::class, $printer);
+    $this->post(route('election.role-demo.print.reprint'), ['retry_token' => $previousRetryToken])
+        ->assertSessionHasErrors('vvpat');
+    expect(fn () => app(RoleDemoVvpatPrint::class)->attempt($retryToken, 'another-session'))
+        ->toThrow(RuntimeException::class, 'authorization is unavailable');
+    $authorizedPending = $storage->readJson('runtime/role-demo-vvpat-pending.json');
+    foreach ([['attempts' => 2], ['release_id' => 'different-release']] as $change) {
+        $storage->writeJson('runtime/role-demo-vvpat-pending.json', [...$authorizedPending, ...$change]);
+        expect(fn () => app(RoleDemoVvpatPrint::class)->attempt($retryToken, session()->getId()))
+            ->toThrow(RuntimeException::class, 'authorization is unavailable');
+    }
+    $storage->writeJson('runtime/role-demo-vvpat-pending.json', $authorizedPending);
+    $this->post(route('election.role-demo.print.reprint'), ['retry_token' => (string) Str::uuid()])
+        ->assertSessionHasErrors('vvpat');
+    expect($printer->ballotIds)->toBeEmpty();
+    $this->post(route('election.role-demo.print.reprint'), ['retry_token' => $retryToken])->assertRedirectToRoute('election.role-demo.officer');
+    $pending = $storage->readJson('runtime/role-demo-vvpat-pending.json');
+    expect($printer->ballotIds)->toBe(['ballot-recovery'])
+        ->and($pending['release_id'])->toBe('release-recovery')
+        ->and($pending['attempts'])->toBe(2)
+        ->and($pending['status'])->toBe('awaiting_confirmation')
+        ->and($storage->files('counting/sealed'))->toBeEmpty();
+    $this->post(route('election.role-demo.print.reprint'), ['retry_token' => $retryToken])->assertSessionHasErrors('vvpat');
+    expect($printer->ballotIds)->toBe(['ballot-recovery']);
+})->with(['printing', 'uncertain', 'failed', 'awaiting_confirmation']);
+
+test('a busy voting gate preserves the control number and allows a later claim', function (): void {
+    config()->set('election.voting_lock_driver', 'cache');
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $this->post(route('election.role-demo.admit'))->assertRedirect();
+    $code = session('role_demo.control_number.code');
+    $key = 'election-operation:'.hash('sha256', app(ElectionStorage::class)->root().'|public-simulation-voting');
+    $lock = Cache::lock($key, 60);
+    expect($lock->get())->toBeTrue();
+
+    try {
+        $this->from(route('election.role-demo.voter'))
+            ->post(route('election.role-demo.voter.claim'), ['code' => $code])
+            ->assertRedirect(route('election.role-demo.voter'))
+            ->assertSessionHasErrors(['code' => 'The election system is busy. Please wait a moment and try again.']);
+        expect(session('role_demo.authorization'))->toBeNull();
+    } finally {
+        $lock->release();
+    }
+
+    $this->post(route('election.role-demo.voter.claim'), ['code' => $code])
+        ->assertRedirectToRoute('election.role-demo.voter.ballot');
+});
+
+test('a timeout inside a voting operation is not reported as an unstarted operation', function (): void {
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $gate = app(PublicSimulationVotingGate::class);
+    $timeout = new LockTimeoutException;
+
+    try {
+        $gate->execute(function () use ($timeout): void {
+            throw $timeout;
+        });
+        $this->fail('The nested timeout should propagate.');
+    } catch (LockTimeoutException $exception) {
+        expect($exception)->toBe($timeout);
+    }
+
+    expect($gate->execute(fn (): string => 'released'))->toBe('released');
+});
+
+test('the local voting gate returns a busy claim without consuming its control number', function (): void {
+    config()->set('election.voting_lock_driver', 'local');
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    $this->post(route('election.role-demo.admit'))->assertRedirect();
+    $code = session('role_demo.control_number.code');
+    $directory = storage_path('app/private/election-operation-locks');
+    $path = $directory.'/'.hash('sha256', app(ElectionStorage::class)->root().'|public-simulation-voting').'.lock';
+    $handle = fopen($path, 'c');
+    expect(flock($handle, LOCK_EX | LOCK_NB))->toBeTrue();
+
+    try {
+        $this->from(route('election.role-demo.voter'))
+            ->post(route('election.role-demo.voter.claim'), ['code' => $code])
+            ->assertSessionHasErrors(['code' => 'The election system is busy. Please wait a moment and try again.']);
+    } finally {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+
+    $this->post(route('election.role-demo.voter.claim'), ['code' => $code])
+        ->assertRedirectToRoute('election.role-demo.voter.ballot');
 });
 
 test('role demo runs officer voter print and watcher points of view without closing the precinct', function (): void {
@@ -136,6 +483,11 @@ test('role demo runs officer voter print and watcher points of view without clos
     expect($release)->toBeArray()
         ->and($release['release_code'])->toBe($authorization['code']);
 
+    $storage = app(ElectionStorage::class);
+    $jobPath = "print-jobs/control-number/{$release['release_id']}.json";
+    touch($storage->path($jobPath), time() + 2);
+    clearstatcache();
+
     $this->postJson(route('election.role-demo.print.readiness'), ['code' => $authorization['code']])->assertOk()->assertExactJson(['ready' => true]);
     $this->postJson(route('election.role-demo.print.readiness'), ['code' => $authorization['code']])->assertOk()->assertExactJson(['ready' => true]);
 
@@ -147,6 +499,20 @@ test('role demo runs officer voter print and watcher points of view without clos
     $this->post(route('election.role-demo.print.control-number.latest'))
         ->assertRedirectToRoute('election.role-demo.officer')
         ->assertSessionHas('role_demo.closeout_feedback', 'Voter Control Number prepared with status [printed].');
+
+    $job = $storage->readJson($jobPath);
+    foreach (['submitting', 'uncertain', 'failed'] as $status) {
+        $storage->writeJson($jobPath, [...$job, 'status' => $status]);
+        touch($storage->path($jobPath), time() + 2);
+        clearstatcache();
+        $this->post(route('election.role-demo.print.control-number.latest'))
+            ->assertRedirectToRoute('election.role-demo.officer')
+            ->assertSessionHas('role_demo.closeout_feedback', 'The previous receipt print outcome is uncertain. Stop and have an operator account for the printer queue and paper before proceeding.');
+        expect($storage->readJson($jobPath)['status'])->toBe($status);
+    }
+    $storage->writeJson($jobPath, $job);
+    touch($storage->path($jobPath), time() + 2);
+    clearstatcache();
 
     $this->get(route('election.role-demo.officer'))
         ->assertSuccessful()
@@ -174,25 +540,9 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->and(collect(app(ActivityJournal::class)->entries())->pluck('event_type'))
         ->toContain('role_demo.voter_ballot_preview_generated');
 
-    $workingPrinter = app(BallotPrinter::class);
-    app()->instance(BallotPrinter::class, new class implements BallotPrinter
-    {
-        public function print(array $payload, ?PrintFormProfile $profile = null): array
-        {
-            return ['status' => 'failed'];
-        }
-    });
     $this->post(route('election.role-demo.print.accept'), [
         'code' => $authorization['code'],
     ])->assertRedirectToRoute('election.role-demo.officer');
-    $this->get(route('election.role-demo.officer'))->assertInertia(fn (Assert $page) => $page
-        ->where('pendingVvpat.code', $authorization['code'])
-        ->where('pendingVvpat.status', 'failed')
-        ->where('pendingVvpat.attempts', 1)
-    );
-    $this->post(route('election.role-demo.print.confirm'))->assertSessionHasErrors('vvpat');
-    app()->instance(BallotPrinter::class, $workingPrinter);
-    $this->post(route('election.role-demo.print.reprint'))->assertRedirectToRoute('election.role-demo.officer');
 
     $this->get(route('election.role-demo.officer'))
         ->assertSuccessful()
@@ -200,7 +550,7 @@ test('role demo runs officer voter print and watcher points of view without clos
             ->where('currentTally.accepted_ballots', 0)
             ->where('pendingVvpat.code', $authorization['code'])
             ->where('pendingVvpat.status', 'awaiting_confirmation')
-            ->where('pendingVvpat.attempts', 2)
+            ->where('pendingVvpat.attempts', 1)
         );
     expect(app(ElectionStorage::class)->files('counting/sealed'))->toBeEmpty();
     $this->get(route('election.role-demo.print.last-ballot'))->assertSuccessful()->assertHeader('Content-Type', 'application/pdf');
@@ -210,10 +560,10 @@ test('role demo runs officer voter print and watcher points of view without clos
         ->assertSessionHas('role_demo.closeout_feedback', 'Resolve the pending VVPAT before sending another document to the printer.');
     $this->post(route('election.role-demo.admit'))->assertRedirectToRoute('election.role-demo.officer');
     $this->post(route('election.role-demo.print.accept'), ['code' => $authorization['code']])->assertSessionHasErrors('code');
-    $this->post(route('election.role-demo.print.reprint'))->assertRedirectToRoute('election.role-demo.officer');
+    $this->post(route('election.role-demo.print.reprint'))->assertSessionHasErrors('retry_token');
     $this->get(route('election.role-demo.officer'))->assertInertia(fn (Assert $page) => $page
         ->where('pendingVvpat.code', $authorization['code'])
-        ->where('pendingVvpat.attempts', 3)
+        ->where('pendingVvpat.attempts', 1)
         ->where('pendingVvpat.status', 'awaiting_confirmation')
     );
     expect(app(ElectionStorage::class)->files('counting/sealed'))->toBeEmpty();

@@ -41,6 +41,7 @@ use App\Election\Returns\ElectionReturnApprovalService;
 use App\Election\Returns\ElectionReturnCopyDistributionService;
 use App\Election\Returns\ElectionReturnService;
 use App\Election\Support\ElectionClock;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Support\ReviewMode;
 use App\Election\Tabulation\TabulationProfileResolver;
@@ -108,12 +109,23 @@ final class ScenarioRunner
         private readonly CloudEvidenceMirror $cloudEvidence,
         private readonly SealedBallotBox $ballotBox,
         private readonly TabulationProfileResolver $tabulation,
+        private readonly ElectionRunScopeLock $runLock,
     ) {}
 
     /**
      * @return array<string, mixed>
      */
     public function run(string $name): array
+    {
+        $operation = fn (): array => $this->runScenario($name);
+
+        return config('election.voting_lock_driver') === 'local'
+            ? $this->runLock->executeCommand($operation)
+            : $operation();
+    }
+
+    /** @return array<string, mixed> */
+    private function runScenario(string $name): array
     {
         $this->storage->selectRunType(ElectionRunType::Rehearsal);
         $currentRehearsal = $this->storage->currentRun(ElectionRunType::Rehearsal);

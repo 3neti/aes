@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Election\Preparation\PrecinctCandidateResolver;
+use App\Election\Support\ElectionRunScopeLock;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -11,7 +12,14 @@ use Illuminate\Console\Command;
 #[Description('View candidates for a precinct by combining imported POP and CLC registries.')]
 final class PrecinctCandidatesCommand extends Command
 {
-    public function handle(PrecinctCandidateResolver $resolver): int
+    public function handle(PrecinctCandidateResolver $resolver, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->resolveCandidates($resolver);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function resolveCandidates(PrecinctCandidateResolver $resolver): int
     {
         try {
             $report = $resolver->resolve(

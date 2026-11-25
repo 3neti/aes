@@ -76,15 +76,17 @@ final class AnonymousVoterAuthorization
 
     public function complete(string $authorizationId): void
     {
-        $record = $this->storage->readJson("voter-authorizations/{$authorizationId}.json");
+        $this->operationLock->execute('voter-authorization', function () use ($authorizationId): void {
+            $record = $this->storage->readJson("voter-authorizations/{$authorizationId}.json");
 
-        if (($record['status'] ?? null) !== 'claimed') {
-            throw new RuntimeException('The voter control number is not active.');
-        }
+            if (($record['status'] ?? null) !== 'claimed') {
+                throw new RuntimeException('The voter control number is not active.');
+            }
 
-        $record['status'] = 'completed';
-        $record['completed_at'] = $this->clock->now()->toIso8601String();
-        $this->storage->writeJson("voter-authorizations/{$authorizationId}.json", $record);
+            $record['status'] = 'completed';
+            $record['completed_at'] = $this->clock->now()->toIso8601String();
+            $this->storage->writeJson("voter-authorizations/{$authorizationId}.json", $record);
+        });
     }
 
     /**

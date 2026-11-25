@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Election\Preparation\PopWorkbookImporter;
+use App\Election\Support\ElectionRunScopeLock;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -11,7 +12,14 @@ use Illuminate\Console\Command;
 #[Description('Import the 2025 NLE POP clustered precinct workbook into deterministic local registry files.')]
 final class ImportPopWorkbookCommand extends Command
 {
-    public function handle(PopWorkbookImporter $importer): int
+    public function handle(PopWorkbookImporter $importer, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->importWorkbook($importer);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function importWorkbook(PopWorkbookImporter $importer): int
     {
         try {
             $manifest = $importer->import((string) $this->argument('path'), (string) $this->option('profile'));

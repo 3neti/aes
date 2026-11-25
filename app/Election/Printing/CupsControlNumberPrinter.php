@@ -36,18 +36,20 @@ final class CupsControlNumberPrinter implements ControlNumberPrinter
         }
 
         $releaseId = (string) ($release['release_id'] ?? '');
-        $result = $this->submit($artifactPath, $releaseId);
-
         $job['printer'] = 'cups';
         $job['printer_name'] = $this->printerName;
+        $job['status'] = 'submitting';
+        $this->storage->writeJson("print-jobs/control-number/{$releaseId}.json", $job);
+        $result = $this->submit($artifactPath, $releaseId);
+
         $job['cups_artifact_path'] = $artifactPath;
         $job['cups_command'] = ['lp', '-d', $this->printerName, '-t', 'AES Control Number '.$releaseId, $artifactPath];
         $job['cups_exit_code'] = $result['exit_code'];
         $job['cups_output'] = $result['output'];
-        $job['status'] = $result['successful'] ? 'submitted' : 'failed';
+        $job['status'] = $result['successful'] ? 'submitted' : 'uncertain';
 
         $this->storage->writeJson("print-jobs/control-number/{$releaseId}.json", $job);
-        $this->journal->record($result['successful'] ? 'control_number.print_submitted' : 'control_number.print_failed', [
+        $this->journal->record($result['successful'] ? 'control_number.print_submitted' : 'control_number.print_uncertain', [
             'release_id' => $releaseId,
             'printer' => 'cups',
             'printer_name' => $this->printerName,

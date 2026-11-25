@@ -5,6 +5,7 @@ namespace App\Election\Voting;
 use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Documents\DocumentProfileRegistry;
+use App\Election\Support\ElectionOperationLock;
 use App\Election\Support\ElectionStorage;
 use LBHurtado\TruthQr\Contracts\RecordService;
 use LBHurtado\TruthQr\Core\RecordPayload;
@@ -23,14 +24,31 @@ final class BallotPayloadService
         private readonly BallotSelectionValidator $selections,
         private readonly DocumentProfileRegistry $documents,
         private readonly RecordService $truthQr,
+        private readonly ElectionOperationLock $operationLock,
     ) {}
 
     /**
      * @param  array<string, array<int, string>>  $selections
      * @return array<string, mixed>
      */
-    public function finalize(array $selections, ?string $ballotId = null, bool $journal = true): array
+    public function finalize(array $selections, ?string $ballotId = null, bool $journal = true, ?string $testBallotSerial = null): array
     {
+        return $this->operationLock->execute(
+            'private-ballot-finalization',
+            fn (): array => $this->finalizeWithinLock($selections, $ballotId, $journal, $testBallotSerial),
+        );
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $selections
+     * @return array<string, mixed>
+     */
+    private function finalizeWithinLock(array $selections, ?string $ballotId, bool $journal, ?string $testBallotSerial): array
+    {
+        if ($journal && $testBallotSerial !== null) {
+            throw new RuntimeException('A test ballot serial cannot be used for an issued ballot.');
+        }
+
         $configuration = $this->configuration();
         $this->selections->validate($configuration, $selections);
 
@@ -49,7 +67,7 @@ final class BallotPayloadService
 
         $paperBallotSerial = $journal
             ? $this->paperBallots->nextRequiredSerial((string) ($configuration['precinct_id'] ?? 'PRECINCT'))
-            : null;
+            : $testBallotSerial;
 
         if ($paperBallotSerial !== null) {
             $payload['paper_ballot_serial'] = $paperBallotSerial;

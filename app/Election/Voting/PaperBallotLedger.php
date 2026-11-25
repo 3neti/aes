@@ -4,6 +4,7 @@ namespace App\Election\Voting;
 
 use App\Election\Core\CanonicalJson;
 use App\Election\Support\ElectionClock;
+use App\Election\Support\ElectionOperationLock;
 use App\Election\Support\ElectionStorage;
 use RuntimeException;
 
@@ -13,6 +14,7 @@ final class PaperBallotLedger
         private readonly ElectionStorage $storage,
         private readonly ElectionClock $clock,
         private readonly CanonicalJson $json,
+        private readonly ElectionOperationLock $lock,
     ) {}
 
     public function nextSerial(): ?string
@@ -46,17 +48,54 @@ final class PaperBallotLedger
 
     public function recordIssued(string $serial, string $ballotId, string $payloadHash): void
     {
-        $this->append('paper_ballot.issued', [
-            'paper_ballot_serial' => $serial,
-            'ballot_id' => $ballotId,
-            'payload_hash' => $payloadHash,
-        ]);
-        $this->storage->writeJson("paper-ballot-ledger/index/{$payloadHash}.json", [
-            'schema_version' => 'paper-ballot-ledger-payload-index-1',
-            'paper_ballot_serial' => $serial,
-            'ballot_id' => $ballotId,
-            'payload_hash' => $payloadHash,
-        ]);
+        $this->lock->execute('paper-ballot-ledger', function () use ($serial, $ballotId, $payloadHash): void {
+            $this->append('paper_ballot.issued', [
+                'paper_ballot_serial' => $serial,
+                'ballot_id' => $ballotId,
+                'payload_hash' => $payloadHash,
+            ]);
+            $this->storage->writeJson("paper-ballot-ledger/index/{$payloadHash}.json", [
+                'schema_version' => 'paper-ballot-ledger-payload-index-1',
+                'paper_ballot_serial' => $serial,
+                'ballot_id' => $ballotId,
+                'payload_hash' => $payloadHash,
+            ]);
+        });
+    }
+
+    public function hasVerifiedIssuance(string $serial, string $ballotId, string $payloadHash): bool
+    {
+        return $this->lock->execute('paper-ballot-ledger', fn (): bool => $this->hasVerifiedIssuanceWithinLock($serial, $ballotId, $payloadHash));
+    }
+
+    private function hasVerifiedIssuanceWithinLock(string $serial, string $ballotId, string $payloadHash): bool
+    {
+        $state = $this->storage->readJson('paper-ballot-ledger/state/current.json');
+        if (($state['schema_version'] ?? null) !== 'paper-ballot-ledger-state-1') {
+            return false;
+        }
+        $this->ledgerState();
+        $events = collect($this->events())
+            ->filter(fn (array $event): bool => ($event['event_type'] ?? null) === 'paper_ballot.issued'
+                && (($event['payload']['payload_hash'] ?? null) === $payloadHash
+                    || ($event['payload']['ballot_id'] ?? null) === $ballotId
+                    || ($event['payload']['paper_ballot_serial'] ?? null) === $serial))
+            ->values();
+        $index = $this->storage->readJson("paper-ballot-ledger/index/{$payloadHash}.json");
+
+        if ($events->count() !== 1) {
+            return false;
+        }
+
+        $payload = $events->first()['payload'];
+
+        return ($payload['paper_ballot_serial'] ?? null) === $serial
+            && ($payload['ballot_id'] ?? null) === $ballotId
+            && ($payload['payload_hash'] ?? null) === $payloadHash
+            && ($index['schema_version'] ?? null) === 'paper-ballot-ledger-payload-index-1'
+            && ($index['paper_ballot_serial'] ?? null) === $serial
+            && ($index['ballot_id'] ?? null) === $ballotId
+            && ($index['payload_hash'] ?? null) === $payloadHash;
     }
 
     public function recordPrinted(string $payloadHash): void
@@ -126,6 +165,15 @@ final class PaperBallotLedger
             ];
         }
 
+        return $this->verifyEvents($events);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $events
+     * @return array{passed: bool, event_count: int, first_invalid_sequence: int|null}
+     */
+    private function verifyEvents(array $events): array
+    {
         $previousHash = str_repeat('0', 64);
 
         foreach ($events as $index => $event) {
@@ -161,7 +209,14 @@ final class PaperBallotLedger
     private function events(): array
     {
         return collect($this->storage->files('paper-ballot-ledger'))
-            ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
+            ->map(function (string $path): array {
+                $record = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+                if (preg_match('/^\d{6}-/', basename($path)) && ($record['schema_version'] ?? null) !== 'paper-ballot-ledger-event-1') {
+                    throw new RuntimeException('The paper ballot ledger contains an invalid event.');
+                }
+
+                return $record;
+            })
             ->filter(fn (array $record): bool => ($record['schema_version'] ?? null) === 'paper-ballot-ledger-event-1')
             ->sortBy('sequence')
             ->values()
@@ -169,6 +224,11 @@ final class PaperBallotLedger
     }
 
     private function recordForPayload(string $eventType, string $payloadHash): void
+    {
+        $this->lock->execute('paper-ballot-ledger', fn () => $this->recordForPayloadWithinLock($eventType, $payloadHash));
+    }
+
+    private function recordForPayloadWithinLock(string $eventType, string $payloadHash): void
     {
         $issue = $this->storage->readJson("paper-ballot-ledger/index/{$payloadHash}.json");
 
@@ -221,13 +281,7 @@ final class PaperBallotLedger
 
     private function issuedCount(): int
     {
-        $state = $this->storage->readJson('paper-ballot-ledger/state/current.json');
-
-        if (isset($state['issued_count'])) {
-            return (int) $state['issued_count'];
-        }
-
-        return collect($this->events())->where('event_type', 'paper_ballot.issued')->count();
+        return (int) $this->ledgerState()['issued_count'];
     }
 
     /**
@@ -236,14 +290,18 @@ final class PaperBallotLedger
     private function ledgerState(): array
     {
         $state = $this->storage->readJson('paper-ballot-ledger/state/current.json');
-
-        if ($state !== []) {
-            return $state;
-        }
-
         $events = $this->events();
 
+        $verification = $this->verifyEvents($events);
+        if (! $verification['passed']) {
+            throw new RuntimeException('The paper ballot ledger is invalid. Operator reconciliation is required.');
+        }
+
         if ($events === []) {
+            if ($state !== [] && (($state['sequence'] ?? null) !== 0 || ($state['issued_count'] ?? null) !== 0)) {
+                throw new RuntimeException('The paper ballot ledger state is inconsistent. Operator reconciliation is required.');
+            }
+
             return [
                 'sequence' => 0,
                 'event_hash' => str_repeat('0', 64),
@@ -252,11 +310,20 @@ final class PaperBallotLedger
         }
 
         $last = end($events);
+        $issuedCount = collect($events)->where('event_type', 'paper_ballot.issued')->count();
+
+        if ($state !== [] && (
+            ($state['sequence'] ?? null) !== count($events)
+            || ($state['event_hash'] ?? null) !== $last['event_hash']
+            || ($state['issued_count'] ?? null) !== $issuedCount
+        )) {
+            throw new RuntimeException('The paper ballot ledger state is inconsistent. Operator reconciliation is required.');
+        }
 
         return [
             'sequence' => count($events),
             'event_hash' => (string) $last['event_hash'],
-            'issued_count' => collect($events)->where('event_type', 'paper_ballot.issued')->count(),
+            'issued_count' => $issuedCount,
         ];
     }
 

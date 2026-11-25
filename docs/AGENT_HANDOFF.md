@@ -42,6 +42,9 @@ Read:
 
 ## Current Documentation Map
 
+- `docs/WAES_DEVICE_HANDOFF.md` is the commissioned Ubuntu device access and
+  operations hand-off: trusted SSH discovery, safe Git updates, peripherals,
+  AP/networking, boot services, queues, scanner ingestion, and broadcast checks.
 - `docs/COMPASS.md` explains the current product direction.
 - `docs/FUNCTIONAL_SPECIFICATIONS.md` describes expected system behavior.
 - `docs/IMPLEMENTATION_STATUS.md` states what is implemented, dirty, and pending.

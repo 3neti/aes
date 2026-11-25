@@ -10,6 +10,7 @@ use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\Scenarios\BrowserWalkthroughControl;
 use App\Election\Scenarios\BrowserWalkthroughEvidenceReport;
 use App\Election\Scenarios\BrowserWalkthroughRecorder;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Election\Support\ElectionStorage;
 use App\Models\SimulationPrecinct;
 use Illuminate\Console\Attributes\Description;
@@ -36,6 +37,7 @@ final class ElectionBrowserWalkthroughCommand extends Command
         EvidenceBundleArchiveVerifier $archiveVerifier,
         ElectionStorage $storage,
         PublicSimulationService $publicSimulations,
+        ElectionRunScopeLock $runLock,
         CanonicalJson $json,
         Filesystem $files,
     ): int {
@@ -48,6 +50,12 @@ final class ElectionBrowserWalkthroughCommand extends Command
             $this->error("Unsupported browser walkthrough [{$scenario}].");
 
             return self::INVALID;
+        }
+
+        if (config('election.voting_lock_driver') === 'local' && $scenario !== 'full-election') {
+            $this->error('Public simulation and demo room walkthroughs require a verified scoped-run reservation before they can run with the local lock profile.');
+
+            return self::FAILURE;
         }
 
         if (! is_int($ballots) || $ballots < 1 || $ballots > 50) {
@@ -69,13 +77,23 @@ final class ElectionBrowserWalkthroughCommand extends Command
         }
 
         $previousRunType = config('election.runtime.run_type');
-        $context = $this->scenarioContext($scenario, $publicSimulations);
-
         try {
-            $walkthrough = $control->begin(
-                $scenario,
-                $context['precinct_id'],
-            );
+            $prepare = function () use ($scenario, $publicSimulations, $control): array {
+                $existing = $control->read();
+                if (($existing['status'] ?? null) === 'active') {
+                    throw new RuntimeException('An active browser walkthrough reserves the election run. Resolve it before starting another operation.');
+                }
+                if ($existing !== [] && ! in_array($existing['status'] ?? null, ['passed', 'failed'], true)) {
+                    throw new RuntimeException('The browser walkthrough reservation is inconsistent. Operator investigation is required.');
+                }
+                $context = $this->scenarioContext($scenario, $publicSimulations);
+                $walkthrough = $control->begin($scenario, $context['precinct_id']);
+
+                return [$context, $walkthrough];
+            };
+            [$context, $walkthrough] = config('election.voting_lock_driver') === 'local'
+                ? $runLock->executeCommand($prepare, allowActiveWalkthrough: true)
+                : $prepare();
             $artifactDirectory = $walkthrough['run_path'].'/12-audit-and-reconciliation/browser-recordings';
             $files->ensureDirectoryExists($artifactDirectory);
 
@@ -89,99 +107,107 @@ final class ElectionBrowserWalkthroughCommand extends Command
                 $slowMotion,
                 $context['environment'],
             );
-            $storage->selectRunType(ElectionRunType::Rehearsal);
+            $finish = function () use ($control, $walkthrough, $storage, $scenario, $result, $context, $baseUrl, $ballots, $json, $artifactDirectory, $files, $evidenceReport, $archiveBuilder, $archiveVerifier): array {
+                $control->authorize((string) $walkthrough['token']);
+                $storage->selectRunType(ElectionRunType::Rehearsal);
 
-            $report = [
-                'schema_version' => 'browser-walkthrough-report-1',
-                'scenario' => $scenario,
-                'passed' => ($result['passed'] ?? false) === true,
-                'run_id' => $walkthrough['run_id'],
-                'run_type' => ElectionRunType::Rehearsal->value,
-                'precinct_id' => $context['precinct_id'],
-                'context' => $context['report'],
-                'base_url' => $baseUrl,
-                'ballots_requested' => $ballots,
-                'walkthrough_id' => $walkthrough['walkthrough_id'],
-                'statistics' => $result['statistics'] ?? [],
-                'artifacts' => $result['artifacts'] ?? [],
-                'error' => $result['error'] ?? null,
-                'process_exit_code' => $result['process_exit_code'] ?? null,
-                'process_error_output' => $result['process_error_output'] ?? '',
-            ];
-            $report['report_hash'] = $json->hash($report);
-            $reportPath = $artifactDirectory.'/browser-walkthrough-report.json';
-            $files->put($reportPath, $json->encode($report));
-
-            $postProcessing = [];
-            $postProcessingError = null;
-
-            try {
-                $postProcessing = $evidenceReport->write(
-                    $walkthrough['run_path'],
-                    $artifactDirectory,
-                    $report,
-                );
-                $archive = $archiveBuilder->build();
-                $verification = $archiveVerifier->writeReport(
-                    $archive['archive_path'],
-                    ['archive_source' => 'browser-walkthrough-finalization'],
-                );
-                $postProcessing = [
-                    ...$postProcessing,
-                    'archive_path' => $archive['archive_path'],
-                    'archive_sha256' => $archive['archive_sha256'],
-                    'archive_entry_count' => $archive['entry_count'],
-                    'archive_verification_path' => $verification['artifact_path'],
-                    'archive_verification_hash' => $verification['verification_hash'],
-                    'archive_verified' => ($verification['passed'] ?? false) === true,
-                    'archive_checked_files' => $verification['checked_files'] ?? 0,
+                $report = [
+                    'schema_version' => 'browser-walkthrough-report-1',
+                    'scenario' => $scenario,
+                    'passed' => ($result['passed'] ?? false) === true,
+                    'run_id' => $walkthrough['run_id'],
+                    'run_type' => ElectionRunType::Rehearsal->value,
+                    'precinct_id' => $context['precinct_id'],
+                    'context' => $context['report'],
+                    'base_url' => $baseUrl,
+                    'ballots_requested' => $ballots,
+                    'walkthrough_id' => $walkthrough['walkthrough_id'],
+                    'statistics' => $result['statistics'] ?? [],
+                    'artifacts' => $result['artifacts'] ?? [],
+                    'error' => $result['error'] ?? null,
+                    'process_exit_code' => $result['process_exit_code'] ?? null,
+                    'process_error_output' => $result['process_error_output'] ?? '',
                 ];
+                $report['report_hash'] = $json->hash($report);
+                $reportPath = $artifactDirectory.'/browser-walkthrough-report.json';
+                $files->put($reportPath, $json->encode($report));
 
-                if (! $postProcessing['archive_verified']) {
-                    $postProcessingError = 'The post-recording evidence archive failed verification.';
+                $postProcessing = [];
+                $postProcessingError = null;
+
+                try {
+                    $postProcessing = $evidenceReport->write(
+                        $walkthrough['run_path'],
+                        $artifactDirectory,
+                        $report,
+                    );
+                    $archive = $archiveBuilder->build();
+                    $verification = $archiveVerifier->writeReport(
+                        $archive['archive_path'],
+                        ['archive_source' => 'browser-walkthrough-finalization'],
+                    );
+                    $postProcessing = [
+                        ...$postProcessing,
+                        'archive_path' => $archive['archive_path'],
+                        'archive_sha256' => $archive['archive_sha256'],
+                        'archive_entry_count' => $archive['entry_count'],
+                        'archive_verification_path' => $verification['artifact_path'],
+                        'archive_verification_hash' => $verification['verification_hash'],
+                        'archive_verified' => ($verification['passed'] ?? false) === true,
+                        'archive_checked_files' => $verification['checked_files'] ?? 0,
+                    ];
+
+                    if (! $postProcessing['archive_verified']) {
+                        $postProcessingError = 'The post-recording evidence archive failed verification.';
+                    }
+                } catch (Throwable $exception) {
+                    $postProcessingError = $exception->getMessage();
                 }
-            } catch (Throwable $exception) {
-                $postProcessingError = $exception->getMessage();
-            }
 
-            $report['passed'] = $report['passed'] && $postProcessingError === null;
-            $report['statistics']['post_recording_archive_verified'] = $postProcessing['archive_verified'] ?? false;
-            $report['statistics']['post_recording_archive_checked_files'] = $postProcessing['archive_checked_files'] ?? 0;
-            $report['post_recording'] = $postProcessing;
+                $report['passed'] = $report['passed'] && $postProcessingError === null;
+                $report['statistics']['post_recording_archive_verified'] = $postProcessing['archive_verified'] ?? false;
+                $report['statistics']['post_recording_archive_checked_files'] = $postProcessing['archive_checked_files'] ?? 0;
+                $report['post_recording'] = $postProcessing;
 
-            if ($postProcessingError !== null) {
-                $report['error'] = trim(implode(' ', array_filter([
-                    $report['error'],
-                    $postProcessingError,
-                ])));
-            }
+                if ($postProcessingError !== null) {
+                    $report['error'] = trim(implode(' ', array_filter([
+                        $report['error'],
+                        $postProcessingError,
+                    ])));
+                }
 
-            $completion = [
-                'schema_version' => 'browser-walkthrough-completion-1',
-                'run_id' => $walkthrough['run_id'],
-                'walkthrough_id' => $walkthrough['walkthrough_id'],
-                'recording_report' => $this->artifact('Browser walkthrough report', $reportPath),
-                'recording_passed' => ($result['passed'] ?? false) === true,
-                'post_recording' => $postProcessing,
-                'passed' => $report['passed'],
-                'error' => $report['error'],
-                'completed_at' => now()->toIso8601String(),
-            ];
-            $completion['completion_hash'] = $json->hash($completion);
-            $completionPath = $artifactDirectory.'/browser-walkthrough-completion.json';
-            $files->put($completionPath, $json->encode($completion));
+                $completion = [
+                    'schema_version' => 'browser-walkthrough-completion-1',
+                    'run_id' => $walkthrough['run_id'],
+                    'walkthrough_id' => $walkthrough['walkthrough_id'],
+                    'recording_report' => $this->artifact('Browser walkthrough report', $reportPath),
+                    'recording_passed' => ($result['passed'] ?? false) === true,
+                    'post_recording' => $postProcessing,
+                    'passed' => $report['passed'],
+                    'error' => $report['error'],
+                    'completed_at' => now()->toIso8601String(),
+                ];
+                $completion['completion_hash'] = $json->hash($completion);
+                $completionPath = $artifactDirectory.'/browser-walkthrough-completion.json';
+                $files->put($completionPath, $json->encode($completion));
 
-            foreach ($this->postRecordingArtifacts($postProcessing, $completionPath) as $artifact) {
-                $report['artifacts'][] = $artifact;
-            }
+                foreach ($this->postRecordingArtifacts($postProcessing, $completionPath) as $artifact) {
+                    $report['artifacts'][] = $artifact;
+                }
 
-            $control->complete(
-                (string) $walkthrough['token'],
-                $report['passed'] ? 'passed' : 'failed',
-            );
+                $control->complete(
+                    (string) $walkthrough['token'],
+                    $report['passed'] ? 'passed' : 'failed',
+                );
 
-            $storage->lockActiveRun();
-            $finalized = $storage->finalizeRun($scenario, $report);
+                $storage->lockActiveRun();
+                $finalized = $storage->finalizeRun($scenario, $report);
+
+                return [$report, $finalized, $reportPath];
+            };
+            [$report, $finalized, $reportPath] = config('election.voting_lock_driver') === 'local'
+                ? $runLock->executeCommand($finish, allowActiveWalkthrough: true)
+                : $finish();
         } catch (Throwable $exception) {
             $this->error($exception->getMessage());
 

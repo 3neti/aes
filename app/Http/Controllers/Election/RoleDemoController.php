@@ -31,11 +31,15 @@ use App\Election\Voting\PrivateBallotRelease;
 use App\Election\Voting\StandardQrCode;
 use App\Election\Voting\VoterBallotAnalytics;
 use App\Events\RoleDemoControlNumberIssued;
+use App\Exceptions\ElectionOperationBusy;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClaimVoterAuthorizationRequest;
 use App\Http\Requests\FinalizePrivateBallotRequest;
+use App\Http\Requests\ReconcileVvpatPrintRequest;
 use App\Http\Requests\RedeemPrintReleaseRequest;
 use App\Models\SimulationPrecinct;
+use App\Models\SimulationRound;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -73,12 +77,11 @@ final class RoleDemoController extends Controller
     {
         $round = $simulations->currentRound();
         $simulations->refreshDemoSet();
+        $this->precinct($simulations);
         $journal->record('role_demo.reset', [
             'previous_round_code' => $round->code,
             'reason' => 'operator-requested-role-pov-refresh',
         ]);
-
-        $this->precinct($simulations);
 
         return to_route('election.role-demo.index')
             ->with('role_demo.feedback', 'The role POV demo has been reset. The demo precinct is open again.');
@@ -117,12 +120,13 @@ final class RoleDemoController extends Controller
             ],
             'controlNumber' => $request->session()->get('role_demo.control_number'),
             'pendingVvpat' => $vvpatPrint->pending(),
+            'vvpatRetryToken' => $request->session()->get('role_demo.vvpat_retry_token'),
             'printFeedback' => $request->session()->get('role_demo.print_feedback'),
             'feedback' => $request->session()->get('role_demo.feedback'),
             'closeoutFeedback' => $request->session()->get('role_demo.closeout_feedback'),
             'closeoutPrinter' => $closeoutPrinter->status(),
             'latestControlNumberReceipt' => [
-                'available' => $this->latestControlNumberReceiptJob($storage) !== null,
+                'available' => $this->selectLatestControlNumberReceipt($storage)['job'] !== null,
             ],
             'actions' => [
                 'home' => route('election.role-demo.index'),
@@ -188,9 +192,8 @@ final class RoleDemoController extends Controller
 
     public function admit(PublicSimulationService $simulations, PublicSimulationAdmissionCapacity $capacity, AnonymousVoterAuthorization $authorizations, PublicSimulationVotingGate $voting, Request $request, RoleDemoVvpatPrint $vvpatPrint): RedirectResponse
     {
-        $this->precinct($simulations);
-
         try {
+            $this->precinct($simulations);
             $authorization = $voting->execute(function () use ($capacity, $authorizations, $vvpatPrint): array {
                 $authorization = $capacity->issue($authorizations);
                 if ($vvpatPrint->pending() === null) {
@@ -199,6 +202,8 @@ final class RoleDemoController extends Controller
 
                 return $authorization;
             });
+        } catch (ElectionOperationBusy $exception) {
+            throw ValidationException::withMessages(['admission' => $exception->getMessage()]);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['admission' => $exception->getMessage()]);
         }
@@ -276,11 +281,42 @@ final class RoleDemoController extends Controller
         return to_route('election.role-demo.officer');
     }
 
-    public function reprintVvpat(PublicSimulationService $simulations, RoleDemoVvpatPrint $vvpatPrint, PublicSimulationVotingGate $voting): RedirectResponse
+    public function reprintVvpat(Request $request, PublicSimulationService $simulations, RoleDemoVvpatPrint $vvpatPrint, PublicSimulationVotingGate $voting): RedirectResponse
     {
-        $this->precinct($simulations);
+        $validated = $request->validate(['retry_token' => ['required', 'string', 'uuid']]);
         try {
-            $voting->execute(fn () => $vvpatPrint->attempt());
+            $sessionToken = $request->session()->get('role_demo.vvpat_retry_token');
+            if (! is_string($sessionToken) || ! hash_equals($sessionToken, $validated['retry_token'])) {
+                throw new RuntimeException('This reprint authorization is unavailable or has changed. Ask the officer to reconcile the print again.');
+            }
+            $this->precinct($simulations);
+            $voting->execute(fn () => $vvpatPrint->attempt($validated['retry_token'], $request->session()->getId()));
+            $request->session()->forget('role_demo.vvpat_retry_token');
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['vvpat' => $exception->getMessage()]);
+        }
+
+        return to_route('election.role-demo.officer');
+    }
+
+    public function reconcileVvpat(ReconcileVvpatPrintRequest $request, PublicSimulationService $simulations, RoleDemoVvpatPrint $vvpatPrint, PublicSimulationVotingGate $voting): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        try {
+            abort_unless(config('election.public_simulation.enabled'), 404);
+            $round = SimulationRound::query()->where('status', 'open')->latest('id')->first();
+            $precinct = $round?->precincts()->orderBy('id')->first();
+            if ($precinct === null || $precinct->status !== 'open') {
+                throw new RuntimeException('No open demo precinct is available for reconciliation.');
+            }
+            $simulations->verifyOfficer($precinct, $validated['officer_code'], $validated['officer_pin']);
+            $simulations->applyScope($precinct);
+            if (app(ElectionStorage::class)->currentRun() === []) {
+                throw new RuntimeException('The demo run is unavailable. Preserve the evidence and contact an operator.');
+            }
+            $revision = $voting->execute(fn (): string => $vvpatPrint->reconcileForRetry($validated['reconciliation_token'], strtoupper(trim($validated['officer_code'])), $request->session()->getId()));
+            $request->session()->put('role_demo.vvpat_retry_token', $revision);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['vvpat' => $exception->getMessage()]);
         }
@@ -371,6 +407,8 @@ final class RoleDemoController extends Controller
 
         try {
             $authorization = $voting->execute(fn (): array => $authorizations->claim($request->validated('code')));
+        } catch (ElectionOperationBusy $exception) {
+            throw ValidationException::withMessages(['code' => $exception->getMessage()]);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['code' => $exception->getMessage()]);
         }
@@ -426,6 +464,10 @@ final class RoleDemoController extends Controller
 
                 return $release;
             });
+        } catch (ElectionOperationBusy $exception) {
+            throw ValidationException::withMessages(['selections' => $exception->getMessage()]);
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages(['selections' => 'Finalization could not be confirmed. Contact an operator before retrying.']);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['selections' => $exception->getMessage()]);
         }
@@ -672,7 +714,9 @@ final class RoleDemoController extends Controller
     public function latestControlNumberReceipt(PublicSimulationService $simulations, ElectionStorage $storage): BinaryFileResponse
     {
         $precinct = $this->precinct($simulations);
-        $job = $this->latestControlNumberReceiptJob($storage);
+        $selection = $this->selectLatestControlNumberReceipt($storage);
+        abort_if($selection['ambiguous'], 409, 'The latest receipt cannot be identified. Contact an operator.');
+        $job = $selection['job'];
         abort_unless(is_array($job), 404);
 
         $path = $job['pdf_artifact_path'] ?? null;
@@ -686,7 +730,12 @@ final class RoleDemoController extends Controller
     public function submitLatestControlNumberReceipt(PublicSimulationService $simulations, ElectionStorage $storage, ControlNumberPrinter $printer): RedirectResponse
     {
         $this->precinct($simulations);
-        $job = $this->latestControlNumberReceiptJob($storage);
+        $selection = $this->selectLatestControlNumberReceipt($storage);
+        if ($selection['ambiguous']) {
+            return to_route('election.role-demo.officer')
+                ->with('role_demo.closeout_feedback', 'The latest receipt cannot be identified. Preserve the receipts and contact an operator.');
+        }
+        $job = $selection['job'];
 
         if (! is_array($job)) {
             return to_route('election.role-demo.officer')
@@ -700,9 +749,22 @@ final class RoleDemoController extends Controller
                 ->with('role_demo.closeout_feedback', 'The latest voter control number receipt cannot be reprinted.');
         }
 
-        $result = app(PublicSimulationVotingGate::class)->execute(function () use ($printer, $release): array {
+        $fingerprint = hash('sha256', json_encode($job, JSON_THROW_ON_ERROR));
+        $result = app(PublicSimulationVotingGate::class)->execute(function () use ($printer, $release, $storage, $fingerprint): array {
             if (app(RoleDemoVvpatPrint::class)->pending() !== null) {
                 return ['message' => 'Resolve the pending VVPAT before sending another document to the printer.'];
+            }
+
+            $selection = $this->selectLatestControlNumberReceipt($storage);
+            if ($selection['ambiguous']) {
+                return ['message' => 'The latest receipt cannot be identified. Preserve the receipts and contact an operator.'];
+            }
+            $currentJob = $selection['job'];
+            if (! is_array($currentJob) || ! hash_equals($fingerprint, hash('sha256', json_encode($currentJob, JSON_THROW_ON_ERROR)))) {
+                return ['message' => 'The latest receipt changed. Review it before printing.'];
+            }
+            if (in_array($currentJob['status'] ?? null, ['submitting', 'uncertain', 'failed'], true)) {
+                return ['message' => 'The previous receipt print outcome is uncertain. Stop and have an operator account for the printer queue and paper before proceeding.'];
             }
 
             return $printer->print($release);
@@ -716,8 +778,8 @@ final class RoleDemoController extends Controller
             ? "Voter Control Number submitted to {$printerName}."
             : "Voter Control Number prepared with status [{$status}].";
 
-        if ($status === 'failed' && isset($result['cups_output'])) {
-            $message .= ' '.(string) $result['cups_output'];
+        if ($status === 'uncertain') {
+            $message = 'The receipt print outcome is uncertain. Stop and have an operator account for the printer queue and paper before proceeding.';
         }
 
         return to_route('election.role-demo.officer')
@@ -848,20 +910,51 @@ final class RoleDemoController extends Controller
     }
 
     /**
-     * @return array<string, mixed>|null
+     * @return array{job: array<string, mixed>|null, ambiguous: bool}
      */
-    private function latestControlNumberReceiptJob(ElectionStorage $storage): ?array
+    private function selectLatestControlNumberReceipt(ElectionStorage $storage): array
     {
-        return collect($storage->files('print-jobs/control-number'))
-            ->sortByDesc(fn (string $path): int|false => filemtime($path))
-            ->map(fn (string $path): array => json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR))
-            ->first(function (array $job): bool {
-                $path = $job['pdf_artifact_path'] ?? null;
+        $latest = null;
+        $latestTime = null;
+        $ambiguous = false;
 
-                return ($job['schema_version'] ?? null) === 'control-number-print-job-1'
-                    && is_string($path)
-                    && is_file($path);
-            });
+        foreach ($storage->files('print-jobs/control-number') as $jobPath) {
+            $contents = @file_get_contents($jobPath);
+            if ($contents === false) {
+                return ['job' => null, 'ambiguous' => true];
+            }
+            try {
+                $job = json_decode($contents, true, flags: JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                return ['job' => null, 'ambiguous' => true];
+            }
+            if (! is_array($job)) {
+                return ['job' => null, 'ambiguous' => true];
+            }
+            $releaseId = $job['release_id'] ?? null;
+            $artifactPath = $job['pdf_artifact_path'] ?? null;
+            if (($job['schema_version'] ?? null) !== 'control-number-print-job-1'
+                || ! is_string($releaseId) || $releaseId === '' || basename($jobPath) !== $releaseId.'.json'
+                || ! in_array($job['status'] ?? null, ['printed', 'submitted', 'submitting', 'uncertain', 'failed'], true)
+                || ! is_string($artifactPath) || $artifactPath !== $storage->path("print-forms/control-number/{$releaseId}.pdf")
+                || ! is_file($artifactPath)) {
+                return ['job' => null, 'ambiguous' => true];
+            }
+            clearstatcache(true, $jobPath);
+            $modifiedAt = filemtime($jobPath);
+            if ($modifiedAt === false) {
+                return ['job' => null, 'ambiguous' => true];
+            }
+            if ($latestTime === null || $modifiedAt > $latestTime) {
+                $latest = $job;
+                $latestTime = $modifiedAt;
+                $ambiguous = false;
+            } elseif ($modifiedAt === $latestTime) {
+                $ambiguous = true;
+            }
+        }
+
+        return ['job' => $ambiguous ? null : $latest, 'ambiguous' => $ambiguous];
     }
 
     /**
@@ -945,7 +1038,10 @@ final class RoleDemoController extends Controller
         }
 
         $this->ensurePrecinctPackageActivated($precinct);
-        app(LifecycleState::class)->set(Lifecycle::Voting);
+        $lifecycle = app(LifecycleState::class);
+        if (! request()->isMethodSafe() || $lifecycle->current() !== Lifecycle::Voting) {
+            $lifecycle->set(Lifecycle::Voting);
+        }
 
         return $precinct->fresh('round');
     }

@@ -47,6 +47,19 @@ final class CandidateCodeMap implements CandidateCodes
         return $manifest;
     }
 
+    /** @param array<string, mixed> $configuration */
+    public function matchesConfiguration(array $configuration): bool
+    {
+        $manifest = $this->storage->readJson('mappings/candidate-code-map.json');
+        if ($manifest === []) {
+            return false;
+        }
+
+        unset($manifest['artifact_path']);
+
+        return $this->json->encode($manifest) === $this->json->encode($this->build($configuration));
+    }
+
     /**
      * @param  array<string, mixed>  $payload
      * @return array<int, string>

@@ -32,7 +32,7 @@ final class SealedBallotBox
     {
         $payload = $this->releases->payloadForDeposit($releaseId);
 
-        $record = $this->recordDeposit($payload);
+        $record = $this->recordDeposit($payload, requireVerifiedIssuance: true);
         $this->releases->markDeposited($releaseId);
 
         return $record;
@@ -57,11 +57,11 @@ final class SealedBallotBox
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function recordDeposit(array $payload): array
+    private function recordDeposit(array $payload, bool $requireVerifiedIssuance = false): array
     {
         return $this->lock->execute(
             'sealed-ballot-box',
-            fn (): array => $this->recordDepositWithinLock($payload),
+            fn (): array => $this->recordDepositWithinLock($payload, $requireVerifiedIssuance),
         );
     }
 
@@ -69,8 +69,19 @@ final class SealedBallotBox
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function recordDepositWithinLock(array $payload): array
+    private function recordDepositWithinLock(array $payload, bool $requireVerifiedIssuance): array
     {
+        if ($requireVerifiedIssuance) {
+            $serial = $payload['paper_ballot_serial'] ?? null;
+            $ballotId = $payload['ballot_id'] ?? null;
+            $payloadHash = $payload['payload_hash'] ?? null;
+            if (! is_string($serial) || $serial === '' || ! is_string($ballotId) || $ballotId === ''
+                || ! is_string($payloadHash) || $payloadHash === ''
+                || ! $this->paperBallots->hasVerifiedIssuance($serial, $ballotId, $payloadHash)) {
+                throw new RuntimeException('The paper ballot issuance evidence is inconsistent. Operator reconciliation is required.');
+            }
+        }
+
         $path = "counting/sealed/{$payload['payload_hash']}.json";
 
         if ($this->storage->readJson($path) !== []) {

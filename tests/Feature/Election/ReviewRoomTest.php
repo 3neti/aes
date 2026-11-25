@@ -1,16 +1,21 @@
 <?php
 
 use App\Election\Core\CanonicalJson;
+use App\Election\Lifecycle\ElectionRunType;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
 use App\Election\ReviewRoom\ReviewRoomPresenter;
 use App\Election\ReviewRoom\ReviewRoomService;
 use App\Election\ReviewRoom\ReviewStationRole;
+use App\Election\ReviewRoom\StartFreshReviewPresentation;
+use App\Election\Scenarios\BrowserWalkthroughControl;
 use App\Election\Support\ElectionStorage;
 use App\Models\ReviewRoom;
 use App\Models\ReviewStation;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
+use Symfony\Component\Process\Process;
 
 beforeEach(function (): void {
     config()->set('election.review.enabled', true);
@@ -206,6 +211,7 @@ test('only one review room may remain open', function (): void {
 });
 
 test('facilitator starts fresh while preserving the previous run evidence', function (): void {
+    config()->set('election.voting_lock_driver', 'local');
     $storage = app(ElectionStorage::class);
     $previousRun = $storage->startRun(
         'previous-presentation',
@@ -247,6 +253,43 @@ test('facilitator starts fresh while preserving the previous run evidence', func
             ->has('room.stations', 9)
             ->has('room.stations.0.join_qr_url')
         );
+});
+
+test('direct fresh presentation refuses an active walkthrough before closing the room', function (): void {
+    config()->set('election.voting_lock_driver', 'local');
+    $room = createReviewRoom(2);
+    $walkthrough = app(BrowserWalkthroughControl::class)->begin('full-election', '39010001');
+    $before = app(ElectionStorage::class)->currentRun(ElectionRunType::Rehearsal);
+
+    expect(fn () => app(StartFreshReviewPresentation::class)->handle())
+        ->toThrow(RuntimeException::class, 'active browser walkthrough reserves');
+    expect($room->fresh()->status)->toBe('open')
+        ->and(ReviewRoom::query()->where('status', 'open')->count())->toBe(1)
+        ->and(app(ElectionStorage::class)->currentRun(ElectionRunType::Rehearsal))->toBe($before)
+        ->and($before['run_id'])->toBe($walkthrough['run_id']);
+});
+
+test('direct fresh presentation waits for the run scope lock before closing the room', function (): void {
+    config()->set('election.voting_lock_driver', 'local');
+    $room = createReviewRoom(2);
+    $storage = app(ElectionStorage::class);
+    $lockDirectory = storage_path('app/private/election-operation-locks');
+    if (! is_dir($lockDirectory)) {
+        mkdir($lockDirectory, 0770, true);
+    }
+    $lockPath = $lockDirectory.'/run-scope-'.hash('sha256', $storage->root()).'.lock';
+    $holder = new Process([PHP_BINARY, '-r', '$h=fopen($argv[1], "c"); flock($h, LOCK_EX); echo "ready\\n"; flush(); sleep(30);', $lockPath]);
+    $holder->start();
+    $holder->waitUntil(fn (string $type, string $output): bool => str_contains($output, 'ready'));
+
+    try {
+        expect(fn () => app(StartFreshReviewPresentation::class)->handle())->toThrow(LockTimeoutException::class);
+        expect($room->fresh()->status)->toBe('open')
+            ->and(ReviewRoom::query()->where('status', 'open')->count())->toBe(1)
+            ->and($storage->currentRun())->toBe([]);
+    } finally {
+        $holder->stop();
+    }
 });
 
 test('paired voter cannot start a fresh presentation', function (): void {

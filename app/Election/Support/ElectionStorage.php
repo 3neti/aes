@@ -128,14 +128,8 @@ final class ElectionStorage
         $runId = $this->runId($timestamp, $precinctId, $scenario);
         $runPath = $this->root().'/runs/'.$runId;
 
-        if ($this->files->isDirectory($runPath)) {
-            $existingContext = $this->readAbsoluteJson($runPath.'/run-context.json');
-
-            if (($existingContext['status'] ?? null) === 'locked') {
-                throw new RuntimeException("Locked run [{$runId}] cannot be replaced.");
-            }
-
-            $this->files->deleteDirectory($runPath);
+        if ($this->files->exists($runPath) || is_link($runPath)) {
+            throw new RuntimeException("Existing run [{$runId}] cannot be replaced.");
         }
 
         foreach (self::CeremonyDirectories as $directory) {
@@ -194,7 +188,44 @@ final class ElectionStorage
             return [];
         }
 
-        return json_decode($this->files->get($path), true, flags: JSON_THROW_ON_ERROR);
+        $context = json_decode($this->files->get($path), true, flags: JSON_THROW_ON_ERROR);
+        $runId = $context['run_id'] ?? null;
+        $runPath = $context['run_path'] ?? null;
+
+        if (! is_string($runId) || $runId === '' || in_array($runId, ['.', '..'], true) || basename($runId) !== $runId || ! is_string($runPath)
+            || $runPath !== $this->root().'/runs/'.$runId
+            || ! $this->files->isDirectory($runPath)) {
+            throw new RuntimeException('The active run pointer is inconsistent. Preserve the evidence and contact an operator.');
+        }
+
+        return $context;
+    }
+
+    /** @return array<string, mixed> */
+    public function requireOpenRehearsal(string $root, string $runId, string $runPath): array
+    {
+        $pointer = $root.'/pointers/rehearsal.json';
+        $contextPath = $runPath.'/run-context.json';
+        if ($runId === '' || in_array($runId, ['.', '..'], true) || basename($runId) !== $runId
+            || $runPath !== $root.'/runs/'.$runId
+            || realpath($root) === false
+            || realpath($pointer) !== realpath($root).'/pointers/rehearsal.json'
+            || realpath($contextPath) !== realpath($root).'/runs/'.$runId.'/run-context.json'
+            || ! is_file($pointer) || ! is_file($contextPath)) {
+            throw new RuntimeException('The browser walkthrough rehearsal pointer has changed.');
+        }
+
+        $context = json_decode($this->files->get($pointer), true, flags: JSON_THROW_ON_ERROR);
+        $record = json_decode($this->files->get($contextPath), true, flags: JSON_THROW_ON_ERROR);
+        if (! is_array($context) || $context !== $record
+            || ($context['run_id'] ?? null) !== $runId
+            || ($context['run_path'] ?? null) !== $runPath
+            || ($context['run_type'] ?? null) !== ElectionRunType::Rehearsal->value
+            || ($context['status'] ?? null) !== 'open') {
+            throw new RuntimeException('The browser walkthrough rehearsal pointer has changed.');
+        }
+
+        return $context;
     }
 
     public function activeRunPath(): string
@@ -271,7 +302,10 @@ final class ElectionStorage
         $this->ensureDirectories();
         $path = $this->path($relative);
         $this->files->ensureDirectoryExists(dirname($path));
-        $this->files->put($path, $this->json->encode($data));
+        $contents = $this->json->encode($data);
+        if ($this->files->put($path, $contents) !== strlen($contents)) {
+            throw new RuntimeException('Unable to write election state completely.');
+        }
 
         return $path;
     }
@@ -299,7 +333,9 @@ final class ElectionStorage
         $this->ensureDirectories();
         $path = $this->path($relative);
         $this->files->ensureDirectoryExists(dirname($path));
-        $this->files->put($path, $contents);
+        if ($this->files->put($path, $contents) !== strlen($contents)) {
+            throw new RuntimeException('Unable to write election artifact completely.');
+        }
 
         return $path;
     }
@@ -458,18 +494,6 @@ final class ElectionStorage
     private function runPointerPath(ElectionRunType $runType): string
     {
         return $this->root().'/pointers/'.$runType->value.'.json';
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function readAbsoluteJson(string $path): array
-    {
-        if (! $this->files->exists($path)) {
-            return [];
-        }
-
-        return json_decode($this->files->get($path), true, flags: JSON_THROW_ON_ERROR);
     }
 
     private function isIsolatedTestStorage(): bool

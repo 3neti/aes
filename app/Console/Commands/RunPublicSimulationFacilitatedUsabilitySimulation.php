@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Election\PublicSimulation\PublicSimulationFacilitatedUsabilitySimulation;
 use App\Election\PublicSimulation\PublicSimulationService;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
 use Illuminate\Console\Command;
@@ -20,7 +21,14 @@ final class RunPublicSimulationFacilitatedUsabilitySimulation extends Command
     /** @var string */
     protected $description = 'Run a synthetic facilitated usability simulation and persist the review/backlog artifacts';
 
-    public function handle(PublicSimulationService $simulations, PublicSimulationFacilitatedUsabilitySimulation $simulation): int
+    public function handle(PublicSimulationService $simulations, PublicSimulationFacilitatedUsabilitySimulation $simulation, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->runSimulation($simulations, $simulation);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function runSimulation(PublicSimulationService $simulations, PublicSimulationFacilitatedUsabilitySimulation $simulation): int
     {
         try {
             $round = $this->round($simulations);

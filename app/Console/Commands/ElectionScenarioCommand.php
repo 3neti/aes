@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Election\Scenarios\ScenarioRunner;
+use App\Election\Support\ElectionRunScopeLock;
 use Illuminate\Console\Command;
 
 final class ElectionScenarioCommand extends Command
@@ -11,7 +12,14 @@ final class ElectionScenarioCommand extends Command
 
     protected $description = 'Run a deterministic Alternative Election System scenario.';
 
-    public function handle(ScenarioRunner $runner): int
+    public function handle(ScenarioRunner $runner, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->runScenario($runner);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function runScenario(ScenarioRunner $runner): int
     {
         $report = $runner->run((string) $this->argument('scenario'));
 

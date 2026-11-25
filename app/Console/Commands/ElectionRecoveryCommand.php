@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Election\Diagnostics\ApplianceRecoveryService;
+use App\Election\Support\ElectionRunScopeLock;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -11,7 +12,14 @@ use Illuminate\Console\Command;
 #[Description('Inspect election evidence and report whether the active ceremony can resume.')]
 final class ElectionRecoveryCommand extends Command
 {
-    public function handle(ApplianceRecoveryService $recovery): int
+    public function handle(ApplianceRecoveryService $recovery, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->inspectRecovery($recovery);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function inspectRecovery(ApplianceRecoveryService $recovery): int
     {
         $report = $recovery->inspect();
 

@@ -2,6 +2,7 @@
 
 use App\Election\Attestation\OfficerAttestationService;
 use App\Election\Attestation\OfficerRegistry;
+use App\Election\Certification\CertificationDeckBuilder;
 use App\Election\Certification\CertificationService;
 use App\Election\Certification\DiscrepancyReportService;
 use App\Election\Certification\ManualVerificationService;
@@ -35,6 +36,7 @@ use App\Election\Tabulation\TabulationProfile;
 use App\Election\Voting\BallotPayloadService;
 use App\Election\Voting\PaperBallotLedger;
 use App\Election\Voting\StandardQrCode;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -96,6 +98,38 @@ test('locked runs cannot be reset or replaced', function (): void {
         '20260511-050000',
         ElectionRunType::ElectionDay,
     ))->toThrow(RuntimeException::class);
+});
+
+test('a run id collision preserves existing evidence across run types', function (): void {
+    $storage = app(ElectionStorage::class);
+    $run = $storage->startRun('operator', '39010001', '20260511-050000', ElectionRunType::ElectionDay);
+    file_put_contents($run['run_path'].'/evidence.txt', 'original evidence');
+
+    expect(fn () => $storage->startRun('operator', '39010001', '20260511-050000', ElectionRunType::Rehearsal))
+        ->toThrow(RuntimeException::class, 'cannot be replaced');
+    expect(file_get_contents($run['run_path'].'/evidence.txt'))->toBe('original evidence')
+        ->and($storage->currentRun(ElectionRunType::ElectionDay)['run_id'])->toBe($run['run_id'])
+        ->and($storage->currentRun(ElectionRunType::Rehearsal))->toBe([]);
+});
+
+test('a stale legacy run pointer blocks implicit run creation', function (): void {
+    $storage = app(ElectionStorage::class);
+    $run = $storage->startRun('operator', '39010001', '20260511-050000', ElectionRunType::ElectionDay);
+    unlink($storage->root().'/pointers/election-day.json');
+    app(Filesystem::class)->deleteDirectory($run['run_path']);
+    $storage->selectRunType(ElectionRunType::ElectionDay);
+
+    expect(fn () => $storage->activeRunPath())
+        ->toThrow(RuntimeException::class, 'active run pointer is inconsistent');
+    expect($storage->root().'/current-run.json')->toBeFile()
+        ->and($storage->root().'/pointers/election-day.json')->not->toBeFile();
+
+    file_put_contents($storage->root().'/current-run.json', json_encode([
+        'run_id' => '..',
+        'run_path' => $storage->root().'/runs/..',
+    ], JSON_THROW_ON_ERROR));
+    expect(fn () => $storage->activeRunPath())
+        ->toThrow(RuntimeException::class, 'active run pointer is inconsistent');
 });
 
 test('lifecycle transitions reject invalid jumps', function (): void {
@@ -228,8 +262,30 @@ test('friday certification matches expected result', function (): void {
     $report = app(CertificationService::class)->run();
 
     expect($report['passed'])->toBeTrue()
+        ->and($report['accepted_ballots'])->toBe(3)
+        ->and($report['rejected_ballots'])->toBe(0)
         ->and($report['actual_tally'])->toBe($report['expected_tally'])
         ->and(app(ElectionStorage::class)->readJson('certification/friday-certification-report.json')['report_hash'])->toBe($report['report_hash']);
+});
+
+test('certification ballots with identical selections have distinct identities while duplicate scans are rejected', function (): void {
+    $configuration = app(ActivateSamplePackage::class)->handle();
+    $selections = app(CertificationDeckBuilder::class)->selections($configuration);
+    $payloads = app(BallotPayloadService::class);
+    $first = $payloads->finalize($selections, 'cert-001', false, 'TEST-CERT-001');
+    $second = $payloads->finalize($selections, 'cert-003', false, 'TEST-CERT-003');
+    $counting = app(CountingService::class);
+
+    expect($first['payload_hash'])->not->toBe($second['payload_hash'])
+        ->and($counting->accept($first['qr_payload'], false)['status'])->toBe('accepted')
+        ->and($counting->accept($second['qr_payload'], false)['status'])->toBe('accepted')
+        ->and($counting->accept($first['qr_payload'], false)['status'])->toBe('rejected')
+        ->and(app(PaperBallotLedger::class)->summary()['issued'])->toBe(0);
+});
+
+test('an issued ballot cannot supply a test-only serial', function (): void {
+    expect(fn () => app(BallotPayloadService::class)->finalize([], 'ballot', true, 'TEST-001'))
+        ->toThrow(RuntimeException::class, 'test ballot serial cannot be used');
 });
 
 test('manual verification passes with matching official return', function (): void {
@@ -815,13 +871,17 @@ test('cups ballot printer submits generated artifact when configured', function 
     }
 });
 
-test('cups ballot printer records failed submissions without losing artifacts', function (): void {
+test('cups ballot printer records uncertain submissions without losing artifacts', function (bool $throws): void {
     config()->set('election.devices.printer.driver', 'cups');
     config()->set('election.devices.printer.cups.name', 'Precinct_Printer');
     writePassingCupsCertification('Precinct_Printer');
-    Process::fake([
-        '*' => Process::result(errorOutput: 'printer is stopped', exitCode: 1),
-    ]);
+    Process::fake(function () use ($throws) {
+        if ($throws) {
+            throw new RuntimeException('submission timed out');
+        }
+
+        return Process::result(errorOutput: 'printer is stopped', exitCode: 1);
+    });
 
     try {
         app(ActivateSamplePackage::class)->handle();
@@ -835,16 +895,16 @@ test('cups ballot printer records failed submissions without losing artifacts', 
         $events = app(ActivityJournal::class)->entries();
 
         expect($job['printer'])->toBe('cups')
-            ->and($job['status'])->toBe('failed')
-            ->and($job['cups_exit_code'])->toBe(1)
-            ->and($job['cups_output'])->toContain('printer is stopped')
+            ->and($job['status'])->toBe('uncertain')
+            ->and($job['cups_exit_code'])->toBe($throws ? null : 1)
+            ->and($job['cups_output'])->toContain($throws ? 'submission timed out' : 'printer is stopped')
             ->and(file_exists($job['artifact_path']))->toBeTrue()
             ->and(file_exists($job['pdf_artifact_path']))->toBeTrue()
-            ->and(collect($events)->pluck('event_type'))->toContain('ballot.print_failed');
+            ->and(collect($events)->pluck('event_type'))->toContain('ballot.print_uncertain');
     } finally {
         config()->set('election.devices.printer.driver', 'file');
     }
-});
+})->with([false, true]);
 
 test('cups ballot printer falls back to file printing when certification is not passing', function (): void {
     config()->set('election.devices.printer.driver', 'cups');
@@ -903,14 +963,17 @@ test('cups ballot printer falls back to file printing when no printer name is co
 });
 
 test('configured precinct activation automatically certifies devices', function (): void {
-    app(ElectionStorage::class)->reset();
+    $storage = app(ElectionStorage::class);
+    $storage->reset();
 
     $result = app(ActivateConfiguredPrecinct::class)->handle();
-    $report = app(ElectionStorage::class)->readJson('certification/device-certification-report.json');
+    $report = $storage->readJson('certification/device-certification-report.json');
     $events = app(ActivityJournal::class)->entries();
 
     expect($result['device_certification']['passed'])->toBeTrue()
         ->and($report['passed'])->toBeTrue()
+        ->and($storage->currentRun()['scenario'])->toBe('operator')
+        ->and(count(glob($storage->root().'/runs/*', GLOB_ONLYDIR)))->toBe(1)
         ->and(collect($events)->pluck('event_type'))->toContain('devices.certification_passed');
 });
 

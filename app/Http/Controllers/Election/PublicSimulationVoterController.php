@@ -23,6 +23,7 @@ use App\Http\Requests\FinalizePrivateBallotRequest;
 use App\Http\Requests\RedeemPrintReleaseRequest;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -155,6 +156,8 @@ final class PublicSimulationVoterController extends Controller
 
                 return $release;
             });
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages(['selections' => 'Finalization could not be confirmed. Contact an operator before retrying.']);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['selections' => $exception->getMessage()]);
         }

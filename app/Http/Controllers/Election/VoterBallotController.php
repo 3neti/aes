@@ -12,6 +12,7 @@ use App\Election\Voting\PrivateBallotRelease;
 use App\Election\Voting\VoterBallotAnalytics;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FinalizePrivateBallotRequest;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -80,6 +81,8 @@ final class VoterBallotController extends Controller
         try {
             $release = $releases->create($authorizationId, $selections, $controlNumber);
             $authorizations->complete($authorizationId);
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages(['selections' => 'Finalization could not be confirmed. Contact an operator before retrying.']);
         } catch (\RuntimeException $exception) {
             throw ValidationException::withMessages(['selections' => $exception->getMessage()]);
         }

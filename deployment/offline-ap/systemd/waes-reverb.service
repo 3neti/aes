@@ -1,7 +1,8 @@
 [Unit]
 Description=WAES Laravel Reverb server
 PartOf=waes-runtime.target
-After=network.target
+Wants=mysql.service
+After=network.target mysql.service
 
 [Service]
 Type=simple

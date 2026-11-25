@@ -65,7 +65,7 @@ final class CertificationService
         $this->clearCountingFiles();
 
         foreach ($deck['ballots'] as $ballot) {
-            $payload = $this->payloads->finalize($ballot['selections'], $ballot['id'], false);
+            $payload = $this->payloads->finalize($ballot['selections'], $ballot['id'], false, 'TEST-'.strtoupper($ballot['id']));
             $this->counting->accept($payload['qr_payload']);
         }
 

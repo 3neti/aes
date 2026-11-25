@@ -2,6 +2,7 @@
 
 namespace App\Election\ReviewRoom;
 
+use App\Election\Support\ElectionRunScopeLock;
 use App\Election\Support\ElectionStorage;
 use App\Models\ReviewRoom;
 
@@ -10,12 +11,21 @@ class StartFreshReviewPresentation
     public function __construct(
         private readonly ElectionStorage $storage,
         private readonly ReviewRoomService $rooms,
+        private readonly ElectionRunScopeLock $runLock,
     ) {}
 
     /**
      * @return array{room: ReviewRoom, run: array<string, mixed>}
      */
     public function handle(): array
+    {
+        return config('election.voting_lock_driver') === 'local'
+            ? $this->runLock->executeCommand(fn (): array => $this->startFresh())
+            : $this->startFresh();
+    }
+
+    /** @return array{room: ReviewRoom, run: array<string, mixed>} */
+    private function startFresh(): array
     {
         ReviewRoom::query()
             ->where('status', 'open')

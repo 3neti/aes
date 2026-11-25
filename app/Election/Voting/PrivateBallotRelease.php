@@ -10,6 +10,7 @@ use App\Election\Printing\PrintFormArtifactService;
 use App\Election\Printing\PrintFormProfile;
 use App\Election\Printing\PrintFormProfileResolver;
 use App\Election\Support\ElectionClock;
+use App\Election\Support\ElectionOperationLock;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
@@ -33,6 +34,7 @@ final class PrivateBallotRelease
         private readonly PrintFormProfileResolver $profiles,
         private readonly DocumentProfileRegistry $documents,
         private readonly RecordService $truthQr,
+        private readonly ElectionOperationLock $operationLock,
     ) {}
 
     /**
@@ -41,8 +43,29 @@ final class PrivateBallotRelease
      */
     public function create(string $authorizationId, array $selections, ?string $releaseCode = null): array
     {
-        $configuration = $this->storage->readJson('runtime/active-precinct.json');
+        return $this->operationLock->execute(
+            'private-ballot-finalization',
+            fn (): array => $this->createWithinLock($authorizationId, $selections, $releaseCode),
+        );
+    }
 
+    /**
+     * @param  array<string, array<int, string>>  $selections
+     * @return array<string, mixed>
+     */
+    private function createWithinLock(string $authorizationId, array $selections, ?string $releaseCode): array
+    {
+        if ($this->storage->currentRun() === []) {
+            throw new RuntimeException('An active election run is required before finalization.');
+        }
+        foreach ($this->storage->files('print-releases') as $path) {
+            $existing = $this->storage->readJson('print-releases/'.basename($path));
+            if (($existing['authorization_id'] ?? null) === $authorizationId) {
+                throw new RuntimeException('A ballot release already exists for this authorization. Operator reconciliation is required.');
+            }
+        }
+
+        $configuration = $this->storage->readJson('runtime/active-precinct.json');
         if ($configuration === []) {
             throw new RuntimeException('No active precinct configuration.');
         }
@@ -108,14 +131,23 @@ final class PrivateBallotRelease
             'expires_at' => $record['expires_at'],
         ]);
 
+        return $this->releaseResponse($record, $releaseCode);
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
+    private function releaseResponse(array $record, string $releaseCode): array
+    {
         return [
-            'release_id' => $releaseId,
+            'release_id' => $record['release_id'],
             'release_code' => $releaseCode,
-            'pin_digits' => $digits,
+            'pin_digits' => $record['pin_digits'],
             'release_qr_data_uri' => 'data:image/png;base64,'.base64_encode(
                 $this->qrCode->renderPng('aes-print-release:'.$releaseCode),
             ),
-            'paper_ballot_serial' => $paperBallotSerial,
+            'paper_ballot_serial' => $record['paper_ballot_serial'],
             'expires_at' => $record['expires_at'],
         ];
     }
@@ -128,6 +160,23 @@ final class PrivateBallotRelease
         return is_array($record)
             && ($record['status'] ?? null) === 'pending'
             && ! $this->clock->now()->isAfter($record['expires_at']);
+    }
+
+    /** @return array<string, mixed> */
+    public function roleDemoReleaseForCode(string $code): array
+    {
+        $normalized = Str::after(Str::lower(trim($code)), 'aes-print-release:');
+        $record = $this->recordForCode($normalized);
+
+        if (! is_array($record) || ! in_array($record['status'] ?? null, ['pending', 'redeemed', 'printed'], true)) {
+            throw new RuntimeException('The print release is invalid or no longer available.');
+        }
+
+        if (($record['status'] ?? null) === 'pending' && $this->clock->now()->isAfter($record['expires_at'])) {
+            throw new RuntimeException('The print release has expired.');
+        }
+
+        return $this->publicRecord($record);
     }
 
     /**

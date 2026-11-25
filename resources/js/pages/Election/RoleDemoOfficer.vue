@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePoll } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import { reconcileVvpat } from '@/actions/App/Http/Controllers/Election/RoleDemoController';
 import EmlValidationPanel from '@/components/election/EmlValidationPanel.vue';
 import NumericPinPad from '@/components/election/NumericPinPad.vue';
 
@@ -44,8 +45,12 @@ const props = defineProps<{
         attempts: number;
         status: string;
         message: string | null;
+        ballot_reference: string | null;
         pdf_available: boolean;
+        reconciliation_token: string;
+        reconciliation_available: boolean;
     } | null;
+    vvpatRetryToken?: string | null;
     controlNumber?: {
         code: string;
         expires_at: string;
@@ -136,6 +141,18 @@ const controlNumberForPrint = ref('');
 const checkedNumber = ref('');
 const readinessMessage = ref('');
 const checkingBallot = ref(false);
+const reconciliationRequired = computed(() =>
+    [
+        'printing',
+        'uncertain',
+        'failed',
+        'awaiting_confirmation',
+        'ready_to_retry',
+    ].includes(props.pendingVvpat?.status ?? ''),
+);
+const depositPending = computed(
+    () => props.pendingVvpat?.status === 'depositing',
+);
 
 watch(controlNumberForPrint, () => {
     checkedNumber.value = '';
@@ -440,7 +457,7 @@ usePoll(
 
         <header class="border-b border-stone-300 bg-white">
             <div
-                class="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6"
+                class="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 md:landscape:max-w-5xl"
             >
                 <div>
                     <Link
@@ -466,7 +483,9 @@ usePoll(
             </div>
         </header>
 
-        <section class="mx-auto max-w-2xl px-4 py-5 sm:px-6">
+        <section
+            class="mx-auto max-w-2xl px-4 py-5 sm:px-6 md:landscape:max-w-5xl"
+        >
             <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <p class="border border-stone-300 bg-white p-4">
                     <strong class="block text-2xl">{{
@@ -584,16 +603,13 @@ usePoll(
                     v-show="activeStep === 1"
                     class="border border-stone-300 bg-white p-5"
                 >
-                    <p class="text-sm font-bold text-blue-800">Step 1</p>
-                    <h2 class="mt-1 text-xl font-bold">Admit next voter</h2>
-                    <p class="mt-2 text-sm text-stone-700">
-                        Generate a four-digit control number after physical
-                        identity checking. The voter enters this on the booth
-                        tablet.
-                        <span v-if="pendingVvpat"
-                            >Write the number for the voter; receipt printing is
-                            paused while the VVPAT is pending.</span
-                        >
+                    <div class="flex flex-wrap items-baseline gap-x-3">
+                        <p class="text-sm font-bold text-blue-800">Step 1</p>
+                        <h2 class="text-xl font-bold">Admit next voter</h2>
+                    </div>
+                    <p v-if="pendingVvpat" class="mt-2 text-sm text-stone-700">
+                        Write the number for the voter; receipt printing is
+                        paused while the VVPAT is pending.
                     </p>
 
                     <div
@@ -658,15 +674,21 @@ usePoll(
                     v-show="activeStep === 2"
                     class="border border-stone-300 bg-white p-5"
                 >
-                    <p class="text-sm font-bold text-blue-800">Step 2</p>
-                    <h2 class="mt-1 text-xl font-bold">Print VVPAT</h2>
+                    <div class="flex flex-wrap items-baseline gap-x-3">
+                        <p class="text-sm font-bold text-blue-800">Step 2</p>
+                        <h2 class="text-xl font-bold">Print VVPAT</h2>
+                    </div>
                     <div
                         v-if="pendingVvpat"
                         class="mt-4 border-2 border-amber-500 bg-amber-50 p-4"
                         role="status"
                     >
                         <h3 class="text-lg font-bold">
-                            Confirm VVPAT printing
+                            {{
+                                depositPending
+                                    ? 'Deposit requires review'
+                                    : 'Confirm VVPAT printing'
+                            }}
                         </h3>
                         <p class="mt-2">
                             Control number:
@@ -675,7 +697,23 @@ usePoll(
                             }}</strong>
                         </p>
                         <p class="mt-2 text-sm">{{ pendingVvpat.message }}</p>
-                        <p class="mt-2 font-bold">
+                        <p
+                            v-if="
+                                reconciliationRequired &&
+                                pendingVvpat.ballot_reference
+                            "
+                            class="mt-2 text-sm"
+                        >
+                            Ballot reference for the print job:
+                            <strong>{{ pendingVvpat.ballot_reference }}</strong
+                            >. Attempt {{ pendingVvpat.attempts }}.
+                        </p>
+                        <p
+                            v-if="
+                                pendingVvpat.status === 'awaiting_confirmation'
+                            "
+                            class="mt-2 font-bold"
+                        >
                             Was the VVPAT printed successfully?
                         </p>
                         <a
@@ -686,6 +724,9 @@ usePoll(
                             >Open VVPAT PDF</a
                         >
                         <Form
+                            v-if="
+                                pendingVvpat.status === 'awaiting_confirmation'
+                            "
                             :action="actions.confirmVvpat"
                             method="post"
                             #default="{ errors, processing }"
@@ -705,37 +746,137 @@ usePoll(
                                 Yes, printed
                             </button>
                         </Form>
-                        <p class="mt-3 text-sm">
-                            If it did not print, clear the jam and check the
-                            printer before trying again.
+                        <p
+                            v-if="pendingVvpat.status === 'ready_to_retry'"
+                            class="mt-3 text-sm"
+                        >
+                            The previous attempt was reconciled. You may now
+                            submit a separate reprint.
                         </p>
                         <Form
+                            v-if="pendingVvpat.status === 'ready_to_retry'"
                             :action="actions.reprintVvpat"
                             method="post"
                             #default="{ errors, processing }"
                             class="mt-2"
                         >
+                            <input
+                                type="hidden"
+                                name="retry_token"
+                                :value="vvpatRetryToken ?? ''"
+                            />
                             <p v-if="errors.vvpat" class="mb-2 text-red-700">
                                 {{ errors.vvpat }}
                             </p>
                             <button
                                 class="min-h-12 w-full border-2 border-amber-700 bg-white px-4 font-bold text-amber-900 disabled:opacity-50"
-                                :disabled="processing"
+                                :disabled="processing || !vvpatRetryToken"
                             >
                                 {{
                                     processing
                                         ? 'Submitting...'
-                                        : 'No, reprint VVPAT'
+                                        : 'Print reconciled VVPAT'
                                 }}
                             </button>
                         </Form>
-                    </div>
-                    <template v-else>
-                        <p class="mt-2 text-sm text-stone-700">
-                            Enter the voter’s control number to check whether
-                            their submitted ballot is ready. Then select Print
-                            VVPAT.
+                        <Form
+                            v-if="
+                                reconciliationRequired &&
+                                pendingVvpat.reconciliation_available
+                            "
+                            :action="reconcileVvpat()"
+                            #default="{ errors, processing }"
+                            class="mt-4 space-y-3"
+                        >
+                            <p class="text-sm font-bold">
+                                Check the identified print job and cancel it if
+                                necessary. Clear any printer-buffered copy
+                                before authorizing a new attempt. Do not
+                                continue if a usable VVPAT exists.
+                            </p>
+                            <input
+                                type="hidden"
+                                name="reconciliation_token"
+                                :value="pendingVvpat.reconciliation_token"
+                            />
+                            <label class="block text-sm font-bold"
+                                >Officer code
+                                <input
+                                    name="officer_code"
+                                    required
+                                    autocomplete="off"
+                                    class="mt-1 block w-full border border-stone-400 p-2"
+                                />
+                            </label>
+                            <label class="block text-sm font-bold"
+                                >Officer PIN
+                                <input
+                                    name="officer_pin"
+                                    type="password"
+                                    required
+                                    autocomplete="off"
+                                    class="mt-1 block w-full border border-stone-400 p-2"
+                                />
+                            </label>
+                            <label class="flex gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="no_usable_paper"
+                                    value="1"
+                                    required
+                                />
+                                No usable VVPAT exists from the previous
+                                attempt.
+                            </label>
+                            <label class="flex gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="queue_and_buffer_cleared"
+                                    value="1"
+                                    required
+                                />
+                                I checked the identified queued job and cleared
+                                any printer-buffered copy.
+                            </label>
+                            <p
+                                v-if="
+                                    errors.vvpat ||
+                                    errors.officer_code ||
+                                    errors.officer_pin ||
+                                    errors.reconciliation_token ||
+                                    errors.no_usable_paper ||
+                                    errors.queue_and_buffer_cleared
+                                "
+                                class="text-sm text-red-700"
+                            >
+                                {{
+                                    errors.vvpat ||
+                                    errors.officer_code ||
+                                    errors.officer_pin ||
+                                    errors.reconciliation_token ||
+                                    errors.no_usable_paper ||
+                                    errors.queue_and_buffer_cleared
+                                }}
+                            </p>
+                            <button
+                                :disabled="processing"
+                                class="min-h-12 w-full border-2 border-amber-700 bg-white px-4 font-bold text-amber-900 disabled:opacity-50"
+                            >
+                                Authorize a separate reprint
+                            </button>
+                        </Form>
+                        <p
+                            v-if="
+                                reconciliationRequired &&
+                                !pendingVvpat.reconciliation_available
+                            "
+                            class="mt-4 text-sm font-bold text-red-700"
+                        >
+                            Reprint reconciliation is available only in a demo
+                            rehearsal. Preserve this VVPAT and contact support.
                         </p>
+                    </div>
+                    <div v-else class="mx-auto w-full max-w-md">
                         <form
                             class="mt-5 space-y-3"
                             @submit.prevent="checkBallot"
@@ -787,16 +928,18 @@ usePoll(
                                 }}
                             </button>
                         </Form>
-                    </template>
+                    </div>
                 </section>
                 <section
                     v-show="activeStep === 3"
                     class="border border-stone-300 bg-white p-5"
                 >
-                    <p class="text-sm font-bold text-blue-800">Step 3</p>
-                    <h2 class="mt-1 text-xl font-bold">
-                        Current / interim election return
-                    </h2>
+                    <div class="flex flex-wrap items-baseline gap-x-3">
+                        <p class="text-sm font-bold text-blue-800">Step 3</p>
+                        <h2 class="text-xl font-bold">
+                            Current / interim election return
+                        </h2>
+                    </div>
                     <p class="mt-2 text-sm text-stone-700">
                         {{ precinct.label }} · Totals reflect the snapshot
                         generated when you view or print. Voting remains open.

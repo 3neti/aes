@@ -4,13 +4,15 @@ This runbook describes the Ubuntu 24.04 deployment commissioned in November 2026
 
 Use the matching templates in `deployment/offline-ap/`. The older `deployment/install-waes-runtime`, `deployment/systemd/`, and `deployment/environment/waes-runtime.env.example` describe a different PostgreSQL/`ace` runtime. Do not mix the two profiles.
 
+For current access details, safe upgrades, runtime diagnostics, and dated acceptance evidence, read [WAES device hand-off](WAES_DEVICE_HANDOFF.md). Fresh-install commands below must not be replayed on an existing installation.
+
 ## Profile and boundaries
 
 - Application: `/var/www/aes`, deployed by `ace`; runtime workers use `www-data`.
 - Ethernet: `enp1s0`, DHCP. Its address may change when moving networks.
 - AP: `wlp2s0`, SSID **WAES**, Philippines, 2.4 GHz channel 6. The commissioned device now uses WPA2-Personal/AES; separate open and WPA2 examples are provided.
 - AP address: **10.42.0.1/24**; DHCP pool **10.42.0.50–10.42.0.200**.
-- Local application: **http://10.42.0.1**, redirecting to `/election/role-demo`.
+- Local application: **http://10.42.0.1**, redirecting to `/election/role-demo/voter` at the `e653552` release.
 - Local DNS aliases: `waes.home.arpa` and `waes.consultel.ph`; these overrides apply only through the AP resolver.
 - AP clients may use Ethernet Internet connectivity when present. AES itself must remain usable without that uplink.
 - Ballots use `HP_Laser_108a`; control-number receipts use `Thermal58`; closeout forms remain file-based.
@@ -317,7 +319,7 @@ The password-free welcome page is **http://10.42.0.1/hotspot**. Supported probe 
 - The local, script-free page asks for no credentials.
 - **Connect to WAES** acknowledges onboarding and opens `/election/role-demo`.
 - Acknowledgment is cached locally for up to 12 hours, scoped to the real socket address and available Wi-Fi ARP identity. Forwarded-IP headers do not confer AP-client status.
-- Normal `/` still redirects to the role demo. Ethernet clients are not captive-portal clients.
+- Normal `/` redirects to the voter UI at `/election/role-demo/voter`. Ethernet clients are not captive-portal clients.
 
 Only dedicated probe-domain DNS records are overridden. No wildcard DNS, normal-browsing redirect, HTTPS interception, or Internet authentication gate is added. Probe completion means onboarding is complete; it does not prove upstream Internet availability.
 

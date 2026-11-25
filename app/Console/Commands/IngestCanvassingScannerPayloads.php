@@ -3,9 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Election\PublicSimulation\CanvassingScannerIngestion;
+use App\Election\Support\ElectionRunScopeLock;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 
 #[Signature('election:canvassing-scanner-ingest
     {--station-id=canvassing-demo-city : Scanner station identifier}
@@ -126,7 +128,35 @@ final class IngestCanvassingScannerPayloads extends Command
 
     private function ingestOne(string $payload, string $stationId, string $source, CanvassingScannerIngestion $ingestion): bool
     {
-        $result = $ingestion->ingest($payload, $stationId, $source);
+        $started = false;
+        $operation = function () use ($ingestion, $payload, $stationId, $source, &$started): array {
+            $started = true;
+
+            return $ingestion->ingest($payload, $stationId, $source);
+        };
+        try {
+            $result = config('election.voting_lock_driver') === 'local'
+                ? app(ElectionRunScopeLock::class)->execute(function () use ($operation): array {
+                    app(ElectionRunScopeLock::class)->assertNoActiveWalkthrough();
+
+                    return $operation();
+                })
+                : $operation();
+        } catch (LockTimeoutException $exception) {
+            if ($started) {
+                throw $exception;
+            }
+            $this->error('Scan was not recorded because the election system is busy. Retain the document and rescan when ready.');
+
+            return false;
+        } catch (\RuntimeException $exception) {
+            if ($started) {
+                throw $exception;
+            }
+            $this->error('Scan was not recorded. '.$exception->getMessage());
+
+            return false;
+        }
         $event = $result['event'];
         $status = (string) ($event['status'] ?? 'unknown');
         $message = (string) ($result['state']['latest_message'] ?? $event['meta'] ?? 'Recorded scan.');

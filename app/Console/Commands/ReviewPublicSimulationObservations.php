@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Election\PublicSimulation\PublicSimulationObservationReview;
 use App\Election\PublicSimulation\PublicSimulationService;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
 use Illuminate\Console\Command;
@@ -17,7 +18,14 @@ final class ReviewPublicSimulationObservations extends Command
     /** @var string */
     protected $description = 'Create a private facilitator review of public-simulation operational observations';
 
-    public function handle(PublicSimulationService $simulations, PublicSimulationObservationReview $observations): int
+    public function handle(PublicSimulationService $simulations, PublicSimulationObservationReview $observations, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->reviewObservations($simulations, $observations);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function reviewObservations(PublicSimulationService $simulations, PublicSimulationObservationReview $observations): int
     {
         $round = SimulationRound::query()->where('code', $this->argument('round'))->first();
         $precinct = $round?->precincts()->where('code', $this->argument('precinct'))->first();

@@ -81,6 +81,44 @@ test('control number cups printer falls back to file only when no thermal queue 
     Process::assertNothingRan();
 });
 
+test('a receipt submission is marked submitting before cups is invoked', function (): void {
+    config()->set('election.control_number_printer.driver', 'cups');
+    config()->set('election.control_number_printer.cups.name', 'Thermal80');
+    $release = controlNumberReceiptRelease('8642');
+    $observedStatus = null;
+    Process::fake(function () use ($release, &$observedStatus) {
+        $job = app(ElectionStorage::class)->readJson("print-jobs/control-number/{$release['release_id']}.json");
+        $observedStatus = $job['status'] ?? null;
+
+        return Process::result('request id is Thermal80-21');
+    });
+
+    $job = app(ControlNumberPrinter::class)->print($release);
+
+    expect($observedStatus)->toBe('submitting')
+        ->and($job['status'])->toBe('submitted');
+});
+
+test('a cups submission error leaves the receipt outcome uncertain', function (bool $throws): void {
+    config()->set('election.control_number_printer.driver', 'cups');
+    config()->set('election.control_number_printer.cups.name', 'Thermal80');
+    Process::fake(function () use ($throws) {
+        if ($throws) {
+            throw new RuntimeException('submission timed out');
+        }
+
+        return Process::result('', 'submission failed', 1);
+    });
+
+    $release = controlNumberReceiptRelease('3579');
+    $job = app(ControlNumberPrinter::class)->print($release);
+    $storedJob = app(ElectionStorage::class)->readJson("print-jobs/control-number/{$release['release_id']}.json");
+
+    expect($job['status'])->toBe('uncertain')
+        ->and($storedJob['status'])->toBe('uncertain')
+        ->and($storedJob['release_id'])->toBe($release['release_id']);
+})->with([false, true]);
+
 test('control number receipt does not contain ballot selections or payload hash', function (): void {
     config()->set('election.control_number_printer.driver', 'file');
 

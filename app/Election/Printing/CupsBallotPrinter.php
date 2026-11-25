@@ -49,10 +49,10 @@ final class CupsBallotPrinter implements BallotPrinter
         $job['cups_command'] = ['lp', '-d', $this->printerName, '-t', 'AES Ballot '.$payload['ballot_id'], $artifactPath];
         $job['cups_exit_code'] = $result['exit_code'];
         $job['cups_output'] = $result['output'];
-        $job['status'] = $result['successful'] ? 'submitted' : 'failed';
+        $job['status'] = $result['successful'] ? 'submitted' : 'uncertain';
 
         $this->storage->writeJson("print-jobs/{$payload['ballot_id']}.json", $job);
-        $this->journal->record($result['successful'] ? 'ballot.print_submitted' : 'ballot.print_failed', [
+        $this->journal->record($result['successful'] ? 'ballot.print_submitted' : 'ballot.print_uncertain', [
             'ballot_id' => $job['ballot_id'],
             'payload_hash' => $job['payload_hash'],
             'printer' => 'cups',

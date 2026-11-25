@@ -6,6 +6,7 @@ use App\Election\Core\ActivityJournal;
 use App\Election\Core\CanonicalJson;
 use App\Election\Lifecycle\Lifecycle;
 use App\Election\Lifecycle\LifecycleState;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Election\Support\ElectionStorage;
 use App\Election\Tabulation\TabulationProfileResolver;
 use App\Election\Voting\CandidateCodeMap;
@@ -21,12 +22,23 @@ final class ActivateSamplePackage
         private readonly LifecycleState $lifecycle,
         private readonly TabulationProfileResolver $tabulation,
         private readonly CandidateCodeMap $candidateCodes,
+        private readonly ElectionRunScopeLock $runLock,
     ) {}
 
     /**
      * @return array<string, mixed>
      */
     public function handle(): array
+    {
+        $operation = fn (): array => $this->activate();
+
+        return config('election.voting_lock_driver') === 'local'
+            ? $this->runLock->executeCommand($operation)
+            : $operation();
+    }
+
+    /** @return array<string, mixed> */
+    private function activate(): array
     {
         $registries = $this->sample->registries();
         $package = $this->sample->package();

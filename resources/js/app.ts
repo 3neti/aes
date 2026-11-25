@@ -3,7 +3,7 @@ import { configureEcho } from '@laravel/echo-vue';
 import { getBrowserWebSocketOptions } from '@/lib/browser-websocket-options';
 
 configureEcho(
-    import.meta.env.VITE_REVERB_APP_KEY
+    !import.meta.env.SSR && import.meta.env.VITE_REVERB_APP_KEY
         ? {
               broadcaster: 'reverb',
               ...getBrowserWebSocketOptions(window.location),

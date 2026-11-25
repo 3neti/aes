@@ -15,6 +15,12 @@ final class PublicSimulationVotingQuiescence
 
     public function assertReadyForClose(): void
     {
+        if ($this->storage->readJson('runtime/role-demo-vvpat-pending.json') !== []) {
+            $this->journal->record('public_simulation.close_blocked_pending_vvpat');
+
+            throw new RuntimeException('Cannot close polls while a VVPAT or its deposit requires resolution.');
+        }
+
         $claimedAuthorizations = collect($this->storage->files('voter-authorizations'))
             ->map(fn (string $path): array => $this->storage->readJson('voter-authorizations/'.basename($path)))
             ->where('status', 'claimed')

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Election\PublicSimulation\PublicSimulationService;
 use App\Election\PublicSimulation\PublicSimulationUsabilitySessionKit;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Models\SimulationPrecinct;
 use App\Models\SimulationRound;
 use Illuminate\Console\Command;
@@ -17,7 +18,14 @@ final class BuildPublicSimulationUsabilitySessionKit extends Command
     /** @var string */
     protected $description = 'Prepare a privacy-safe external usability session guide for a public simulation precinct';
 
-    public function handle(PublicSimulationService $simulations, PublicSimulationUsabilitySessionKit $sessionKit): int
+    public function handle(PublicSimulationService $simulations, PublicSimulationUsabilitySessionKit $sessionKit, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->buildKit($simulations, $sessionKit);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function buildKit(PublicSimulationService $simulations, PublicSimulationUsabilitySessionKit $sessionKit): int
     {
         $round = SimulationRound::query()->where('code', $this->argument('round'))->first();
         $precinct = $round?->precincts()->where('code', $this->argument('precinct'))->first();

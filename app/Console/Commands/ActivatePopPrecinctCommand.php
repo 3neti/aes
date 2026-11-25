@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Election\Preparation\ActivateImportedPrecinctPackage;
+use App\Election\Support\ElectionRunScopeLock;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -11,7 +12,14 @@ use Illuminate\Console\Command;
 #[Description('Create an imported precinct package skeleton from the POP registry.')]
 final class ActivatePopPrecinctCommand extends Command
 {
-    public function handle(ActivateImportedPrecinctPackage $activate): int
+    public function handle(ActivateImportedPrecinctPackage $activate, ElectionRunScopeLock $runLock): int
+    {
+        $operation = fn (): int => $this->activatePrecinct($activate);
+
+        return config('election.voting_lock_driver') === 'local' ? $runLock->executeCommand($operation) : $operation();
+    }
+
+    private function activatePrecinct(ActivateImportedPrecinctPackage $activate): int
     {
         $package = $activate->handle((string) $this->argument('clustered_precinct'));
 

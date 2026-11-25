@@ -68,6 +68,7 @@ Route::prefix('election')->name('election.')->group(function (): void {
         Route::post('/officer/dismiss-control-number', [RoleDemoController::class, 'dismissControlNumber'])->name('dismiss-control-number');
         Route::post('/officer/ballot-readiness', [RoleDemoController::class, 'ballotReadiness'])->middleware('throttle:20,1')->name('print.readiness');
         Route::post('/officer/reprint-vvpat', [RoleDemoController::class, 'reprintVvpat'])->middleware('throttle:20,1')->name('print.reprint');
+        Route::post('/officer/reconcile-vvpat', [RoleDemoController::class, 'reconcileVvpat'])->middleware('throttle:5,1')->name('print.reconcile');
         Route::post('/officer/confirm-vvpat', [RoleDemoController::class, 'confirmVvpat'])->middleware('throttle:20,1')->name('print.confirm');
         Route::post('/officer/accept-print', [RoleDemoController::class, 'acceptPrint'])->middleware('throttle:20,1')->name('print.accept');
         Route::post('/officer/bulk-ballots', [RoleDemoController::class, 'bulkBallots'])->middleware('throttle:60,1')->name('bulk-ballots');

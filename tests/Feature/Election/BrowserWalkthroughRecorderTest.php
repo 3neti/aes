@@ -12,6 +12,7 @@ beforeEach(function (): void {
 });
 
 test('browser walkthrough command records and finalizes an isolated rehearsal', function (): void {
+    config()->set('election.voting_lock_driver', 'local');
     $storage = app(ElectionStorage::class);
     $storage->selectRunType(ElectionRunType::ElectionDay);
     $electionDay = $storage->startRun(
@@ -22,7 +23,12 @@ test('browser walkthrough command records and finalizes an isolated rehearsal', 
     );
     config()->set('election.runtime.run_type', ElectionRunType::ElectionDay->value);
 
-    Process::fake(function (PendingProcess $process) {
+    $lockAvailableDuringRecording = false;
+    Process::fake(function (PendingProcess $process) use ($storage, &$lockAvailableDuringRecording) {
+        $path = storage_path('app/private/election-operation-locks/run-scope-'.hash('sha256', $storage->root()).'.lock');
+        $child = new Symfony\Component\Process\Process([PHP_BINARY, '-r', '$h=fopen($argv[1], "c"); echo flock($h, LOCK_EX | LOCK_NB) ? "available" : "busy";', $path]);
+        $child->mustRun();
+        $lockAvailableDuringRecording = $child->getOutput() === 'available';
         $artifactDirectory = $process->environment['ELECTION_WALKTHROUGH_ARTIFACT_DIR'];
         $videoPath = $artifactDirectory.'/full-election.webm';
         $tracePath = $artifactDirectory.'/playwright-trace.zip';
@@ -112,6 +118,7 @@ test('browser walkthrough command records and finalizes an isolated rehearsal', 
     $archiveContents = file_get_contents($archiveReport['archive_path']);
 
     expect($rehearsal['status'])->toBe('locked')
+        ->and($lockAvailableDuringRecording)->toBeTrue()
         ->and($storage->currentRun(ElectionRunType::ElectionDay)['run_id'])->toBe($electionDay['run_id'])
         ->and($report['passed'])->toBeTrue()
         ->and($report['statistics']['ballots_requested'])->toBe(3)
@@ -154,7 +161,30 @@ test('browser walkthrough command records and finalizes an isolated rehearsal', 
     });
 });
 
+test('browser walkthrough does not finalize when its rehearsal pointer changes during recording', function (): void {
+    config()->set('election.voting_lock_driver', 'local');
+    $storage = app(ElectionStorage::class);
+    Process::fake(function () use ($storage) {
+        $storage->startRun('conflicting-run', '39010001', '20260511-050000', ElectionRunType::Rehearsal);
+
+        return Process::result(output: json_encode(['passed' => true, 'artifacts' => [], 'statistics' => []], JSON_THROW_ON_ERROR));
+    });
+
+    $this->artisan('election:browser-walkthrough', [
+        'scenario' => 'full-election',
+        '--ballots' => 1,
+        '--slow-mo' => 0,
+        '--base-url' => 'http://127.0.0.1:8000',
+    ])->expectsOutputToContain('The browser walkthrough rehearsal pointer has changed.')->assertFailed();
+
+    $control = app(BrowserWalkthroughControl::class)->read();
+    expect($control['status'])->toBe('active')
+        ->and($control['run_path'].'/run-context.json')->toBeFile()
+        ->and($control['run_path'].'/artifact-index.json')->not->toBeFile();
+});
+
 test('browser walkthrough command records public simulation lobby officer voter and watcher flow', function (): void {
+    config()->set('election.voting_lock_driver', 'cache');
     config()->set('election.public_simulation.enabled', true);
 
     Process::fake(function (PendingProcess $process) {
@@ -272,6 +302,7 @@ test('browser walkthrough command records public simulation lobby officer voter 
 });
 
 test('browser walkthrough command records demo room role qr officer voter print watcher and handoff flow', function (): void {
+    config()->set('election.voting_lock_driver', 'cache');
     config()->set('election.public_simulation.enabled', true);
 
     Process::fake(function (PendingProcess $process) {

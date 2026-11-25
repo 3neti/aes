@@ -4,8 +4,13 @@ namespace App\Election\Preparation;
 
 use App\Election\Core\CanonicalJson;
 use App\Election\Devices\DeviceCertificationService;
+use App\Election\Lifecycle\ElectionRunType;
+use App\Election\Scenarios\BrowserWalkthroughControl;
 use App\Election\Support\ElectionOperationLock;
+use App\Election\Support\ElectionRunScopeLock;
 use App\Election\Support\ElectionStorage;
+use App\Http\Middleware\LockElectionRunScope;
+use RuntimeException;
 
 final class ActivateConfiguredPrecinct
 {
@@ -18,6 +23,8 @@ final class ActivateConfiguredPrecinct
         private readonly CanonicalJson $json,
         private readonly DeviceCertificationService $devices,
         private readonly ElectionOperationLock $lock,
+        private readonly ElectionRunScopeLock $runLock,
+        private readonly BrowserWalkthroughControl $walkthrough,
     ) {}
 
     /**
@@ -25,12 +32,56 @@ final class ActivateConfiguredPrecinct
      */
     public function handle(): array
     {
-        return $this->lock->execute(
+        $operation = fn (): array => $this->lock->execute(
             'configured-precinct-activation',
             fn (): array => $this->handleWithinLock(),
             leaseSeconds: 120,
             waitSeconds: 30,
         );
+
+        if (config('election.voting_lock_driver') !== 'local') {
+            return $operation();
+        }
+
+        return $this->runLock->execute(function () use ($operation): array {
+            $this->assertWalkthroughScope();
+
+            return $operation();
+        });
+    }
+
+    private function assertWalkthroughScope(): void
+    {
+        $control = $this->walkthrough->read();
+        if ($control === [] || in_array($control['status'] ?? null, ['passed', 'failed'], true)) {
+            return;
+        }
+        if (($control['status'] ?? null) !== 'active') {
+            throw new RuntimeException('The browser walkthrough reservation is inconsistent. Operator investigation is required.');
+        }
+        $request = request();
+        $verifiedHash = $request->attributes->get(LockElectionRunScope::VerifiedWalkthrough);
+        $token = $request->header(BrowserWalkthroughControl::Header);
+        if (! is_string($verifiedHash) || ! is_string($control['control_hash'] ?? null)
+            || ! hash_equals($control['control_hash'], $verifiedHash)
+            || ! is_string($token) || $token === '' || ! in_array($request->ip(), ['127.0.0.1', '::1'], true)
+            || config('election.runtime.run_type') !== ElectionRunType::Rehearsal->value) {
+            throw new RuntimeException('The active walkthrough does not authorize this precinct activation scope.');
+        }
+        $verified = $this->walkthrough->authorize($token);
+        if (in_array($verified['scenario'] ?? null, ['public-simulation', 'demo-room'], true)
+            && ! isset($verified['simulation_scope'])) {
+            throw new RuntimeException('The active walkthrough does not authorize this precinct activation scope.');
+        }
+        $reservedRun = $verified['simulation_scope'] ?? $verified;
+        $run = $this->storage->currentRun(ElectionRunType::Rehearsal);
+        if (! hash_equals($verifiedHash, (string) ($verified['control_hash'] ?? ''))
+            || $reservedRun['run_path'] !== $this->storage->root().'/runs/'.$reservedRun['run_id']
+            || ($run['run_id'] ?? null) !== $reservedRun['run_id']
+            || ($run['run_path'] ?? null) !== $reservedRun['run_path']
+            || ($run['precinct_id'] ?? null) !== (string) config('election.pop.clustered_precinct')) {
+            throw new RuntimeException('The active walkthrough does not authorize this precinct activation scope.');
+        }
     }
 
     /**
@@ -41,7 +92,9 @@ final class ActivateConfiguredPrecinct
         $clusteredPrecinct = (string) config('election.pop.clustered_precinct');
         $currentRun = $this->storage->currentRun();
 
-        $existing = $this->existingActivation($clusteredPrecinct);
+        $existing = $currentRun !== [] && ($currentRun['precinct_id'] ?? null) === $clusteredPrecinct
+            ? $this->existingActivation($clusteredPrecinct)
+            : [];
 
         if ($existing !== []) {
             return $existing;

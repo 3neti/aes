@@ -3,8 +3,10 @@
 namespace App\Election\Core;
 
 use App\Election\Support\ElectionClock;
+use App\Election\Support\ElectionOperationLock;
 use App\Election\Support\ElectionStorage;
 use Illuminate\Filesystem\Filesystem;
+use RuntimeException;
 
 final class ActivityJournal
 {
@@ -13,6 +15,7 @@ final class ActivityJournal
         private readonly Filesystem $files,
         private readonly CanonicalJson $json,
         private readonly ElectionClock $clock,
+        private readonly ElectionOperationLock $lock,
     ) {}
 
     /**
@@ -21,8 +24,20 @@ final class ActivityJournal
      */
     public function record(string $eventType, array $payload = []): array
     {
+        return $this->lock->execute('activity-journal', fn (): array => $this->recordWithinLock($eventType, $payload));
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function recordWithinLock(string $eventType, array $payload): array
+    {
         $this->storage->ensureDirectories();
         $entries = $this->entries();
+        if (! $this->verifyEntries($entries)['passed']) {
+            throw new RuntimeException('The activity journal is invalid. Operator reconciliation is required.');
+        }
         $previous = end($entries) ?: null;
 
         $entry = [
@@ -36,7 +51,11 @@ final class ActivityJournal
         $entry['event_hash'] = $this->json->hash($entry);
         $path = $this->storage->path('journals/activity.jsonl');
         $this->files->ensureDirectoryExists(dirname($path));
-        $this->files->append($path, json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL);
+        $line = json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).PHP_EOL;
+        $written = $this->files->append($path, $line);
+        if ($written !== strlen($line)) {
+            throw new RuntimeException('Unable to write the activity journal.');
+        }
 
         return $entry;
     }
@@ -52,7 +71,12 @@ final class ActivityJournal
             return [];
         }
 
-        return collect(explode(PHP_EOL, trim($this->files->get($path))))
+        $contents = $this->files->get($path);
+        if ($contents !== '' && ! str_ends_with($contents, PHP_EOL)) {
+            throw new RuntimeException('The activity journal has an incomplete final entry.');
+        }
+
+        return collect(explode(PHP_EOL, trim($contents)))
             ->filter()
             ->map(fn (string $line): array => json_decode($line, true, flags: JSON_THROW_ON_ERROR))
             ->values()
@@ -65,6 +89,19 @@ final class ActivityJournal
     public function latest(int $limit = 8): array
     {
         return array_slice($this->entries(), -$limit);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function verifiedEntries(): array
+    {
+        return $this->lock->execute('activity-journal', function (): array {
+            $entries = $this->entries();
+            if (! $this->verifyEntries($entries)['passed']) {
+                throw new RuntimeException('The activity journal is invalid. Operator reconciliation is required.');
+            }
+
+            return $entries;
+        });
     }
 
     /**
@@ -83,6 +120,15 @@ final class ActivityJournal
             ];
         }
 
+        return $this->verifyEntries($entries);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $entries
+     * @return array{passed: bool, entry_count: int, first_invalid_sequence: int|null}
+     */
+    private function verifyEntries(array $entries): array
+    {
         $previousHash = null;
 
         foreach ($entries as $index => $entry) {

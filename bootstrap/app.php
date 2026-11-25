@@ -4,6 +4,7 @@ use App\Console\Commands\ElectionBrowserWalkthroughCommand;
 use App\Console\Commands\ElectionScenarioCommand;
 use App\Http\Middleware\BindBrowserWalkthroughRun;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\LockElectionRunScope;
 use App\Http\Middleware\ProtectReviewEnvironment;
 use App\Http\Middleware\RequireReviewRoomRole;
 use Illuminate\Foundation\Application;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->prepend(LockElectionRunScope::class);
         $middleware->redirectGuestsTo('/election/bundle/review/login');
 
         $middleware->alias([

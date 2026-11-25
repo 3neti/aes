@@ -63,6 +63,10 @@ test('offline runtime units consistently use the MySQL web-service profile', fun
         ->toContain("SupplementaryGroups=input\n")
         ->toContain('EnvironmentFile=/etc/waes/scanner.env')
         ->toContain("Restart=always\n");
+
+    $reverb = file_get_contents($root.'waes-reverb.service');
+    expect($reverb)->toContain("Wants=mysql.service\n")
+        ->toContain("After=network.target mysql.service\n");
 });
 
 test('offline environment examples separate local broadcasting and printer roles without shipping credentials', function (): void {
