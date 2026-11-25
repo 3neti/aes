@@ -18,6 +18,7 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -49,6 +50,51 @@ test('role demo pages display an open precinct without appending to a damaged jo
         ->assertSessionHasErrors(['admission' => 'The activity journal is invalid. Operator reconciliation is required.'])
         ->assertSessionMissing('role_demo.control_number');
     expect(file_get_contents($path))->toBe($damaged);
+});
+
+test('role demo ballot denial logs only the failed authorization check', function (): void {
+    $this->get(route('election.role-demo.index'))->assertSuccessful();
+    Log::spy();
+
+    $this->post(route('election.role-demo.voter.finalize'))->assertForbidden();
+
+    Log::shouldHaveReceived('warning')->withArgs(
+        fn (string $message, array $context): bool => $message === 'Role demo ballot submission denied before finalization'
+            && $context['reason'] === 'session_authorization_missing'
+            && $context['has_authorization'] === false
+            && $context['has_control_number'] === false
+            && is_string($context['host']),
+    )->once();
+
+    $this->post(route('election.role-demo.admit'))->assertRedirect();
+    $this->post(route('election.role-demo.voter.claim'), ['code' => session('role_demo.control_number.code')])
+        ->assertRedirectToRoute('election.role-demo.voter.ballot');
+
+    $this->withSession(['role_demo.authorization_control_number' => null])
+        ->post(route('election.role-demo.voter.finalize'))
+        ->assertForbidden();
+    Log::shouldHaveReceived('warning')->withArgs(
+        fn (string $message, array $context): bool => $message === 'Role demo ballot submission denied before finalization'
+            && $context['reason'] === 'session_control_number_missing'
+            && $context['has_authorization'] === true
+            && $context['has_control_number'] === false
+            && is_string($context['host']),
+    )->once();
+
+    $this->withSession([
+        'role_demo.authorization' => 'missing-demo-authorization',
+        'role_demo.authorization_control_number' => '0000',
+    ])
+        ->post(route('election.role-demo.voter.finalize'))
+        ->assertForbidden();
+    Log::shouldHaveReceived('warning')->withArgs(
+        fn (string $message, array $context): bool => $message === 'Role demo ballot submission denied before finalization'
+            && $context['reason'] === 'active_run_authorization_not_claimed'
+            && $context['has_authorization'] === true
+            && $context['has_control_number'] === true
+            && is_string($context['host']),
+    )->once();
+    expect(session('role_demo.release'))->toBeNull();
 });
 
 test('a voter cannot repeat finalization while a release awaits reconciliation', function (): void {

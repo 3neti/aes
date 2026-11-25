@@ -43,6 +43,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -451,8 +452,22 @@ final class RoleDemoController extends Controller
         $precinct = $this->precinct($simulations);
         $authorizationId = $request->session()->get('role_demo.authorization');
         $controlNumber = $request->session()->get('role_demo.authorization_control_number');
-        abort_unless(is_string($authorizationId) && $authorizations->isClaimed($authorizationId), 403);
-        abort_unless(is_string($controlNumber), 403);
+        $denial = match (true) {
+            ! is_string($authorizationId) => 'session_authorization_missing',
+            ! $authorizations->isClaimed($authorizationId) => 'active_run_authorization_not_claimed',
+            ! is_string($controlNumber) => 'session_control_number_missing',
+            default => null,
+        };
+        if ($denial !== null) {
+            Log::warning('Role demo ballot submission denied before finalization', [
+                'reason' => $denial,
+                'host' => $request->getHost(),
+                'has_authorization' => is_string($authorizationId),
+                'has_control_number' => is_string($controlNumber),
+            ]);
+
+            abort(403);
+        }
         $selections = collect($request->validated('selections', []))
             ->map(fn (array $candidateIds): array => array_values($candidateIds))
             ->all();

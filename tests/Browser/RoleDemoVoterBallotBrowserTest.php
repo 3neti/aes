@@ -11,6 +11,7 @@ beforeEach(function (): void {
     config()->set('election.public_simulation.participation_required', false);
     config()->set('election.voter.demo_random_fill_enabled', true);
     config()->set('election.voter.ballot_ui_profile', 'comelec_2022_facsimile');
+    config()->set('session.driver', 'database');
     app(ElectionStorage::class)->reset();
 });
 
@@ -35,10 +36,10 @@ test('role demo voter reaches a populated ballot and can fill remaining choices'
         ->click('@review-ballot')
         ->assertSee('Review your ballot')
         ->click('Submit ballot')
-        ->assertSee('Your ballot is ready to print')
+        ->assertSee('Your ballot has been submitted')
         ->assertSee('Demo shortcut: tap the number to preview the printable ballot.')
         ->click('@open-voter-ballot-preview')
-        ->assertSee('Printable ballot preview')
+        ->assertSee('VVPAT preview')
         ->assertSee('This preview does not deposit, count, or accept the ballot.')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
