@@ -15,11 +15,13 @@ test('officer switches between one visible workstation step at a time', function
 
     visit(route('election.role-demo.officer'))
         ->assertSee('Admit next voter')
+        ->assertDontSee('Generate a four-digit control number after physical identity checking.')
         ->assertAttribute('Tally Votes', 'href', route('election.role-demo.precinct-tally'))
         ->assertDontSee('Check VVPAT readiness')
         ->assertDontSee('Current / interim election return')
         ->click('Step 2 Print VVPAT')
         ->assertSee('Check VVPAT readiness')
+        ->assertDontSee('Enter the voter’s control number to check whether their submitted ballot is ready.')
         ->assertDontSee('Admit next voter')
         ->click('Step 3 Election return')
         ->assertSee('Current / interim election return')

@@ -440,7 +440,7 @@ usePoll(
 
         <header class="border-b border-stone-300 bg-white">
             <div
-                class="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6"
+                class="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 md:landscape:max-w-5xl"
             >
                 <div>
                     <Link
@@ -466,7 +466,9 @@ usePoll(
             </div>
         </header>
 
-        <section class="mx-auto max-w-2xl px-4 py-5 sm:px-6">
+        <section
+            class="mx-auto max-w-2xl px-4 py-5 sm:px-6 md:landscape:max-w-5xl"
+        >
             <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <p class="border border-stone-300 bg-white p-4">
                     <strong class="block text-2xl">{{
@@ -584,16 +586,13 @@ usePoll(
                     v-show="activeStep === 1"
                     class="border border-stone-300 bg-white p-5"
                 >
-                    <p class="text-sm font-bold text-blue-800">Step 1</p>
-                    <h2 class="mt-1 text-xl font-bold">Admit next voter</h2>
-                    <p class="mt-2 text-sm text-stone-700">
-                        Generate a four-digit control number after physical
-                        identity checking. The voter enters this on the booth
-                        tablet.
-                        <span v-if="pendingVvpat"
-                            >Write the number for the voter; receipt printing is
-                            paused while the VVPAT is pending.</span
-                        >
+                    <div class="flex flex-wrap items-baseline gap-x-3">
+                        <p class="text-sm font-bold text-blue-800">Step 1</p>
+                        <h2 class="text-xl font-bold">Admit next voter</h2>
+                    </div>
+                    <p v-if="pendingVvpat" class="mt-2 text-sm text-stone-700">
+                        Write the number for the voter; receipt printing is
+                        paused while the VVPAT is pending.
                     </p>
 
                     <div
@@ -658,8 +657,10 @@ usePoll(
                     v-show="activeStep === 2"
                     class="border border-stone-300 bg-white p-5"
                 >
-                    <p class="text-sm font-bold text-blue-800">Step 2</p>
-                    <h2 class="mt-1 text-xl font-bold">Print VVPAT</h2>
+                    <div class="flex flex-wrap items-baseline gap-x-3">
+                        <p class="text-sm font-bold text-blue-800">Step 2</p>
+                        <h2 class="text-xl font-bold">Print VVPAT</h2>
+                    </div>
                     <div
                         v-if="pendingVvpat"
                         class="mt-4 border-2 border-amber-500 bg-amber-50 p-4"
@@ -731,72 +732,71 @@ usePoll(
                         </Form>
                     </div>
                     <template v-else>
-                        <p class="mt-2 text-sm text-stone-700">
-                            Enter the voter’s control number to check whether
-                            their submitted ballot is ready. Then select Print
-                            VVPAT.
-                        </p>
-                        <form
-                            class="mt-5 space-y-3"
-                            @submit.prevent="checkBallot"
-                        >
-                            <NumericPinPad
-                                v-model="controlNumberForPrint"
-                                label="Voter Control Number"
-                                :digits="printPinDigits"
-                                :processing="checkingBallot"
-                                processing-label="Checking..."
-                                submit-label="Check VVPAT readiness"
-                            />
-                        </form>
-                        <p
-                            v-if="readinessMessage"
-                            class="mt-3 font-bold"
-                            role="status"
-                        >
-                            {{ readinessMessage }}
-                        </p>
-                        <Form
-                            v-if="checkedNumber"
-                            :action="actions.acceptPrint"
-                            method="post"
-                            #default="{ errors, processing }"
-                            class="mt-3"
-                            @success="controlNumberForPrint = ''"
-                        >
-                            <input
-                                type="hidden"
-                                name="code"
-                                :value="checkedNumber"
-                            />
+                        <div class="mx-auto w-full max-w-md">
+                            <form
+                                class="mt-5 space-y-3"
+                                @submit.prevent="checkBallot"
+                            >
+                                <NumericPinPad
+                                    v-model="controlNumberForPrint"
+                                    label="Voter Control Number"
+                                    :digits="printPinDigits"
+                                    :processing="checkingBallot"
+                                    processing-label="Checking..."
+                                    submit-label="Check VVPAT readiness"
+                                />
+                            </form>
                             <p
-                                v-if="errors.code"
-                                class="mb-3 font-bold text-red-700"
+                                v-if="readinessMessage"
+                                class="mt-3 font-bold"
+                                role="status"
                             >
-                                {{ errors.code }}
+                                {{ readinessMessage }}
                             </p>
-                            <button
-                                type="submit"
-                                :disabled="processing"
-                                class="min-h-12 w-full bg-emerald-700 px-4 font-bold text-white disabled:opacity-50"
+                            <Form
+                                v-if="checkedNumber"
+                                :action="actions.acceptPrint"
+                                method="post"
+                                #default="{ errors, processing }"
+                                class="mt-3"
+                                @success="controlNumberForPrint = ''"
                             >
-                                {{
-                                    processing
-                                        ? 'Submitting print...'
-                                        : 'Print VVPAT'
-                                }}
-                            </button>
-                        </Form>
+                                <input
+                                    type="hidden"
+                                    name="code"
+                                    :value="checkedNumber"
+                                />
+                                <p
+                                    v-if="errors.code"
+                                    class="mb-3 font-bold text-red-700"
+                                >
+                                    {{ errors.code }}
+                                </p>
+                                <button
+                                    type="submit"
+                                    :disabled="processing"
+                                    class="min-h-12 w-full bg-emerald-700 px-4 font-bold text-white disabled:opacity-50"
+                                >
+                                    {{
+                                        processing
+                                            ? 'Submitting print...'
+                                            : 'Print VVPAT'
+                                    }}
+                                </button>
+                            </Form>
+                        </div>
                     </template>
                 </section>
                 <section
                     v-show="activeStep === 3"
                     class="border border-stone-300 bg-white p-5"
                 >
-                    <p class="text-sm font-bold text-blue-800">Step 3</p>
-                    <h2 class="mt-1 text-xl font-bold">
-                        Current / interim election return
-                    </h2>
+                    <div class="flex flex-wrap items-baseline gap-x-3">
+                        <p class="text-sm font-bold text-blue-800">Step 3</p>
+                        <h2 class="text-xl font-bold">
+                            Current / interim election return
+                        </h2>
+                    </div>
                     <p class="mt-2 text-sm text-stone-700">
                         {{ precinct.label }} · Totals reflect the snapshot
                         generated when you view or print. Voting remains open.
